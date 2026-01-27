@@ -85,7 +85,7 @@ const CACHE_LIMITS = {
  */
 export class FolderAliasManager {
   /** 别名缓存: userId -> folderId -> AliasCacheEntry */
-  private aliasCache: Map<string, Map<string, AliasCacheEntry>>;
+  private aliasCache: Map<string, Map<FolderId, AliasCacheEntry>>;
 
   /** 学习中的别名: userId -> AliasLearningRecord[] */
   private learningRecords: Map<string, AliasLearningRecord[]>;
@@ -409,8 +409,8 @@ export class FolderAliasManager {
   /**
    * 清除缓存
    */
-  clearCache(userId: string, folderId?: string): void {
-    if (folderId) {
+  clearCache(userId: string, folderId?: FolderId): void {
+    if (folderId !== undefined) {
       this.aliasCache.get(userId)?.delete(folderId);
     } else {
       this.aliasCache.delete(userId);

@@ -72,6 +72,7 @@ import { RssConfigForm } from "./rss-config-form";
 import type {
   DistributionTarget,
   TriggerMode,
+  ObsidianTargetConfig,
   NotionTargetConfig,
   WebhookTargetConfig,
   RssTargetConfig,
@@ -270,6 +271,7 @@ export function DistributionPageClient() {
    */
   const handleSubmit = async (
     config:
+      | ObsidianTargetConfig
       | NotionTargetConfig
       | WebhookTargetConfig
       | RssTargetConfig
@@ -277,6 +279,8 @@ export function DistributionPageClient() {
   ) => {
     const isEdit = !!editTarget;
     const targetType = editTarget?.targetType || addTargetType;
+    // 使用类型断言访问动态配置属性
+    const configRecord = config as Record<string, unknown>;
 
     try {
       const url = isEdit
@@ -290,16 +294,16 @@ export function DistributionPageClient() {
           targetType,
           name: `${TARGET_TYPE_CONFIG[targetType!]?.label || targetType} 同步`,
           targetConfig: {
-            vaultPath: config.vaultPath,
-            folderName: config.folderName,
-            filenamePattern: config.filenamePattern,
-            useYamlFrontmatter: config.useYamlFrontmatter,
+            vaultPath: configRecord.vaultPath,
+            folderName: configRecord.folderName,
+            filenamePattern: configRecord.filenamePattern,
+            useYamlFrontmatter: configRecord.useYamlFrontmatter,
           },
           trigger: {
-            mode: config.triggerMode,
+            mode: configRecord.triggerMode,
             intervalMinutes:
-              config.triggerMode === "scheduled"
-                ? config.scheduleIntervalMinutes
+              configRecord.triggerMode === "scheduled"
+                ? configRecord.scheduleIntervalMinutes
                 : undefined,
           },
         }),
@@ -624,7 +628,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "notion" && (
             <NotionConfigForm
-              initialConfig={editTarget.targetConfig as NotionTargetConfig}
+              initialConfig={
+                editTarget.targetConfig as unknown as NotionTargetConfig
+              }
               onSave={async (config) => {
                 await handleSubmit(config);
               }}
@@ -634,7 +640,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "webhook" && (
             <WebhookConfigForm
-              initialConfig={editTarget.targetConfig as WebhookTargetConfig}
+              initialConfig={
+                editTarget.targetConfig as unknown as WebhookTargetConfig
+              }
               onSave={async (config) => {
                 await handleSubmit(config);
               }}
@@ -645,7 +653,9 @@ export function DistributionPageClient() {
 
           {editTarget?.targetType === "rss" && (
             <RssConfigForm
-              initialConfig={editTarget.targetConfig as RssTargetConfig}
+              initialConfig={
+                editTarget.targetConfig as unknown as RssTargetConfig
+              }
               onSave={async (config) => {
                 await handleSubmit(config);
               }}

@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (error) throw error;
-      resultData = data;
+      resultData = data as unknown as BatchTagsReturn;
     } else {
       const { data, error } = await supabase.rpc("batch_remove_tags", {
         p_bookmark_ids: bookmarkIds,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (error) throw error;
-      resultData = data;
+      resultData = data as unknown as BatchTagsReturn;
     }
 
     // 6. 记录日志

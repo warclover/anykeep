@@ -73,12 +73,12 @@ export class SynonymDetector {
    */
   private async generateEmbeddings(
     folders: FolderInfo[],
-  ): Promise<Map<string, number[]>> {
+  ): Promise<Map<FolderId, number[]>> {
     this.logger.debug("生成文件夹名称向量", {
       count: folders.length,
     });
 
-    const embeddings = new Map<string, number[]>();
+    const embeddings = new Map<FolderId, number[]>();
 
     for (const folder of folders) {
       try {
@@ -105,11 +105,11 @@ export class SynonymDetector {
    * 计算相似度矩阵
    */
   private calculateSimilarityMatrix(
-    embeddings: Map<string, number[]>,
-  ): Map<string, Map<string, number>> {
+    embeddings: Map<FolderId, number[]>,
+  ): Map<FolderId, Map<FolderId, number>> {
     this.logger.debug("计算相似度矩阵");
 
-    const matrix = new Map<string, Map<string, number>>();
+    const matrix = new Map<FolderId, Map<FolderId, number>>();
     const folderIds = Array.from(embeddings.keys());
 
     for (let i = 0; i < folderIds.length; i++) {
@@ -175,12 +175,12 @@ export class SynonymDetector {
    */
   private identifySynonymGroups(
     folders: FolderInfo[],
-    similarityMatrix: Map<string, Map<string, number>>,
+    similarityMatrix: Map<FolderId, Map<FolderId, number>>,
   ): SynonymGroup[] {
     this.logger.debug("识别同义词组");
 
     const groups: SynonymGroup[] = [];
-    const processed = new Set<string>();
+    const processed = new Set<FolderId>();
 
     // 按书签数量排序，书签多的作为主文件夹
     const sortedFolders = [...folders].sort(

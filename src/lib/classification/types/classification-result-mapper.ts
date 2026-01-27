@@ -99,19 +99,18 @@ export function toStorageFormat(
   result: NormalizedClassificationResult,
 ): ClassificationResultData {
   return {
-    // camelCase (主要格式)
-    folderId: result.folderId,
-    folderName: result.folderName,
-    confidence: result.confidence,
-    reason: result.reason ?? undefined, // 转换 null 为 undefined
-    tier: result.tier,
-    action: result.action,
-    // 保留 snake_case 以兼容旧查询
+    // snake_case (数据库格式)
     folder_id: result.folderId,
     folder_name: result.folderName,
-    matcher_scores: result.matcherScores,
-    ai_called: result.aiCalled,
-    timestamp: result.timestamp ?? new Date().toISOString(),
+    confidence: result.confidence,
+    method: "modern", // 默认方法
+    reason: result.reason ?? undefined,
+    action: result.action as
+      | "inbox"
+      | "select_existing"
+      | "suggest_new"
+      | undefined,
+    folderName: result.folderName,
   };
 }
 

@@ -85,6 +85,15 @@ describe("CrystalGrowthService", () => {
             }),
           }),
         }),
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn(),
+          }),
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn(),
+          in: jest.fn(),
+        }),
       });
 
       const result = await service.processInboxBookmark("user-123", {
@@ -133,6 +142,15 @@ describe("CrystalGrowthService", () => {
               error: null,
             }),
           }),
+        }),
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn(),
+          }),
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn(),
+          in: jest.fn(),
         }),
       });
 

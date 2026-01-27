@@ -265,7 +265,7 @@ export class FolderProfilerService {
       }
 
       // 4. 查询父文件夹画像（如果存在）
-      const parentProfile = await this.getProfile(userId, String(parentId));
+      const parentProfile = await this.getProfile(userId, parentId);
 
       if (parentProfile) {
         // 父文件夹有画像，返回名称和融合后的向量

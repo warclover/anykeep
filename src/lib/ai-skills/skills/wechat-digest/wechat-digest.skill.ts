@@ -47,7 +47,7 @@ interface WechatArticleRow {
   title: string;
   url: string;
   user_tags: string[] | null;
-  created_at: string;
+  created_at: string | null;
   bookmark_snapshots?: Array<{
     readable_word_count: number | null;
     readable_excerpt: string | null;
@@ -444,7 +444,7 @@ export class WechatDigestSkill extends OrchestrationSkill<
           excerpt: snapshot?.readable_excerpt || "",
           fullContent: snapshot?.readable_text_content || undefined,
           tags: item.user_tags || [],
-          createdAt: item.created_at,
+          createdAt: item.created_at ?? new Date().toISOString(),
           accountName: accountInfo.name,
           accountId: accountInfo.id,
         };

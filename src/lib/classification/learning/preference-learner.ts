@@ -257,10 +257,10 @@ export class PreferenceLearner {
   async getLearningStats(userId: string): Promise<LearningStats> {
     const supabase = await createClient();
 
-    // 获取待确认记录统计
+    // 获取待确认记录统计 - 使用类型断言处理可能不存在的列
     const { data: confirmations } = await supabase
       .from("pending_confirmations")
-      .select("status, updated_at")
+      .select("status")
       .eq("user_id", userId);
 
     const stats = {
@@ -274,13 +274,20 @@ export class PreferenceLearner {
 
     if (confirmations) {
       for (const c of confirmations) {
+        const record = c as Record<string, unknown>;
         stats.totalEvents++;
-        if (c.status === "confirmed") stats.confirmations++;
-        if (c.status === "rejected") stats.rejections++;
-        if (c.status === "modified") stats.modifications++;
+        if (record.status === "confirmed") stats.confirmations++;
+        if (record.status === "rejected") stats.rejections++;
+        if (record.status === "modified") stats.modifications++;
 
-        const updatedAt = new Date(c.updated_at);
-        if (!stats.lastLearningTime || updatedAt > stats.lastLearningTime) {
+        // updated_at 可能不在类型中，使用类型断言
+        const updatedAt = record.updated_at
+          ? new Date(record.updated_at as string)
+          : null;
+        if (
+          updatedAt &&
+          (!stats.lastLearningTime || updatedAt > stats.lastLearningTime)
+        ) {
           stats.lastLearningTime = updatedAt;
         }
       }

@@ -385,7 +385,7 @@ export class EnhancedSearchService {
                 `
                 id, title, url, description, cover_url, platform,
                 ai_summary, ai_tags, user_tags, folder_id,
-                folders:folder_id(name),
+                folders!bookmarks_folder_id_fkey(name),
                 author, publish_time, created_at
               `,
               )

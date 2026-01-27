@@ -12,6 +12,7 @@ import {
 import {
   type SpeculativeExecutor,
   createSpeculativeExecutor,
+  type RiskLevel,
 } from "../../execution";
 import {
   type IntentDisambiguator,
@@ -102,7 +103,7 @@ export class EnginePredictor {
     return this.speculativeExecutor.getRiskLevel(type as IntentType, subType);
   }
 
-  determineStrategy(confidence: number, riskLevel: string) {
+  determineStrategy(confidence: number, riskLevel: RiskLevel) {
     return this.speculativeExecutor.determineStrategy(confidence, riskLevel);
   }
 

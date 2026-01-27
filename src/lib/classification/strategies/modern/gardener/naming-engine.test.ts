@@ -33,13 +33,13 @@ describe("NamingEngine", () => {
 
   describe("suggest", () => {
     it("规范名称应该返回 null", () => {
-      const result = engine.suggest("folder-1", "JavaScript");
+      const result = engine.suggest(1, "JavaScript");
 
       expect(result).toBeNull();
     });
 
     it("应该移除前后空格", () => {
-      const result = engine.suggest("folder-1", "  Test Name  ");
+      const result = engine.suggest(1, "  Test Name  ");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("Test Name");
@@ -47,7 +47,7 @@ describe("NamingEngine", () => {
     });
 
     it("应该合并多余空格", () => {
-      const result = engine.suggest("folder-1", "Test    Name");
+      const result = engine.suggest(1, "Test    Name");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("Test Name");
@@ -55,7 +55,7 @@ describe("NamingEngine", () => {
     });
 
     it("应该移除特殊字符", () => {
-      const result = engine.suggest("folder-1", "Test!! Name##");
+      const result = engine.suggest(1, "Test!! Name##");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("Test Name");
@@ -63,7 +63,7 @@ describe("NamingEngine", () => {
     });
 
     it("应该首字母大写", () => {
-      const result = engine.suggest("folder-1", "test name");
+      const result = engine.suggest(1, "test name");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("Test name");
@@ -71,14 +71,14 @@ describe("NamingEngine", () => {
     });
 
     it("应该统一分隔符", () => {
-      const result = engine.suggest("folder-1", "test_name");
+      const result = engine.suggest(1, "test_name");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("Test-name");
     });
 
     it("应该移除冗余词汇", () => {
-      const result = engine.suggest("folder-1", "JavaScript文件夹");
+      const result = engine.suggest(1, "JavaScript文件夹");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("JavaScript");
@@ -86,14 +86,14 @@ describe("NamingEngine", () => {
     });
 
     it("应该统一技术术语", () => {
-      const result = engine.suggest("folder-1", "javascript tutorial");
+      const result = engine.suggest(1, "javascript tutorial");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("JavaScript tutorial");
     });
 
     it("应该应用多个规则", () => {
-      const result = engine.suggest("folder-1", "  javascript文件夹!!  ");
+      const result = engine.suggest(1, "  javascript文件夹!!  ");
 
       expect(result).not.toBeNull();
       expect(result!.suggestedName).toBe("JavaScript");
@@ -104,9 +104,9 @@ describe("NamingEngine", () => {
   describe("suggestBatch", () => {
     it("应该批量生成建议", () => {
       const folders = [
-        { folderId: "folder-1", folderName: "  Test  " },
-        { folderId: "folder-2", folderName: "javascript" },
-        { folderId: "folder-3", folderName: "Valid Name" },
+        { folderId: 1, folderName: "  Test  " },
+        { folderId: 2, folderName: "javascript" },
+        { folderId: 3, folderName: "Valid Name" },
       ];
 
       const results = engine.suggestBatch(folders);

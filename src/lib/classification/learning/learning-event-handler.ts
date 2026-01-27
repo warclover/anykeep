@@ -451,7 +451,7 @@ class LearningEventHandler {
       // source_id 字段可能不在生成的类型中，使用类型断言
       const { data, error } = await supabase
         .from("bookmarks")
-        .select("ai_tags, source_id")
+        .select("ai_tags")
         .eq("id", bookmarkId)
         .is("deleted_at", null)
         .single();
@@ -467,9 +467,11 @@ class LearningEventHandler {
         return null;
       }
 
+      // 使用类型断言处理可能不存��的字段
+      const rawData = data as Record<string, unknown>;
       return {
-        tags: (data?.ai_tags as string[]) || [],
-        sourceId: (data?.source_id as string) || null,
+        tags: (rawData?.ai_tags as string[]) || [],
+        sourceId: (rawData?.source_id as string) || null,
       };
     } catch (error) {
       logger.warn(

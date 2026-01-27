@@ -201,7 +201,7 @@ export interface FilterStats {
  */
 export class TagTrustFilter {
   /** 用户黑名单缓存: userId -> folderId -> Set<tag> */
-  private userBlacklist: Map<string, Map<string, Set<string>>>;
+  private userBlacklist: Map<string, Map<FolderId, Set<string>>>;
 
   /** 自定义停用词（可扩展） */
   private customStopTags: Set<string>;
@@ -241,7 +241,7 @@ export class TagTrustFilter {
     tags: string[],
     sourceLevel: TagSourceLevel,
     userId?: string,
-    targetFolderId?: string,
+    targetFolderId?: FolderId,
   ): WeightedTag[] {
     const result: WeightedTag[] = [];
 
@@ -378,7 +378,7 @@ export class TagTrustFilter {
       try {
         const { error } = await this.supabase.rpc("add_folder_blacklist_tag", {
           p_user_id: userId,
-          p_folder_id: parseInt(folderId),
+          p_folder_id: folderId,
           p_tag: normalizedTag,
         });
 
@@ -427,7 +427,7 @@ export class TagTrustFilter {
           "remove_folder_blacklist_tag",
           {
             p_user_id: userId,
-            p_folder_id: parseInt(folderId),
+            p_folder_id: folderId,
             p_tag: normalizedTag,
           },
         );
@@ -483,9 +483,9 @@ export class TagTrustFilter {
       }
 
       // 更新内存缓存
-      const userMap = new Map<string, Set<string>>();
+      const userMap = new Map<FolderId, Set<string>>();
       for (const row of data || []) {
-        const folderId = row.folder_id.toString();
+        const folderId = row.folder_id;
         const tags = (row.blacklist_tags as string[]) || [];
         if (tags.length > 0) {
           userMap.set(

@@ -85,7 +85,7 @@ export class ShadowSortingService {
           shadow_confidence,
           shadow_suggested_at,
           folder_id,
-          folders:folder_id (name)
+          folders!bookmarks_folder_id_fkey (name)
         `,
         )
         .eq("user_id", userId)

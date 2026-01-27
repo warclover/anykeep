@@ -168,11 +168,11 @@ export class AccuracyTrackerService {
       .limit(1000);
 
     if (metrics) {
-      outcomes = metrics.map((m) => ({
+      outcomes = (metrics as unknown as Record<string, unknown>[]).map((m) => ({
         is_correct: m.user_feedback === "accept",
-        created_at: m.created_at,
-        folder_id: m.folder_id,
-        predicted_confidence: m.confidence,
+        created_at: m.created_at as string,
+        folder_id: m.folder_id as number,
+        predicted_confidence: m.confidence as number,
       }));
     }
 
@@ -241,7 +241,8 @@ export class AccuracyTrackerService {
         .single();
 
       if (existingRecord) {
-        // 更新现有记录
+        // 更新现有记录 - 使用类型断言处理动态表
+        const record = existingRecord as unknown as Record<string, unknown>;
         await supabase
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from("classification_metrics" as any)
@@ -249,7 +250,7 @@ export class AccuracyTrackerService {
             user_feedback: outcome.isCorrect ? "accept" : "reject",
             feedback_at: outcome.timestamp,
           })
-          .eq("id", existingRecord.id);
+          .eq("id", record.id);
       }
 
       // 清除缓存

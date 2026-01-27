@@ -39,16 +39,16 @@ describe("T1Corrector", () => {
   };
 
   const mockT0Result: T0Result = {
-    folderId: "folder-1",
+    folderId: 1,
     confidence: 0.65,
     candidates: [
       {
-        folderId: "folder-1",
+        folderId: 1,
         folderName: "Folder 1",
         similarity: 0.85,
       },
       {
-        folderId: "folder-2",
+        folderId: 2,
         folderName: "Folder 2",
         similarity: 0.75,
       },
@@ -59,7 +59,7 @@ describe("T1Corrector", () => {
   };
 
   const mockT1Result: T1Result = {
-    folderId: "folder-2",
+    folderId: 2,
     confidence: 0.92,
     reasoning: "Based on content analysis, Folder 2 is more appropriate",
     latencyMs: 3500,
@@ -83,14 +83,14 @@ describe("T1Corrector", () => {
         bookmark: mockRequest,
         candidates: [
           {
-            folderId: "folder-1",
+            folderId: 1,
             folderName: "Folder 1",
             score: 0.85,
             keywordTags: [],
             sampleBookmarks: [],
           },
           {
-            folderId: "folder-2",
+            folderId: 2,
             folderName: "Folder 2",
             score: 0.75,
             keywordTags: [],
@@ -134,14 +134,14 @@ describe("T1Corrector", () => {
       const callArgs = mockLLMCaller.callLLM.mock.calls[0][0];
       expect(callArgs.candidates).toEqual([
         {
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "Folder 1",
           score: 0.85,
           keywordTags: [],
           sampleBookmarks: [],
         },
         {
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "Folder 2",
           score: 0.75,
           keywordTags: [],
@@ -214,7 +214,7 @@ describe("T1Corrector", () => {
         ...mockT0Result,
         candidates: [
           {
-            folderId: "folder-1",
+            folderId: 1,
             folderName: "Folder 1",
             similarity: 0.85,
           },
@@ -233,11 +233,11 @@ describe("T1Corrector", () => {
       const t0ResultMultiple: T0Result = {
         ...mockT0Result,
         candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0.85 },
-          { folderId: "folder-2", folderName: "Folder 2", similarity: 0.75 },
-          { folderId: "folder-3", folderName: "Folder 3", similarity: 0.65 },
-          { folderId: "folder-4", folderName: "Folder 4", similarity: 0.55 },
-          { folderId: "folder-5", folderName: "Folder 5", similarity: 0.45 },
+          { folderId: 1, folderName: "Folder 1", similarity: 0.85 },
+          { folderId: 2, folderName: "Folder 2", similarity: 0.75 },
+          { folderId: 3, folderName: "Folder 3", similarity: 0.65 },
+          { folderId: 4, folderName: "Folder 4", similarity: 0.55 },
+          { folderId: 5, folderName: "Folder 5", similarity: 0.45 },
         ],
       };
 
@@ -291,7 +291,7 @@ describe("T1Corrector", () => {
 
     it("应该处理 T1 返回与 T0 相同的文件夹", async () => {
       const t1ResultSameFolder: T1Result = {
-        folderId: "folder-1", // 与 T0 结果相同
+        folderId: 1, // 与 T0 结果相同
         confidence: 0.95,
         reasoning: "After analysis, the original classification is correct",
         latencyMs: 2800,
@@ -307,7 +307,7 @@ describe("T1Corrector", () => {
 
     it("应该处理空推理文本", async () => {
       const t1ResultNoReasoning: T1Result = {
-        folderId: "folder-2",
+        folderId: 2,
         confidence: 0.88,
         reasoning: "",
         latencyMs: 2500,
@@ -323,7 +323,7 @@ describe("T1Corrector", () => {
     it("应该处理长推理文本", async () => {
       const longReasoning = "A".repeat(2000); // 2000 字符的推理
       const t1ResultLongReasoning: T1Result = {
-        folderId: "folder-2",
+        folderId: 2,
         confidence: 0.9,
         reasoning: longReasoning,
         latencyMs: 4000,
@@ -339,7 +339,7 @@ describe("T1Corrector", () => {
 
     it("应该处理极高置信度的 T1 结果", async () => {
       const t1ResultHighConfidence: T1Result = {
-        folderId: "folder-2",
+        folderId: 2,
         confidence: 0.99,
         reasoning: "Very certain about this classification",
         latencyMs: 1500,
@@ -354,7 +354,7 @@ describe("T1Corrector", () => {
 
     it("应该处理极短延迟的 T1 响应", async () => {
       const t1ResultFast: T1Result = {
-        folderId: "folder-2",
+        folderId: 2,
         confidence: 0.85,
         reasoning: "Quick decision",
         latencyMs: 100,
@@ -369,7 +369,7 @@ describe("T1Corrector", () => {
 
     it("应该处理超长延迟的 T1 响应", async () => {
       const t1ResultSlow: T1Result = {
-        folderId: "folder-2",
+        folderId: 2,
         confidence: 0.95,
         reasoning: "Complex analysis took time",
         latencyMs: 9000, // 9 秒
@@ -409,9 +409,7 @@ describe("T1Corrector", () => {
     it("应该处理候选分数为零的情况", async () => {
       const t0ResultZeroScore: T0Result = {
         ...mockT0Result,
-        candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0 },
-        ],
+        candidates: [{ folderId: 1, folderName: "Folder 1", similarity: 0 }],
       };
 
       mockLLMCaller.callLLM.mockResolvedValueOnce(mockT1Result);
@@ -425,9 +423,7 @@ describe("T1Corrector", () => {
     it("应该处理候选分数为 1 的情况", async () => {
       const t0ResultPerfectScore: T0Result = {
         ...mockT0Result,
-        candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 1.0 },
-        ],
+        candidates: [{ folderId: 1, folderName: "Folder 1", similarity: 1.0 }],
       };
 
       mockLLMCaller.callLLM.mockResolvedValueOnce(mockT1Result);
@@ -442,9 +438,9 @@ describe("T1Corrector", () => {
       const t0ResultSameScores: T0Result = {
         ...mockT0Result,
         candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0.75 },
-          { folderId: "folder-2", folderName: "Folder 2", similarity: 0.75 },
-          { folderId: "folder-3", folderName: "Folder 3", similarity: 0.75 },
+          { folderId: 1, folderName: "Folder 1", similarity: 0.75 },
+          { folderId: 2, folderName: "Folder 2", similarity: 0.75 },
+          { folderId: 3, folderName: "Folder 3", similarity: 0.75 },
         ],
       };
 
@@ -481,12 +477,12 @@ describe("T1Corrector", () => {
         ...mockT0Result,
         candidates: [
           {
-            folderId: "folder-1",
+            folderId: 1,
             folderName: "技术文档 / Technical Docs",
             similarity: 0.85,
           },
           {
-            folderId: "folder-2",
+            folderId: 2,
             folderName: "AI & ML (人工智能)",
             similarity: 0.75,
           },

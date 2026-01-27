@@ -98,7 +98,8 @@ export class EntropyReductionService {
     try {
       this.logger.info("Calculating entropy for all folders");
 
-      const { data, error } = await this.supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase as any).rpc(
         "calculate_all_folder_entropy",
       );
 
@@ -106,11 +107,11 @@ export class EntropyReductionService {
         throw new Error(`Failed to calculate all entropy: ${error.message}`);
       }
 
-      return (data || []).map((row) => ({
-        folderId: row.folder_id,
-        folderName: row.folder_name,
-        entropyScore: parseFloat(row.entropy_score.toString()),
-        bookmarkCount: row.bookmark_count,
+      return ((data || []) as Record<string, unknown>[]).map((row) => ({
+        folderId: row.folder_id as number,
+        folderName: row.folder_name as string,
+        entropyScore: parseFloat(String(row.entropy_score)),
+        bookmarkCount: row.bookmark_count as number,
         avgSimilarity: null,
         similarityStddev: null,
       }));
@@ -142,8 +143,9 @@ export class EntropyReductionService {
         throw new Error("User not authenticated");
       }
 
-      // 查询高熵文件夹
-      const { data, error } = await this.supabase
+      // 查询高熵文件夹 - 使用类型断言绕过 generated types 限制
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase as any)
         .from("folder_entropy_scores")
         .select(
           "folder_id, entropy_score, bookmark_count, folders!folder_entropy_scores_folder_id_fkey(name)",
@@ -159,13 +161,13 @@ export class EntropyReductionService {
         );
       }
 
-      return (data || []).map((row) => ({
-        folderId: row.folder_id,
+      return ((data || []) as Record<string, unknown>[]).map((row) => ({
+        folderId: row.folder_id as number,
         folderName: (row.folders as { name: string } | null)?.name || "Unknown",
-        entropyScore: parseFloat(row.entropy_score.toString()),
-        bookmarkCount: row.bookmark_count,
+        entropyScore: parseFloat(String(row.entropy_score)),
+        bookmarkCount: row.bookmark_count as number,
         severity: this.getEntropySeverity(
-          parseFloat(row.entropy_score.toString()),
+          parseFloat(String(row.entropy_score)),
         ),
       }));
     } catch (error) {
@@ -379,7 +381,17 @@ export class EntropyReductionService {
         throw new Error("User not authenticated");
       }
 
-      const { error } = await this.supabase
+      // 注意: entropy_reduction_logs 表可能尚未在类型定义中生成
+      // 使用类型断言绕过类型检查，实际表结构在数据库迁移中定义
+      const { error } = await (
+        this.supabase as unknown as {
+          from: (table: string) => {
+            insert: (
+              data: Record<string, unknown>,
+            ) => Promise<{ error: Error | null }>;
+          };
+        }
+      )
         .from("entropy_reduction_logs")
         .insert({
           user_id: user.id,
@@ -388,8 +400,7 @@ export class EntropyReductionService {
           before_entropy: beforeEntropy,
           after_entropy: afterEntropy,
           affected_bookmark_count: affectedBookmarkCount,
-          action_details:
-            actionDetails as unknown as Database["public"]["Tables"]["entropy_reduction_logs"]["Insert"]["action_details"],
+          action_details: actionDetails,
         });
 
       if (error) {

@@ -122,7 +122,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const matches = await manager.matchesAlias("user1", "1", "Vue.js", "");
+      const matches = await manager.matchesAlias("user1", 1, "Vue.js", "");
 
       expect(matches).toBe(false);
     });
@@ -135,7 +135,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const matched = await manager.findMatchingTags("user1", "1", "Vue.js", [
+      const matched = await manager.findMatchingTags("user1", 1, "Vue.js", [
         "vue",
         "react",
         "vuejs",
@@ -154,7 +154,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      const matched = await manager.findMatchingTags("user1", "1", "Vue.js", [
+      const matched = await manager.findMatchingTags("user1", 1, "Vue.js", [
         "react",
         "angular",
       ]);
@@ -166,17 +166,17 @@ describe("FolderAliasManager", () => {
   describe("recordLearningEvent", () => {
     it("should increment hit count for existing record", () => {
       // Record first event
-      manager.recordLearningEvent("user1", "1", "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend");
       // Record second event
-      manager.recordLearningEvent("user1", "1", "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend");
 
       const stats = manager.getLearningStats("user1");
       expect(stats.totalRecords).toBe(1);
     });
 
     it("should create new record for new tag-folder combination", () => {
-      manager.recordLearningEvent("user1", "1", "frontend");
-      manager.recordLearningEvent("user1", "1", "backend");
+      manager.recordLearningEvent("user1", 1, "frontend");
+      manager.recordLearningEvent("user1", 1, "backend");
 
       const stats = manager.getLearningStats("user1");
       expect(stats.totalRecords).toBe(2);
@@ -195,9 +195,9 @@ describe("FolderAliasManager", () => {
       });
 
       // Record 3 events (default threshold)
-      manager.recordLearningEvent("user1", "1", "frontend");
-      manager.recordLearningEvent("user1", "1", "frontend");
-      manager.recordLearningEvent("user1", "1", "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend");
 
       // Wait for async addAlias to complete
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -208,8 +208,8 @@ describe("FolderAliasManager", () => {
     });
 
     it("should normalize tag before recording", () => {
-      manager.recordLearningEvent("user1", "1", "Vue.js");
-      manager.recordLearningEvent("user1", "1", "vuejs");
+      manager.recordLearningEvent("user1", 1, "Vue.js");
+      manager.recordLearningEvent("user1", 1, "vuejs");
 
       // Both should be treated as the same tag
       const stats = manager.getLearningStats("user1");
@@ -217,8 +217,8 @@ describe("FolderAliasManager", () => {
     });
 
     it("should ignore empty tags", () => {
-      manager.recordLearningEvent("user1", "1", "");
-      manager.recordLearningEvent("user1", "1", "   ");
+      manager.recordLearningEvent("user1", 1, "");
+      manager.recordLearningEvent("user1", 1, "   ");
 
       const stats = manager.getLearningStats("user1");
       expect(stats.totalRecords).toBe(0);
@@ -237,7 +237,7 @@ describe("FolderAliasManager", () => {
         }),
       });
 
-      await manager.addAlias("user1", "1", "vuejs");
+      await manager.addAlias("user1", 1, "vuejs");
 
       expect(mockSupabase.from).toHaveBeenCalledWith("folder_tag_profiles");
       expect(mockSupabase.update).toHaveBeenCalledWith({
@@ -251,7 +251,7 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      await manager.addAlias("user1", "1", "vuejs");
+      await manager.addAlias("user1", 1, "vuejs");
 
       // Should not call update since alias already exists
       expect(mockSupabase.update).not.toHaveBeenCalled();
@@ -268,7 +268,7 @@ describe("FolderAliasManager", () => {
         }),
       });
 
-      await manager.addAlias("user1", "1", "Vue.js");
+      await manager.addAlias("user1", 1, "Vue.js");
 
       expect(mockSupabase.update).toHaveBeenCalledWith({
         aliases: expect.arrayContaining(["vuejs"]),
@@ -281,7 +281,7 @@ describe("FolderAliasManager", () => {
         data: { aliases: [] },
         error: null,
       });
-      await manager.getAliases("user1", "1", "Vue.js");
+      await manager.getAliases("user1", 1, "Vue.js");
 
       // Add alias
       mockSupabase.single.mockResolvedValueOnce({
@@ -293,20 +293,20 @@ describe("FolderAliasManager", () => {
           eq: jest.fn().mockResolvedValue({ error: null }),
         }),
       });
-      await manager.addAlias("user1", "1", "vue");
+      await manager.addAlias("user1", 1, "vue");
 
       // Next getAliases should hit database again
       mockSupabase.single.mockResolvedValueOnce({
         data: { aliases: ["vue"] },
         error: null,
       });
-      await manager.getAliases("user1", "1", "Vue.js");
+      await manager.getAliases("user1", 1, "Vue.js");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(3);
     });
 
     it("should ignore empty alias", async () => {
-      await manager.addAlias("user1", "1", "");
+      await manager.addAlias("user1", 1, "");
 
       expect(mockSupabase.from).not.toHaveBeenCalled();
     });
@@ -324,7 +324,7 @@ describe("FolderAliasManager", () => {
         }),
       });
 
-      await manager.removeAlias("user1", "1", "vuejs");
+      await manager.removeAlias("user1", 1, "vuejs");
 
       expect(mockSupabase.update).toHaveBeenCalledWith({
         aliases: expect.not.arrayContaining(["vuejs"]),
@@ -337,7 +337,7 @@ describe("FolderAliasManager", () => {
         data: { aliases: ["vuejs"] },
         error: null,
       });
-      await manager.getAliases("user1", "1", "Vue.js");
+      await manager.getAliases("user1", 1, "Vue.js");
 
       // Remove alias
       mockSupabase.single.mockResolvedValueOnce({
@@ -349,14 +349,14 @@ describe("FolderAliasManager", () => {
           eq: jest.fn().mockResolvedValue({ error: null }),
         }),
       });
-      await manager.removeAlias("user1", "1", "vuejs");
+      await manager.removeAlias("user1", 1, "vuejs");
 
       // Next getAliases should hit database again
       mockSupabase.single.mockResolvedValueOnce({
         data: { aliases: [] },
         error: null,
       });
-      await manager.getAliases("user1", "1", "Vue.js");
+      await manager.getAliases("user1", 1, "Vue.js");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(3);
     });
@@ -369,15 +369,15 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      await manager.getAliases("user1", "1", "Vue.js");
-      await manager.getAliases("user1", "2", "React");
+      await manager.getAliases("user1", 1, "Vue.js");
+      await manager.getAliases("user1", 2, "React");
 
-      manager.clearCache("user1", "1");
+      manager.clearCache("user1", 1);
 
       // Folder 1 should hit database again
-      await manager.getAliases("user1", "1", "Vue.js");
+      await manager.getAliases("user1", 1, "Vue.js");
       // Folder 2 should still use cache
-      await manager.getAliases("user1", "2", "React");
+      await manager.getAliases("user1", 2, "React");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(3);
     });
@@ -388,14 +388,14 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      await manager.getAliases("user1", "1", "Vue.js");
-      await manager.getAliases("user1", "2", "React");
+      await manager.getAliases("user1", 1, "Vue.js");
+      await manager.getAliases("user1", 2, "React");
 
       manager.clearCache("user1");
 
       // Both should hit database again
-      await manager.getAliases("user1", "1", "Vue.js");
-      await manager.getAliases("user1", "2", "React");
+      await manager.getAliases("user1", 1, "Vue.js");
+      await manager.getAliases("user1", 2, "React");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(4);
     });
@@ -408,14 +408,14 @@ describe("FolderAliasManager", () => {
         error: null,
       });
 
-      await manager.getAliases("user1", "1", "Vue.js");
-      await manager.getAliases("user2", "1", "React");
+      await manager.getAliases("user1", 1, "Vue.js");
+      await manager.getAliases("user2", 1, "React");
 
       manager.clearAllCache();
 
       // Both users should hit database again
-      await manager.getAliases("user1", "1", "Vue.js");
-      await manager.getAliases("user2", "1", "React");
+      await manager.getAliases("user1", 1, "Vue.js");
+      await manager.getAliases("user2", 1, "React");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(4);
     });
@@ -429,7 +429,7 @@ describe("FolderAliasManager", () => {
       });
 
       // Add a learning event
-      shortExpiryManager.recordLearningEvent("user1", "1", "test");
+      shortExpiryManager.recordLearningEvent("user1", 1, "test");
 
       // Verify record exists
       let stats = shortExpiryManager.getLearningStats("user1");
@@ -449,9 +449,9 @@ describe("FolderAliasManager", () => {
 
   describe("getLearningStats", () => {
     it("should return correct stats", () => {
-      manager.recordLearningEvent("user1", "1", "frontend");
-      manager.recordLearningEvent("user1", "1", "frontend"); // 2nd hit
-      manager.recordLearningEvent("user1", "2", "backend");
+      manager.recordLearningEvent("user1", 1, "frontend");
+      manager.recordLearningEvent("user1", 1, "frontend"); // 2nd hit
+      manager.recordLearningEvent("user1", 2, "backend");
 
       const stats = manager.getLearningStats("user1");
 
@@ -480,13 +480,13 @@ describe("FolderAliasManager", () => {
       });
 
       // First call
-      await shortTtlManager.getAliases("user1", "1", "Vue.js");
+      await shortTtlManager.getAliases("user1", 1, "Vue.js");
 
       // Wait for TTL to expire
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Second call should hit database again
-      await shortTtlManager.getAliases("user1", "1", "Vue.js");
+      await shortTtlManager.getAliases("user1", 1, "Vue.js");
 
       expect(mockSupabase.single).toHaveBeenCalledTimes(2);
     });

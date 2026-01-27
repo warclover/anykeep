@@ -25,7 +25,6 @@ interface MigrationCandidate {
   title: string | null;
   ai_summary: string | null;
   description: string | null;
-  full_content: string | null;
 }
 
 /**
@@ -130,7 +129,7 @@ export class ChunkMigrationService {
   ): Promise<MigrationCandidate[]> {
     let query = this.supabase
       .from("bookmarks")
-      .select("id, user_id, title, ai_summary, description, full_content")
+      .select("id, user_id, title, ai_summary, description")
       .is("deleted_at", null)
       .order("id", { ascending: true })
       .range(offset, offset + limit - 1);
@@ -312,20 +311,15 @@ export class ChunkMigrationService {
   private buildContent(bookmark: MigrationCandidate): string {
     const parts: string[] = [];
 
-    // 优先使用 full_content
-    if (bookmark.full_content?.trim()) {
-      parts.push(bookmark.full_content.trim());
-    } else {
-      // 否则组合其他字段
-      if (bookmark.title?.trim()) {
-        parts.push(`# ${bookmark.title.trim()}`);
-      }
-      if (bookmark.ai_summary?.trim()) {
-        parts.push(bookmark.ai_summary.trim());
-      }
-      if (bookmark.description?.trim()) {
-        parts.push(bookmark.description.trim());
-      }
+    // 组合可用字段
+    if (bookmark.title?.trim()) {
+      parts.push(`# ${bookmark.title.trim()}`);
+    }
+    if (bookmark.ai_summary?.trim()) {
+      parts.push(bookmark.ai_summary.trim());
+    }
+    if (bookmark.description?.trim()) {
+      parts.push(bookmark.description.trim());
     }
 
     return parts.join("\n\n");

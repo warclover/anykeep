@@ -40,9 +40,9 @@ export class HistoryMatcher implements IMatcher {
 
     // Find similar bookmarks with their folder assignments
     // 传入 bookmarkId 以排除当前书签（避免自匹配）
+    // Note: bookmarkRepo uses internal userId, so we only pass embedding, limit, excludeId
     const similarBookmarks = await this.bookmarkRepo.findSimilarWithFolders(
       context.embedding,
-      context.userId,
       this.matchCount,
       context.bookmarkId, // 排除当前书签
     );

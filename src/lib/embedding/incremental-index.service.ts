@@ -16,7 +16,21 @@ import { generateEmbedding } from "@/lib/utils/embedding-generator";
 
 type EmbeddingTask =
   Database["public"]["Tables"]["bookmark_embedding_queue"]["Row"];
-type QueueStats = Database["public"]["Tables"]["embedding_queue_stats"]["Row"];
+
+/**
+ * 队列统计信息（来自视图 embedding_queue_stats）
+ */
+interface QueueStats {
+  pending_count: number;
+  processed_24h: number;
+  failed_count: number;
+  pending_title: number;
+  pending_tags: number;
+  pending_content: number;
+  pending_full: number;
+  oldest_pending: string | null;
+  avg_processing_time_seconds: number | null;
+}
 
 /**
  * 处理结果
@@ -45,10 +59,10 @@ export class IncrementalIndexService {
    * 获取队列统计信息
    */
   async getQueueStats(): Promise<QueueStats | null> {
+    // embedding_queue_stats 是视图，需要使用 rpc 或 raw query
     const { data, error } = await this.supabase
-      .from("embedding_queue_stats")
-      .select("*")
-      .single();
+      .from("bookmark_embedding_queue")
+      .select("*", { count: "exact", head: false });
 
     if (error) {
       logger.error(
@@ -58,7 +72,43 @@ export class IncrementalIndexService {
       return null;
     }
 
-    return data;
+    // 手动计算统计信息
+    const rows = data || [];
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const stats: QueueStats = {
+      pending_count: rows.filter((r) => r.processed_at === null).length,
+      processed_24h: rows.filter(
+        (r) => r.processed_at && new Date(r.processed_at) > yesterday,
+      ).length,
+      failed_count: rows.filter(
+        (r) => (r.retry_count ?? 0) >= 3 && r.processed_at === null,
+      ).length,
+      pending_title: rows.filter(
+        (r) => r.processed_at === null && r.update_type === "title",
+      ).length,
+      pending_tags: rows.filter(
+        (r) => r.processed_at === null && r.update_type === "tags",
+      ).length,
+      pending_content: rows.filter(
+        (r) => r.processed_at === null && r.update_type === "content",
+      ).length,
+      pending_full: rows.filter(
+        (r) => r.processed_at === null && r.update_type === "full",
+      ).length,
+      oldest_pending:
+        rows
+          .filter((r) => r.processed_at === null)
+          .sort(
+            (a, b) =>
+              new Date(a.created_at ?? 0).getTime() -
+              new Date(b.created_at ?? 0).getTime(),
+          )[0]?.created_at ?? null,
+      avg_processing_time_seconds: null,
+    };
+
+    return stats;
   }
 
   /**
@@ -81,7 +131,7 @@ export class IncrementalIndexService {
       return [];
     }
 
-    return data ?? [];
+    return (data ?? []) as unknown as EmbeddingTask[];
   }
 
   /**
@@ -264,13 +314,19 @@ export class IncrementalIndexService {
       userTags: bookmark.user_tags ?? [],
     });
 
-    // 更新数据库
+    // 更新数据库 - 向量需要转换为字符串格式
     await this.supabase
       .from("bookmarks")
       .update({
-        title_embedding: vectors.titleEmbedding,
-        embedding: vectors.contentEmbedding,
-        tag_embedding: vectors.tagEmbedding,
+        title_embedding: vectors.titleEmbedding
+          ? JSON.stringify(vectors.titleEmbedding)
+          : null,
+        embedding: vectors.contentEmbedding
+          ? JSON.stringify(vectors.contentEmbedding)
+          : null,
+        tag_embedding: vectors.tagEmbedding
+          ? JSON.stringify(vectors.tagEmbedding)
+          : null,
         embedding_version: "v3",
         title_embedding_at: vectors.titleEmbedding
           ? new Date().toISOString()
@@ -278,7 +334,7 @@ export class IncrementalIndexService {
         tag_embedding_at: vectors.tagEmbedding
           ? new Date().toISOString()
           : null,
-      })
+      } as Record<string, unknown>)
       .eq("id", bookmarkId);
   }
 
@@ -312,9 +368,9 @@ export class IncrementalIndexService {
       await this.supabase
         .from("bookmarks")
         .update({
-          embedding,
+          embedding: JSON.stringify(embedding),
           embedding_version: "v3",
-        })
+        } as Record<string, unknown>)
         .eq("id", bookmarkId);
     }
   }

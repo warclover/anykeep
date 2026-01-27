@@ -345,7 +345,7 @@ export class AiTagMatcher {
     for (const profile of profiles) {
       const matchedTags = await this.folderAliasManager.findMatchingTags(
         userId,
-        profile.folderId.toString(),
+        profile.folderId,
         profile.folderName,
         tags,
       );
@@ -353,7 +353,7 @@ export class AiTagMatcher {
       if (matchedTags.length > 0) {
         return {
           matched: true,
-          folderId: profile.folderId.toString(),
+          folderId: profile.folderId,
           folderName: profile.folderName,
           confidence: this.config.exactMatchConfidence - 0.03,
           matchType: "exact_name",
@@ -407,7 +407,7 @@ export class AiTagMatcher {
 
         return {
           matched: true,
-          folderId: profile.folderId.toString(),
+          folderId: profile.folderId,
           folderName: profile.folderName,
           confidence: 0.6, // 低置信度，需要 T0 校验
           matchType: "exact_name",

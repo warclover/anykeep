@@ -1262,7 +1262,7 @@ export async function GET(request: NextRequest) {
     try {
       // 验证数据结构
       if (Array.isArray(bookmarks)) {
-        bookmarkList = bookmarks as Array<{
+        bookmarkList = bookmarks as unknown as Array<{
           id: number;
           [key: string]: unknown;
         }>;

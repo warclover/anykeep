@@ -337,7 +337,7 @@ export class MdAIProcessor {
 
             const embedding = await generateEmbedding(embeddingText);
             result.embedding = embedding;
-            result.embeddingVersion = getCurrentEmbeddingVersion();
+            result.embeddingVersion = String(getCurrentEmbeddingVersion());
           } catch (embeddingError) {
             logger.warn(
               {

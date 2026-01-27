@@ -112,7 +112,7 @@ export const readBookmarkTool: Tool<ReadParams, ReadResult> = {
           notes,
           author,
           folder_id,
-          folders:folder_id (name),
+          folders!bookmarks_folder_id_fkey (name),
           ai_tags,
           user_tags,
           is_starred,

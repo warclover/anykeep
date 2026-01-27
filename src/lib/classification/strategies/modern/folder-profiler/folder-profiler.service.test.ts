@@ -68,7 +68,7 @@ describe("FolderProfilerService", () => {
   ];
 
   const mockStats: FolderStats = {
-    folderId: "folder-1",
+    folderId: 1,
     lastUsed: new Date(),
     behaviorCount: 10,
     contentCount: 20,
@@ -99,7 +99,7 @@ describe("FolderProfilerService", () => {
         error: null,
       });
 
-      const profile = await service.getProfile("user-1", "folder-1");
+      const profile = await service.getProfile("user-1", 1);
 
       expect(profile).toBeDefined();
       expect(profile?.folderId).toBe("folder-1");
@@ -114,7 +114,7 @@ describe("FolderProfilerService", () => {
         error: { code: "PGRST116" },
       });
 
-      const profile = await service.getProfile("user-1", "folder-1");
+      const profile = await service.getProfile("user-1", 1);
 
       expect(profile).toBeNull();
     });
@@ -144,7 +144,7 @@ describe("FolderProfilerService", () => {
 
       const profile = await service.upsertProfile(
         "user-1",
-        "folder-1",
+        1,
         "Test Folder",
         "Test folder description",
         mockBookmarks,
@@ -165,11 +165,7 @@ describe("FolderProfilerService", () => {
         error: { code: "PGRST116" },
       });
 
-      const needsUpdate = await service.checkNeedsUpdate(
-        "user-1",
-        "folder-1",
-        10,
-      );
+      const needsUpdate = await service.checkNeedsUpdate("user-1", 1, 10);
 
       expect(needsUpdate).toBe(true);
     });

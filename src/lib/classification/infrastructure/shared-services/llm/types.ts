@@ -38,7 +38,7 @@ export interface LLMClassificationRequest {
   tags?: string[];
   /** 候选文件夹列表 */
   candidates: Array<{
-    id: string;
+    id: FolderId;
     name: string;
     description?: string;
     /** v6: 示例书签标题（用于帮助 LLM 理解文件夹内容） */

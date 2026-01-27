@@ -70,13 +70,18 @@ interface SourceProfilesTableDef {
   Update: Partial<SourceProfileRow>;
 }
 
+// 手动定义表的 Relationships
+interface SourceProfilesTableDefWithRels extends SourceProfilesTableDef {
+  Relationships: [];
+}
+
 // 扩展的数据库类型
-type ExtendedDatabase = Database & {
-  public: {
-    Tables: {
-      source_profiles: SourceProfilesTableDef;
+type ExtendedDatabase = Omit<Database, "public"> & {
+  public: Omit<Database["public"], "Tables" | "Functions"> & {
+    Tables: Database["public"]["Tables"] & {
+      source_profiles: SourceProfilesTableDefWithRels;
     };
-    Functions: {
+    Functions: Database["public"]["Functions"] & {
       upsert_source_profile: {
         Args: {
           p_user_id: string;
@@ -99,6 +104,9 @@ type ExtendedDatabase = Database & {
     };
   };
 };
+
+// 类型安全的 Supabase 客户端（保留用于未来扩展）
+type _TypedSupabaseClient = SupabaseClient<ExtendedDatabase, "public">;
 
 // ============================================================================
 // 服务实现
@@ -146,11 +154,12 @@ export class SourceProfileService extends BaseSupabaseService {
 
   /**
    * 获取类型安全的 Supabase 客户端
+   * @note 由于 source_profiles 表尚未在 supabase.generated.ts 中定义，
+   *       使用 any 类型断言绕过类型检查
    */
-  private async getTypedSupabase() {
-    const client = await this.getSupabase();
-    // 使用断言扩展客户端类型
-    return client as SupabaseClient<ExtendedDatabase>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async getTypedSupabase(): Promise<any> {
+    return await this.getSupabase();
   }
 
   /**
@@ -195,7 +204,7 @@ export class SourceProfileService extends BaseSupabaseService {
       throw new Error(`Failed to fetch source profiles: ${error.message}`);
     }
 
-    return (data || []).map((row) => this.mapToProfile(row));
+    return (data || []).map((row: SourceProfileRow) => this.mapToProfile(row));
   }
 
   /**

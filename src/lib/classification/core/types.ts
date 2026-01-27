@@ -46,6 +46,8 @@ export type ClassificationAction =
   | "classify"
   | "suggest"
   | "suggest_new"
+  | "suggest_create"
+  | "auto_create"
   | "inbox";
 
 /**

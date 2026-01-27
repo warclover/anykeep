@@ -32,7 +32,7 @@ const mockSupabaseClient = {
 
 // Mock modules before imports
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn().mockResolvedValue(mockSupabaseClient),
+  createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }));
 
 jest.mock("@/lib/logger", () => ({
@@ -46,19 +46,19 @@ jest.mock("@/lib/logger", () => ({
 
 jest.mock("@/lib/messages/server", () => ({
   MessageService: {
-    notifyClassificationComplete: jest.fn().mockResolvedValue(undefined),
+    notifyClassificationComplete: jest.fn(() => Promise.resolve(undefined)),
   },
 }));
 
 jest.mock("@/lib/confirmation", () => ({
   confirmationService: {
-    createClassificationConfirmation: jest.fn().mockResolvedValue(undefined),
+    createClassificationConfirmation: jest.fn(() => Promise.resolve(undefined)),
   },
 }));
 
 jest.mock("@/lib/trust-mode/trust-mode.service", () => ({
   trustModeService: {
-    getUserTrustMode: jest.fn().mockResolvedValue("semi_auto"),
+    getUserTrustMode: jest.fn(() => Promise.resolve("semi_auto" as const)),
   },
 }));
 

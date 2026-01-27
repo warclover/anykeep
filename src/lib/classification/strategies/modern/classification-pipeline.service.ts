@@ -421,8 +421,9 @@ export class ClassificationPipelineService {
     }
 
     // 触发条件：归类到 Inbox 或 置信度 < 0.6
-    // 注意：Inbox ID 可能是 "inbox" 字符串或特定 ID，这里假设为 "inbox" 或 "0" 或 null/undefined 已被 ensureValidFolderId 处理为 "inbox"
-    const isInbox = currentFolderId === "inbox" || currentConfidence < 0.6;
+    // 注意：Inbox 场景下 folderId 为 null 或 0，低置信度也触发晶体生长
+    const isInbox =
+      !currentFolderId || currentFolderId === 0 || currentConfidence < 0.6;
 
     if (isInbox) {
       try {
@@ -473,10 +474,10 @@ export class ClassificationPipelineService {
   private ensureValidFolderId(
     folderId: FolderId | null | undefined,
     defaultFolderId?: FolderId,
-  ): FolderId {
-    // 检查是否为无效值
-    if (!folderId || folderId === "null" || folderId === "undefined") {
-      const fallbackId = defaultFolderId || "inbox";
+  ): FolderId | 0 {
+    // 检查是否为无效值 (null, undefined, 0)
+    if (!folderId || folderId === 0) {
+      const fallbackId = defaultFolderId || 0;
       this.logger.warn("检测到无效 folderId，使用兜底值", {
         originalFolderId: folderId,
         fallbackFolderId: fallbackId,

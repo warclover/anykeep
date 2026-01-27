@@ -42,7 +42,7 @@ import {
   ERROR_CODES,
   DEFAULT_STYLE_PRESERVE_LEVEL,
 } from "./wechat-article.config";
-import type { WechatStatsParams, WechatStatsReturn } from "@/types/rpc-manual";
+import type { WechatStatsReturn } from "@/types/rpc-manual";
 
 // =============================================================================
 // 服务类
@@ -517,12 +517,8 @@ export class WechatArticleService {
   }> {
     const supabase = await createServiceClient();
 
-    // RPC 函数类型已在 Database.public.Functions 中定义
-    const { data, error } = await supabase.rpc<
-      "get_wechat_article_stats",
-      WechatStatsParams,
-      WechatStatsReturn
-    >("get_wechat_article_stats", {
+    // RPC 函数调用，使用类型断言处理返回类型
+    const { data, error } = await supabase.rpc("get_wechat_article_stats", {
       p_user_id: userId,
     });
 

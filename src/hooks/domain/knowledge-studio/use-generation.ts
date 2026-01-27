@@ -46,6 +46,8 @@ export interface GenerationConfig {
   targetLength?: "short" | "medium" | "long";
   /** 语气风格 */
   tone?: "formal" | "casual" | "academic";
+  /** 自定义提示 */
+  customPrompt?: string;
 }
 
 export interface MaterialItem {

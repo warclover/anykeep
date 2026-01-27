@@ -184,8 +184,11 @@ export class EmbeddingABTestService {
     try {
       const supabase = await createClient();
 
-      // V4.2 视图
-      let query = supabase.from("embedding_ab_test_summary").select("*");
+      // V4.2 视图 - 使用类型断言绕过 generated types 限制
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query = (supabase as any)
+        .from("embedding_ab_test_summary")
+        .select("*");
 
       if (options.modelIds && options.modelIds.length > 0) {
         query = query.in("model_id", options.modelIds);

@@ -86,7 +86,10 @@ export async function getUserSettings(
   }
 
   const settings = (profile?.settings as ProfileSettings) || {};
-  const customUsageTags = (settings.customUsageTags as CustomUsageTag[]) || [];
+  const customUsageTags =
+    ((settings as Record<string, unknown>).customUsageTags as
+      | CustomUsageTag[]
+      | undefined) || [];
 
   return { success: true, settings, customUsageTags };
 }
@@ -108,8 +111,8 @@ export async function updateUserCustomTags(
   settings: ProfileSettings,
   updatedTags: CustomUsageTag[],
 ): Promise<{ success: true } | { success: false; error: Error }> {
-  const newSettings: ProfileSettings = {
-    ...settings,
+  const newSettings = {
+    ...(settings as Record<string, unknown>),
     customUsageTags: updatedTags,
   };
 

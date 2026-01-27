@@ -80,7 +80,7 @@ export async function executeT1InBackground(
     // 5. 更新T1任务结果
     await queueService.completeTask(
       eventId,
-      result.folderId,
+      String(result.folderId),
       result.confidence,
       result.reasoning,
       executionTime,

@@ -34,7 +34,7 @@ export interface MatchRecord {
   matchType: MatchType;
   confidence: number;
   matchedTags: string[];
-  folderId?: string;
+  folderId?: number | string;
   duration: number; // 匹配耗时 (ms)
 }
 

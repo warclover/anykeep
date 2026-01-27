@@ -288,9 +288,11 @@ export class SemanticCache {
       const { error } = await supabase.rpc("upsert_intent_cache_semantic", {
         p_input_hash: inputHash,
         p_normalized_input: normalizedInput,
-        p_original_message: this.config.storeOriginalMessage ? message : null,
+        p_original_message: (this.config.storeOriginalMessage
+          ? message
+          : null) as string,
         p_intent_type: classification.type,
-        p_intent_subtype: classification.subType || null,
+        p_intent_subtype: (classification.subType || null) as string,
         p_confidence: classification.confidence,
         p_method: classification.source || "rule",
         p_slots: (classification.slots || {}) as Json,

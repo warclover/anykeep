@@ -92,7 +92,7 @@ const BOOKMARK_LIST_FIELDS = `
  */
 const BOOKMARK_DETAIL_FIELDS = `
   *,
-  folders:folder_id (
+  folders!bookmarks_folder_id_fkey (
     id,
     name
   )
@@ -646,7 +646,7 @@ export class BookmarkRepository extends BaseRepository<
     const { data, error } = await this.supabase.rpc(
       "find_similar_bookmarks_with_folders",
       {
-        query_embedding: embedding,
+        query_embedding: JSON.stringify(embedding),
         p_user_id: this.userId,
         match_count: fetchCount,
       },
@@ -801,20 +801,58 @@ export class BookmarkRepository extends BaseRepository<
   }
 
   /**
+   * 批量移动书签到指定文件夹
+   * @param bookmarkIds 书签 ID 列表
+   * @param targetFolderId 目标文件夹 ID
+   */
+  async moveToFolder(
+    bookmarkIds: number[],
+    targetFolderId: number,
+  ): Promise<void> {
+    if (bookmarkIds.length === 0) {
+      return;
+    }
+
+    const { error } = await this.supabase
+      .from(this.tableName)
+      .update({ folder_id: targetFolderId })
+      .in("id", bookmarkIds)
+      .eq("user_id", this.userId);
+
+    if (error) {
+      this.logger.error(
+        { error, bookmarkIds, targetFolderId },
+        "Failed to move bookmarks to folder",
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Map database row to BookmarkForClassification
    */
   private mapToBookmarkForClassification(
     row: BookmarkRow,
   ): BookmarkForClassification {
+    // 解析 embedding 字符串为数组
+    let embeddingArray: number[] | null = null;
+    if (row.embedding) {
+      try {
+        embeddingArray = JSON.parse(row.embedding);
+      } catch {
+        embeddingArray = null;
+      }
+    }
+
     return {
       id: row.id,
       title: row.title,
       url: row.url,
       aiSummary: row.ai_summary,
       aiTags: row.ai_tags || [],
-      embedding: row.embedding,
+      embedding: embeddingArray,
       folderId: row.folder_id,
-      createdAt: new Date(row.created_at),
+      createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
   }
 }

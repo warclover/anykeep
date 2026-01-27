@@ -63,8 +63,8 @@ describe("LLMService", () => {
       url: "https://example.com",
       summary: "测试摘要",
       candidates: [
-        { id: "1", name: "技术文档", description: "技术相关" },
-        { id: "2", name: "新闻资讯", description: "新闻相关" },
+        { id: 1, name: "技术文档", description: "技术相关" },
+        { id: 2, name: "新闻资讯", description: "新闻相关" },
       ],
     };
 
@@ -166,7 +166,7 @@ describe("LLMService", () => {
     const mockRequest: LLMClassificationRequest = {
       title: "测试",
       url: "https://example.com",
-      candidates: [{ id: "1", name: "测试" }],
+      candidates: [{ id: 1, name: "测试" }],
     };
 
     it("应该在可重试错误时重试", async () => {

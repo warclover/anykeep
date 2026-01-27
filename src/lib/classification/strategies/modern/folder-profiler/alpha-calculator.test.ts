@@ -31,7 +31,7 @@ describe("AlphaCalculator", () => {
   describe("calculate (v5.1 弹性权重模式)", () => {
     it("应该计算基本的 alpha 系数", () => {
       const stats: FolderStats = {
-        folderId: "test-folder",
+        folderId: 1,
         lastUsed: new Date(),
         behaviorCount: 50,
         contentCount: 50,
@@ -49,7 +49,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.1 弹性权重：小文件夹应该返回 0.8", () => {
       const smallStats: FolderStats = {
-        folderId: "small-folder",
+        folderId: 2,
         lastUsed: new Date(),
         behaviorCount: 5,
         contentCount: 5, // < 10，小文件夹
@@ -65,7 +65,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.1 弹性权重：大文件夹应该返回 0.5", () => {
       const largeStats: FolderStats = {
-        folderId: "large-folder",
+        folderId: 3,
         lastUsed: new Date(),
         behaviorCount: 50,
         contentCount: 150, // >= 100，大文件夹
@@ -82,7 +82,7 @@ describe("AlphaCalculator", () => {
     it("v5.1 弹性权重：成长期文件夹 alpha 应该线性递减", () => {
       // contentCount = 55，处于成长期 (10-100)
       const growthStats: FolderStats = {
-        folderId: "growth-folder",
+        folderId: 1,
         lastUsed: new Date(),
         behaviorCount: 20,
         contentCount: 55,
@@ -98,7 +98,7 @@ describe("AlphaCalculator", () => {
 
     it("alpha 应该被限制在 [0.2, 0.8] 范围内", () => {
       const extremeStats: FolderStats = {
-        folderId: "extreme-folder",
+        folderId: 2,
         lastUsed: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 年前
         behaviorCount: 0,
         contentCount: 100,
@@ -114,7 +114,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.1: 空文件夹应该返回 0.8 (小文件夹策略)", () => {
       const emptyStats: FolderStats = {
-        folderId: "empty-folder",
+        folderId: 3,
         lastUsed: new Date(),
         behaviorCount: 0,
         contentCount: 0, // < 10，视为小文件夹
@@ -141,7 +141,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.0: 最近使用的文件夹应该有较高的 alpha", () => {
       const recentStats: FolderStats = {
-        folderId: "recent-folder",
+        folderId: 4,
         lastUsed: new Date(), // 刚刚使用
         behaviorCount: 50,
         contentCount: 50,
@@ -150,7 +150,7 @@ describe("AlphaCalculator", () => {
       };
 
       const oldStats: FolderStats = {
-        folderId: "old-folder",
+        folderId: 5,
         lastUsed: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 天前
         behaviorCount: 50,
         contentCount: 50,
@@ -167,7 +167,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.0: 行为数据多的文件夹应该有较高的 alpha", () => {
       const behaviorHeavyStats: FolderStats = {
-        folderId: "behavior-heavy",
+        folderId: 6,
         lastUsed: new Date(),
         behaviorCount: 80,
         contentCount: 20,
@@ -176,7 +176,7 @@ describe("AlphaCalculator", () => {
       };
 
       const contentHeavyStats: FolderStats = {
-        folderId: "content-heavy",
+        folderId: 7,
         lastUsed: new Date(),
         behaviorCount: 20,
         contentCount: 80,
@@ -193,7 +193,7 @@ describe("AlphaCalculator", () => {
 
     it("v5.0: 空文件夹应该返回接近 0.5 的默认值", () => {
       const emptyStats: FolderStats = {
-        folderId: "empty-folder",
+        folderId: 3,
         lastUsed: new Date(),
         behaviorCount: 0,
         contentCount: 0,

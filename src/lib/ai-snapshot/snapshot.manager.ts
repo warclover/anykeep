@@ -280,13 +280,13 @@ export class SnapshotManager {
         id: data.id,
         userId: data.user_id,
         operationType: data.operation_type as OperationType,
-        conversationId: data.conversation_id ?? undefined,
-        skillId: data.skill_id ?? undefined,
-        bookmarkIds: data.bookmark_ids ?? [],
+        conversationId: undefined, // 字段在当前 schema 中不存在
+        skillId: undefined, // 字段在当前 schema 中不存在
+        bookmarkIds: data.affected_bookmark_ids ?? [], // 使用 affected_bookmark_ids 替代
         beforeState: (data.before_state || []) as unknown as BookmarkState[],
-        afterState: (data.after_state || []) as unknown as BookmarkState[],
+        afterState: [], // 字段在当前 schema 中不存在，使用空数组
         operations: (data.operations || []) as unknown as OperationRecord[],
-        summary: data.summary ?? undefined,
+        summary: data.operation_description ?? undefined, // 使用 operation_description 替代
         isReverted: data.is_reverted,
         revertedAt: data.reverted_at ? new Date(data.reverted_at) : undefined,
         createdAt: new Date(data.created_at),

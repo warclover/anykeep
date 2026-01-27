@@ -91,7 +91,7 @@ describe("TagTrustFilter", () => {
   describe("blacklist", () => {
     it("should filter blacklisted tags", () => {
       const userId = "user1";
-      const folderId = "folder1";
+      const folderId = 1;
       const tag = "误分类标签";
 
       filter.addToBlacklist(userId, folderId, tag);
@@ -111,13 +111,13 @@ describe("TagTrustFilter", () => {
 
     it("should not filter blacklist for different user", () => {
       const tag = "测试标签";
-      filter.addToBlacklist("user1", "folder1", tag);
+      filter.addToBlacklist("user1", 1, tag);
 
       const weighted = filter.filterAndWeight(
         [tag],
         TagSourceLevel.S,
         "user2",
-        "folder1",
+        1,
       );
 
       expect(weighted[0].isFiltered).toBe(false);
@@ -125,13 +125,13 @@ describe("TagTrustFilter", () => {
 
     it("should not filter blacklist for different folder", () => {
       const tag = "测试标签";
-      filter.addToBlacklist("user1", "folder1", tag);
+      filter.addToBlacklist("user1", 1, tag);
 
       const weighted = filter.filterAndWeight(
         [tag],
         TagSourceLevel.S,
         "user1",
-        "folder2",
+        2,
       );
 
       expect(weighted[0].isFiltered).toBe(false);
@@ -139,7 +139,7 @@ describe("TagTrustFilter", () => {
 
     it("should remove from blacklist", () => {
       const userId = "user1";
-      const folderId = "folder1";
+      const folderId = 1;
       const tag = "测试标签";
 
       filter.addToBlacklist(userId, folderId, tag);

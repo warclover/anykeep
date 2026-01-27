@@ -16,7 +16,7 @@ export const EXPORT_ENHANCEMENT_CONFIG = {
   featureKey: "export_enhancement" as const,
 
   // 允许使用的会员等级（所有用户都可以使用基础导出）
-  allowedTiers: ["FREE", "PRO"] as const satisfies readonly MembershipType[],
+  allowedTiers: ["free", "pro"] as const satisfies readonly MembershipType[],
 
   // 免费用户限制
   freeTierLimits: {

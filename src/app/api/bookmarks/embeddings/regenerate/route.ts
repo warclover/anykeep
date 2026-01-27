@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
             .from("bookmarks")
             .update({
               embedding: embedding as unknown as string,
-              embedding_version: String(currentVersion),
+              embedding_version: currentVersion,
             })
             .eq("id", bookmark.id)
             .eq("user_id", user.id);

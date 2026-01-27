@@ -1,4 +1,4 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect } from "@jest/globals";
 import {
   TABLE_NAMES,
   CONFIDENCE_THRESHOLDS,

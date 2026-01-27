@@ -72,12 +72,14 @@ export async function processMdCollectionAI(
     // 1. 获取 MD 收藏内容
     const supabase = await createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: collection, error: fetchError } = await (supabase.from("md_collections") as any)
+    const { data: collection, error: fetchError } = (await (
+      supabase.from("md_collections") as any
+    )
       .select("id, title, raw_content, processing_status")
       .eq("id", collectionId)
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .single() as { data: MdCollectionRow | null; error: Error | null };
+      .single()) as { data: MdCollectionRow | null; error: Error | null };
 
     if (fetchError || !collection) {
       logger.error(
@@ -94,7 +96,9 @@ export async function processMdCollectionAI(
       .eq("id", collectionId);
 
     // 3. 预处理 Markdown 内容
-    const preprocessResult = preprocessMarkdownForAI(collection.raw_content ?? "");
+    const preprocessResult = preprocessMarkdownForAI(
+      collection.raw_content ?? "",
+    );
     const contentForAI = preprocessResult.processedText;
 
     const result: MdAIProcessResult = { success: true };
@@ -145,7 +149,7 @@ export async function processMdCollectionAI(
 
         const embedding = await generateEmbedding(embeddingText);
         result.embedding = embedding;
-        result.embeddingVersion = getCurrentEmbeddingVersion();
+        result.embeddingVersion = String(getCurrentEmbeddingVersion());
       } catch (embeddingError) {
         logger.warn(
           {
@@ -183,7 +187,9 @@ export async function processMdCollectionAI(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase.from("md_collections") as any)
+    const { error: updateError } = await (
+      supabase.from("md_collections") as any
+    )
       .update(updateData)
       .eq("id", collectionId);
 

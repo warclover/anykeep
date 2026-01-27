@@ -36,11 +36,11 @@ describe("LLMCaller", () => {
   });
 
   const createMockT0Result = (overrides?: Partial<T0Result>): T0Result => ({
-    folderId: "folder-1",
+    folderId: 1,
     confidence: 0.8,
     candidates: [
-      { folderId: "folder-1", folderName: "Folder 1", similarity: 0.9 },
-      { folderId: "folder-2", folderName: "Folder 2", similarity: 0.7 },
+      { folderId: 1, folderName: "Folder 1", similarity: 0.9 },
+      { folderId: 2, folderName: "Folder 2", similarity: 0.7 },
     ],
     needsT1: false,
     latencyMs: 100,
@@ -62,8 +62,8 @@ describe("LLMCaller", () => {
       const t0Result = createMockT0Result({
         confidence: 0.8,
         candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0.85 },
-          { folderId: "folder-2", folderName: "Folder 2", similarity: 0.82 }, // 差距<0.1
+          { folderId: 1, folderName: "Folder 1", similarity: 0.85 },
+          { folderId: 2, folderName: "Folder 2", similarity: 0.82 }, // 差距<0.1
         ],
       });
       expect(caller.shouldCallLLM(t0Result)).toBe(true);
@@ -73,8 +73,8 @@ describe("LLMCaller", () => {
       const t0Result = createMockT0Result({
         confidence: 0.9,
         candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0.9 },
-          { folderId: "folder-2", folderName: "Folder 2", similarity: 0.7 }, // 差距>0.1
+          { folderId: 1, folderName: "Folder 1", similarity: 0.9 },
+          { folderId: 2, folderName: "Folder 2", similarity: 0.7 }, // 差距>0.1
         ],
       });
       expect(caller.shouldCallLLM(t0Result)).toBe(false);
@@ -84,7 +84,7 @@ describe("LLMCaller", () => {
   describe("callLLM", () => {
     it("应该成功调用LLM并返回结果", async () => {
       const mockResponse = {
-        folderId: "folder-1",
+        folderId: 1,
         confidence: 0.95,
         reasoning: "Test reasoning",
       };
@@ -100,14 +100,12 @@ describe("LLMCaller", () => {
           title: "Test Bookmark",
           url: "https://example.com",
         },
-        candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", score: 0.9 },
-        ],
+        candidates: [{ folderId: 1, folderName: "Folder 1", score: 0.9 }],
       };
 
       const result = await caller.callLLM(request);
 
-      expect(result.folderId).toBe("folder-1");
+      expect(result.folderId).toBe(1);
       expect(result.confidence).toBe(0.95);
       expect(result.reasoning).toBe("Test reasoning");
       expect(result.latencyMs).toBeGreaterThanOrEqual(0);

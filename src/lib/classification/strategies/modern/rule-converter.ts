@@ -20,7 +20,7 @@ export function convertUserRuleToL0Rule(
 
   const l0Rule: Rule = {
     name: `user_rule_${userRule.id}`,
-    folderId: String(userRule.targetFolderId),
+    folderId: userRule.targetFolderId,
     confidence: 0.95, // 用户自定义规则使用固定高置信度
   };
 

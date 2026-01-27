@@ -226,7 +226,8 @@ export class ClassificationMetricsService {
     try {
       const supabase = await createClient();
 
-      let query = supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query = (supabase as any)
         .from("classification_metrics_daily")
         .select("*")
         .eq("user_id", userId)

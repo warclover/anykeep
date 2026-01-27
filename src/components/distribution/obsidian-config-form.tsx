@@ -594,7 +594,6 @@ async function selectFolderDialog(): Promise<string | null> {
   // Capacitor 实现（通过 Filesystem 插件）
   if (typeof window !== "undefined" && "Capacitor" in window) {
     try {
-      // @ts-expect-error: Dynamic import for Capacitor plugin which might not be installed in dev environment
       const { Filesystem, Directory } = await import("@capacitor/filesystem");
       // Capacitor 不支持直接选择文件夹，使用默认文档目录
       const result = await Filesystem.getUri({

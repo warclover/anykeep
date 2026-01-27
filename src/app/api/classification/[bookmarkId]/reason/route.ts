@@ -196,7 +196,7 @@ export async function GET(
         pending_cluster,
         created_at,
         updated_at,
-        folders:folder_id (
+        folders!bookmarks_folder_id_fkey (
           id,
           name,
           is_system

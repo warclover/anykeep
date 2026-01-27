@@ -44,7 +44,7 @@ describe("SynonymDetector", () => {
   });
 
   const createFolderInfo = (overrides?: Partial<FolderInfo>): FolderInfo => ({
-    folderId: "folder-1",
+    folderId: 1,
     folderName: "Test Folder",
     bookmarkCount: 10,
     ...overrides,
@@ -71,12 +71,12 @@ describe("SynonymDetector", () => {
     it("应该检测高相似度的同义词组", async () => {
       const folders = [
         createFolderInfo({
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "JS",
           bookmarkCount: 10,
         }),
@@ -98,12 +98,12 @@ describe("SynonymDetector", () => {
     it("应该忽略低相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "Python",
           bookmarkCount: 10,
         }),
@@ -121,8 +121,8 @@ describe("SynonymDetector", () => {
 
     it("应该处理向量生成失败", async () => {
       const folders = [
-        createFolderInfo({ folderId: "folder-1" }),
-        createFolderInfo({ folderId: "folder-2" }),
+        createFolderInfo({ folderId: 1 }),
+        createFolderInfo({ folderId: 2 }),
       ];
 
       (mockEmbeddingService.generateEmbedding as jest.Mock)
@@ -138,12 +138,12 @@ describe("SynonymDetector", () => {
     it("应该按书签数量选择主文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "JS",
           bookmarkCount: 5,
         }),
         createFolderInfo({
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "JavaScript",
           bookmarkCount: 20,
         }),
@@ -161,12 +161,12 @@ describe("SynonymDetector", () => {
     it("应该建议合并高相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "JS",
           bookmarkCount: 10,
         }),
@@ -185,12 +185,12 @@ describe("SynonymDetector", () => {
     it("应该建议重命名中等相似度的文件夹", async () => {
       const folders = [
         createFolderInfo({
-          folderId: "folder-1",
+          folderId: 1,
           folderName: "JavaScript",
           bookmarkCount: 20,
         }),
         createFolderInfo({
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "JS Development",
           bookmarkCount: 10,
         }),

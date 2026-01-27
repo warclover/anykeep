@@ -40,7 +40,7 @@ describe("FolderSuggester", () => {
   const createFolderStats = (
     overrides?: Partial<FolderStats>,
   ): FolderStats => ({
-    folderId: "folder-1",
+    folderId: 1,
     folderName: "Test Folder",
     bookmarkCount: 10,
     lastUsedAt: new Date(),
@@ -176,9 +176,9 @@ describe("FolderSuggester", () => {
   describe("analyzeBatch", () => {
     it("应该批量分析文件夹", () => {
       const folderStatsList = [
-        createFolderStats({ folderId: "folder-1" }),
-        createFolderStats({ folderId: "folder-2" }),
-        createFolderStats({ folderId: "folder-3" }),
+        createFolderStats({ folderId: 1 }),
+        createFolderStats({ folderId: 2 }),
+        createFolderStats({ folderId: 3 }),
       ];
       const userStats = createUserStats();
 
@@ -191,17 +191,17 @@ describe("FolderSuggester", () => {
     it("应该检测过度分散", () => {
       const folderStatsList = [
         createFolderStats({
-          folderId: "folder-1",
+          folderId: 1,
           bookmarkCount: 1,
           userCorrectionCount: 0,
         }),
         createFolderStats({
-          folderId: "folder-2",
+          folderId: 2,
           bookmarkCount: 1,
           userCorrectionCount: 0,
         }),
         createFolderStats({
-          folderId: "folder-3",
+          folderId: 3,
           bookmarkCount: 1,
           userCorrectionCount: 0,
         }),
@@ -227,13 +227,13 @@ describe("FolderSuggester", () => {
       oldDate.setDate(oldDate.getDate() - 100);
 
       const folderStatsList = [
-        createFolderStats({ folderId: "folder-1" }), // 健康
+        createFolderStats({ folderId: 1 }), // 健康
         createFolderStats({
-          folderId: "folder-2",
+          folderId: 2,
           lastUsedAt: oldDate,
           averageConfidence: 0.65,
         }), // 有问题
-        createFolderStats({ folderId: "folder-3" }), // 健康
+        createFolderStats({ folderId: 3 }), // 健康
       ];
       const userStats = createUserStats();
 

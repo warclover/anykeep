@@ -352,7 +352,7 @@ export class MonitorScheduler {
     // 如果有变化，递增变更计数
     if (result.result === "changed") {
       await this.supabase.rpc("increment_monitor_change_count", {
-        p_monitor_id: String(monitor.id),
+        monitor_id: monitor.id,
       });
     }
   }

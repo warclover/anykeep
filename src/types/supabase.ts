@@ -462,12 +462,28 @@ export type ClassificationCandidate = {
 /** 报告建议类型 */
 export type ReportSuggestion = {
   id: string;
-  type: string;
-  title: string;
-  description: string;
-  priority: "high" | "medium" | "low";
+  type: "split" | "merge" | "rename" | "archive" | "create" | "cleanup";
+  title?: string;
+  description?: string;
+  priority?: "high" | "medium" | "low";
   action_type?: string;
   action_params?: unknown;
+  /** 建议原因 */
+  reason: string;
+  /** 置信度 (0-1) */
+  confidence: number;
+  /** 建议状态 */
+  status: "pending" | "accepted" | "rejected";
+  /** 目标文件夹 ID */
+  folderId?: number;
+  /** 目标文件夹名称 */
+  folderName?: string;
+  /** 合并目标文件夹 ID */
+  targetFolderId?: number;
+  /** 重命名后的新名称 */
+  newName?: string;
+  /** 影响的书签数量 */
+  affectedBookmarks?: number;
 };
 
 /** 会员类型 */
@@ -524,4 +540,8 @@ export type ImportHistoryOptions = {
   limit?: number;
   offset?: number;
   source?: ImportSource;
+  // 导入配置选项
+  skipDuplicates?: boolean;
+  preserveFolderStructure?: boolean;
+  targetFolderId?: number | null;
 };

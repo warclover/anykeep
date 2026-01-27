@@ -37,7 +37,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
@@ -60,7 +60,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "React Rule",
-          folderId: "folder-react",
+          folderId: 2,
           titleKeywords: ["react", "reactjs"],
           confidence: 0.9,
         },
@@ -82,7 +82,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "JavaScript Rule",
-          folderId: "folder-js",
+          folderId: 3,
           tags: ["javascript", "js"],
           confidence: 0.9,
         },
@@ -104,7 +104,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
@@ -128,7 +128,7 @@ describe("L0RuleMatcher", () => {
 
       const rule: Rule = {
         name: "Test Rule",
-        folderId: "folder-test",
+        folderId: 4,
         urlDomains: ["test.com"],
         confidence: 0.9,
       };
@@ -146,13 +146,13 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
         {
           name: "GitLab Rule",
-          folderId: "folder-gitlab",
+          folderId: 5,
           urlDomains: ["gitlab.com"],
           confidence: 0.95,
         },
@@ -175,7 +175,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
@@ -197,7 +197,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "React Rule",
-          folderId: "folder-react",
+          folderId: 2,
           titleKeywords: ["react"],
           confidence: 0.9,
         },
@@ -219,7 +219,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "JavaScript Rule",
-          folderId: "folder-js",
+          folderId: 3,
           tags: ["javascript"],
           confidence: 0.9,
         },
@@ -241,7 +241,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
@@ -262,7 +262,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "JavaScript Rule",
-          folderId: "folder-js",
+          folderId: 3,
           tags: ["javascript"],
           confidence: 0.9,
         },
@@ -283,7 +283,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "JavaScript Rule",
-          folderId: "folder-js",
+          folderId: 3,
           tags: ["javascript"],
           confidence: 0.9,
         },
@@ -304,7 +304,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub React Rule",
-          folderId: "folder-github-react",
+          folderId: 6,
           urlDomains: ["github.com"],
           titleKeywords: ["react"],
           tags: ["javascript"],
@@ -361,7 +361,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "React Rule",
-          folderId: "folder-react",
+          folderId: 2,
           titleKeywords: ["react"],
           confidence: 0.9,
         },
@@ -383,7 +383,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "High Confidence Rule",
-          folderId: "folder-high",
+          folderId: 7,
           urlDomains: ["github.com"],
           confidence: 0.99,
         },
@@ -405,7 +405,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },
@@ -432,7 +432,7 @@ describe("L0RuleMatcher", () => {
       const rules: Rule[] = [
         {
           name: "GitHub Rule",
-          folderId: "folder-github",
+          folderId: 1,
           urlDomains: ["github.com"],
           confidence: 0.95,
         },

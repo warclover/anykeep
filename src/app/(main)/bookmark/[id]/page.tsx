@@ -84,7 +84,9 @@ export default async function BookmarkDetailPage({
   }
 
   // 提取自定义用途标签
-  const settings = (profileResult.data?.settings as ProfileSettings) || {};
+  const settings = (profileResult.data?.settings ?? {}) as ProfileSettings & {
+    customUsageTags?: CustomUsageTag[];
+  };
   const customUsageTags: CustomUsageTag[] = settings.customUsageTags || [];
 
   // V4.2.23: 使用 CTE 递归查询替代客户端递归，优化性能

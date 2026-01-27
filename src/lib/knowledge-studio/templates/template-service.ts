@@ -133,8 +133,8 @@ export class TemplateService implements ITemplateService {
       description: template.description,
       icon: template.icon ?? null,
       base_blueprint: template.baseBlueprint ?? null,
-      variables: template.variables as Json,
-      prompt_sections: template.promptSections as Json,
+      variables: template.variables as unknown as Json,
+      prompt_sections: template.promptSections as unknown as Json,
       output_format: template.outputFormat ?? null,
       visibility: template.visibility,
       status: template.status,
@@ -159,8 +159,8 @@ export class TemplateService implements ITemplateService {
       template_id: data.id,
       version: 1,
       changelog: "初始版本",
-      variables: template.variables as Json,
-      prompt_sections: template.promptSections as Json,
+      variables: template.variables as unknown as Json,
+      prompt_sections: template.promptSections as unknown as Json,
       created_by: template.userId,
     };
 
@@ -217,9 +217,9 @@ export class TemplateService implements ITemplateService {
     if (updates.baseBlueprint !== undefined)
       updateData.base_blueprint = updates.baseBlueprint;
     if (updates.variables !== undefined)
-      updateData.variables = updates.variables as Json;
+      updateData.variables = updates.variables as unknown as Json;
     if (updates.promptSections !== undefined)
-      updateData.prompt_sections = updates.promptSections as Json;
+      updateData.prompt_sections = updates.promptSections as unknown as Json;
     if (updates.outputFormat !== undefined)
       updateData.output_format = updates.outputFormat;
     if (updates.visibility !== undefined)

@@ -11,10 +11,10 @@
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
 import { BaseSupabaseService } from "./base-supabase.service";
-import type { ReportSuggestion } from "@/types/supabase";
+import type { ReportSuggestion } from "@/types/domain/synthesis";
 
 // Re-export for backward compatibility
-export type { ReportSuggestion } from "@/types/supabase";
+export type { ReportSuggestion } from "@/types/domain/synthesis";
 
 // ============================================
 // Type Definitions

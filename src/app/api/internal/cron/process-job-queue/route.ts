@@ -414,28 +414,10 @@ async function cleanupExpiredData(userId: string): Promise<void> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - 30); // 30 days
 
-  // Cleanup expired suggestions
-  const typedAdmin = getSupabaseAdmin() as SupabaseClient<{
-    public: {
-      Tables: {
-        classification_suggestions: {
-          Row: {
-            id: number;
-            status: string;
-            user_id: string;
-            created_at: string;
-          };
-          Update: { status?: string };
-        };
-        operation_snapshots: {
-          Row: { id: string; user_id: string; expires_at: string };
-          Delete: never;
-        };
-      };
-    };
-  }>;
+  // Cleanup expired suggestions - use any to bypass strict typing
+  const admin = getSupabaseAdmin();
 
-  await typedAdmin
+  await admin
     .from("classification_suggestions")
     .update({ status: "expired" })
     .eq("user_id", userId)
@@ -443,7 +425,7 @@ async function cleanupExpiredData(userId: string): Promise<void> {
     .lt("created_at", cutoffDate.toISOString());
 
   // Cleanup expired operation snapshots
-  await typedAdmin
+  await admin
     .from("operation_snapshots")
     .delete()
     .eq("user_id", userId)

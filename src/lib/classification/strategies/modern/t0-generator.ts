@@ -111,7 +111,7 @@ export class T0Generator {
 
       const latencyMs = Date.now() - startTime;
       return {
-        folderId: request.defaultFolderId || "inbox",
+        folderId: request.defaultFolderId ?? 0,
         confidence: 0,
         candidates: [],
         needsT1: false,

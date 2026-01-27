@@ -18,6 +18,41 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 
 // ============================================
+// SM-2 算法辅助函数
+// ============================================
+
+type ReviewResponse = "mastered" | "fuzzy" | "forgotten" | "archived";
+
+interface SM2Params {
+  ease: number;
+  interval: number;
+  repetitions: number;
+}
+
+/**
+ * 根据反馈类型计算 SM-2 算法参数
+ * 这是简化版，实际参数会在 RPC 中结合历史数据计算
+ */
+function calculateSM2Params(response: ReviewResponse): SM2Params {
+  switch (response) {
+    case "mastered":
+      // 完全掌握：高 ease，增加间隔，增加重复次数
+      return { ease: 2.5, interval: 4, repetitions: 1 };
+    case "fuzzy":
+      // 模糊记忆：中等 ease，小幅增加间隔
+      return { ease: 2.0, interval: 2, repetitions: 1 };
+    case "forgotten":
+      // 完全遗忘：降低 ease，重置间隔为 1 天
+      return { ease: 1.5, interval: 1, repetitions: 0 };
+    case "archived":
+      // 归档：不再复习，设置极长间隔
+      return { ease: 2.5, interval: 36500, repetitions: 100 };
+    default:
+      return { ease: 2.0, interval: 1, repetitions: 0 };
+  }
+}
+
+// ============================================
 // 参数定义
 // ============================================
 
@@ -85,12 +120,19 @@ export const submitReviewResponseTool: Tool<
     try {
       const supabase = await createClient();
 
+      // SM-2 算法参数计算
+      // 根据反馈类型计算新的参数
+      const sm2Params = calculateSM2Params(response);
+
       // 调用 RPC 更新 Flashcard 复习状态
       const { data, error } = await supabase.rpc("update_flashcard_review", {
         p_user_id: context.userId,
         p_flashcard_id: flashcard_id,
         p_response: response,
         p_response_time_ms: response_time_ms,
+        p_new_ease: sm2Params.ease,
+        p_new_interval: sm2Params.interval,
+        p_new_repetitions: sm2Params.repetitions,
       });
 
       if (error) {

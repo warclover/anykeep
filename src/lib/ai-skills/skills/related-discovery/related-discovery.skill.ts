@@ -519,12 +519,25 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
     if (input.source === "bookmark" && input.bookmarkId) {
       const { data } = await supabase
         .from("bookmarks")
-        .select("id, title, url, platform, ai_tags, ai_summary, embedding")
+        .select(
+          "id, title, url, platform, ai_tags, ai_summary, embedding, created_at",
+        )
         .eq("id", input.bookmarkId)
         .eq("user_id", userId)
         .single();
 
-      return data;
+      if (!data) return null;
+
+      return {
+        ...data,
+        platform: data.platform ?? undefined,
+        ai_tags: data.ai_tags ?? undefined,
+        ai_summary: data.ai_summary ?? undefined,
+        embedding: data.embedding
+          ? JSON.parse(data.embedding as unknown as string)
+          : undefined,
+        created_at: data.created_at ?? new Date().toISOString(),
+      };
     }
 
     return null;
@@ -563,7 +576,13 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
       return [];
     }
 
-    return data || [];
+    return (data || []).map((item) => ({
+      ...item,
+      platform: item.platform ?? undefined,
+      ai_tags: item.ai_tags ?? undefined,
+      ai_summary: item.ai_summary ?? undefined,
+      created_at: item.created_at ?? new Date().toISOString(),
+    }));
   }
 
   /**

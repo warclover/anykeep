@@ -182,9 +182,9 @@ describe("ClassificationPipelineService", () => {
       const results = await service.classifyBatch(requests);
 
       expect(results).toHaveLength(3);
-      expect(results[0].folderId).toBeDefined();
-      expect(results[1].folderId).toBeDefined();
-      expect(results[2].folderId).toBeDefined();
+      expect("folderId" in results[0] && results[0].folderId).toBeDefined();
+      expect("folderId" in results[1] && results[1].folderId).toBeDefined();
+      expect("folderId" in results[2] && results[2].folderId).toBeDefined();
     });
 
     it("应该记录批量分类日志", async () => {

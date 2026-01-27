@@ -260,7 +260,7 @@ export class RuleMiner {
       intentType: row.predicted_type,
       intentSubtype: row.predicted_subtype,
       confidence: Number(row.predicted_confidence),
-      createdAt: row.created_at,
+      createdAt: row.created_at ?? new Date().toISOString(),
     }));
   }
 

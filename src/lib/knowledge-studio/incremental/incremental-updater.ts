@@ -264,7 +264,7 @@ ${bookmarkSection}
 
     const { data, error } = await supabase
       .from("bookmarks")
-      .select("id, title, ai_summary, full_content")
+      .select("id, title, ai_summary, description")
       .in("id", numericIds);
 
     if (error) {
@@ -278,7 +278,7 @@ ${bookmarkSection}
     const contentMap = new Map<string, string>();
     for (const bookmark of data || []) {
       const content =
-        bookmark.ai_summary || bookmark.full_content || bookmark.title || "";
+        bookmark.ai_summary || bookmark.description || bookmark.title || "";
       contentMap.set(String(bookmark.id), content);
     }
 

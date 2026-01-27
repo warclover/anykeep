@@ -75,7 +75,7 @@ describe("DualSourceBuilder", () => {
       const behaviors = [createMockBehavior("1"), createMockBehavior("2")];
 
       const result = await builder.build(
-        "folder-1",
+        1,
         "Test Folder",
         "Test description",
         bookmarks,
@@ -92,7 +92,7 @@ describe("DualSourceBuilder", () => {
 
     it("空文件夹应该使用Stage A策略(基于名称)", async () => {
       const result = await builder.build(
-        "folder-1",
+        1,
         "Test Folder",
         "Test description",
         [],
@@ -112,7 +112,7 @@ describe("DualSourceBuilder", () => {
       const bookmarks = [createMockBookmark("1")];
 
       const result = await builder.build(
-        "folder-1",
+        1,
         "Test Folder",
         "Test description",
         bookmarks,

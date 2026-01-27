@@ -226,8 +226,9 @@ export class CostMonitorService extends BaseSupabaseService {
     const supabase = await this.getSupabase();
     const targetMonth = month || new Date().toISOString().slice(0, 7);
 
-    // V4.2 表
-    const { data, error } = await supabase
+    // V4.2 表 - 使用类型断言绕过 generated types 限制
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from("llm_usage_monthly")
       .select("*")
       .eq("user_id", userId)

@@ -40,7 +40,7 @@ describe("GardenerService", () => {
 
   const mockFolderStats: FolderStats[] = [
     {
-      folderId: "folder-1",
+      folderId: 1,
       folderName: "JavaScript",
       bookmarkCount: 20,
       lastUsedAt: new Date(),
@@ -48,7 +48,7 @@ describe("GardenerService", () => {
       userCorrectionCount: 2,
     },
     {
-      folderId: "folder-2",
+      folderId: 2,
       folderName: "  Python!!  ",
       bookmarkCount: 15,
       lastUsedAt: new Date(),
@@ -141,7 +141,7 @@ describe("GardenerService", () => {
       // folder-2 的名称需要修复
       expect(report.namingSuggestions.length).toBeGreaterThan(0);
       const pythonSuggestion = report.namingSuggestions.find(
-        (s) => s.folderId === "folder-2",
+        (s) => s.folderId === 2,
       );
       expect(pythonSuggestion).toBeDefined();
       expect(pythonSuggestion!.suggestedName).toBe("Python");
