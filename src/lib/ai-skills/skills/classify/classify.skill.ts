@@ -181,11 +181,11 @@ export class ClassifySkill extends BaseSkill<
     const requiresConfirmation = this.shouldRequireConfirmation({
       confidence: result.confidence,
       action: result.action,
-      folderId: result.folderId ? parseInt(result.folderId) : null,
+      folderId: result.folderId,
     });
 
     return {
-      folderId: result.folderId ? parseInt(result.folderId) : null,
+      folderId: result.folderId,
       folderName: result.folderName || "",
       confidence: result.confidence,
       action: result.action as ClassificationAction,

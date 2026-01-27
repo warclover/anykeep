@@ -258,7 +258,7 @@ export async function classifyBookmarkV2Compat(
   // 转换为旧格式
   return {
     classified: result.confidence >= CONFIDENCE_THRESHOLDS.AUTO_CLASSIFY,
-    folderId: result.folderId === null ? null : parseInt(result.folderId, 10),
+    folderId: result.folderId,
     folderName: result.folderName ?? null,
     confidence: result.confidence,
     action: result.action,

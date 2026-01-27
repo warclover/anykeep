@@ -225,9 +225,12 @@ export class MonitoringService {
       const supabase = await createClient();
 
       // 查询分类日志统计
+      // 使用实际列名：execution_time_ms, suggested_confidence, llm_called, feedback_type
       const { data: statsData, error: statsError } = await supabase
         .from("classification_logs")
-        .select("id, latency_ms, confidence, used_t1, user_corrected")
+        .select(
+          "id, execution_time_ms, suggested_confidence, llm_called, feedback_type",
+        )
         .gte("created_at", startTime.toISOString())
         .lte("created_at", endTime.toISOString());
 
@@ -243,23 +246,25 @@ export class MonitoringService {
         return this.getEmptyClassificationMetrics();
       }
 
-      // 计算各项指标
+      // 计算各项指标 - 使用实际列名
       const latencies = statsData
-        .map((r) => r.latency_ms)
+        .map((r) => r.execution_time_ms)
         .filter((l): l is number => l !== null)
         .sort((a, b) => a - b);
 
       const successCount = statsData.filter(
-        (r) => r.confidence !== null && r.confidence > 0,
+        (r) =>
+          r.suggested_confidence !== null && Number(r.suggested_confidence) > 0,
       ).length;
-      const t1UsedCount = statsData.filter((r) => r.used_t1 === true).length;
+      const t1UsedCount = statsData.filter((r) => r.llm_called === true).length;
       const userCorrectionCount = statsData.filter(
-        (r) => r.user_corrected === true,
+        (r) => r.feedback_type === "modify" || r.feedback_type === "reject",
       ).length;
 
       const confidences = statsData
-        .map((r) => r.confidence)
-        .filter((c): c is number => c !== null);
+        .map((r) => r.suggested_confidence)
+        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .map((c) => Number(c));
       const avgConfidence =
         confidences.length > 0
           ? confidences.reduce((a, b) => a + b, 0) / confidences.length
@@ -286,9 +291,10 @@ export class MonitoringService {
             : 0,
       };
     } catch (error) {
-      this.logger.error("收集分类指标失败", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.error(
+        "收集分类指标失败",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       return this.getFallbackClassificationMetrics();
     }
   }
@@ -346,12 +352,13 @@ export class MonitoringService {
       const supabase = await createClient();
 
       // 查询错误日志统计
+      // 使用 classification_source 判断错误类型，feedback_type='reject' 作为错误指标
       const { data: errorData, error: errorQueryError } = await supabase
         .from("classification_logs")
-        .select("id, error_type")
+        .select("id, classification_source, feedback_type")
         .gte("created_at", startTime.toISOString())
         .lte("created_at", endTime.toISOString())
-        .not("error_type", "is", null);
+        .eq("feedback_type", "reject");
 
       const { count: totalCount } = await supabase
         .from("classification_logs")
@@ -365,16 +372,15 @@ export class MonitoringService {
 
       const errors = errorData || [];
       const errorCount = errors.length;
-      const timeoutCount = errors.filter(
-        (e) => e.error_type === "timeout",
-      ).length;
+      // 由于表中没有 error_type 列，使用 classification_source 进行近似统计
+      const timeoutCount = 0; // 无法从当前表结构获取
       const vectorSearchFailures = errors.filter(
-        (e) => e.error_type === "vector_search",
+        (e) => e.classification_source === "vector",
       ).length;
       const llmFailures = errors.filter(
-        (e) => e.error_type === "llm_call",
+        (e) => e.classification_source === "llm",
       ).length;
-      const dbErrors = errors.filter((e) => e.error_type === "database").length;
+      const dbErrors = 0; // 无法从当前表结构获取
 
       return {
         errorRate: (errorCount / totalCount) * 100,
@@ -384,9 +390,10 @@ export class MonitoringService {
         databaseErrorRate: (dbErrors / totalCount) * 100,
       };
     } catch (error) {
-      this.logger.error("收集健康指标失败", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.error(
+        "收集健康指标失败",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       return this.getFallbackHealthMetrics();
     }
   }
@@ -417,17 +424,19 @@ export class MonitoringService {
       const supabase = await createClient();
 
       // 查询 V4.1 和 V5.0 的分类数据
+      // 注意：当前表没有 version 列，使用 classification_source 区分
+      // llm_called=true 近似表示 v5 流程
       const { data: v4Data } = await supabase
         .from("classification_logs")
-        .select("latency_ms, user_corrected")
-        .eq("version", "v4.1")
+        .select("execution_time_ms, feedback_type")
+        .eq("llm_called", false)
         .gte("created_at", startTime.toISOString())
         .lte("created_at", endTime.toISOString());
 
       const { data: v5Data } = await supabase
         .from("classification_logs")
-        .select("latency_ms, user_corrected")
-        .eq("version", "v5.0")
+        .select("execution_time_ms, feedback_type")
+        .eq("llm_called", true)
         .gte("created_at", startTime.toISOString())
         .lte("created_at", endTime.toISOString());
 
@@ -437,24 +446,28 @@ export class MonitoringService {
       }
 
       const v4Latencies = v4Data
-        .map((r) => r.latency_ms)
+        .map((r) => r.execution_time_ms)
         .filter((l): l is number => l !== null);
       const v5Latencies = v5Data
-        .map((r) => r.latency_ms)
+        .map((r) => r.execution_time_ms)
         .filter((l): l is number => l !== null);
 
       const v4AvgLatencyMs = this.calculateAverage(v4Latencies);
       const v5AvgLatencyMs = this.calculateAverage(v5Latencies);
 
-      // 计算准确率（未被用户纠正的比例）
+      // 计算准确率（未被用户拒绝/修改的比例）
       const v4Accuracy =
         ((v4Data.length -
-          v4Data.filter((r) => r.user_corrected === true).length) /
+          v4Data.filter(
+            (r) => r.feedback_type === "reject" || r.feedback_type === "modify",
+          ).length) /
           v4Data.length) *
         100;
       const v5Accuracy =
         ((v5Data.length -
-          v5Data.filter((r) => r.user_corrected === true).length) /
+          v5Data.filter(
+            (r) => r.feedback_type === "reject" || r.feedback_type === "modify",
+          ).length) /
           v5Data.length) *
         100;
 
@@ -470,9 +483,10 @@ export class MonitoringService {
         accuracyImprovement: v5Accuracy - v4Accuracy,
       };
     } catch (error) {
-      this.logger.error("收集对比指标失败", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.error(
+        "收集对比指标失败",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       return undefined;
     }
   }

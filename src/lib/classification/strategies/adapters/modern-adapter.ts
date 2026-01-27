@@ -22,7 +22,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
     const result = await this.service.classify(pipelineRequest);
 
     return {
-      folderId: result.folderId !== null ? String(result.folderId) : null,
+      folderId: result.folderId,
       folderName: null, // Pipeline doesn't return folderName directly
       confidence: result.confidence * 100, // Pipeline returns 0-1, Core expects 0-100 usually?
       // Wait, SimpleClassificationService returns 0-100.
@@ -55,7 +55,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
       }
 
       return {
-        folderId: r.folderId ? String(r.folderId) : null,
+        folderId: r.folderId ?? null,
         folderName: null,
         confidence: r.confidence * 100,
         action: this.determineAction(r.confidence * 100),
@@ -75,7 +75,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
     const result = await this.service.classifyT0Only(pipelineRequest);
 
     return {
-      folderId: result.folderId ? String(result.folderId) : null,
+      folderId: result.folderId ?? null,
       folderName: null,
       confidence: result.confidence * 100,
       action: this.determineAction(result.confidence * 100),

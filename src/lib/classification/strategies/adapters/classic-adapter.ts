@@ -35,7 +35,7 @@ export class ClassicStrategyAdapter implements IClassificationStrategy {
 
   private mapResult(result: SimpleClassificationResult): ClassificationResult {
     return {
-      folderId: result.folderId !== null ? String(result.folderId) : null,
+      folderId: result.folderId,
       folderName: result.folderName,
       confidence: result.confidence,
       action: result.action,
