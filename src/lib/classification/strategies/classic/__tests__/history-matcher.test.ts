@@ -275,7 +275,6 @@ describe("HistoryMatcher", () => {
 
       expect(mockFindSimilarWithFolders).toHaveBeenCalledWith(
         expect.any(Array),
-        "user-123",
         expect.any(Number),
         42,
       );

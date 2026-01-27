@@ -240,7 +240,7 @@ describe("FolderSuggester", () => {
       const results = suggester.analyzeBatch(folderStatsList, userStats);
 
       // 第一个应该是有问题的文件夹
-      expect(results[0].folderId).toBe("folder-2");
+      expect(results[0].folderId).toBe(2);
       expect(results[0].priority).toBeGreaterThan(results[1].priority);
     });
   });
