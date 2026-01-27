@@ -52,7 +52,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-github");
+      expect(result.folderId).toBe(1); // folderId 是数字类型，与规则定义一致
       expect(result.ruleName).toBe("GitHub Rule");
     });
 
@@ -75,7 +75,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-react");
+      expect(result.folderId).toBe(2); // folderId 是数字类型
     });
 
     it("应该匹配标签规则", async () => {
@@ -97,7 +97,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-js");
+      expect(result.folderId).toBe(3); // folderId 是数字类型
     });
 
     it("无匹配规则时应该返回 matched=false", async () => {
@@ -167,7 +167,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-github");
+      expect(result.folderId).toBe(1); // folderId 是数字类型
       expect(result.ruleName).toBe("GitHub Rule");
     });
 
@@ -190,7 +190,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-github");
+      expect(result.folderId).toBe(1); // folderId 是数字类型
     });
 
     it("应该处理大小写不敏感的标题关键词匹配", async () => {
@@ -212,7 +212,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-react");
+      expect(result.folderId).toBe(2); // folderId 是数字类型
     });
 
     it("应该处理大小写不敏感的标签匹配", async () => {
@@ -234,7 +234,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-js");
+      expect(result.folderId).toBe(3); // folderId 是数字类型
     });
 
     it("应该处理无效的 URL", async () => {
@@ -376,7 +376,7 @@ describe("L0RuleMatcher", () => {
       const result = await matcher.match(request);
 
       expect(result.matched).toBe(true);
-      expect(result.folderId).toBe("folder-react");
+      expect(result.folderId).toBe(2); // folderId 是数字类型
     });
 
     it("应该返回正确的置信度", async () => {
@@ -448,7 +448,7 @@ describe("L0RuleMatcher", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("L0规则匹配成功", {
         ruleName: "GitHub Rule",
-        folderId: "folder-github",
+        folderId: 1, // folderId 是数字类型
       });
     });
   });

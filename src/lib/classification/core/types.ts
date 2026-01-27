@@ -24,9 +24,14 @@ export interface ClassificationRequest {
 
 /**
  * 分类结果
+ *
+ * @note folderId 类型为 number | null，与 FolderId 保持一致
+ * @see FolderId in @/lib/shared/types/folder.ts
+ * @see ClassificationResult in types/classification.ts (V4.0 完整版)
+ * @see ClassificationResult in strategies/modern/classification-pipeline.service.ts (V5.0 Pipeline 版)
  */
 export interface ClassificationResult {
-  folderId: string | null;
+  folderId: number | null;
   folderName: string | null;
   confidence: number;
   action: ClassificationAction;
