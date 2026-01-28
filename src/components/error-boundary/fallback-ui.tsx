@@ -33,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useFeedback } from "@/components/feedback"; // Import Feedback Hook
 import type { FallbackUIProps } from "./types";
 
 /**
@@ -61,7 +62,23 @@ export function GlobalFallbackUI({
   onRetry,
 }: FallbackUIProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { open: openFeedback } = useFeedback(); // Use Feedback Hook
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : undefined;
+
+  const handleReportError = () => {
+    openFeedback({
+      type: "bug",
+      title: `[自动报告] ${featureLabel || "应用"}发生错误: ${error.name}`,
+      description: `我在使用 ${featureLabel || "应用"} 时遇到了错误。\n\n错误信息: ${error.message}`,
+      context: {
+        error_name: error.name,
+        error_message: error.message,
+        error_stack: error.stack,
+        component_stack: errorInfo?.componentStack,
+        feature,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
@@ -80,7 +97,7 @@ export function GlobalFallbackUI({
 
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600 text-center">
-            请尝试刷新页面。如果问题持续存在，请联系技术支持。
+            请尝试刷新页面。如果问题持续存在，请反馈给我们。
           </p>
 
           {/* 错误详情（仅开发环境） */}
@@ -130,13 +147,23 @@ export function GlobalFallbackUI({
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2">
-          <Button
-            className="w-full"
-            onClick={onRetry || (() => window.location.reload())}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            刷新页面
-          </Button>
+          <div className="flex gap-2 w-full">
+            <Button
+              className="flex-1"
+              onClick={onRetry || (() => window.location.reload())}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              刷新页面
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={handleReportError}
+            >
+              <Bug className="h-4 w-4 mr-2" />
+              反馈问题
+            </Button>
+          </div>
           <Button
             variant="outline"
             className="w-full"
@@ -164,7 +191,21 @@ export function FeatureFallbackUI({
   compact = false,
 }: FallbackUIProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { open: openFeedback } = useFeedback(); // Use Feedback Hook
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : "此功能";
+
+  const handleReportError = () => {
+    openFeedback({
+      type: "bug",
+      title: `[自动报告] ${featureLabel}加载失败`,
+      description: `功能: ${featureLabel}\n错误: ${error.message}`,
+      context: {
+        error_name: error.name,
+        error_message: error.message,
+        feature,
+      },
+    });
+  };
 
   if (compact) {
     return (
@@ -180,6 +221,15 @@ export function FeatureFallbackUI({
           >
             <RefreshCw className="h-4 w-4 mr-1" />
             重试
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-amber-700 hover:text-amber-800 hover:bg-amber-100"
+            onClick={handleReportError}
+          >
+            <Bug className="h-4 w-4 mr-1" />
+            报错
           </Button>
         </div>
       </div>
@@ -199,7 +249,7 @@ export function FeatureFallbackUI({
             <div>
               <CardTitle className="text-base">{featureLabel}出错了</CardTitle>
               <CardDescription className="text-xs">
-                请尝试刷新或稍后重试
+                请尝试刷新或反馈问题
               </CardDescription>
             </div>
           </div>
@@ -231,14 +281,23 @@ export function FeatureFallbackUI({
           </CardContent>
         )}
 
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 flex gap-2">
           <Button
             size="sm"
-            className="w-full"
+            className="flex-1"
             onClick={onRetry || (() => window.location.reload())}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             重试
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={handleReportError}
+          >
+            <Bug className="h-4 w-4 mr-2" />
+            报错
           </Button>
         </CardFooter>
       </Card>

@@ -29,6 +29,7 @@ import {
   LogOut,
   Check,
   Palette,
+  MessageSquare,
 } from "lucide-react";
 import { InterestSettingsCard } from "./interest-settings-card";
 import { ProfileSettingsCard } from "./profile-settings-card";
@@ -651,6 +652,28 @@ export function SettingsPageClient({
 
             {/* 消息通知设置（分级控制） */}
             <NotificationSettingsCard />
+
+            {/* 帮助与反馈 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="size-5 text-indigo-600 dark:text-indigo-400" />
+                  帮助与反馈
+                </CardTitle>
+                <CardDescription>
+                  查看已提交的反馈，跟踪处理进度
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => router.push("/settings/feedback")}
+                >
+                  我的反馈记录
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* 账号操作 */}
             <Card>

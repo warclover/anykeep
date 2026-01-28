@@ -40,6 +40,10 @@ import { GlobalErrorBoundary } from "@/components/error-boundary";
 import { QueryProvider } from "@/lib/query";
 import { TTSPlayerProvider } from "@/components/tts";
 import {
+  FeedbackProvider,
+  FeedbackFloatingButton,
+} from "@/components/feedback";
+import {
   composeProviders,
   withProps,
   withSuspense,
@@ -97,6 +101,8 @@ const FeatureProviders = composeProviders(
   NotificationProvider,
   // TTS 全局播放器（V4.2.27 新增，修复组件卸载导致请求中止的问题）
   TTSPlayerProvider,
+  // 用户反馈系统（V4.3.0 新增 - Phase 4）
+  FeedbackProvider,
 );
 
 // ============================================
@@ -124,6 +130,7 @@ export function RootProviders({ children }: RootProvidersProps) {
         <FeatureProviders>{children}</FeatureProviders>
         {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
         <Toaster position="top-center" offset={16} />
+        <FeedbackFloatingButton />
         <ServiceWorkerRegister />
         {/* Web Vitals 性能监控 */}
         <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
