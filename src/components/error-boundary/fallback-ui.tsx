@@ -33,7 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { useFeedback } from "@/components/feedback"; // Import Feedback Hook
+import { useFeedback } from "@/components/feedback";
 import type { FallbackUIProps } from "./types";
 
 /**
@@ -62,7 +62,7 @@ export function GlobalFallbackUI({
   onRetry,
 }: FallbackUIProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { open: openFeedback } = useFeedback(); // Use Feedback Hook
+  const { open: openFeedback } = useFeedback();
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : undefined;
 
   const handleReportError = () => {
@@ -191,7 +191,7 @@ export function FeatureFallbackUI({
   compact = false,
 }: FallbackUIProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { open: openFeedback } = useFeedback(); // Use Feedback Hook
+  const { open: openFeedback } = useFeedback();
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : "此功能";
 
   const handleReportError = () => {

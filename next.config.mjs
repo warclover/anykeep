@@ -4,8 +4,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig = {
   /* config options here */
 
-  // 使用 standalone 输出模式，优化生产部署
-  output: 'export', // Changed for mobile build
+  // 使用默认 Node/standalone 输出模式，支持动态路由与动态渲染
+  // 注意：`output: "export"` 会与 `dynamic = "force-dynamic"` 等动态特性冲突，
+  // 会在本地开发与构建时直接报错，因此这里不再启用静态导出模式。
 
   // V5.3: Webpack 编译优化（Next.js 14+ 自动启用文件系统缓存）
   // 注意：Next.js 不允许修改 devtool，会自动恢复为 eval-source-map

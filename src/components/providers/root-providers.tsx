@@ -101,8 +101,6 @@ const FeatureProviders = composeProviders(
   NotificationProvider,
   // TTS 全局播放器（V4.2.27 新增，修复组件卸载导致请求中止的问题）
   TTSPlayerProvider,
-  // 用户反馈系统（V4.3.0 新增 - Phase 4）
-  FeedbackProvider,
 );
 
 // ============================================
@@ -118,6 +116,10 @@ interface RootProvidersProps {
  *
  * 包含所有客户端 Context Provider，按优化后的结构组织
  *
+ * 架构改进 v2.0 (2026-01-28):
+ * - FeedbackProvider 移到 GlobalErrorBoundary 内部，确保错误边界触发时仍可用
+ * - 这样 GlobalFallbackUI 可以安全地使用 useFeedback hook
+ *
  * 架构改进 v1.0 (2025-12-28):
  * - 添加 GlobalErrorBoundary 作为最外层错误边界
  * - 捕获所有未处理的 React 渲染错误
@@ -126,15 +128,18 @@ interface RootProvidersProps {
 export function RootProviders({ children }: RootProvidersProps) {
   return (
     <GlobalErrorBoundary feature="global">
-      <CoreProviders>
-        <FeatureProviders>{children}</FeatureProviders>
-        {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
-        <Toaster position="top-center" offset={16} />
-        <FeedbackFloatingButton />
-        <ServiceWorkerRegister />
-        {/* Web Vitals 性能监控 */}
-        <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
-      </CoreProviders>
+      {/* FeedbackProvider 必须在 GlobalErrorBoundary 内部，这样错误边界触发时仍可用 */}
+      <FeedbackProvider>
+        <CoreProviders>
+          <FeatureProviders>{children}</FeatureProviders>
+          {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
+          <Toaster position="top-center" offset={16} />
+          <FeedbackFloatingButton />
+          <ServiceWorkerRegister />
+          {/* Web Vitals 性能监控 */}
+          <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
+        </CoreProviders>
+      </FeedbackProvider>
     </GlobalErrorBoundary>
   );
 }
