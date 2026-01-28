@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { ledgerService } from "@/lib/ledger/services/ledger.service";
 import { supabaseEnv, appEnv } from "@/lib/env";
+import pLimit from "p-limit";
 
 // Cron secret for authentication
 const CRON_SECRET = appEnv.cronSecret;
@@ -31,52 +32,56 @@ export async function GET(request: Request) {
     let generatedCount = 0;
     let errorCount = 0;
 
-    // Get all active users
-    const { data: activeUsers, error: fetchError } = await supabaseAdmin
-      .from("bookmarks")
-      .select("user_id")
-      .is("deleted_at", null)
-      .limit(10000);
+    // Fix: Fetch profiles instead of bookmarks to ensure we check all users
+    const { data: profiles, error: fetchError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .limit(1000);
 
     if (fetchError) {
-      logger.error({ error: fetchError }, "Failed to fetch active users");
+      logger.error({ error: fetchError }, "Failed to fetch users");
       return NextResponse.json(
         { error: "Failed to fetch users" },
         { status: 500 },
       );
     }
 
-    const uniqueUserIds = [
-      ...new Set((activeUsers || []).map((row) => row.user_id as string)),
-    ];
+    const userIds = profiles.map((p) => p.id);
 
-    if (uniqueUserIds.length === 0) {
+    if (userIds.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "No active users",
+        message: "No users found",
         stats: { generated: 0, errors: 0, duration: Date.now() - startTime },
       });
     }
 
     logger.info(
-      { userCount: uniqueUserIds.length },
+      { userCount: userIds.length },
       "Generating monthly ledgers for users",
     );
 
-    for (const userId of uniqueUserIds) {
-      try {
-        const report = await ledgerService.generateMonthlyReport(userId);
-        if (report) {
-          generatedCount++;
+    // Fix: Use concurrency control with p-limit to avoid timeout
+    const limit = pLimit(10); // Process 10 users concurrently
+
+    const tasks = userIds.map((userId) =>
+      limit(async () => {
+        try {
+          const report = await ledgerService.generateMonthlyReport(userId);
+          if (report) {
+            generatedCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          logger.error(
+            { error, userId },
+            "Failed to generate monthly ledger for user",
+          );
         }
-      } catch (error) {
-        errorCount++;
-        logger.error(
-          { error, userId },
-          "Failed to generate monthly ledger for user",
-        );
-      }
-    }
+      }),
+    );
+
+    await Promise.all(tasks);
 
     const duration = Date.now() - startTime;
 
