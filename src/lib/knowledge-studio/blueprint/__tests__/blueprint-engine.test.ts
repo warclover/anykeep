@@ -9,14 +9,19 @@ import type { GenerationContext, MaterialInput } from "../types";
 import type { BlueprintType, StreamChunk } from "../../types";
 
 // Mock logger
-jest.mock("@/lib/logger", () => ({
-  createLogger: jest.fn(() => ({
+jest.mock("@/lib/logger", () => {
+  const mockLogger = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
-  })),
-}));
+    child: jest.fn().mockReturnThis(),
+  };
+  return {
+    createLogger: jest.fn(() => mockLogger),
+    logger: mockLogger,
+  };
+});
 
 describe("BlueprintEngine", () => {
   let engine: BlueprintEngine;

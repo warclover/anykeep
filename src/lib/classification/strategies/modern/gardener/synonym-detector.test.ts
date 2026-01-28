@@ -90,9 +90,9 @@ describe("SynonymDetector", () => {
       const result = await detector.detect(folders);
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0].primaryFolderId).toBe("folder-1"); // 书签多的作为主文件夹
+      expect(result[0].primaryFolderId).toBe(1); // 书签多的作为主文件夹
       expect(result[0].synonyms).toHaveLength(1);
-      expect(result[0].synonyms[0].folderId).toBe("folder-2");
+      expect(result[0].synonyms[0].folderId).toBe(2);
     });
 
     it("应该忽略低相似度的文件夹", async () => {
@@ -155,7 +155,7 @@ describe("SynonymDetector", () => {
 
       const result = await detector.detect(folders);
 
-      expect(result[0].primaryFolderId).toBe("folder-2"); // 书签多的
+      expect(result[0].primaryFolderId).toBe(2); // 书签多的
     });
 
     it("应该建议合并高相似度的文件夹", async () => {

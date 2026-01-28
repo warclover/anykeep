@@ -101,20 +101,28 @@ export function AISearchSuggestions({
 
   // 从 API 加载搜索历史和热门关键词
   useEffect(() => {
-    if (!userId) return;
+    const loadHistory = async () => {
+      let loadedFromApi = false;
 
-    const loadHistoryFromAPI = async () => {
-      try {
-        const response = await fetch("/api/search/history?type=all&limit=10");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setSearchHistory(data.data.recentSearches || []);
-            setHotKeywords(data.data.hotKeywords || []);
+      // 1. 如果有用户 ID，尝试从 API 加载
+      if (userId) {
+        try {
+          const response = await fetch("/api/search/history?type=all&limit=10");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setSearchHistory(data.data.recentSearches || []);
+              setHotKeywords(data.data.hotKeywords || []);
+              loadedFromApi = true;
+            }
           }
+        } catch {
+          // API 失败，将回退到本地存储
         }
-      } catch {
-        // API 失败时使用本地存储回退
+      }
+
+      // 2. 如果未从 API 加载（无用户或 API 失败），使用本地存储
+      if (!loadedFromApi) {
         const history = localStorage.getItem("search_history");
         if (history) {
           try {
@@ -134,7 +142,7 @@ export function AISearchSuggestions({
       }
     };
 
-    loadHistoryFromAPI();
+    loadHistory();
   }, [userId]);
 
   // 计算无查询时的默认建议（历史 + 热门）
@@ -421,10 +429,17 @@ function SuggestionItem({
   const colorClass = SUGGESTION_COLORS[suggestion.type];
 
   return (
-    <button
-      type="button"
-      className="w-full flex items-center gap-2 px-2 py-2 rounded hover:bg-accent transition-colors group"
+    <div
+      role="button"
+      tabIndex={0}
+      className="w-full flex items-center gap-2 px-2 py-2 rounded hover:bg-accent transition-colors group cursor-pointer"
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <div
         className={cn(
@@ -452,7 +467,7 @@ function SuggestionItem({
       {suggestion.type === "ai" && (
         <ArrowRight className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       )}
-    </button>
+    </div>
   );
 }
 

@@ -28,7 +28,7 @@ import type { Database } from "@/types/supabase";
 import type {
   IMatcher,
   IScoreAggregator,
-} from "@/lib/classification/strategies/interfaces";
+} from "@/lib/classification/strategies/classic/interfaces";
 import type {
   ClassificationResult,
   BookmarkInput,

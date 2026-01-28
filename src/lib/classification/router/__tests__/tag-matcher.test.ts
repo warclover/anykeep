@@ -213,10 +213,7 @@ describe("TagMatcher", () => {
       await matcher.tryTagMatch("user-123", ["react"]);
 
       // Clear cache
-      matcher.clearCache("user-123");
-
-      // No error should be thrown
-      expect(true).toBe(true);
+      expect(() => matcher.clearCache("user-123")).not.toThrow();
     });
 
     it("should clear all cache", async () => {
@@ -228,10 +225,7 @@ describe("TagMatcher", () => {
       await matcher.tryTagMatch("user-2", ["vue"]);
 
       // Clear all
-      matcher.clearAllCache();
-
-      // No error should be thrown
-      expect(true).toBe(true);
+      expect(() => matcher.clearAllCache()).not.toThrow();
     });
   });
 

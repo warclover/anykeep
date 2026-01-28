@@ -42,9 +42,11 @@ jest.mock("@/lib/supabase/server", () => ({
 
 // Mock BookmarkRepository
 const mockMoveToFolder = jest.fn().mockResolvedValue(undefined);
-jest.mock("@/lib/classification/repositories/bookmark.repository", () => ({
+const mockBatchMoveToFolder = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/repositories/bookmark.repository", () => ({
   BookmarkRepository: jest.fn().mockImplementation(() => ({
     moveToFolder: mockMoveToFolder,
+    batchMoveToFolder: mockBatchMoveToFolder,
   })),
 }));
 

@@ -781,6 +781,15 @@ export const DEFAULT_RULES: IntentRule[] = [
   // 这些规则优先级高于基础搜索，用于识别更多搜索场景
   // --------------------------------------------
   {
+    // 规则 S0: 显式搜索指令 (修复测试失败)
+    // 示例: "搜索 React", "找一下那篇文章"
+    pattern: /^(搜索|查找|搜|找一下|找一找).{0,20}/,
+    type: "query",
+    subType: "search",
+    complexity: "simple",
+    weight: 75,
+  },
+  {
     // 规则 S1: 收藏动作信号
     // 示例: "我收藏过一篇讲 TypeScript 的"、"之前保存过"
     // Golden Dataset 修复：排除统计词（多少、几个）

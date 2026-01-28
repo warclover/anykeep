@@ -762,6 +762,15 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     ],
   },
   {
+    name: "ENABLE_HYBRID_INTENT_CLASSIFIER",
+    description: "混合意图分类器",
+    defaultValue: false,
+    module: "intent",
+    phase: "deprecated",
+    addedVersion: "2.8.0",
+    integrationPoints: [],
+  },
+  {
     name: "ENABLE_RRF_FUSION",
     description: "RRF 融合算法",
     defaultValue: true,

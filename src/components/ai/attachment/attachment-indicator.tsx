@@ -181,7 +181,11 @@ export function AttachmentIndicator({
   };
 
   return (
-    <div className={cn("bg-pink-50/50 border-b border-pink-100", className)}>
+    <div
+      className={cn("bg-pink-50/50 border-b border-pink-100", className)}
+      role="region"
+      aria-label={`已选附件：${items.length} 个`}
+    >
       {/* 收起状态：单行摘要 */}
       <div className="flex items-center gap-2 px-3 py-1.5">
         {/* 左侧：图标 + 数量 + 状态 */}

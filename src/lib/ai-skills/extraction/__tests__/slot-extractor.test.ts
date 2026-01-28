@@ -91,8 +91,8 @@ describe("SlotExtractor", () => {
       expect(extractor.extract("所有书签").timeRange).toBe("all");
     });
 
-    it("无时间范围时应返回默认值 week", () => {
-      expect(extractor.extract("整理收藏").timeRange).toBe("week");
+    it("无时间范围时应返回默认值 all", () => {
+      expect(extractor.extract("整理收藏").timeRange).toBe("all");
     });
   });
 
@@ -242,7 +242,7 @@ describe("SlotExtractor", () => {
       const result = extractor.extract("整理书签");
 
       expect(result.count).toBe(10); // 默认值
-      expect(result.timeRange).toBe("week"); // 默认值
+      expect(result.timeRange).toBe("all"); // 默认值
       expect(result.difficulty).toBe("medium"); // 默认值
     });
   });

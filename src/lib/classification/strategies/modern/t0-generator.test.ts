@@ -63,14 +63,14 @@ describe("T0Generator", () => {
     it("L0规则匹配成功时应该直接返回", async () => {
       mockL0Matcher.match.mockReturnValueOnce({
         matched: true,
-        folderId: "folder-1",
+        folderId: 1,
         confidence: 0.95,
       });
 
       const request = createMockRequest();
       const result = await generator.generate(request);
 
-      expect(result.folderId).toBe("folder-1");
+      expect(result.folderId).toBe(1);
       expect(result.confidence).toBe(0.95);
       expect(result.needsT1).toBe(false);
       expect(mockHybridRetriever.retrieve).not.toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe("T0Generator", () => {
 
       mockHybridRetriever.retrieve.mockResolvedValueOnce([
         {
-          folderId: "folder-2",
+          folderId: 2,
           folderName: "Folder 2",
           fusedScore: 0.85,
         },
@@ -94,7 +94,7 @@ describe("T0Generator", () => {
       const request = createMockRequest();
       const result = await generator.generate(request);
 
-      expect(result.folderId).toBe("folder-2");
+      expect(result.folderId).toBe(2);
       expect(result.confidence).toBe(0.85);
       expect(mockEmbeddingService.generateEmbedding).toHaveBeenCalled();
       expect(mockHybridRetriever.retrieve).toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe("T0Generator", () => {
 
       mockHybridRetriever.retrieve.mockResolvedValueOnce([
         {
-          folderId: "folder-3",
+          folderId: 3,
           folderName: "Folder 3",
           fusedScore: 0.7, // 低置信度
         },
@@ -128,9 +128,9 @@ describe("T0Generator", () => {
       mockL0Matcher.match.mockReturnValueOnce({ matched: false });
 
       mockHybridRetriever.retrieve.mockResolvedValueOnce([
-        { folderId: "folder-1", folderName: "Folder 1", fusedScore: 0.9 },
-        { folderId: "folder-2", folderName: "Folder 2", fusedScore: 0.85 },
-        { folderId: "folder-3", folderName: "Folder 3", fusedScore: 0.8 },
+        { folderId: 1, folderName: "Folder 1", fusedScore: 0.9 },
+        { folderId: 2, folderName: "Folder 2", fusedScore: 0.85 },
+        { folderId: 3, folderName: "Folder 3", fusedScore: 0.8 },
       ]);
 
       mockLLMCaller.shouldCallLLM.mockReturnValueOnce(false);
@@ -138,7 +138,7 @@ describe("T0Generator", () => {
       const request = createMockRequest();
       const result = await generator.generate(request);
 
-      expect(result.folderId).toBe("folder-1");
+      expect(result.folderId).toBe(1);
       expect(result.candidates).toHaveLength(3);
       expect(result.candidates[0].similarity).toBe(0.9);
       expect(result.candidates[1].similarity).toBe(0.85);
@@ -153,7 +153,7 @@ describe("T0Generator", () => {
 
       const result = await generator.generate(request);
 
-      expect(result.folderId).toBe("inbox");
+      expect(result.folderId).toBe(0); // 0 or null represents inbox
       expect(result.confidence).toBe(0);
     });
 
@@ -161,7 +161,7 @@ describe("T0Generator", () => {
       mockL0Matcher.match.mockReturnValueOnce({ matched: false });
 
       mockHybridRetriever.retrieve.mockResolvedValueOnce([
-        { folderId: "folder-1", folderName: "Folder 1", fusedScore: 0.9 },
+        { folderId: 1, folderName: "Folder 1", fusedScore: 0.9 },
       ]);
 
       mockLLMCaller.shouldCallLLM.mockReturnValueOnce(false);
@@ -176,7 +176,7 @@ describe("T0Generator", () => {
     it("L0匹配成功时应该返回正确的候选列表", async () => {
       mockL0Matcher.match.mockReturnValueOnce({
         matched: true,
-        folderId: "folder-l0",
+        folderId: 10,
         confidence: 0.98,
       });
 
@@ -184,7 +184,7 @@ describe("T0Generator", () => {
       const result = await generator.generate(request);
 
       expect(result.candidates).toHaveLength(1);
-      expect(result.candidates[0].folderId).toBe("folder-l0");
+      expect(result.candidates[0].folderId).toBe(10);
       expect(result.candidates[0].similarity).toBe(0.98);
     });
 
@@ -379,8 +379,8 @@ describe("T0Generator", () => {
       mockL0Matcher.match.mockReturnValueOnce({ matched: false });
 
       mockHybridRetriever.retrieve.mockResolvedValueOnce([
-        { folderId: "folder-1", folderName: "Folder 1", fusedScore: 0.9 },
-        { folderId: "folder-2", folderName: "Folder 2", fusedScore: 0.7 },
+        { folderId: 1, folderName: "Folder 1", fusedScore: 0.9 },
+        { folderId: 2, folderName: "Folder 2", fusedScore: 0.7 },
       ]);
 
       mockLLMCaller.shouldCallLLM.mockReturnValueOnce(false);
@@ -389,11 +389,11 @@ describe("T0Generator", () => {
       await generator.generate(request);
 
       expect(mockLLMCaller.shouldCallLLM).toHaveBeenCalledWith({
-        folderId: "folder-1",
+        folderId: 1,
         confidence: 0.9,
         candidates: [
-          { folderId: "folder-1", folderName: "Folder 1", similarity: 0.9 },
-          { folderId: "folder-2", folderName: "Folder 2", similarity: 0.7 },
+          { folderId: 1, folderName: "Folder 1", similarity: 0.9 },
+          { folderId: 2, folderName: "Folder 2", similarity: 0.7 },
         ],
         needsT1: false,
         latencyMs: 0,

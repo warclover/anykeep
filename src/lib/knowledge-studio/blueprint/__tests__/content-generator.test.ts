@@ -33,6 +33,14 @@ jest.mock("@/lib/ai-providers", () => ({
       model: {},
       reason: "test",
     }),
+    getAvailableProviders: jest.fn().mockReturnValue([
+      {
+        name: "deepseek",
+        defaultModel: "deepseek-chat",
+        enabled: true,
+      },
+    ]),
+    getModel: jest.fn().mockReturnValue({}),
     recordSuccess: jest.fn(),
     recordFailure: jest.fn(),
   },
@@ -315,6 +323,9 @@ describe("ContentGenerator", () => {
     it("should yield error chunk when no provider available", async () => {
       // Arrange
       const { aiProviderRouter } = require("@/lib/ai-providers");
+
+      // Override mock to return empty array for this test
+      aiProviderRouter.getAvailableProviders.mockReturnValue([]);
       aiProviderRouter.selectProvider.mockReturnValue(null);
 
       // Act
@@ -341,6 +352,13 @@ describe("ContentGenerator", () => {
       expect(chunks.some((c) => c.type === "error")).toBe(true);
 
       // Restore mock
+      aiProviderRouter.getAvailableProviders.mockReturnValue([
+        {
+          name: "deepseek",
+          defaultModel: "deepseek-chat",
+          enabled: true,
+        },
+      ]);
       aiProviderRouter.selectProvider.mockReturnValue({
         provider: {
           name: "deepseek",

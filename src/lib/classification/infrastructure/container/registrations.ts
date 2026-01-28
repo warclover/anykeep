@@ -16,7 +16,6 @@ import { SERVICE_TYPES } from "./types";
 
 import {
   FolderProfileRepository,
-  BookmarkRepository,
   InterestRepository,
   SuggestionRepository,
 } from "../../repositories";
@@ -72,15 +71,9 @@ export function registerRepositories(container: EnhancedContainer): void {
     "singleton",
   );
 
-  // 书签仓储
-  container.register(
-    SERVICE_TYPES.BookmarkRepository,
-    // Fix: BookmarkRepository requires userId, but in singleton container context we don't have it.
-    // Passing empty string as placeholder. Services using this MUST provide userId in method calls if required,
-    // or we need to refactor BookmarkRepository to be stateless/scoped.
-    () => new BookmarkRepository(supabase, ""),
-    "singleton",
-  );
+  // BookmarkRepository 需要 userId，无法作为单例注册
+  // 消费者（如 InboxOrganizerService）应在运行时根据 userId 创建实例
+  // 或者注册为 Factory: (userId: string) => new BookmarkRepository(supabase, userId)
 
   // 兴趣仓储
   container.register(
@@ -170,9 +163,6 @@ export function registerBusinessServices(container: EnhancedContainer): void {
   container.register(
     SERVICE_TYPES.InboxOrganizerService,
     (c) => {
-      const bookmarkRepo = c.get<BookmarkRepository>(
-        SERVICE_TYPES.BookmarkRepository,
-      );
       const folderProfileRepo = c.get<FolderProfileRepository>(
         SERVICE_TYPES.FolderProfileRepository,
       );
@@ -183,7 +173,6 @@ export function registerBusinessServices(container: EnhancedContainer): void {
         SERVICE_TYPES.InterestRepository,
       );
       return new InboxOrganizerService(
-        bookmarkRepo,
         folderProfileRepo,
         suggestionRepo,
         interestRepo,
@@ -264,7 +253,8 @@ export function registerModernServices(container: EnhancedContainer): void {
       const pipelineService = c.get<ClassificationPipelineService>(
         SERVICE_TYPES.PipelineService,
       );
-      return new ModernStrategyAdapter(pipelineService);
+      const supabase = container.getSupabase();
+      return new ModernStrategyAdapter(pipelineService, supabase);
     },
     "singleton",
   );

@@ -11,7 +11,7 @@
  * @since 2025-12-25
  */
 
-import type { IScoreAggregator } from "@/lib/classification/strategies/interfaces";
+import type { IScoreAggregator } from "@/lib/classification/strategies/classic/interfaces";
 import type {
   BookmarkInput,
   MatcherContext,

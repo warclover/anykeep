@@ -13,7 +13,7 @@ import type {
   IInboxOrganizerService,
   IInterestService,
 } from "./services/interfaces";
-import type { IMatcher } from "./strategies/interfaces";
+import type { IMatcher } from "./strategies/classic/interfaces";
 
 // Repositories - 仅用于类型
 import type {

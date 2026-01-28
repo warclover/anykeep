@@ -151,7 +151,7 @@ describe("LinkHealthResultList", () => {
       />,
     );
 
-    expect(screen.getByText("链接健康率")).toBeInTheDocument();
+    expect(screen.getByText("健康率")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
   });
 

@@ -33,7 +33,7 @@ describe("TagTrustFilter", () => {
     });
 
     it("should apply source level weights", () => {
-      const tag = "前端";
+      const tag = "JavaScript"; // 使用足够长的标签以避免长度惩罚 (>= 3 chars)
 
       const levelS = filter.filterAndWeight([tag], TagSourceLevel.S)[0];
       const levelB = filter.filterAndWeight([tag], TagSourceLevel.B)[0];

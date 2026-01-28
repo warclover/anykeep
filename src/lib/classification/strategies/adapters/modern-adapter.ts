@@ -5,6 +5,8 @@ import type {
 } from "../../core";
 import { CONFIDENCE_THRESHOLDS } from "../../core";
 import type { ClassificationPipelineService } from "../../strategies/modern/classification-pipeline.service";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { V5ClassificationResult } from "@/lib/classification/types/classification";
 
 /**
  * Modern Strategy Adapter
@@ -13,7 +15,10 @@ import type { ClassificationPipelineService } from "../../strategies/modern/clas
 export class ModernStrategyAdapter implements IClassificationStrategy {
   name = "modern";
 
-  constructor(private service: ClassificationPipelineService) {}
+  constructor(
+    private service: ClassificationPipelineService,
+    private supabase?: SupabaseClient,
+  ) {}
 
   async classify(
     request: ClassificationRequest,
@@ -21,14 +26,33 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
     const pipelineRequest = this.mapRequest(request);
     const result = await this.service.classify(pipelineRequest);
 
+    // 如果 folderId 不为 null，从数据库查询 folderName
+    let folderName: string | null = null;
+    if (result.folderId && this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from("folders")
+          .select("name")
+          .eq("id", result.folderId)
+          .eq("user_id", request.userId)
+          .single();
+
+        if (!error && data) {
+          folderName = data.name as string;
+        }
+      } catch (error) {
+        // 查询失败时保持 folderName 为 null
+        console.error("Failed to fetch folder name:", error);
+      }
+    }
+
+    const normalizedConfidence = this.normalizeConfidence(result.confidence);
+
     return {
       folderId: result.folderId,
-      folderName: null, // Pipeline doesn't return folderName directly
-      confidence: result.confidence * 100, // Pipeline returns 0-1, Core expects 0-100 usually?
-      // Wait, SimpleClassificationService returns 0-100.
-      // ClassificationPipelineService returns 0-1.
-      // Core thresholds are 80, 60. So we need 0-100 scale.
-      action: this.determineAction(result.confidence * 100),
+      folderName,
+      confidence: normalizedConfidence,
+      action: this.determineAction(normalizedConfidence),
       reason: result.reasoning,
       usedT1: result.usedT1,
       totalLatencyMs: result.totalLatencyMs,
@@ -43,6 +67,32 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
     const pipelineRequests = requests.map((r) => this.mapRequest(r));
     const results = await this.service.classifyBatch(pipelineRequests);
 
+    // 批量查询 folderName
+    const folderIds = results
+      .filter(
+        (r): r is V5ClassificationResult =>
+          !("error" in r) && r.folderId != null,
+      )
+      .map((r) => r.folderId as number);
+    const folderNameMap = new Map<number, string | null>();
+
+    if (folderIds.length > 0 && this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from("folders")
+          .select("id, name")
+          .in("id", folderIds);
+
+        if (!error && data) {
+          for (const folder of data) {
+            folderNameMap.set(folder.id, folder.name as string);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to batch fetch folder names:", error);
+      }
+    }
+
     return results.map((r) => {
       if ("error" in r) {
         return {
@@ -54,11 +104,18 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
         };
       }
 
+      // 此时 r 已经被类型守卫确认为 V5ClassificationResult
+      const folderId = r.folderId ?? null;
+      const folderName = folderId
+        ? (folderNameMap.get(folderId) ?? null)
+        : null;
+      const normalizedConfidence = this.normalizeConfidence(r.confidence);
+
       return {
-        folderId: r.folderId ?? null,
-        folderName: null,
-        confidence: r.confidence * 100,
-        action: this.determineAction(r.confidence * 100),
+        folderId,
+        folderName,
+        confidence: normalizedConfidence,
+        action: this.determineAction(normalizedConfidence),
         reason: r.reasoning,
         usedT1: r.usedT1,
         totalLatencyMs: r.totalLatencyMs,
@@ -74,11 +131,32 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
     const pipelineRequest = this.mapRequest(request);
     const result = await this.service.classifyT0Only(pipelineRequest);
 
+    // 如果 folderId 不为 null，从数据库查询 folderName
+    let folderName: string | null = null;
+    if (result.folderId && this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from("folders")
+          .select("name")
+          .eq("id", result.folderId)
+          .eq("user_id", request.userId)
+          .single();
+
+        if (!error && data) {
+          folderName = data.name as string;
+        }
+      } catch (error) {
+        console.error("Failed to fetch folder name:", error);
+      }
+    }
+
+    const normalizedConfidence = this.normalizeConfidence(result.confidence);
+
     return {
       folderId: result.folderId ?? null,
-      folderName: null,
-      confidence: result.confidence * 100,
-      action: this.determineAction(result.confidence * 100),
+      folderName,
+      confidence: normalizedConfidence,
+      action: this.determineAction(normalizedConfidence),
       reason: result.t1Reason,
       usedT1: false,
       totalLatencyMs: result.totalLatencyMs,
@@ -97,6 +175,18 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
       url: request.url || "",
       defaultFolderId: undefined,
     };
+  }
+
+  /**
+   * 归一化置信度到 0-100 范围
+   * V5 Pipeline 返回 0-1，Core 需要 0-100
+   */
+  private normalizeConfidence(confidence: number): number {
+    // 如果已经是 0-100 范围（>1），则不再转换
+    if (confidence > 1) {
+      return confidence;
+    }
+    return confidence * 100;
   }
 
   private determineAction(

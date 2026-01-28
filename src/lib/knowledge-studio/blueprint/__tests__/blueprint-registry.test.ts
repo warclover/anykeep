@@ -171,32 +171,41 @@ describe("BlueprintRegistry", () => {
   describe("AC1: register() 方法", () => {
     it("should register a blueprint successfully", () => {
       const registry = BlueprintRegistry.getInstance();
-      const blueprint = new MockBlueprint({ id: "test-1", name: "测试蓝图1" });
+      const blueprint = new MockBlueprint({
+        id: "custom-test_one",
+        name: "测试蓝图1",
+      });
 
       registry.register(blueprint);
 
       expect(registry.size).toBe(1);
-      expect(registry.has("test-1")).toBe(true);
+      expect(registry.has("custom-test_one")).toBe(true);
     });
 
     it("should throw error when registering duplicate ID", () => {
       const registry = BlueprintRegistry.getInstance();
-      const blueprint1 = new MockBlueprint({ id: "test-1", name: "测试蓝图1" });
-      const blueprint2 = new MockBlueprint({ id: "test-1", name: "测试蓝图2" });
+      const blueprint1 = new MockBlueprint({
+        id: "custom-test_one",
+        name: "测试蓝图1",
+      });
+      const blueprint2 = new MockBlueprint({
+        id: "custom-test_one",
+        name: "测试蓝图2",
+      });
 
       registry.register(blueprint1);
 
       expect(() => registry.register(blueprint2)).toThrow(
-        'Blueprint with ID "test-1" is already registered',
+        'Blueprint with ID "custom-test_one" is already registered',
       );
     });
 
     it("should allow registering multiple different blueprints", () => {
       const registry = BlueprintRegistry.getInstance();
       const blueprints = [
-        new MockBlueprint({ id: "test-1", name: "测试蓝图1" }),
-        new MockBlueprint({ id: "test-2", name: "测试蓝图2" }),
-        new MockBlueprint({ id: "test-3", name: "测试蓝图3" }),
+        new MockBlueprint({ id: "custom-test_one", name: "测试蓝图1" }),
+        new MockBlueprint({ id: "custom-test_two", name: "测试蓝图2" }),
+        new MockBlueprint({ id: "custom-test_three", name: "测试蓝图3" }),
       ];
 
       blueprints.forEach((bp) => registry.register(bp));
@@ -215,8 +224,8 @@ describe("BlueprintRegistry", () => {
     it("should return all registered blueprints", () => {
       const registry = BlueprintRegistry.getInstance();
       const blueprints = [
-        new MockBlueprint({ id: "test-1", name: "测试蓝图1" }),
-        new MockBlueprint({ id: "test-2", name: "测试蓝图2" }),
+        new MockBlueprint({ id: "custom-test_one", name: "测试蓝图1" }),
+        new MockBlueprint({ id: "custom-test_two", name: "测试蓝图2" }),
       ];
 
       blueprints.forEach((bp) => registry.register(bp));
@@ -228,35 +237,50 @@ describe("BlueprintRegistry", () => {
     it("should sort blueprints by priority", () => {
       const registry = BlueprintRegistry.getInstance();
       registry.register(
-        new MockBlueprint({ id: "test-3", name: "优先级3", priority: 3 }),
+        new MockBlueprint({
+          id: "custom-test_three",
+          name: "优先级3",
+          priority: 3,
+        }),
       );
       registry.register(
-        new MockBlueprint({ id: "test-1", name: "优先级1", priority: 1 }),
+        new MockBlueprint({
+          id: "custom-test_one",
+          name: "优先级1",
+          priority: 1,
+        }),
       );
       registry.register(
-        new MockBlueprint({ id: "test-2", name: "优先级2", priority: 2 }),
+        new MockBlueprint({
+          id: "custom-test_two",
+          name: "优先级2",
+          priority: 2,
+        }),
       );
       registry.register(
-        new MockBlueprint({ id: "test-none", name: "无优先级" }),
+        new MockBlueprint({ id: "custom-test_none", name: "无优先级" }),
       );
 
       const all = registry.getAll();
 
-      expect(all[0].blueprintId).toBe("test-1");
-      expect(all[1].blueprintId).toBe("test-2");
-      expect(all[2].blueprintId).toBe("test-3");
-      expect(all[3].blueprintId).toBe("test-none");
+      expect(all[0].blueprintId).toBe("custom-test_one");
+      expect(all[1].blueprintId).toBe("custom-test_two");
+      expect(all[2].blueprintId).toBe("custom-test_three");
+      expect(all[3].blueprintId).toBe("custom-test_none");
     });
   });
 
   describe("AC3: getById() 方法", () => {
     it("should return blueprint by ID", () => {
       const registry = BlueprintRegistry.getInstance();
-      const blueprint = new MockBlueprint({ id: "test-1", name: "测试蓝图1" });
+      const blueprint = new MockBlueprint({
+        id: "custom-test_one",
+        name: "测试蓝图1",
+      });
 
       registry.register(blueprint);
 
-      const found = registry.getById("test-1");
+      const found = registry.getById("custom-test_one");
       expect(found).toBe(blueprint);
     });
 
@@ -273,17 +297,29 @@ describe("BlueprintRegistry", () => {
     beforeEach(() => {
       const registry = BlueprintRegistry.getInstance();
       registry.register(
-        new MockBlueprint({ id: "free-1", name: "Free蓝图1", tier: "free" }),
-      );
-      registry.register(
-        new MockBlueprint({ id: "free-2", name: "Free蓝图2", tier: "free" }),
-      );
-      registry.register(
-        new MockBlueprint({ id: "pro-1", name: "Pro蓝图1", tier: "pro" }),
+        new MockBlueprint({
+          id: "custom-free_one",
+          name: "Free蓝图1",
+          tier: "free",
+        }),
       );
       registry.register(
         new MockBlueprint({
-          id: "enterprise-1",
+          id: "custom-free_two",
+          name: "Free蓝图2",
+          tier: "free",
+        }),
+      );
+      registry.register(
+        new MockBlueprint({
+          id: "custom-pro_one",
+          name: "Pro蓝图1",
+          tier: "pro",
+        }),
+      );
+      registry.register(
+        new MockBlueprint({
+          id: "custom-enterprise_one",
           name: "Enterprise蓝图1",
           tier: "enterprise",
         }),
@@ -305,7 +341,7 @@ describe("BlueprintRegistry", () => {
       const proBlueprints = registry.getByTier("pro");
 
       expect(proBlueprints).toHaveLength(1);
-      expect(proBlueprints[0].blueprintId).toBe("pro-1");
+      expect(proBlueprints[0].blueprintId).toBe("custom-pro_one");
     });
 
     it("should filter blueprints by enterprise tier", () => {
@@ -314,7 +350,7 @@ describe("BlueprintRegistry", () => {
       const enterpriseBlueprints = registry.getByTier("enterprise");
 
       expect(enterpriseBlueprints).toHaveLength(1);
-      expect(enterpriseBlueprints[0].blueprintId).toBe("enterprise-1");
+      expect(enterpriseBlueprints[0].blueprintId).toBe("custom-enterprise_one");
     });
   });
 
@@ -323,28 +359,28 @@ describe("BlueprintRegistry", () => {
       const registry = BlueprintRegistry.getInstance();
       registry.register(
         new MockBlueprint({
-          id: "geek-1",
+          id: "geek-one",
           name: "极客蓝图1",
           category: "geek",
         }),
       );
       registry.register(
         new MockBlueprint({
-          id: "geek-2",
+          id: "geek-two",
           name: "极客蓝图2",
           category: "geek",
         }),
       );
       registry.register(
         new MockBlueprint({
-          id: "creator-1",
+          id: "creator-one",
           name: "创作者蓝图1",
           category: "creator",
         }),
       );
       registry.register(
         new MockBlueprint({
-          id: "business-1",
+          id: "business-one",
           name: "商业蓝图1",
           category: "business",
         }),
@@ -366,7 +402,7 @@ describe("BlueprintRegistry", () => {
       const creatorBlueprints = registry.getByCategory("creator");
 
       expect(creatorBlueprints).toHaveLength(1);
-      expect(creatorBlueprints[0].blueprintId).toBe("creator-1");
+      expect(creatorBlueprints[0].blueprintId).toBe("creator-one");
     });
 
     it("should return empty array for category with no blueprints", () => {
@@ -381,14 +417,16 @@ describe("BlueprintRegistry", () => {
   describe("辅助方法", () => {
     it("should unregister a blueprint", () => {
       const registry = BlueprintRegistry.getInstance();
-      registry.register(new MockBlueprint({ id: "test-1", name: "测试蓝图1" }));
+      registry.register(
+        new MockBlueprint({ id: "custom-test_one", name: "测试蓝图1" }),
+      );
 
-      expect(registry.has("test-1")).toBe(true);
+      expect(registry.has("custom-test_one")).toBe(true);
 
-      const result = registry.unregister("test-1");
+      const result = registry.unregister("custom-test_one");
 
       expect(result).toBe(true);
-      expect(registry.has("test-1")).toBe(false);
+      expect(registry.has("custom-test_one")).toBe(false);
     });
 
     it("should return false when unregistering non-existent blueprint", () => {
@@ -401,8 +439,12 @@ describe("BlueprintRegistry", () => {
 
     it("should clear all blueprints", () => {
       const registry = BlueprintRegistry.getInstance();
-      registry.register(new MockBlueprint({ id: "test-1", name: "测试蓝图1" }));
-      registry.register(new MockBlueprint({ id: "test-2", name: "测试蓝图2" }));
+      registry.register(
+        new MockBlueprint({ id: "custom-test_one", name: "测试蓝图1" }),
+      );
+      registry.register(
+        new MockBlueprint({ id: "custom-test_two", name: "测试蓝图2" }),
+      );
 
       registry.clear();
 
@@ -412,10 +454,18 @@ describe("BlueprintRegistry", () => {
     it("should get all metadata", () => {
       const registry = BlueprintRegistry.getInstance();
       registry.register(
-        new MockBlueprint({ id: "test-1", name: "测试蓝图1", tier: "free" }),
+        new MockBlueprint({
+          id: "custom-test_one",
+          name: "测试蓝图1",
+          tier: "free",
+        }),
       );
       registry.register(
-        new MockBlueprint({ id: "test-2", name: "测试蓝图2", tier: "pro" }),
+        new MockBlueprint({
+          id: "custom-test_two",
+          name: "测试蓝图2",
+          tier: "pro",
+        }),
       );
 
       const metadata = registry.getAllMetadata();
@@ -430,7 +480,7 @@ describe("BlueprintRegistry", () => {
       const registry = BlueprintRegistry.getInstance();
       registry.register(
         new MockBlueprint({
-          id: "test-1",
+          id: "geek-test_one",
           name: "测试1",
           tier: "free",
           category: "geek",
@@ -439,7 +489,7 @@ describe("BlueprintRegistry", () => {
       );
       registry.register(
         new MockBlueprint({
-          id: "test-2",
+          id: "geek-test_two",
           name: "测试2",
           tier: "free",
           category: "geek",
@@ -448,7 +498,7 @@ describe("BlueprintRegistry", () => {
       );
       registry.register(
         new MockBlueprint({
-          id: "test-3",
+          id: "geek-test_three",
           name: "测试3",
           tier: "pro",
           category: "geek",
@@ -463,7 +513,7 @@ describe("BlueprintRegistry", () => {
       });
 
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].blueprintId).toBe("test-1");
+      expect(filtered[0].blueprintId).toBe("geek-test_one");
     });
   });
 
@@ -476,20 +526,36 @@ describe("BlueprintRegistry", () => {
       const registry = BlueprintRegistry.getInstance();
       // 注册不同层级的蓝图
       registry.register(
-        new MockBlueprint({ id: "free-1", name: "Free蓝图1", tier: "free" }),
-      );
-      registry.register(
-        new MockBlueprint({ id: "free-2", name: "Free蓝图2", tier: "free" }),
-      );
-      registry.register(
-        new MockBlueprint({ id: "pro-1", name: "Pro蓝图1", tier: "pro" }),
-      );
-      registry.register(
-        new MockBlueprint({ id: "pro-2", name: "Pro蓝图2", tier: "pro" }),
+        new MockBlueprint({
+          id: "custom-free_one",
+          name: "Free蓝图1",
+          tier: "free",
+        }),
       );
       registry.register(
         new MockBlueprint({
-          id: "enterprise-1",
+          id: "custom-free_two",
+          name: "Free蓝图2",
+          tier: "free",
+        }),
+      );
+      registry.register(
+        new MockBlueprint({
+          id: "custom-pro_one",
+          name: "Pro蓝图1",
+          tier: "pro",
+        }),
+      );
+      registry.register(
+        new MockBlueprint({
+          id: "custom-pro_two",
+          name: "Pro蓝图2",
+          tier: "pro",
+        }),
+      );
+      registry.register(
+        new MockBlueprint({
+          id: "custom-enterprise_one",
           name: "Enterprise蓝图",
           tier: "enterprise",
         }),
@@ -558,18 +624,20 @@ describe("BlueprintRegistry", () => {
       it("should return true for accessible blueprints", () => {
         const registry = BlueprintRegistry.getInstance();
 
-        expect(registry.canAccess("free-1", "free")).toBe(true);
-        expect(registry.canAccess("free-1", "pro")).toBe(true);
-        expect(registry.canAccess("pro-1", "pro")).toBe(true);
-        expect(registry.canAccess("enterprise-1", "enterprise")).toBe(true);
+        expect(registry.canAccess("custom-free_one", "free")).toBe(true);
+        expect(registry.canAccess("custom-free_one", "pro")).toBe(true);
+        expect(registry.canAccess("custom-pro_one", "pro")).toBe(true);
+        expect(registry.canAccess("custom-enterprise_one", "enterprise")).toBe(
+          true,
+        );
       });
 
       it("should return false for locked blueprints", () => {
         const registry = BlueprintRegistry.getInstance();
 
-        expect(registry.canAccess("pro-1", "free")).toBe(false);
-        expect(registry.canAccess("enterprise-1", "free")).toBe(false);
-        expect(registry.canAccess("enterprise-1", "pro")).toBe(false);
+        expect(registry.canAccess("custom-pro_one", "free")).toBe(false);
+        expect(registry.canAccess("custom-enterprise_one", "free")).toBe(false);
+        expect(registry.canAccess("custom-enterprise_one", "pro")).toBe(false);
       });
 
       it("should return false for non-existent blueprints", () => {
@@ -583,7 +651,7 @@ describe("BlueprintRegistry", () => {
       it("should return access info for accessible blueprint", () => {
         const registry = BlueprintRegistry.getInstance();
 
-        const info = registry.getAccessInfo("free-1", "pro");
+        const info = registry.getAccessInfo("custom-free_one", "pro");
 
         expect(info).toBeDefined();
         expect(info?.canAccess).toBe(true);
@@ -595,7 +663,7 @@ describe("BlueprintRegistry", () => {
       it("should return access info with upgrade message for locked blueprint", () => {
         const registry = BlueprintRegistry.getInstance();
 
-        const info = registry.getAccessInfo("pro-1", "free");
+        const info = registry.getAccessInfo("custom-pro_one", "free");
 
         expect(info).toBeDefined();
         expect(info?.canAccess).toBe(false);

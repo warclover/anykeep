@@ -311,16 +311,15 @@ export class ContextAnchorService {
         this.logger.debug("Created new anchor", { anchorId });
       }
 
-      // TODO: 关联书签到锚点功能需要在 bookmarks 表中添加 context_anchor_id 字段
       // 2. 关联书签到锚点
-      // const { error: linkError } = await this.supabase
-      //   .from("bookmarks")
-      //   .update({ context_anchor_id: anchorId })
-      //   .eq("id", bookmarkId);
+      const { error: linkError } = await this.supabase
+        .from("bookmarks")
+        .update({ context_anchor_id: anchorId })
+        .eq("id", bookmarkId);
 
-      // if (linkError) {
-      //   throw new Error(`Failed to link bookmark: ${linkError.message}`);
-      // }
+      if (linkError) {
+        throw new Error(`Failed to link bookmark: ${linkError.message}`);
+      }
 
       this.logger.info("Bookmark linked to anchor successfully", {
         bookmarkId: String(bookmarkId),

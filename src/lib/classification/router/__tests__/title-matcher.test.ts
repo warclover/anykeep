@@ -343,16 +343,14 @@ describe("TitleMatcher", () => {
       const matcher = new TitleMatcher();
 
       // No error should be thrown
-      matcher.clearCache("user-123");
-      expect(true).toBe(true);
+      expect(() => matcher.clearCache("user-123")).not.toThrow();
     });
 
     it("should clear all cache", async () => {
       const { TitleMatcher } = await import("../title-matcher");
       const matcher = new TitleMatcher();
 
-      matcher.clearAllCache();
-      expect(true).toBe(true);
+      expect(() => matcher.clearAllCache()).not.toThrow();
     });
   });
 

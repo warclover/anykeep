@@ -112,8 +112,8 @@ describe("NamingEngine", () => {
       const results = engine.suggestBatch(folders);
 
       expect(results).toHaveLength(2); // 只有前两个需要修复
-      expect(results[0].folderId).toBe("folder-1");
-      expect(results[1].folderId).toBe("folder-2");
+      expect(results[0].folderId).toBe(1);
+      expect(results[1].folderId).toBe(2);
     });
   });
 

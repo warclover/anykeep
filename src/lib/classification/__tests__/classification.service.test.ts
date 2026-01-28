@@ -4,7 +4,10 @@
  */
 
 import { ClassificationService } from "../services/classification.service";
-import type { IMatcher, IScoreAggregator } from "../strategies/interfaces";
+import type {
+  IMatcher,
+  IScoreAggregator,
+} from "../strategies/classic/interfaces";
 import type { UserStageService } from "../services/user-stage.service";
 import type {
   ClassificationResult,

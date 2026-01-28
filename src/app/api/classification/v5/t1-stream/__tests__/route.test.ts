@@ -17,13 +17,29 @@ import { GET } from "../route";
 
 const mockSupabaseClient = {
   auth: {
-    getUser: jest.fn(),
+    getUser: jest.fn().mockResolvedValue({
+      data: { user: null },
+      error: null,
+    }),
   },
   from: jest.fn(),
 };
 
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() => mockSupabaseClient),
+}));
+
+// =============================================================================
+// Mock LoggerService
+// =============================================================================
+
+jest.mock("@/lib/classification/infrastructure/shared-services/logger", () => ({
+  LoggerService: jest.fn().mockImplementation(() => ({
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  })),
 }));
 
 // =============================================================================
@@ -91,10 +107,117 @@ function _parseSSEEvents(
 }
 
 // =============================================================================
+// Mock Response & ReadableStream
+// =============================================================================
+
+const originalResponse = global.Response;
+const originalReadableStream = global.ReadableStream;
+
+class CustomMockResponse {
+  body: any;
+  headers: Headers;
+  status: number;
+
+  constructor(body: any, init: any = {}) {
+    // console.log("CustomMockResponse constructor called with body:", body);
+    this.body = body;
+    this.headers = new Headers(init.headers);
+    this.status = init.status || 200;
+  }
+
+  async text() {
+    return this.body?.toString() || "";
+  }
+
+  async json() {
+    return typeof this.body === "string" ? JSON.parse(this.body) : {};
+  }
+}
+
+// Simple Mock Stream that collects enqueued data
+class CustomMockReadableStream {
+  public chunks: any[] = [];
+  public controller: any;
+
+  constructor(underlyingSource: any) {
+    // console.log("CustomMockReadableStream constructor called");
+    this.controller = {
+      enqueue: (chunk: any) => {
+        // console.log("CustomMockReadableStream enqueue:", chunk);
+        this.chunks.push(chunk);
+      },
+      close: () => {
+        /* no-op */
+      },
+      error: () => {
+        /* no-op */
+      },
+    };
+
+    // Execute start immediately to populate data
+    if (underlyingSource.start) {
+      this.start(underlyingSource);
+    }
+  }
+
+  async start(source: any) {
+    await source.start(this.controller);
+  }
+
+  getReader() {
+    let index = 0;
+    return {
+      read: async () => {
+        if (index < this.chunks.length) {
+          const chunk = this.chunks[index++];
+          return {
+            value:
+              typeof chunk === "string"
+                ? new TextEncoder().encode(chunk)
+                : chunk,
+            done: false,
+          };
+        }
+        return { value: undefined, done: true };
+      },
+      cancel: () => {
+        /* no-op */
+      },
+      releaseLock: () => {
+        /* no-op */
+      },
+    };
+  }
+
+  // Helper to read all text data
+  readAllText() {
+    const decoder = new TextDecoder();
+    return this.chunks
+      .map((c) => {
+        if (typeof c === "string") return c;
+        return decoder.decode(c);
+      })
+      .join("");
+  }
+}
+
+// =============================================================================
 // 参数验证测试
 // =============================================================================
 
 describe("T1 Stream API - Parameter Validation", () => {
+  beforeAll(() => {
+    // @ts-expect-error - Mocking global Response for testing
+    global.Response = CustomMockResponse;
+    // @ts-expect-error - Mocking global ReadableStream for testing
+    global.ReadableStream = CustomMockReadableStream;
+  });
+
+  afterAll(() => {
+    global.Response = originalResponse;
+    global.ReadableStream = originalReadableStream;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -177,6 +300,32 @@ describe("T1 Stream API - Authentication", () => {
 // =============================================================================
 
 describe("T1 Stream API - SSE Stream", () => {
+  beforeAll(() => {
+    Object.defineProperty(global, "Response", {
+      value: CustomMockResponse,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(global, "ReadableStream", {
+      value: CustomMockReadableStream,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(global, "Response", {
+      value: originalResponse,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(global, "ReadableStream", {
+      value: originalReadableStream,
+      writable: true,
+      configurable: true,
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -219,6 +368,10 @@ describe("T1 Stream API - SSE Stream", () => {
   });
 
   it("should send initial connection event", async () => {
+    // Debug logging
+    console.log("Global Response name:", global.Response.name);
+    console.log("Global ReadableStream name:", global.ReadableStream.name);
+
     mockSupabaseClient.auth.getUser.mockResolvedValue({
       data: { user: { id: "test-user-id" } },
       error: null,
@@ -246,21 +399,66 @@ describe("T1 Stream API - SSE Stream", () => {
     const request = createTestRequest("123");
     const response = await GET(request);
 
-    // 读取流的第一个事件
-    const reader = response.body?.getReader();
-    expect(reader).toBeDefined();
-
-    if (reader) {
-      const { value } = await reader.read();
-      const decoder = new TextDecoder();
-      const chunk = decoder.decode(value);
-
-      expect(chunk).toContain("data:");
-      expect(chunk).toContain('"type":"status"');
-      expect(chunk).toContain('"status":"connected"');
-
-      reader.releaseLock();
+    console.log("Response constructor name:", response.constructor.name);
+    console.log("Response body:", response.body);
+    if (response.body) {
+      console.log(
+        "Response body constructor name:",
+        response.body.constructor.name,
+      );
+      console.log(
+        "Type of getReader:",
+        typeof (response.body as any).getReader,
+      );
     }
+
+    // 读取流的第一个事件
+    let chunk = "";
+    const body = response.body as any;
+
+    if (body) {
+      if (typeof body.getReader === "function") {
+        const reader = body.getReader();
+        const { value } = await reader.read();
+        if (value) {
+          chunk = new TextDecoder().decode(value);
+        }
+        await reader.cancel();
+      } else {
+        // Node.js environment fallback
+        try {
+          // Check if it's an async iterable
+          if (Symbol.asyncIterator in body) {
+            for await (const value of body) {
+              if (Buffer.isBuffer(value)) {
+                chunk = value.toString();
+              } else if (value instanceof Uint8Array) {
+                chunk = new TextDecoder().decode(value);
+              } else {
+                chunk = String(value);
+              }
+              break; // Read only first chunk
+            }
+          } else if (typeof body.on === "function") {
+            // Node stream interface
+            await new Promise<void>((resolve) => {
+              body.once("data", (data: any) => {
+                chunk = data.toString();
+                resolve();
+              });
+            });
+          } else {
+            console.warn("Unknown response body type:", body);
+          }
+        } catch (e) {
+          console.error("Stream reading failed:", e);
+        }
+      }
+    }
+
+    expect(chunk).toContain("data:");
+    expect(chunk).toContain('"type":"status"');
+    expect(chunk).toContain('"status":"connected"');
   });
 });
 

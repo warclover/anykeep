@@ -33,6 +33,12 @@ describe("AISearchSuggestions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: {} }),
+      }),
+    ) as jest.Mock;
   });
 
   it("does not render when visible is false", () => {
@@ -144,8 +150,12 @@ describe("AISearchSuggestions", () => {
 
     fireEvent.click(screen.getByText("清除"));
 
-    expect(onClearHistory).toHaveBeenCalled();
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith("search_history");
+    await waitFor(() => {
+      expect(onClearHistory).toHaveBeenCalled();
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+        "search_history",
+      );
+    });
   });
 
   it("removes single history item when X button is clicked", async () => {

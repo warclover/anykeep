@@ -107,7 +107,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("开始T1纠正", {
         bookmarkId: "bookmark-1",
-        t0FolderId: "folder-1",
+        t0FolderId: 1,
         t0Confidence: 0.65,
         t1Reason: "low_confidence",
       });
@@ -120,7 +120,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("T1纠正完成", {
         bookmarkId: "bookmark-1",
-        t1FolderId: "folder-2",
+        t1FolderId: 2,
         t1Confidence: 0.92,
         latencyMs: 3500,
       });
@@ -162,7 +162,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("开始T1纠正", {
         bookmarkId: "bookmark-1",
-        t0FolderId: "folder-1",
+        t0FolderId: 1,
         t0Confidence: 0.65,
         t1Reason: "vector_conflict",
       });
@@ -180,7 +180,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("开始T1纠正", {
         bookmarkId: "bookmark-1",
-        t0FolderId: "folder-1",
+        t0FolderId: 1,
         t0Confidence: 0.65,
         t1Reason: "manual_request",
       });
@@ -264,7 +264,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("开始T1纠正", {
         bookmarkId: "bookmark-1",
-        t0FolderId: "folder-1",
+        t0FolderId: 1,
         t0Confidence: 0.1,
         t1Reason: "low_confidence",
       });
@@ -283,7 +283,7 @@ describe("T1Corrector", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith("开始T1纠正", {
         bookmarkId: "bookmark-1",
-        t0FolderId: "folder-1",
+        t0FolderId: 1,
         t0Confidence: 0.84,
         t1Reason: "low_confidence",
       });
@@ -301,7 +301,7 @@ describe("T1Corrector", () => {
 
       const result = await corrector.correct(mockRequest, mockT0Result);
 
-      expect(result.folderId).toBe("folder-1");
+      expect(result.folderId).toBe(1);
       expect(result.confidence).toBe(0.95);
     });
 

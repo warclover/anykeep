@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       return new Response("Missing bookmarkId parameter", { status: 400 });
     }
     const bookmarkId = parseInt(bookmarkIdStr, 10);
-    if (isNaN(bookmarkId)) {
+    if (isNaN(bookmarkId) || bookmarkId <= 0) {
       return new Response("Invalid bookmarkId parameter", { status: 400 });
     }
 

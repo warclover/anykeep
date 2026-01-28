@@ -12,7 +12,7 @@ import type {
   MatcherScoreDetail,
   DecisionReason,
 } from "@/lib/classification/types";
-import type { IMatcher } from "@/lib/classification/strategies/interfaces";
+import type { IMatcher } from "@/lib/classification/strategies/classic/interfaces";
 
 // ============================================================================
 // 常量定义

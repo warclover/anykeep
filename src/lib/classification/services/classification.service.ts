@@ -5,7 +5,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IClassificationService } from "./interfaces";
-import type { IMatcher, IScoreAggregator } from "../strategies/interfaces";
+import type {
+  IMatcher,
+  IScoreAggregator,
+} from "../strategies/classic/interfaces";
 import type {
   ClassificationResult,
   BookmarkInput,

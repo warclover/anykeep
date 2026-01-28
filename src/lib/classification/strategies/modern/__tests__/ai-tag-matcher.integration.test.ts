@@ -14,15 +14,21 @@ import type { ClassificationRequest } from "../types";
 
 // Mock Supabase client
 const createMockBuilder = (data: any) => {
-  const mockBuilder: any = {
+  return {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({ data, error: null }),
-    then: (resolve: any) => {
-      resolve({ data, error: null });
+    maybeSingle: jest.fn().mockResolvedValue({ data, error: null }),
+    limit: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    // Make it thenable to support await
+    then: function (onfulfilled: any, onrejected: any) {
+      return Promise.resolve({ data, error: null }).then(
+        onfulfilled,
+        onrejected,
+      );
     },
   };
-  return mockBuilder;
 };
 
 const mockSupabase = {
@@ -64,7 +70,7 @@ describe("AiTagMatcher Integration Tests", () => {
         if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
-        if (table === "folder_aliases") {
+        if (table === "folder_tag_profiles") {
           return createMockBuilder(mockAliasResponse);
         }
         return createMockBuilder([]);

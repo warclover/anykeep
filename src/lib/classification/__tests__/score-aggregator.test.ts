@@ -3,8 +3,8 @@
  * 测试评分聚合器的核心逻辑
  */
 
-import { WeightedScoreAggregator } from "../strategies/score-aggregator";
-import type { IMatcher } from "../strategies/interfaces";
+import { WeightedScoreAggregator } from "../strategies/classic/score-aggregator";
+import type { IMatcher } from "../strategies/classic/interfaces";
 import type { MatchResult } from "../types";
 
 // Mock matchers

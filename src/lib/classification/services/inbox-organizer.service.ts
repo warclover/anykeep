@@ -18,12 +18,12 @@ import type {
   FolderProfile,
 } from "../types";
 import type {
-  BookmarkRepository,
   FolderProfileRepository,
   SuggestionRepository,
   InterestRepository,
 } from "../repositories";
-import { type BookmarkForClassification } from "@/repositories/bookmark.repository";
+import { BookmarkRepository } from "@/repositories/bookmark.repository";
+import type { BookmarkForClassification } from "@/repositories/bookmark.repository";
 import { INBOX_ORGANIZE_TRIGGERS } from "../constants";
 import { clusterBookmarks } from "../utils/clustering";
 import { cosineSimilarity, calculateCentroid } from "../utils/similarity";
@@ -57,7 +57,6 @@ export class InboxOrganizerService implements IInboxOrganizerService {
   >();
 
   constructor(
-    private bookmarkRepo: BookmarkRepository,
     private folderProfileRepo: FolderProfileRepository,
     private suggestionRepo: SuggestionRepository,
     private interestRepo: InterestRepository,
@@ -83,11 +82,12 @@ export class InboxOrganizerService implements IInboxOrganizerService {
    */
   async analyze(userId: string): Promise<OrganizationAnalysis> {
     const monitor = new PerformanceMonitor("InboxOrganizerAnalyze");
+    const bookmarkRepo = new BookmarkRepository(this.supabase, userId);
 
     // Get inbox bookmarks
     // Note: bookmarkRepo uses internal userId from constructor
     const inboxBookmarks = await monitor.measure("FetchInboxBookmarks", () =>
-      this.bookmarkRepo.findInboxBookmarks(),
+      bookmarkRepo.findInboxBookmarks(),
     );
 
     if (inboxBookmarks.length < INBOX_ORGANIZE_TRIGGERS.COUNT_THRESHOLD) {
@@ -503,7 +503,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       }
 
       // Move bookmarks to target folder
-      await this.bookmarkRepo.moveToFolder(
+      const bookmarkRepo = new BookmarkRepository(this.supabase, userId);
+      await bookmarkRepo.moveToFolder(
         suggestion.bookmarkIds,
         suggestion.targetFolderId,
       );
@@ -532,10 +533,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
       }
 
       // Move bookmarks to new folder
-      await this.bookmarkRepo.moveToFolder(
-        suggestion.bookmarkIds,
-        newFolder.id,
-      );
+      const bookmarkRepo = new BookmarkRepository(this.supabase, userId);
+      await bookmarkRepo.moveToFolder(suggestion.bookmarkIds, newFolder.id);
 
       // Compute profile for new folder
       await this.folderProfileRepo.computeProfile(newFolder.id);
