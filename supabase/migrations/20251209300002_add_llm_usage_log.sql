@@ -31,28 +31,28 @@ CREATE TABLE IF NOT EXISTS public.llm_usage_log (
 );
 
 -- 2. Create indexes
-CREATE INDEX idx_llm_usage_user_id ON public.llm_usage_log(user_id);
-CREATE INDEX idx_llm_usage_created_at ON public.llm_usage_log(created_at DESC);
-CREATE INDEX idx_llm_usage_operation ON public.llm_usage_log(operation);
-CREATE INDEX idx_llm_usage_model ON public.llm_usage_log(model);
+CREATE INDEX IF NOT EXISTS idx_llm_usage_user_id ON public.llm_usage_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_llm_usage_created_at ON public.llm_usage_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_llm_usage_operation ON public.llm_usage_log(operation);
+CREATE INDEX IF NOT EXISTS idx_llm_usage_model ON public.llm_usage_log(model);
 
 -- Composite index for daily aggregation queries
 -- Note: DATE() is not IMMUTABLE in PostgreSQL, so we use timestamp directly
 -- The planner will still use this index efficiently for date range queries
-CREATE INDEX idx_llm_usage_daily_agg
+CREATE INDEX IF NOT EXISTS idx_llm_usage_daily_agg
   ON public.llm_usage_log(user_id, created_at, operation);
 
 -- 3. RLS policies
 ALTER TABLE public.llm_usage_log ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own usage
-CREATE POLICY "Users can view own usage"
+DROP POLICY IF EXISTS "Users can view own usage" ON public.llm_usage_log; CREATE POLICY "Users can view own usage"
   ON public.llm_usage_log
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Service can insert usage (via service role)
-CREATE POLICY "Service can insert usage"
+DROP POLICY IF EXISTS "Service can insert usage" ON public.llm_usage_log; CREATE POLICY "Service can insert usage"
   ON public.llm_usage_log
   FOR INSERT
   WITH CHECK (true);

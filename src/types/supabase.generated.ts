@@ -4441,6 +4441,47 @@ export type Database = {
           },
         ];
       };
+      ledger_reports: {
+        Row: {
+          content: Json | null;
+          created_at: string;
+          id: number;
+          item_count: number | null;
+          period_end: string;
+          period_start: string;
+          report_type: string;
+          user_id: string;
+        };
+        Insert: {
+          content?: Json | null;
+          created_at?: string;
+          id?: number;
+          item_count?: number | null;
+          period_end: string;
+          period_start: string;
+          report_type: string;
+          user_id: string;
+        };
+        Update: {
+          content?: Json | null;
+          created_at?: string;
+          id?: number;
+          item_count?: number | null;
+          period_end?: string;
+          period_start?: string;
+          report_type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ledger_reports_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       llm_usage_log: {
         Row: {
           cost_cents: number;

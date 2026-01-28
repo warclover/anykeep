@@ -143,11 +143,11 @@ CREATE TRIGGER audit_folders_trigger
   EXECUTE FUNCTION audit_trigger_func();
 
 -- 4.3 browser_bookmark_folders 表审计
-DROP TRIGGER IF EXISTS audit_browser_bookmark_folders_trigger ON browser_bookmark_folders;
-CREATE TRIGGER audit_browser_bookmark_folders_trigger
-  AFTER INSERT OR UPDATE OR DELETE ON browser_bookmark_folders
-  FOR EACH ROW
-  EXECUTE FUNCTION audit_trigger_func();
+--DROP TRIGGER IF EXISTS audit_browser_bookmark_folders_trigger ON browser_bookmark_folders;
+--CREATE TRIGGER audit_browser_bookmark_folders_trigger
+  --AFTER INSERT OR UPDATE OR DELETE ON browser_bookmark_folders
+  --FOR EACH ROW
+  --EXECUTE FUNCTION audit_trigger_func();
 
 -- 5. 创建审计日志查询函数
 

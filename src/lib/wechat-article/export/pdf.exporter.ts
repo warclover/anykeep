@@ -314,7 +314,6 @@ export async function exportToPdf(
   let puppeteer: any;
   try {
     // 使用标准动态 import() 语法，避免 new Function() 的代码注入风险
-    // @ts-expect-error - 动态导入 puppeteer
     puppeteer = await import("puppeteer");
   } catch {
     throw new Error("Puppeteer is not installed. Run: npm install puppeteer");
@@ -397,7 +396,6 @@ export async function exportToPdf(
 export async function isPuppeteerAvailable(): Promise<boolean> {
   try {
     // 使用标准动态 import() 语法，避免 new Function() 的代码注入风险
-    // @ts-expect-error - 动态导入 puppeteer
     await import("puppeteer");
     return true;
   } catch {
