@@ -111,10 +111,18 @@ export async function PATCH(
     // 处理补充评论: 追加到 context.comments 数组中
     let newContext = existing.context;
     if (additional_comment) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentComments = (existing.context as any)?.comments || [];
+      const currentContext =
+        (existing.context as Record<string, unknown>) || {};
+      const currentComments = (
+        Array.isArray(currentContext.comments) ? currentContext.comments : []
+      ) as Array<{
+        content: string;
+        created_at: string;
+        role: string;
+      }>;
+
       newContext = {
-        ...(existing.context as object),
+        ...currentContext,
         comments: [
           ...currentComments,
           {

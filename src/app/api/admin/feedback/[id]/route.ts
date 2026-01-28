@@ -28,8 +28,14 @@ export async function PATCH(
     const body = await request.json();
     const { status, resolution, admin_notes, priority } = body;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: Record<string, any> = {
+    const updates: {
+      updated_at: string;
+      status?: string;
+      resolution?: string;
+      admin_notes?: string;
+      priority?: string;
+      resolved_at?: string;
+    } = {
       updated_at: new Date().toISOString(),
     };
 

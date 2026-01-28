@@ -103,11 +103,14 @@ export default function FeedbackDetailPage({
     FEEDBACK_TYPES.find((t) => t.value === feedback.type) || FEEDBACK_TYPES[2];
   const statusInfo = FEEDBACK_STATUS_MAP[feedback.status];
 
-  const context = feedback.context as Record<string, unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const context = (feedback.context as Record<string, unknown>) || {};
   const comments = (
-    Array.isArray(context?.comments) ? context.comments : []
-  ) as Record<string, any>[];
+    Array.isArray(context.comments) ? context.comments : []
+  ) as Array<{
+    role: string;
+    created_at: string;
+    content: string;
+  }>;
 
   return (
     <div className="container max-w-3xl py-8 space-y-6">
