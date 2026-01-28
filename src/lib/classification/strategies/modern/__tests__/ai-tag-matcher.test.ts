@@ -18,17 +18,26 @@ const createMockSupabase = (profiles: FolderTagProfile[] = []) => {
     in: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
+    single: jest.fn().mockReturnThis(), // Added single()
     then: (resolve: any) => {
       // 使其成为 Thenable
       resolve({
-        data: profiles.map((p) => ({
-          folder_id: p.folderId,
-          core_tags: p.coreTags,
-          related_tags: p.relatedTags,
-          folder_name_tokens: p.folderNameTokens,
-          bookmark_count: p.bookmarkCount,
-          folders: { name: p.folderName },
-        })),
+        data: profiles.map((p) => {
+          // Pad coreTags to 5 items to ensure relatedTags start at index 5
+          // This mimics the behavior of loadFolderProfilesFromDb where slice(0, 5) are core
+          const paddedCoreTags = [...p.coreTags];
+          while (paddedCoreTags.length < 5) {
+            paddedCoreTags.push(`__PAD_${paddedCoreTags.length}__`);
+          }
+
+          return {
+            folder_id: p.folderId,
+            top_tags: [...paddedCoreTags, ...p.relatedTags],
+            folder_name_tokens: p.folderNameTokens,
+            bookmark_count: p.bookmarkCount,
+            folders: { name: p.folderName },
+          };
+        }),
         error: null,
       });
     },
@@ -84,7 +93,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("1");
+      expect(result!.folderId).toBe(1);
       expect(result!.folderName).toBe("独立开发与产品策略");
       expect(result!.matchType).toBe("exact_name");
       expect(result!.confidence).toBe(0.98);
@@ -106,9 +115,9 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("2");
+      expect(result!.folderId).toBe(2);
       expect(result!.matchType).toBe("exact_name");
-      expect(result!.confidence).toBe(0.95); // 0.98 - 0.03
+      expect(result!.confidence).toBe(0.6); // 降级为部分匹配 (was 0.95)
     });
 
     it("应该匹配文件夹名包含标签的情况", async () => {
@@ -127,7 +136,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("3");
+      expect(result!.folderId).toBe(3);
       expect(result!.matchType).toBe("exact_name");
     });
   });
@@ -149,7 +158,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("2");
+      expect(result!.folderId).toBe(2);
       expect(result!.matchType).toBe("core_tag");
       expect(result!.matchedTags).toContain("react");
       expect(result!.matchedTags).toContain("javascript");
@@ -172,7 +181,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("1");
+      expect(result!.folderId).toBe(1);
       expect(result!.matchType).toBe("core_tag");
       expect(result!.confidence).toBe(0.87); // 0.92 - 0.05
     });
@@ -206,7 +215,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("4");
+      expect(result!.folderId).toBe(4);
       expect(result!.matchType).toBe("related_tag");
       expect(result!.matchedTags.length).toBeGreaterThanOrEqual(3);
       expect(result!.confidence).toBe(0.85);
@@ -391,7 +400,7 @@ describe("AiTagMatcher", () => {
 
       expect(result).not.toBeNull();
       expect(result!.matched).toBe(true);
-      expect(result!.folderId).toBe("1");
+      expect(result!.folderId).toBe(1);
       expect(result!.folderName).toBe("独立开发与产品策略");
       expect(result!.confidence).toBeGreaterThanOrEqual(0.95);
     });

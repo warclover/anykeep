@@ -43,16 +43,14 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 1,
-          core_tags: ["独立开发与产品策略", "创业", "产品"],
-          related_tags: ["商业模式", "增长"],
+          top_tags: ["独立开发与产品策略", "创业", "产品", "商业模式", "增长"],
           folder_name_tokens: ["独立开发与产品策略"],
           bookmark_count: 10,
           folders: { name: "独立开发与产品策略" },
         },
         {
           folder_id: 2,
-          core_tags: ["前端开发", "react", "vue"],
-          related_tags: ["javascript", "css"],
+          top_tags: ["前端开发", "react", "vue", "javascript", "css"],
           folder_name_tokens: ["前端开发"],
           bookmark_count: 20,
           folders: { name: "前端开发" },
@@ -63,7 +61,7 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockAliasResponse = { aliases: [] };
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         if (table === "folder_aliases") {
@@ -86,7 +84,7 @@ describe("AiTagMatcher Integration Tests", () => {
       // 验证结果
       expect(result).not.toBeNull();
       expect(result?.matched).toBe(true);
-      expect(result?.folderId).toBe("1");
+      expect(result?.folderId).toBe(1);
       expect(result?.folderName).toBe("独立开发与产品策略");
       expect(result?.matchType).toBe("exact_name");
       expect(result?.confidence).toBeGreaterThanOrEqual(0.95);
@@ -96,8 +94,7 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 3,
-          core_tags: ["人工智能", "机器学习", "深度学习"],
-          related_tags: ["神经网络", "nlp"],
+          top_tags: ["人工智能", "机器学习", "深度学习", "神经网络", "nlp"],
           folder_name_tokens: ["ai技术"],
           bookmark_count: 15,
           folders: { name: "AI技术" },
@@ -105,7 +102,7 @@ describe("AiTagMatcher Integration Tests", () => {
       ];
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         return createMockBuilder({ aliases: [] }); // default
@@ -132,8 +129,18 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 4,
-          core_tags: ["投资理财"],
-          related_tags: ["股票", "基金", "债券", "理财产品"],
+          // Ensure we have enough tags so that the related ones fall into the relatedTags slice (index 5+)
+          top_tags: [
+            "投资理财",
+            "核心2",
+            "核心3",
+            "核心4",
+            "核心5",
+            "股票",
+            "基金",
+            "债券",
+            "理财产品",
+          ],
           folder_name_tokens: ["投资理财"],
           bookmark_count: 25,
           folders: { name: "投资理财" },
@@ -141,7 +148,7 @@ describe("AiTagMatcher Integration Tests", () => {
       ];
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         return createMockBuilder({ aliases: [] });
@@ -167,8 +174,7 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 1,
-          core_tags: ["前端开发"],
-          related_tags: ["react"],
+          top_tags: ["前端开发", "react"],
           folder_name_tokens: ["前端开发"],
           bookmark_count: 10,
           folders: { name: "前端开发" },
@@ -176,7 +182,7 @@ describe("AiTagMatcher Integration Tests", () => {
       ];
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         return createMockBuilder({ aliases: [] });
@@ -187,7 +193,7 @@ describe("AiTagMatcher Integration Tests", () => {
         userId: "user-1",
         title: "美食推荐",
         url: "https://example.com/food",
-        tags: ["美食", "餐厅"],
+        tags: ["美食", "餐��"],
       };
 
       const result = await matcher.match(request);
@@ -215,8 +221,7 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 1,
-          core_tags: ["测试"],
-          related_tags: [],
+          top_tags: ["测试"],
           folder_name_tokens: ["测试"],
           bookmark_count: 5,
           folders: { name: "测试" },
@@ -224,7 +229,7 @@ describe("AiTagMatcher Integration Tests", () => {
       ];
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         return createMockBuilder({ aliases: [] });
@@ -243,8 +248,7 @@ describe("AiTagMatcher Integration Tests", () => {
       const mockProfiles = [
         {
           folder_id: 1,
-          core_tags: ["测试"],
-          related_tags: [],
+          top_tags: ["测试"],
           folder_name_tokens: ["测试"],
           bookmark_count: 5,
           folders: { name: "测试" },
@@ -252,7 +256,7 @@ describe("AiTagMatcher Integration Tests", () => {
       ];
 
       mockSupabase.from.mockImplementation((table: string) => {
-        if (table === "folder_tag_profiles") {
+        if (table === "classification_folder_profiles_v5") {
           return createMockBuilder(mockProfiles);
         }
         return createMockBuilder({ aliases: [] });

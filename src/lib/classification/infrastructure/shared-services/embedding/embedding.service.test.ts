@@ -8,14 +8,14 @@ import { EmbeddingService } from "./embedding.service";
 import { EmbeddingError } from "./types";
 import { createLogger } from "../logger";
 import type { LoggerService } from "../logger";
+import OpenAI from "openai";
 
 // Mock OpenAI
 jest.mock("openai");
 
 describe("EmbeddingService", () => {
   let logger: LoggerService;
-  let mockEmbeddings: jest.Mocked<any>;
-  let MockOpenAI: jest.Mock;
+  let mockCreate: jest.Mock;
 
   beforeEach(() => {
     logger = createLogger();
@@ -23,19 +23,13 @@ describe("EmbeddingService", () => {
     jest.spyOn(logger, "warn").mockImplementation();
     jest.spyOn(logger, "error").mockImplementation();
 
-    // Mock OpenAI client - 修复: 需要 Mock 完整的构造函数
-    mockEmbeddings = {
-      create: jest.fn(),
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const OpenAI = require("openai");
-    MockOpenAI = OpenAI as jest.Mock;
-    MockOpenAI.mockImplementation(function () {
-      return {
-        embeddings: mockEmbeddings,
-      };
-    });
+    // Reset mock
+    mockCreate = jest.fn();
+    (OpenAI as unknown as jest.Mock).mockImplementation(() => ({
+      embeddings: {
+        create: mockCreate,
+      },
+    }));
   });
 
   afterEach(() => {
@@ -65,7 +59,7 @@ describe("EmbeddingService", () => {
       });
 
       const mockEmbedding = new Array(1024).fill(0.1);
-      mockEmbeddings.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         data: [{ embedding: mockEmbedding }],
         usage: { total_tokens: 10 },
       });
@@ -94,19 +88,19 @@ describe("EmbeddingService", () => {
 
       const longText = "a".repeat(150000); // 超过 100K 字符限制
       const mockEmbedding = new Array(1024).fill(0.1);
-      mockEmbeddings.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         data: [{ embedding: mockEmbedding }],
         usage: { total_tokens: 10 },
       });
 
       await service.generateEmbedding(longText);
 
-      expect(mockEmbeddings.create).toHaveBeenCalledWith(
+      expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           input: expect.stringMatching(/^a+$/),
         }),
       );
-      const calledInput = mockEmbeddings.create.mock.calls[0][0].input;
+      const calledInput = mockCreate.mock.calls[0][0].input;
       expect(calledInput.length).toBeLessThanOrEqual(100000); // 阿里百炼支持 128K，我们限制在 100K
     });
   });
@@ -119,7 +113,7 @@ describe("EmbeddingService", () => {
 
       const mockEmbedding1 = new Array(1024).fill(0.1);
       const mockEmbedding2 = new Array(1024).fill(0.2);
-      mockEmbeddings.create.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         data: [{ embedding: mockEmbedding1 }, { embedding: mockEmbedding2 }],
         usage: { total_tokens: 20 },
       });
@@ -160,7 +154,7 @@ describe("EmbeddingService", () => {
       });
 
       const mockEmbedding = new Array(1024).fill(0.1);
-      mockEmbeddings.create
+      mockCreate
         .mockRejectedValueOnce(new Error("Rate limit exceeded"))
         .mockResolvedValueOnce({
           data: [{ embedding: mockEmbedding }],
@@ -170,7 +164,7 @@ describe("EmbeddingService", () => {
       const result = await service.generateEmbedding("测试文本");
 
       expect(result.embedding).toEqual(mockEmbedding);
-      expect(mockEmbeddings.create).toHaveBeenCalledTimes(2);
+      expect(mockCreate).toHaveBeenCalledTimes(2);
     });
 
     it("应该在达到最大重试次数后抛出错误", async () => {
@@ -180,12 +174,12 @@ describe("EmbeddingService", () => {
         retryDelays: [10, 20],
       });
 
-      mockEmbeddings.create.mockRejectedValue(new Error("Rate limit exceeded"));
+      mockCreate.mockRejectedValue(new Error("Rate limit exceeded"));
 
       await expect(service.generateEmbedding("测试文本")).rejects.toThrow(
         EmbeddingError,
       );
-      expect(mockEmbeddings.create).toHaveBeenCalledTimes(3); // 初始 + 2 次重试
+      expect(mockCreate).toHaveBeenCalledTimes(3); // 初始 + 2 次重试
     });
 
     it("应该在不可重试错误时立即失败", async () => {
@@ -193,12 +187,12 @@ describe("EmbeddingService", () => {
         apiKey: "test-key",
       });
 
-      mockEmbeddings.create.mockRejectedValue(new Error("Invalid API key"));
+      mockCreate.mockRejectedValue(new Error("Invalid API key"));
 
       await expect(service.generateEmbedding("测试文本")).rejects.toThrow(
         EmbeddingError,
       );
-      expect(mockEmbeddings.create).toHaveBeenCalledTimes(1);
+      expect(mockCreate).toHaveBeenCalledTimes(1);
     });
   });
 });
