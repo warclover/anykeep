@@ -1,4 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -247,9 +250,11 @@ const sentryWebpackPluginOptions = {
 
 // Export with Sentry wrapper (仅在生产环境且设置了 SENTRY_DSN 时启用)
 // 开发环境禁用 Sentry 可减少 2-5 秒启动时间
+const nextIntlConfig = withNextIntl(nextConfig);
+
 const exportedConfig =
   process.env.NODE_ENV === 'production' && process.env.SENTRY_DSN
-    ? withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-    : nextConfig;
+    ? withSentryConfig(nextIntlConfig, sentryWebpackPluginOptions)
+    : nextIntlConfig;
 
 export default exportedConfig;

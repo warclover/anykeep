@@ -4,10 +4,9 @@
  *
  * @features
  * - Request ID 追踪 (x-request-id header)
- * - 认证保护
+ * - 认证保护 (Supabase Auth)
  * - 会话自动刷新
- * - V4.2.15: API 速率限制
- * - V4.2.24: 用户预验证注入（性能优化）
+ * - API 速率限制
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -29,7 +28,7 @@ const protectedRoutes = [
 ];
 
 // 认证相关路由（已登录用户应跳过）
-const authRoutes = ["/login", "/register"];
+const authRoutes = ["/login", "/register", "/auth"];
 
 /**
  * 生成请求追踪 ID
@@ -46,7 +45,9 @@ export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || generateRequestId();
   const { pathname } = request.nextUrl;
 
-  // 2. V4.2.15: API 速率限制（仅对 /api 路由生效）
+  // =====================================================
+  // 2. API 路由处理
+  // =====================================================
   if (pathname.startsWith("/api")) {
     // 获取用户标识：尝试多个 header 来源获取真实 IP
     const forwarded = request.headers.get("x-forwarded-for");
@@ -68,6 +69,7 @@ export async function middleware(request: NextRequest) {
 
     const identifier = ip;
 
+    // Rate Limit Check
     const rateLimitResult = checkRateLimit(identifier, pathname);
 
     if (!rateLimitResult.allowed) {
@@ -88,13 +90,25 @@ export async function middleware(request: NextRequest) {
       response.headers.set("X-RateLimit-Remaining", "0");
       return response;
     }
+
+    // API 路由依然需要 Auth 处理 (updateSession)
+    const { supabaseResponse } = await updateSession(request);
+
+    // 添加 Request ID
+    supabaseResponse.headers.set("x-request-id", requestId);
+
+    return supabaseResponse;
   }
 
-  // 3. 更新会话
+  // =====================================================
+  // 3. 页面路由处理
+  // =====================================================
+
+  // 3.1 运行 Supabase Auth
   const { supabaseResponse, user, authMethod, authDuration } =
     await updateSession(request);
 
-  // V4.2.27: 诊断日志 - 认证耗时
+  // 3.2 开发环境日志
   if (process.env.NODE_ENV === "development") {
     logger.debug(
       { pathname, authMethod, authDuration: Math.round(authDuration) },
@@ -102,49 +116,45 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // 4. 将 Request ID 添加到响应头
-  supabaseResponse.headers.set("x-request-id", requestId);
+  const finalResponse = supabaseResponse;
 
-  // 检查是否是受保护的路由
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
+  // 添加 Request ID
+  finalResponse.headers.set("x-request-id", requestId);
+
+  // 3.3 权限控制
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname.startsWith(route) || pathname === route,
   );
 
-  // 5. V4.2.24 性能优化：注入预验证的用户信息到请求头
-  // V4.2.27: 扩展到所有受保护路由（API + 页面），消除 Server Component 重复认证
-  // 这样 API 路由和 Server Component 都可以使用 header 模式跳过重复认证（节省 ~1000ms/请求）
-  // 注意：这些 header 仅供内部使用，不应被客户端信任
-  const shouldInjectUserHeaders =
-    user && (pathname.startsWith("/api") || isProtectedRoute);
+  // 3.4 用户信息注入 (Performance Optimization)
+  const shouldInjectUserHeaders = user && isProtectedRoute;
 
   if (shouldInjectUserHeaders) {
-    // 注入到下一个请求的 headers（通过修改 request）
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-user-id", user.id);
     requestHeaders.set("x-user-verified", "true");
 
-    // 重新创建响应以包含修改后的请求
-    const response = NextResponse.next({
+    const newResponse = NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     });
 
-    // 复制原响应的 cookies 和 headers
-    supabaseResponse.headers.forEach((value, key) => {
-      response.headers.set(key, value);
+    // 复制所有 headers from finalResponse
+    finalResponse.headers.forEach((value, key) => {
+      newResponse.headers.set(key, value);
     });
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie.name, cookie.value, cookie);
+    finalResponse.cookies.getAll().forEach((cookie) => {
+      newResponse.cookies.set(cookie);
     });
 
-    return response;
+    return newResponse;
   }
 
-  // 检查是否是认证路由
+  // 3.5 路由跳转保护
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
-  // 未登录用户访问受保护路由 -> 重定向到登录页
+  // 未登录 -> 登录页
   if (isProtectedRoute && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", pathname);
@@ -153,14 +163,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 已登录用户访问认证路由 -> 重定向到首页
+  // 已登录 -> 首页
   if (isAuthRoute && user) {
     const response = NextResponse.redirect(new URL("/home", request.url));
     response.headers.set("x-request-id", requestId);
     return response;
   }
 
-  return supabaseResponse;
+  return finalResponse;
 }
 
 export const config = {
@@ -171,7 +181,8 @@ export const config = {
      * - _next/image (图片优化)
      * - favicon.ico (浏览器图标)
      * - 公开资源 (public 文件夹)
+     * - 根目录下的静态文件 (如 robots.txt 等，如果有的话)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
