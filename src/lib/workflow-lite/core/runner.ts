@@ -5,6 +5,21 @@ import { createLogger } from "./logger";
 // Key: dedupKey, Value: timestamp
 const executionHistory = new Map<string, number>();
 const DEDUP_WINDOW_MS = 60 * 1000; // 1 minute window
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes cleanup interval
+
+// Periodic cleanup to prevent memory leaks
+let lastCleanupTime = Date.now();
+function cleanupExpiredKeys(): void {
+  const now = Date.now();
+  if (now - lastCleanupTime < CLEANUP_INTERVAL_MS) return;
+
+  for (const [key, timestamp] of executionHistory.entries()) {
+    if (now - timestamp > DEDUP_WINDOW_MS) {
+      executionHistory.delete(key);
+    }
+  }
+  lastCleanupTime = now;
+}
 
 function generateTraceId(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -18,18 +33,18 @@ export async function runLiteTask<T>(
   taskLogic: LiteTask<T>,
   contextData: Partial<LiteContext> = {},
 ): Promise<TaskResult<T>> {
+  // Periodic cleanup of expired keys
+  cleanupExpiredKeys();
+
   // 1. Idempotency Check (Simple memory-based for now)
   if (dedupKey) {
     const lastRun = executionHistory.get(dedupKey);
     const now = Date.now();
 
-    // Clean up old keys occasionally could be added here,
-    // but for now relying on runtime restart or minimal memory usage
-
     if (lastRun && now - lastRun < DEDUP_WINDOW_MS) {
-      console.info(
-        `[LITE:${taskName}] Skipping duplicate execution for key: ${dedupKey}`,
-      );
+      // Use structured logging instead of console
+      const skipLogger = createLogger(taskName, "skip");
+      skipLogger.info(`Skipping duplicate execution for key: ${dedupKey}`);
       return {
         success: true, // Treat as success to stop retries from caller
         durationMs: 0,

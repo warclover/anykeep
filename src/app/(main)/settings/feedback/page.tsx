@@ -45,7 +45,7 @@ export default function FeedbackListPage() {
       const data = await FeedbackService.getList(1, 20, {
         status: statusFilter,
       });
-      setFeedbacks(data.feedbacks);
+      setFeedbacks(data);
     } catch {
       toast.error("获取反馈列表失败");
     } finally {

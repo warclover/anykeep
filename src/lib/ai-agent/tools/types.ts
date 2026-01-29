@@ -101,14 +101,17 @@ export type ToolRiskLevel = "low" | "medium" | "high";
 
 /**
  * Tool 定义
+ *
+ * 注意：parameters 使用 z.ZodType<TParams, z.ZodTypeDef, unknown> 以支持
+ * .optional().default() 模式，其中 _input 类型可能包含 undefined
  */
 export interface ToolDefinition<TParams = unknown, TOutput = unknown> {
   /** Tool 名称（唯一标识） */
   name: string;
   /** Tool 描述（供 AI 理解用途） */
   description: string;
-  /** 参数 Schema */
-  parameters: z.ZodSchema<TParams>;
+  /** 参数 Schema（支持 optional + default 模式） */
+  parameters: z.ZodType<TParams, z.ZodTypeDef, unknown>;
   /** 输出 Schema（可选，用于类型安全） */
   outputSchema?: z.ZodSchema<TOutput>;
   /** 分类 */

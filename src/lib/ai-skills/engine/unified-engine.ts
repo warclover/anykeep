@@ -61,6 +61,15 @@ import { type RuleExtractor } from "../../ai-agent/preferences/rule-learning";
 //   type WorkflowExecuteResult,
 // } from "@/lib/workflow/integration";
 // import { isWorkflowTriggerEnabled } from "../../ai-agent/config/feature-flag-overrides";
+
+// Local type definition for backward compatibility (workflow module removed)
+interface WorkflowExecuteResult {
+  workflowId: string;
+  workflowName: string;
+  executionId?: string;
+  status: "started" | "completed" | "failed";
+  message: string;
+}
 import { type ShortcutMatchResult } from "../learning";
 import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 import {
@@ -828,7 +837,7 @@ export class UnifiedEngine {
       yield {
         type: "workflow_started",
         data: {
-          executionId: result.executionId,
+          executionId: result.executionId ?? "",
           workflowId: result.workflowId,
           workflowName: result.workflowName,
         },

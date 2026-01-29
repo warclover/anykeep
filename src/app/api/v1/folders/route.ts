@@ -19,14 +19,12 @@ const FolderQuerySchema = z.object({
   view: z.enum(["list", "tree"]).default("list"),
   includeArchived: z
     .string()
-    .optional()
-    .transform((v) => v === "true")
-    .default(false),
+    .default("false")
+    .transform((v) => v === "true"),
   includeSystem: z
     .string()
-    .optional()
-    .transform((v) => v !== "false")
-    .default(true),
+    .default("true")
+    .transform((v) => v !== "false"),
 });
 
 /**

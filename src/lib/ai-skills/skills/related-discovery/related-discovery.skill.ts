@@ -113,7 +113,8 @@ export class RelatedDiscoverySkill extends OrchestrationSkill<
   };
 
   readonly inputSchema = relatedDiscoveryInputSchema;
-  readonly outputSchema = RelatedDiscoveryOutputSchema;
+  readonly outputSchema =
+    RelatedDiscoveryOutputSchema as z.ZodType<RelatedDiscoveryOutput>;
 
   private finder = new SimilarityFinder();
 

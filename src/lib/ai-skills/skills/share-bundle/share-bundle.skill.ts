@@ -122,7 +122,8 @@ export class ShareBundleSkill extends OrchestrationSkill<
   };
 
   readonly inputSchema = ShareBundleInputSchema;
-  readonly outputSchema = ShareBundleOutputSchema;
+  readonly outputSchema =
+    ShareBundleOutputSchema as z.ZodType<ShareBundleOutput>;
 
   /**
    * 解析自然语言输入
@@ -720,10 +721,18 @@ import type { BookmarkRow as BookmarkRowBase } from "@/types/domain";
 /**
  * BookmarkRow 扩展（用于分享包查询）
  */
-interface BookmarkRow extends Pick<
+type BookmarkRow = Pick<
   BookmarkRowBase,
-  "id" | "title" | "url" | "platform" | "ai_tags" | "ai_summary" | "user_tags" | "rating" | "created_at"
-> {}
+  | "id"
+  | "title"
+  | "url"
+  | "platform"
+  | "ai_tags"
+  | "ai_summary"
+  | "user_tags"
+  | "rating"
+  | "created_at"
+>;
 
 // ============================================
 // 导出

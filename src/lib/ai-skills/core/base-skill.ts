@@ -62,8 +62,13 @@ export abstract class BaseSkill<TInput = unknown, TOutput = unknown>
   /** Skill 元数据 */
   abstract readonly metadata: SkillMetadata;
 
-  /** 输入 Schema */
-  abstract readonly inputSchema: z.ZodSchema<TInput>;
+  /**
+   * 输入 Schema
+   *
+   * 使用 z.ZodType<TInput, z.ZodTypeDef, unknown> 以支持
+   * .optional().default() 模式，其中 _input 类型可能包含 undefined
+   */
+  abstract readonly inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>;
 
   /** 输出 Schema */
   abstract readonly outputSchema: z.ZodSchema<TOutput>;

@@ -23,9 +23,8 @@ interface RouteParams {
 const DeleteOptionsSchema = z.object({
   cascade: z
     .string()
-    .optional()
-    .transform((v) => v === "true")
-    .default(false),
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 /**

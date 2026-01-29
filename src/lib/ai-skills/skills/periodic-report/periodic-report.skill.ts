@@ -12,6 +12,7 @@
  * @since 2025-12-25 - Refactored into coordinator pattern
  */
 
+import type { z } from "zod";
 import { OrchestrationSkill } from "../../orchestration/orchestration-skill";
 import type { OrchestrationContext } from "../../orchestration/types";
 import type { OrchestrationStreamChunk } from "../../output/types";
@@ -79,7 +80,8 @@ export class PeriodicReportSkill extends OrchestrationSkill<
   };
 
   readonly inputSchema = PeriodicReportInputSchema;
-  readonly outputSchema = PeriodicReportOutputSchema;
+  readonly outputSchema =
+    PeriodicReportOutputSchema as z.ZodType<PeriodicReportOutput>;
 
   /**
    * 解析自然语言输入

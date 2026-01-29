@@ -110,7 +110,8 @@ export class ReadingPlannerSkill extends OrchestrationSkill<
   };
 
   readonly inputSchema = readingPlannerInputSchema;
-  readonly outputSchema = ReadingPlannerOutputSchema;
+  readonly outputSchema =
+    ReadingPlannerOutputSchema as z.ZodType<ReadingPlannerOutput>;
 
   private generator = new ReadingPlanGenerator();
 

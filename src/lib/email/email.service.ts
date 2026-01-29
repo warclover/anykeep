@@ -53,7 +53,7 @@ export class EmailService {
   }
 
   private getSubjectTitle(digest: NonNullable<LedgerResult>): string {
-    const persona = digest.metadata?.persona || "default";
+    const persona = (digest.metadata?.persona as string) || "default";
     const titles: Record<string, string> = {
       geek: "本周的代码能量补给",
       designer: "本周的灵感碎片",

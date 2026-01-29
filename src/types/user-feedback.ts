@@ -55,3 +55,13 @@ export interface FeedbackStore {
   open: (options?: OpenFeedbackOptions) => void;
   close: () => void;
 }
+
+/**
+ * 反馈列表响应
+ */
+export interface FeedbackListResponse {
+  data: UserFeedback[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

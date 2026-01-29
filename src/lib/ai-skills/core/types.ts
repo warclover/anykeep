@@ -310,12 +310,15 @@ export interface AIMessage {
 /**
  * BaseSkill 接口定义
  * 所有 Skill 都必须实现此接口
+ *
+ * 注意：inputSchema 使用 z.ZodType<TInput, z.ZodTypeDef, unknown> 以支持
+ * .optional().default() 模式，其中 _input 类型可能包含 undefined
  */
 export interface ISkill<TInput = unknown, TOutput = unknown> {
   /** Skill 元数据 */
   readonly metadata: SkillMetadata;
-  /** 输入 Schema（Zod） */
-  readonly inputSchema: z.ZodSchema<TInput>;
+  /** 输入 Schema（Zod，支持 optional + default 模式） */
+  readonly inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>;
   /** 输出 Schema（Zod） */
   readonly outputSchema: z.ZodSchema<TOutput>;
 

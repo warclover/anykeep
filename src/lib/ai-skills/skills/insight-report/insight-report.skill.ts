@@ -127,7 +127,8 @@ export class InsightReportSkill extends OrchestrationSkill<
   };
 
   readonly inputSchema = InsightReportInputSchema;
-  readonly outputSchema = InsightReportOutputSchema;
+  readonly outputSchema =
+    InsightReportOutputSchema as z.ZodType<InsightReportOutput>;
 
   /**
    * 解析自然语言输入

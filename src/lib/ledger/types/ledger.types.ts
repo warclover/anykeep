@@ -9,6 +9,8 @@ export interface LedgerItem {
   id?: string;
   type?: "bookmark" | "rediscover";
   metadata?: Record<string, unknown>;
+  /** 原始时间戳（用于数据完整性） */
+  originalTime?: string;
 }
 
 export interface LedgerReport {
