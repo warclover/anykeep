@@ -41,13 +41,3 @@ export type {
   MaterialHealthScore,
   UseMaterialHealthReturn,
 } from "./use-material-health";
-
-// Brain-Sync 整合 Hook
-export { useBrainSyncIntegration } from "./use-brain-sync-integration";
-export type {
-  BrainSyncStatus,
-  GenerateFlashcardsRequest,
-  GenerateFlashcardsResult,
-  UseBrainSyncIntegrationOptions,
-  UseBrainSyncIntegrationReturn,
-} from "./use-brain-sync-integration";

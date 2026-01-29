@@ -28,7 +28,6 @@ import {
   Upload,
   Wand2,
   LinkIcon,
-  GraduationCap,
   FlaskConical,
   BarChart3,
   Activity,
@@ -54,7 +53,6 @@ import {
   Workflow,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
-import { useBrainSyncStats } from "@/hooks/domain/brain-sync";
 import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
@@ -73,7 +71,7 @@ interface NavItem {
   href: string;
   icon: typeof BookOpen;
   pageId?: PageId;
-  badge?: number | "unread" | "brain-sync";
+  badge?: number | "unread";
   isPro?: boolean;
 }
 
@@ -132,12 +130,6 @@ const smartListItems: NavItem[] = [
  */
 const learningCenterItems: NavItem[] = [
   { name: "学习助手", href: "/learning-hub", icon: BookMarked },
-  {
-    name: "知识回顾",
-    href: "/brain-sync",
-    icon: GraduationCap,
-    badge: "brain-sync",
-  },
   { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
   {
     name: "知识工坊",
@@ -242,10 +234,6 @@ export function AppSidebar() {
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
-
-  // 获取 Brain-Sync 待复习数量和显示偏好
-  const { stats: brainSyncStats, showMenuBadge: brainSyncShowBadge } =
-    useBrainSyncStats();
 
   // 安全获取导航上下文
   const navigationContext = useSafeNavigation();
@@ -358,14 +346,6 @@ export function AppSidebar() {
     const Icon = item.icon;
     const isActive = isLinkActive(item.href, item.pageId);
     const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
-    // Brain-Sync 徽章仅在用户设置中开启时显示
-    const showBrainSyncBadge =
-      item.badge === "brain-sync" &&
-      brainSyncShowBadge &&
-      brainSyncStats &&
-      brainSyncStats.total > 0;
-    const brainSyncCount = brainSyncStats?.total ?? 0;
-    const hasOverdue = brainSyncStats?.overdue ?? 0 > 0;
 
     // 使用分组糖果色，如无则回退默认蓝色
     const colors = groupColor || groupCandyColors.content;
@@ -403,18 +383,6 @@ export function AppSidebar() {
                 hasImportant={importantCount > 0}
               />
             )}
-            {showBrainSyncBadge && (
-              <span
-                className={cn(
-                  "text-xs font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
-                  hasOverdue
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
-                    : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
-                )}
-              >
-                {brainSyncCount > 99 ? "99+" : brainSyncCount}
-              </span>
-            )}
           </>
         )}
       </Link>
@@ -429,7 +397,6 @@ export function AppSidebar() {
             <p>
               {item.name}
               {item.isPro ? " (Pro)" : ""}
-              {showBrainSyncBadge ? ` (${brainSyncCount})` : ""}
             </p>
           </TooltipContent>
         </Tooltip>

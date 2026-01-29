@@ -65,23 +65,6 @@ export const API_AI = {
 } as const;
 
 // ============================================
-// Brain Sync (主动复习)
-// ============================================
-
-export const API_BRAIN_SYNC = {
-  /** 复习队列 */
-  queue: "/api/brain-sync/queue",
-  /** 闪卡 */
-  flashcards: "/api/brain-sync/flashcards",
-  /** 复习进度 */
-  progress: "/api/brain-sync/progress",
-  /** 复习计划 */
-  schedule: "/api/brain-sync/schedule",
-  /** 复习设置 */
-  settings: "/api/brain-sync/settings",
-} as const;
-
-// ============================================
 // TTS 语音服务
 // ============================================
 
@@ -688,7 +671,6 @@ export const API_PATHS = {
   ai: API_AI,
   admin: API_ADMIN,
   bookmarks: API_BOOKMARKS,
-  brainSync: API_BRAIN_SYNC,
   browserBookmark: API_BROWSER_BOOKMARK,
   classification: API_CLASSIFICATION,
   confirmations: API_CONFIRMATIONS,

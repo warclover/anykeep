@@ -40,7 +40,6 @@ import { AIOperationHistoryCard } from "./ai-operation-history-card";
 import { AIProviderSettingsCard } from "./ai-provider-settings-card";
 import { ColorThemeSelector } from "./color-theme-selector";
 import { NotificationSettingsCard } from "@/components/messages";
-import { BrainSyncSettingsCard } from "@/components/brain-sync";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
 import { AutoSnapshotSettings } from "./auto-snapshot-settings";
 import { WorkflowSettingsCard } from "./workflow-settings-card";
@@ -493,9 +492,6 @@ export function SettingsPageClient({
 
             {/* AI Provider 状态 - V4.3 */}
             <AIProviderSettingsCard />
-
-            {/* Brain-Sync 主动复习设置 - V4.3 */}
-            <BrainSyncSettingsCard userId={user.id} />
 
             {/* 自动化工作流设置 - Phase 4 */}
             <WorkflowSettingsCard />

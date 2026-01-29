@@ -42,7 +42,6 @@ import { getBlueprintDisplayConfig } from "@/lib/knowledge-studio/blueprint/unif
 import type { KSExportFormat } from "@/lib/knowledge-studio/export";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
-import { BrainSyncButton } from "./brain-sync-button";
 import type { ChatTurn, EditMode } from "@/lib/knowledge-studio/client";
 import { useChatEdit } from "@/hooks/domain/knowledge-studio/use-chat-edit";
 import { toast } from "sonner";
@@ -342,7 +341,6 @@ export function ReportEditor({
 
         {/* Actions */}
         <div className="flex gap-2">
-          <BrainSyncButton report={report} />
           <Button variant="outline" size="sm" onClick={handleCopy}>
             <Copy className="mr-1 h-4 w-4" />
             复制

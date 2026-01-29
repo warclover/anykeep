@@ -20,22 +20,6 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
  * - 类型通配：learn:*
  */
 export const SKILL_MAPPINGS: SkillMapping[] = [
-  // ============================================
-  // Active Recall 主动复习类（v2.5.0 新增）
-  // 注意：get_mastery_stats/update_review_preferences 已移除，
-  // 这些功能由 active_recall Skill 内部处理，或通过 query/action 通配符交由 AI Agent
-  // ============================================
-  {
-    key: "learn:active_recall_start",
-    skillId: "active_recall",
-    name: "Brain-Sync 主动复习",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 105,
-  },
-
-  // ============================================
   // 学习类 → 编排模式
   // ============================================
   {
@@ -600,19 +584,6 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     skillId: "tts_synthesis",
     mode: "orchestration",
     icon: "Volume2",
-  },
-  // Active Recall / Brain-Sync 显式工具（v2.5.0 新增）
-  {
-    toolId: "brain-sync",
-    skillId: "active_recall",
-    mode: "orchestration",
-    icon: "Brain",
-  },
-  {
-    toolId: "active-recall",
-    skillId: "active_recall",
-    mode: "orchestration",
-    icon: "Brain",
   },
 ];
 

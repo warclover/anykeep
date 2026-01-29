@@ -129,9 +129,6 @@ export * from "./knowledge-link";
 // 微信文章 Tools (新增 v2.4.0)
 export * from "./wechat-article";
 
-// Active Recall Tools (新增 v2.5.0)
-export * from "./active-recall";
-
 // 待办事项 Tools (新增 v2.8.0 P2-3)
 export * from "./pending-tasks";
 
@@ -154,7 +151,6 @@ import { trustModeTools } from "./trust-mode";
 import { pluginAuthTools } from "./plugin-auth";
 import { knowledgeLinkTools } from "./knowledge-link";
 import { wechatArticleTools } from "./wechat-article";
-import { activeRecallTools } from "./active-recall";
 import { pendingTasksTools } from "./pending-tasks";
 import { logger } from "@/lib/logger";
 
@@ -201,8 +197,6 @@ export function registerDefaultTools(): void {
   // 新增 Tools (v2.4.0)
   toolRegistry.registerAll(knowledgeLinkTools);
   toolRegistry.registerAll(wechatArticleTools);
-  // 新增 Tools (v2.5.0)
-  toolRegistry.registerAll(activeRecallTools);
   // 新增 Tools (v2.8.0 P2-3)
   toolRegistry.registerAll(pendingTasksTools);
 

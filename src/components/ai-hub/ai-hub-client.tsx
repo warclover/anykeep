@@ -110,8 +110,6 @@ const AI_HUB = {
 
 // Skill 到页面的映射
 const SKILL_PAGE_MAP: Record<string, string> = {
-  knowledge_review: "/brain-sync",
-  active_recall: "/brain-sync",
   thematic_synthesis: "/synthesis",
   data_export: "/export",
   batch_organize: "/batch",
@@ -130,7 +128,6 @@ const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   snapshot_compare: "对比书签内容变化",
 
   // 编排 Skills - 理解增强
-  knowledge_review: "帮我复习最近的收藏内容",
   quick_digest: "快速摘要我的收藏",
   knowledge_extract: "提取我收藏中的关键知识点",
 
@@ -147,7 +144,6 @@ const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   learning_path: "为我规划一个学习路径",
   reading_planner: "帮我制定阅读计划",
   periodic_report: "生成我的学习周报",
-  active_recall: "开始今日复习",
   related_discovery: "发现与我收藏相关的内容",
   share_bundle: "创建一个分享包",
   knowledge_graph_explore: "探索我的知识图谱",

@@ -38,7 +38,6 @@ import { wechatDigestSkill } from "./skills/wechat-digest";
 import { bilibiliTranscriptSkill } from "./skills/bilibili-transcript";
 import { inboxDigestSkill } from "./skills/inbox-digest";
 import { contentChangeMonitorSkill } from "./skills/content-change-monitor";
-import { activeRecallSkill } from "./skills/active-recall";
 import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 // Skills v1.1.0 新增（2025-01-08）
 import { inboxTriageSkill } from "./skills/inbox-triage";
@@ -278,12 +277,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_CONTENT_CHANGE_MONITOR !== "false") {
     unifiedEngine.registerOrchestrationSkill(contentChangeMonitorSkill);
     logger.debug("ContentChangeMonitorSkill registered");
-  }
-
-  // 主动复习 Brain-Sync（支持 Feature Flag 开关）
-  if (process.env.ENABLE_ACTIVE_RECALL !== "false") {
-    unifiedEngine.registerOrchestrationSkill(activeRecallSkill);
-    logger.debug("ActiveRecallSkill registered");
   }
 
   // 主题合成器（支持 Feature Flag 开关）
