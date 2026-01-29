@@ -3,13 +3,14 @@
  *
  * 负责管理和执行定时工作流
  *
- * @version 1.0.0
+ * @version 2.1.0
  * @since 2026-01-08
+ * @updated 2026-01-29 - 移除分布式锁，改用状态位原子更新
+ * @updated 2026-01-29 - P0-P2 修复：错误处理、超时清理、并发执行、类型安全
  */
 
 import type { Database } from "@/types/supabase";
 import { createClient } from "@/lib/supabase/server";
-import { getDistributedLockManager } from "./distributed-lock";
 import { logger } from "@/lib/logger";
 import { runLiteTask } from "@/lib/workflow-lite/core/runner";
 import { executeDailyDigest } from "@/lib/workflow-lite/tasks/daily-digest";
@@ -18,10 +19,15 @@ import type {
   ScheduledExecution,
   ScheduledExecutionStatus,
 } from "./types";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-// 定时执行表名（在数据库迁移后才存在，使用类型断言绕过检查）
+// 定时执行表名
 const SCHEDULED_EXECUTIONS_TABLE = "scheduled_workflow_executions" as const;
+
+// 默认超时时间（分钟）
+const DEFAULT_STALE_TIMEOUT_MINUTES = 30;
+
+// 默认并发数
+const DEFAULT_CONCURRENCY = 5;
 
 // 扩展 Supabase 客户端类型
 interface ScheduledExecutionRow {
@@ -59,7 +65,7 @@ interface ScheduledExecutionsTableDef {
   Relationships: [];
 }
 
-type ExtendedDatabase = Omit<Database, "public"> & {
+type _ExtendedDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables"> & {
     Tables: Database["public"]["Tables"] & {
       scheduled_workflow_executions: ScheduledExecutionsTableDef;
@@ -67,8 +73,9 @@ type ExtendedDatabase = Omit<Database, "public"> & {
   };
 };
 
-// 类型安全的 Supabase 客户端（保留用于未来扩展）
-type _TypedSupabaseClient = SupabaseClient<ExtendedDatabase, "public">;
+// 类型安全的 Supabase 客户端（使用类型断言绕过扩展表类型检查）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TypedSupabaseClient = any;
 
 /**
  * 定时触发调度器
@@ -77,15 +84,21 @@ type _TypedSupabaseClient = SupabaseClient<ExtendedDatabase, "public">;
  */
 export class TriggerScheduler {
   /**
+   * 获取类型安全的 Supabase 客户端
+   */
+  private async getTypedClient(): Promise<TypedSupabaseClient> {
+    const supabase = await createClient();
+    return supabase as unknown as TypedSupabaseClient;
+  }
+
+  /**
    * 获取待执行的定时任务
    */
   async getPendingExecutions(): Promise<ScheduledExecution[]> {
-    const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typedSupabase = supabase as any;
+    const client = await this.getTypedClient();
     const now = new Date();
 
-    const { data, error } = await typedSupabase
+    const { data, error } = await client
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .select("*")
       .eq("status", "pending")
@@ -101,130 +114,197 @@ export class TriggerScheduler {
       return [];
     }
 
-    return (data || []).map((row: Record<string, unknown>) =>
+    return (data || []).map((row: ScheduledExecutionRow) =>
       this.mapRowToExecution(row),
     );
   }
 
   /**
-   * 执行定时任务（带分布式锁）
+   * 清理超时的 running 任务
+   *
+   * 用于处理实例崩溃导致任务卡在 running 状态的情况
+   *
+   * @param timeoutMinutes - 超时阈值（分钟），默认 30 分钟
+   * @returns 清理的任务数量
    */
-  async executeScheduledWorkflow(scheduled: ScheduledExecution): Promise<void> {
-    const lockManager = getDistributedLockManager();
-    const lockKey = `scheduled:${scheduled.id}`;
+  async cleanupStaleRunningTasks(
+    timeoutMinutes: number = DEFAULT_STALE_TIMEOUT_MINUTES,
+  ): Promise<number> {
+    const client = await this.getTypedClient();
+    const timeoutThreshold = new Date(
+      Date.now() - timeoutMinutes * 60 * 1000,
+    ).toISOString();
 
-    const result = await lockManager.withLock(lockKey, async () => {
-      const supabase = await createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const typedSupabase = supabase as any;
-      const _startTime = performance.now();
+    const { data, error } = await client
+      .from(SCHEDULED_EXECUTIONS_TABLE)
+      .update({
+        status: "failed",
+        error: `Task timeout after ${timeoutMinutes} minutes (possible instance crash)`,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("status", "running")
+      .lt("started_at", timeoutThreshold)
+      .select("id");
 
-      try {
-        // 双重检查：确认任务仍为 pending 状态
-        const { data: currentStatus } = await typedSupabase
-          .from(SCHEDULED_EXECUTIONS_TABLE)
-          .select("status")
-          .eq("id", scheduled.id)
-          .single();
+    if (error) {
+      logger.error(
+        { error },
+        "TriggerScheduler: Failed to cleanup stale tasks",
+      );
+      return 0;
+    }
 
-        if (currentStatus?.status !== "pending") {
-          logger.info(
-            {
-              scheduledId: scheduled.id,
-              currentStatus: currentStatus?.status,
-            },
-            "TriggerScheduler: Task already processed by another instance",
-          );
-          return { skipped: true };
-        }
+    const count = data?.length || 0;
+    if (count > 0) {
+      logger.warn(
+        { count, timeoutMinutes },
+        "TriggerScheduler: Cleaned up stale running tasks",
+      );
+    }
 
-        // 更新状态为运行中
-        await typedSupabase
-          .from(SCHEDULED_EXECUTIONS_TABLE)
-          .update({ status: "running", started_at: new Date().toISOString() })
-          .eq("id", scheduled.id);
+    return count;
+  }
 
-        // =================================================================
-        // PHASE 4: Workflow Lite - Full Implementation (Legacy Removed)
-        // =================================================================
-        if (scheduled.workflowId === "daily_digest") {
-          logger.info(
-            { scheduledId: scheduled.id },
-            "TriggerScheduler: Executing Lite workflow for daily_digest",
-          );
+  /**
+   * 执行定时任务（使用状态位原子更新防止重复执行）
+   *
+   * 通过 UPDATE ... WHERE status = 'pending' 实现原子性抢占，
+   * 无需额外的分布式锁机制
+   */
+  async executeScheduledWorkflow(
+    scheduled: ScheduledExecution,
+  ): Promise<{ success: boolean; error?: string }> {
+    const client = await this.getTypedClient();
+    const startTime = Date.now();
 
-          const liteResult = await runLiteTask(
-            "daily-digest",
-            `cron-${scheduled.id}`,
-            executeDailyDigest,
-            { userId: scheduled.userId },
-          );
+    try {
+      // 原子性抢占：UPDATE ... WHERE status = 'pending'
+      // 使用 maybeSingle() 区分"无匹配记录"和"数据库错误"
+      const { data: claimed, error: claimError } = await client
+        .from(SCHEDULED_EXECUTIONS_TABLE)
+        .update({
+          status: "running",
+          started_at: new Date().toISOString(),
+        })
+        .eq("id", scheduled.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
 
-          if (!liteResult.success) {
-            throw (
-              liteResult.error ||
-              new Error("Lite task failed without error details")
-            );
-          }
-
-          // Lite execution successful - mark as completed in DB
-          await typedSupabase
-            .from(SCHEDULED_EXECUTIONS_TABLE)
-            .update({
-              status: "completed",
-              execution_id: `lite-${scheduled.id}`,
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", scheduled.id);
-
-          logger.info(
-            {
-              scheduledId: scheduled.id,
-              durationMs: liteResult.durationMs,
-            },
-            "TriggerScheduler: Lite workflow completed successfully",
-          );
-
-          return { success: true, executionId: `lite-${scheduled.id}` };
-        }
-        // =================================================================
-
-        // 对于其他工作流，抛出错误（需要逐个迁移到 Lite）
-        throw new Error(
-          `Workflow '${scheduled.workflowId}' has not been migrated to Lite system yet`,
+      // P0 修复：区分真实数据库错误和任务已被抢占
+      if (claimError) {
+        // 真实的数据库错误
+        logger.error(
+          {
+            scheduledId: scheduled.id,
+            error: claimError.message,
+            code: claimError.code,
+          },
+          "TriggerScheduler: Database error during task claim",
         );
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        return { success: false, error: claimError.message };
+      }
 
-        await typedSupabase
+      if (!claimed) {
+        // 任务已被其他实例抢占（正常竞争情况）
+        logger.debug(
+          { scheduledId: scheduled.id },
+          "TriggerScheduler: Task already claimed by another instance",
+        );
+        return { success: true }; // 不算失败，只是被跳过
+      }
+
+      // =================================================================
+      // Workflow Lite 执行
+      // =================================================================
+      if (scheduled.workflowId === "daily_digest") {
+        logger.info(
+          { scheduledId: scheduled.id },
+          "TriggerScheduler: Executing Lite workflow for daily_digest",
+        );
+
+        const liteResult = await runLiteTask(
+          "daily-digest",
+          `cron-${scheduled.id}`,
+          executeDailyDigest,
+          { userId: scheduled.userId },
+        );
+
+        if (!liteResult.success) {
+          throw (
+            liteResult.error ||
+            new Error("Lite task failed without error details")
+          );
+        }
+
+        // P0 修复：检查状态更新是否成功
+        const { error: completeError } = await client
           .from(SCHEDULED_EXECUTIONS_TABLE)
           .update({
-            status: "failed",
-            error: errorMessage,
+            status: "completed",
+            execution_id: `lite-${scheduled.id}`,
             completed_at: new Date().toISOString(),
           })
           .eq("id", scheduled.id);
 
-        logger.error(
+        if (completeError) {
+          logger.error(
+            { scheduledId: scheduled.id, error: completeError },
+            "TriggerScheduler: Failed to mark task as completed (status inconsistent!)",
+          );
+          return { success: false, error: completeError.message };
+        }
+
+        logger.info(
           {
             scheduledId: scheduled.id,
-            workflowId: scheduled.workflowId,
-            error: errorMessage,
+            durationMs: liteResult.durationMs,
+            metric: "workflow.execution.success",
           },
-          "TriggerScheduler: Scheduled workflow failed",
+          "TriggerScheduler: Lite workflow completed successfully",
         );
 
-        return { success: false, error: errorMessage };
+        return { success: true };
       }
-    });
+      // =================================================================
 
-    if (result === null) {
-      // 未获取到锁，任务被跳过
-      logger.info(
-        { scheduledId: scheduled.id },
-        "TriggerScheduler: Task skipped (lock not acquired)",
+      // 对于其他工作流，抛出错误（需要逐个迁移到 Lite）
+      throw new Error(
+        `Workflow '${scheduled.workflowId}' has not been migrated to Lite system yet`,
       );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      // P0 修复：检查失败状态更新是否成功
+      const { error: updateError } = await client
+        .from(SCHEDULED_EXECUTIONS_TABLE)
+        .update({
+          status: "failed",
+          error: errorMessage,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", scheduled.id);
+
+      if (updateError) {
+        logger.error(
+          { scheduledId: scheduled.id, error: updateError },
+          "TriggerScheduler: Failed to mark task as failed (status inconsistent!)",
+        );
+      }
+
+      logger.error(
+        {
+          scheduledId: scheduled.id,
+          workflowId: scheduled.workflowId,
+          durationMs: Date.now() - startTime,
+          error: errorMessage,
+          metric: "workflow.execution.failure",
+        },
+        "TriggerScheduler: Scheduled workflow failed",
+      );
+
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -242,11 +322,9 @@ export class TriggerScheduler {
       return null;
     }
 
-    const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typedSupabase = supabase as any;
+    const client = await this.getTypedClient();
 
-    const { data, error } = await typedSupabase
+    const { data, error } = await client
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .insert({
         workflow_id: workflowId,
@@ -270,6 +348,8 @@ export class TriggerScheduler {
 
   /**
    * 计算下一次执行时间
+   *
+   * P2 修复：正确处理月份边界条件（如 2 月没有 31 日）
    */
   calculateNextExecutionTime(config: ScheduleTriggerConfig): Date | null {
     if (!config.enabled) {
@@ -279,7 +359,7 @@ export class TriggerScheduler {
     const now = new Date();
     const [hours, minutes] = config.time.split(":").map(Number);
 
-    // 使用简化的时区处理
+    // 使用简化的时区处理（服务器本地时区）
     const targetDate = new Date();
     targetDate.setHours(hours, minutes, 0, 0);
 
@@ -309,10 +389,27 @@ export class TriggerScheduler {
 
       case "monthly": {
         const targetDayOfMonth = config.dayOfMonth ?? 1;
-        targetDate.setDate(targetDayOfMonth);
+
+        // P2 修复：获取当前月份的最后一天
+        const lastDayOfCurrentMonth = this.getLastDayOfMonth(
+          targetDate.getFullYear(),
+          targetDate.getMonth(),
+        );
+
+        // 如果指定日期超过当月天数，使用当月最后一天
+        const actualDay = Math.min(targetDayOfMonth, lastDayOfCurrentMonth);
+        targetDate.setDate(actualDay);
 
         if (targetDate <= now) {
+          // 移到下个月
           targetDate.setMonth(targetDate.getMonth() + 1);
+
+          // 再次校验下个月的天数
+          const lastDayOfNextMonth = this.getLastDayOfMonth(
+            targetDate.getFullYear(),
+            targetDate.getMonth(),
+          );
+          targetDate.setDate(Math.min(targetDayOfMonth, lastDayOfNextMonth));
         }
         break;
       }
@@ -322,14 +419,20 @@ export class TriggerScheduler {
   }
 
   /**
+   * 获取指定月份的最后一天
+   */
+  private getLastDayOfMonth(year: number, month: number): number {
+    // 下个月的第 0 天 = 当前月的最后一天
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  /**
    * 获取用户的定时任务列表
    */
   async getUserSchedules(userId: string): Promise<ScheduledExecution[]> {
-    const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typedSupabase = supabase as any;
+    const client = await this.getTypedClient();
 
-    const { data, error } = await typedSupabase
+    const { data, error } = await client
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .select("*")
       .eq("user_id", userId)
@@ -344,7 +447,7 @@ export class TriggerScheduler {
       return [];
     }
 
-    return (data || []).map((row: Record<string, unknown>) =>
+    return (data || []).map((row: ScheduledExecutionRow) =>
       this.mapRowToExecution(row),
     );
   }
@@ -353,11 +456,9 @@ export class TriggerScheduler {
    * 取消定时任务
    */
   async cancelSchedule(scheduleId: string, userId: string): Promise<boolean> {
-    const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typedSupabase = supabase as any;
+    const client = await this.getTypedClient();
 
-    const { error } = await typedSupabase
+    const { error } = await client
       .from(SCHEDULED_EXECUTIONS_TABLE)
       .update({
         status: "skipped",
@@ -380,37 +481,68 @@ export class TriggerScheduler {
 
   /**
    * 处理所有待执行的定时任务
+   *
+   * P1 修复：
+   * - 先清理超时任务
+   * - 使用并发执行提升性能
+   *
+   * @param concurrency - 并发数，默认 5
    */
-  async processPendingExecutions(): Promise<number> {
-    const pending = await this.getPendingExecutions();
-    let processed = 0;
+  async processPendingExecutions(
+    concurrency: number = DEFAULT_CONCURRENCY,
+  ): Promise<{ total: number; successful: number; failed: number }> {
+    // 先清理超时的 running 任务
+    await this.cleanupStaleRunningTasks();
 
-    for (const scheduled of pending) {
-      await this.executeScheduledWorkflow(scheduled);
-      processed++;
+    const pending = await this.getPendingExecutions();
+
+    if (pending.length === 0) {
+      return { total: 0, successful: 0, failed: 0 };
     }
 
-    return processed;
+    // P1 修复：分批并发执行
+    const results: { success: boolean; error?: string }[] = [];
+
+    for (let i = 0; i < pending.length; i += concurrency) {
+      const batch = pending.slice(i, i + concurrency);
+      const batchResults = await Promise.allSettled(
+        batch.map((scheduled) => this.executeScheduledWorkflow(scheduled)),
+      );
+
+      for (const result of batchResults) {
+        if (result.status === "fulfilled") {
+          results.push(result.value);
+        } else {
+          results.push({ success: false, error: result.reason?.message });
+        }
+      }
+    }
+
+    const successful = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    logger.info(
+      { total: pending.length, successful, failed },
+      "TriggerScheduler: Batch execution completed",
+    );
+
+    return { total: pending.length, successful, failed };
   }
 
   /**
    * 映射数据库行到执行对象
    */
-  private mapRowToExecution(row: Record<string, unknown>): ScheduledExecution {
+  private mapRowToExecution(row: ScheduledExecutionRow): ScheduledExecution {
     return {
-      id: row.id as string,
-      workflowId: row.workflow_id as string,
-      userId: row.user_id as string,
-      scheduledAt: new Date(row.scheduled_at as string),
-      status: row.status as ScheduledExecutionStatus,
-      executionId: row.execution_id as string | undefined,
-      error: row.error as string | undefined,
-      startedAt: row.started_at
-        ? new Date(row.started_at as string)
-        : undefined,
-      completedAt: row.completed_at
-        ? new Date(row.completed_at as string)
-        : undefined,
+      id: row.id,
+      workflowId: row.workflow_id,
+      userId: row.user_id,
+      scheduledAt: new Date(row.scheduled_at),
+      status: row.status,
+      executionId: row.execution_id ?? undefined,
+      error: row.error ?? undefined,
+      startedAt: row.started_at ? new Date(row.started_at) : undefined,
+      completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
     };
   }
 }
