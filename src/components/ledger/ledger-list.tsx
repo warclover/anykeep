@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Database } from "@/types/supabase";
 
-type LedgerReport = Database["public"]["Tables"]["ledger_reports"]["Row"];
+type LedgerReport = Database["public"]["Tables"]["ledgers"]["Row"];
 
 export function LedgerList() {
   const [reports, setReports] = useState<LedgerReport[]>([]);
@@ -21,7 +21,7 @@ export function LedgerList() {
     async function fetchReports() {
       try {
         const { data, error } = await supabase
-          .from("ledger_reports")
+          .from("ledgers")
           .select("*")
           .order("created_at", { ascending: false });
 
@@ -77,9 +77,11 @@ export function LedgerList() {
                         : "月度收藏账单"}
                     </h3>
                     <Badge variant="outline" className="text-xs font-normal">
-                      {format(new Date(report.created_at), "yyyy-MM-dd", {
-                        locale: zhCN,
-                      })}
+                      {report.created_at
+                        ? format(new Date(report.created_at), "yyyy-MM-dd", {
+                            locale: zhCN,
+                          })
+                        : "-"}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">

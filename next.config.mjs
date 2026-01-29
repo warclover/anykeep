@@ -11,6 +11,18 @@ const nextConfig = {
   // V5.3: Webpack 编译优化（Next.js 14+ 自动启用文件系统缓存）
   // 注意：Next.js 不允许修改 devtool，会自动恢复为 eval-source-map
 
+  // Webpack 配置：将 puppeteer 标记为外部依赖（可选安装）
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // 将 puppeteer 排除在 webpack 打包外（可选依赖）
+      config.externals = config.externals || [];
+      config.externals.push({
+        puppeteer: 'commonjs puppeteer',
+      });
+    }
+    return config;
+  },
+
   // Turbopack 编译优化：优化大型包的导入（减少首次编译时间 30-50%）
   experimental: {
     // V4.2.28: 将 ws 包排除在 webpack 打包外，解决 bufferUtil.mask 兼容性问题

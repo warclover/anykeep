@@ -34,14 +34,14 @@ const feedbackFormSchema = z.object({
   title: z.string().min(1, "请输入标题").max(100, "标题不超过100字"),
   description: z
     .string()
-    .min(10, "描述至少10个字符")
+    .min(10, "描述至少10个��符")
     .max(2000, "描述不超过2000字"),
   reproduction_steps: z.string().max(1000).optional(),
-  is_anonymous: z.boolean().default(false),
+  is_anonymous: z.boolean().optional().default(false),
   attachments: z.array(z.string()).optional(),
 });
 
-type FeedbackFormValues = z.infer<typeof feedbackFormSchema>;
+type FeedbackFormValues = z.input<typeof feedbackFormSchema>;
 
 interface UserFeedbackFormProps {
   defaultOptions: OpenFeedbackOptions;

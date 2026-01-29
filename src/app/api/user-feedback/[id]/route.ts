@@ -44,7 +44,7 @@ export async function GET(
 
     return Response.json({ success: true, data });
   } catch (error) {
-    logger.error("[UserFeedback] 获取详情失败", { error, id });
+    logger.error({ error, id }, "[UserFeedback] 获取详情失败");
     return Response.json(
       { success: false, error: "获取详情失败" },
       { status: 500 },
@@ -148,10 +148,10 @@ export async function PATCH(
 
     if (error) throw error;
 
-    logger.info("[UserFeedback] 反馈更新成功", { id, userId: user.id });
+    logger.info({ id, userId: user.id }, "[UserFeedback] 反馈更新成功");
     return Response.json({ success: true, data });
   } catch (error) {
-    logger.error("[UserFeedback] 更新失败", { error, id });
+    logger.error({ error, id }, "[UserFeedback] 更新失败");
     return Response.json(
       { success: false, error: "更新失败" },
       { status: 500 },
@@ -192,10 +192,10 @@ export async function DELETE(
     // 为了更精确的错误提示，可以先查再删，或者直接捕获。
     // 这里简单返回成功，前端会刷新列表。
 
-    logger.info("[UserFeedback] 反馈删除成功", { id, userId: user.id });
+    logger.info({ id, userId: user.id }, "[UserFeedback] 反馈删除成功");
     return Response.json({ success: true });
   } catch (error) {
-    logger.error("[UserFeedback] 删除失败", { error, id });
+    logger.error({ error, id }, "[UserFeedback] 删除失败");
     return Response.json(
       { success: false, error: "删除失败" },
       { status: 500 },

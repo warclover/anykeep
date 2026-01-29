@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Database } from "@/types/supabase";
 import type { LedgerItem } from "@/lib/ledger/types/ledger.types";
 
-type LedgerReport = Database["public"]["Tables"]["ledger_reports"]["Row"];
+type LedgerReport = Database["public"]["Tables"]["ledgers"]["Row"];
 
 interface LedgerDetailProps {
   reportId: string;
@@ -44,7 +44,7 @@ export function LedgerDetail({ reportId }: LedgerDetailProps) {
 
       try {
         const { data, error } = await supabase
-          .from("ledger_reports")
+          .from("ledgers")
           .select("*")
           .eq("id", parseInt(reportId))
           .single();

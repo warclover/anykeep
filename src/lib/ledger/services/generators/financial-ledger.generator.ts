@@ -91,7 +91,7 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
         const entriesToInsert = items.map((item) => ({
           ledger_id: report.id,
           entry_type: "financial",
-          bookmark_id: item.id,
+          bookmark_id: item.id ? parseInt(item.id, 10) : null,
           title: item.title,
           platform: item.platform,
           url: item.url,
@@ -102,7 +102,13 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
 
         const { error: entriesError } = await supabase
           .from("ledger_entries")
-          .insert(entriesToInsert);
+          .insert(
+            entriesToInsert as Parameters<
+              typeof supabase.from<"ledger_entries">
+            >["0"] extends infer T
+              ? T[]
+              : never,
+          );
 
         if (entriesError) {
           throw entriesError;
@@ -123,14 +129,16 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
     return {
       id: report.id,
       userId: report.user_id,
-      reportType: report.report_type,
+      reportType: report.report_type as "weekly" | "monthly",
       type: "financial",
-      periodStart: report.period_start,
-      periodEnd: report.period_end,
-      itemCount: report.item_count,
+      periodStart: report.period_start ?? "",
+      periodEnd: report.period_end ?? "",
+      itemCount: report.item_count ?? 0,
       content: items,
-      createdAt: report.created_at,
-      emailStatus: report.email_status,
+      createdAt: report.created_at ?? "",
+      emailStatus:
+        (report.email_status as "none" | "pending" | "sent" | "failed") ??
+        undefined,
     };
   }
 

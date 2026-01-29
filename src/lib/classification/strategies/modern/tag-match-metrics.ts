@@ -9,10 +9,10 @@
  * @since 2026-01-23
  */
 
-import { createLogger } from "@/lib/logger";
+import { logger as baseLogger } from "@/lib/logger";
 import type { FolderId } from "@/lib/shared/types";
 
-const logger = createLogger("tag-match-metrics");
+const logger = baseLogger.child({ module: "tag-match-metrics" });
 
 /**
  * 匹配类型

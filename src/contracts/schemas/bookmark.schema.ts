@@ -74,8 +74,8 @@ export const BookmarkQuerySchema = z.object({
   isInTrash: z
     .string()
     .optional()
-    .transform((v) => v === "true")
-    .default(false),
+    .default("false")
+    .transform((v) => v === "true"),
   search: z.string().max(200).optional(),
   tags: z
     .string()

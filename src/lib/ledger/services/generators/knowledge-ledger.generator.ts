@@ -114,9 +114,10 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
       // Use RPC for vector search if available, or just simple random for MVP
       // Assuming 'find_related_bookmarks' RPC exists from migration `20251209200002_add_find_related_bookmarks_rpc.sql`
       const { data: related } = await supabase.rpc("find_related_bookmarks", {
-        p_bookmark_id: heroBookmark.id,
-        p_match_threshold: 0.7,
-        p_match_count: 1,
+        p_bookmark_id: parseInt(heroBookmark.id, 10),
+        p_user_id: userId,
+        p_min_similarity: 0.7,
+        p_limit: 1,
       });
 
       if (related && related.length > 0) {
@@ -193,17 +194,23 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
     const entriesToInsert = items.map((item) => ({
       ledger_id: report.id,
       entry_type: item.type === "rediscover" ? "rediscover" : "bookmark",
-      bookmark_id: item.id,
+      bookmark_id: item.id ? parseInt(item.id, 10) : null,
       title: item.title,
       platform: item.platform,
       url: item.url,
       occurred_at: new Date(item.time).toISOString(), // approximation
-      metadata: (item.metadata || {}) as Record<string, unknown>,
+      metadata: item.metadata || {},
     }));
 
     const { error: entriesError } = await supabase
       .from("ledger_entries")
-      .insert(entriesToInsert);
+      .insert(
+        entriesToInsert as Parameters<
+          typeof supabase.from<"ledger_entries">
+        >["0"] extends infer T
+          ? T[]
+          : never,
+      );
 
     if (entriesError) {
       logger.error(
@@ -215,16 +222,18 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
     return {
       id: report.id,
       userId: report.user_id,
-      reportType: report.report_type,
+      reportType: report.report_type as "weekly" | "monthly",
       type: "knowledge",
-      periodStart: report.period_start,
-      periodEnd: report.period_end,
-      itemCount: report.item_count,
+      periodStart: report.period_start ?? "",
+      periodEnd: report.period_end ?? "",
+      itemCount: report.item_count ?? 0,
       content: items,
-      aiSummary: report.ai_summary,
+      aiSummary: report.ai_summary ?? undefined,
       metadata: report.metadata as Record<string, unknown>,
-      createdAt: report.created_at,
-      emailStatus: report.email_status,
+      createdAt: report.created_at ?? "",
+      emailStatus:
+        (report.email_status as "none" | "pending" | "sent" | "failed") ??
+        undefined,
     };
   }
 

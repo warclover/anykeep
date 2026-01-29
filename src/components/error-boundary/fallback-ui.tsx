@@ -66,6 +66,7 @@ export function GlobalFallbackUI({
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : undefined;
 
   const handleReportError = () => {
+    if (!error) return;
     openFeedback({
       type: "bug",
       title: `[自动报告] ${featureLabel || "应用"}发生错误: ${error.name}`,
@@ -195,6 +196,7 @@ export function FeatureFallbackUI({
   const featureLabel = feature ? FEATURE_LABELS[feature] || feature : "此功能";
 
   const handleReportError = () => {
+    if (!error) return;
     openFeedback({
       type: "bug",
       title: `[自动报告] ${featureLabel}加载失败`,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase.generated";
 
 const createFeedbackSchema = z.object({
   type: z.enum(["bug", "complaint", "suggestion"]),
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       title: validatedData.title,
       description: validatedData.description,
       is_anonymous: validatedData.is_anonymous ?? false,
-      context: validatedData.context || {},
+      context: (validatedData.context || {}) as Json,
       attachments: validatedData.attachments || [],
       priority,
     };
@@ -65,11 +66,10 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    logger.info("[UserFeedback] 反馈创建成功", {
-      feedbackId: feedback.id,
-      type: validatedData.type,
-      userId: user.id,
-    });
+    logger.info(
+      { feedbackId: feedback.id, type: validatedData.type, userId: user.id },
+      "[UserFeedback] 反馈创建成功",
+    );
 
     return Response.json({ success: true, data: feedback });
   } catch (error) {
@@ -79,10 +79,13 @@ export async function POST(request: Request) {
         ? { code: error.code, message: errorMessage }
         : { message: errorMessage };
 
-    logger.error("[UserFeedback] 创建失败", {
-      error: errorDetails,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    logger.error(
+      {
+        error: errorDetails,
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      "[UserFeedback] 创建失败",
+    );
 
     return Response.json(
       {
@@ -137,7 +140,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    logger.error("[UserFeedback] 查询失败", { error });
+    logger.error({ error }, "[UserFeedback] 查询失败");
     return Response.json(
       {
         success: false,

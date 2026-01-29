@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Control, FieldValues } from "react-hook-form";
+import type { Control } from "react-hook-form";
 import type { FeedbackType } from "@/types/user-feedback";
 
 const CATEGORY_OPTIONS: Record<
@@ -46,7 +46,8 @@ const CATEGORY_OPTIONS: Record<
 
 interface FeedbackCategorySelectorProps {
   type: FeedbackType;
-  control: Control<FieldValues>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: Control<any>;
 }
 
 export function FeedbackCategorySelector({

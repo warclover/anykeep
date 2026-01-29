@@ -486,7 +486,11 @@ export type Database = {
           is_pinned: boolean;
           message_id: string | null;
           related_bookmark_ids: number[] | null;
+          search_vector: unknown;
           skill_id: string | null;
+          source_conversation_id: string | null;
+          source_message_id: string | null;
+          source_skill_id: string | null;
           source_type: string;
           tags: string[] | null;
           title: string;
@@ -502,7 +506,11 @@ export type Database = {
           is_pinned?: boolean;
           message_id?: string | null;
           related_bookmark_ids?: number[] | null;
+          search_vector?: unknown;
           skill_id?: string | null;
+          source_conversation_id?: string | null;
+          source_message_id?: string | null;
+          source_skill_id?: string | null;
           source_type: string;
           tags?: string[] | null;
           title: string;
@@ -518,7 +526,11 @@ export type Database = {
           is_pinned?: boolean;
           message_id?: string | null;
           related_bookmark_ids?: number[] | null;
+          search_vector?: unknown;
           skill_id?: string | null;
+          source_conversation_id?: string | null;
+          source_message_id?: string | null;
+          source_skill_id?: string | null;
           source_type?: string;
           tags?: string[] | null;
           title?: string;
@@ -530,7 +542,10 @@ export type Database = {
       ai_operation_snapshots: {
         Row: {
           affected_bookmark_ids: number[] | null;
+          after_state: Json;
           before_state: Json;
+          bookmark_ids: number[];
+          conversation_id: string | null;
           created_at: string;
           expires_at: string;
           id: string;
@@ -539,11 +554,16 @@ export type Database = {
           operation_type: string;
           operations: Json;
           reverted_at: string | null;
+          skill_id: string | null;
+          summary: string | null;
           user_id: string;
         };
         Insert: {
           affected_bookmark_ids?: number[] | null;
+          after_state?: Json;
           before_state?: Json;
+          bookmark_ids?: number[];
+          conversation_id?: string | null;
           created_at?: string;
           expires_at: string;
           id?: string;
@@ -552,11 +572,16 @@ export type Database = {
           operation_type: string;
           operations?: Json;
           reverted_at?: string | null;
+          skill_id?: string | null;
+          summary?: string | null;
           user_id: string;
         };
         Update: {
           affected_bookmark_ids?: number[] | null;
+          after_state?: Json;
           before_state?: Json;
+          bookmark_ids?: number[];
+          conversation_id?: string | null;
           created_at?: string;
           expires_at?: string;
           id?: string;
@@ -565,6 +590,8 @@ export type Database = {
           operation_type?: string;
           operations?: Json;
           reverted_at?: string | null;
+          skill_id?: string | null;
+          summary?: string | null;
           user_id?: string;
         };
         Relationships: [];
@@ -875,6 +902,63 @@ export type Database = {
           old_weight?: number;
           reason?: string;
           trigger_count?: number;
+        };
+        Relationships: [];
+      };
+      audit_logs: {
+        Row: {
+          changed_fields: string[] | null;
+          client_ip: unknown;
+          context: Json | null;
+          created_at: string;
+          event_timestamp: string;
+          event_type: string;
+          id: number;
+          new_data: Json | null;
+          old_data: Json | null;
+          record_id: string | null;
+          request_id: string | null;
+          schema_name: string;
+          table_name: string;
+          user_agent: string | null;
+          user_email: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          changed_fields?: string[] | null;
+          client_ip?: unknown;
+          context?: Json | null;
+          created_at?: string;
+          event_timestamp?: string;
+          event_type: string;
+          id?: number;
+          new_data?: Json | null;
+          old_data?: Json | null;
+          record_id?: string | null;
+          request_id?: string | null;
+          schema_name?: string;
+          table_name: string;
+          user_agent?: string | null;
+          user_email?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          changed_fields?: string[] | null;
+          client_ip?: unknown;
+          context?: Json | null;
+          created_at?: string;
+          event_timestamp?: string;
+          event_type?: string;
+          id?: number;
+          new_data?: Json | null;
+          old_data?: Json | null;
+          record_id?: string | null;
+          request_id?: string | null;
+          schema_name?: string;
+          table_name?: string;
+          user_agent?: string | null;
+          user_email?: string | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -2538,77 +2622,6 @@ export type Database = {
           viewed_at?: string | null;
         };
         Relationships: [];
-      };
-      flashcards: {
-        Row: {
-          answer: string;
-          bookmark_id: number;
-          created_at: string | null;
-          difficulty: string | null;
-          ease_factor: number | null;
-          id: number;
-          interval_days: number | null;
-          key_points: string[] | null;
-          last_reviewed_at: string | null;
-          next_review_at: string | null;
-          question: string;
-          question_depth: string | null;
-          repetitions: number | null;
-          source_paragraph: string | null;
-          status: string | null;
-          thinking_hint: string | null;
-          updated_at: string | null;
-          user_id: string;
-        };
-        Insert: {
-          answer: string;
-          bookmark_id: number;
-          created_at?: string | null;
-          difficulty?: string | null;
-          ease_factor?: number | null;
-          id?: number;
-          interval_days?: number | null;
-          key_points?: string[] | null;
-          last_reviewed_at?: string | null;
-          next_review_at?: string | null;
-          question: string;
-          question_depth?: string | null;
-          repetitions?: number | null;
-          source_paragraph?: string | null;
-          status?: string | null;
-          thinking_hint?: string | null;
-          updated_at?: string | null;
-          user_id: string;
-        };
-        Update: {
-          answer?: string;
-          bookmark_id?: number;
-          created_at?: string | null;
-          difficulty?: string | null;
-          ease_factor?: number | null;
-          id?: number;
-          interval_days?: number | null;
-          key_points?: string[] | null;
-          last_reviewed_at?: string | null;
-          next_review_at?: string | null;
-          question?: string;
-          question_depth?: string | null;
-          repetitions?: number | null;
-          source_paragraph?: string | null;
-          status?: string | null;
-          thinking_hint?: string | null;
-          updated_at?: string | null;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "flashcards_bookmark_id_fkey";
-            columns: ["bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-        ];
       };
       folder_exclusions: {
         Row: {
@@ -4337,6 +4350,108 @@ export type Database = {
           },
         ];
       };
+      ledger_entries: {
+        Row: {
+          bookmark_id: number | null;
+          created_at: string | null;
+          entry_type: string | null;
+          id: string;
+          ledger_id: number | null;
+          metadata: Json | null;
+          occurred_at: string | null;
+          platform: string | null;
+          title: string | null;
+          url: string | null;
+        };
+        Insert: {
+          bookmark_id?: number | null;
+          created_at?: string | null;
+          entry_type?: string | null;
+          id?: string;
+          ledger_id?: number | null;
+          metadata?: Json | null;
+          occurred_at?: string | null;
+          platform?: string | null;
+          title?: string | null;
+          url?: string | null;
+        };
+        Update: {
+          bookmark_id?: number | null;
+          created_at?: string | null;
+          entry_type?: string | null;
+          id?: string;
+          ledger_id?: number | null;
+          metadata?: Json | null;
+          occurred_at?: string | null;
+          platform?: string | null;
+          title?: string | null;
+          url?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ledger_entries_ledger_id_fkey";
+            columns: ["ledger_id"];
+            isOneToOne: false;
+            referencedRelation: "ledgers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ledgers: {
+        Row: {
+          ai_summary: string | null;
+          content: Json | null;
+          created_at: string | null;
+          email_sent_at: string | null;
+          email_status: string | null;
+          id: number;
+          item_count: number | null;
+          metadata: Json | null;
+          period_end: string;
+          period_start: string;
+          report_type: string;
+          type: string | null;
+          user_id: string;
+        };
+        Insert: {
+          ai_summary?: string | null;
+          content?: Json | null;
+          created_at?: string | null;
+          email_sent_at?: string | null;
+          email_status?: string | null;
+          id?: number;
+          item_count?: number | null;
+          metadata?: Json | null;
+          period_end: string;
+          period_start: string;
+          report_type: string;
+          type?: string | null;
+          user_id: string;
+        };
+        Update: {
+          ai_summary?: string | null;
+          content?: Json | null;
+          created_at?: string | null;
+          email_sent_at?: string | null;
+          email_status?: string | null;
+          id?: number;
+          item_count?: number | null;
+          metadata?: Json | null;
+          period_end?: string;
+          period_start?: string;
+          report_type?: string;
+          type?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       librarian_analysis_history: {
         Row: {
           analysis_data: Json;
@@ -4437,47 +4552,6 @@ export type Database = {
             columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      ledger_reports: {
-        Row: {
-          content: Json | null;
-          created_at: string;
-          id: number;
-          item_count: number | null;
-          period_end: string;
-          period_start: string;
-          report_type: string;
-          user_id: string;
-        };
-        Insert: {
-          content?: Json | null;
-          created_at?: string;
-          id?: number;
-          item_count?: number | null;
-          period_end: string;
-          period_start: string;
-          report_type: string;
-          user_id: string;
-        };
-        Update: {
-          content?: Json | null;
-          created_at?: string;
-          id?: number;
-          item_count?: number | null;
-          period_end?: string;
-          period_start?: string;
-          report_type?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "ledger_reports_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -5802,62 +5876,6 @@ export type Database = {
           },
         ];
       };
-      review_sessions: {
-        Row: {
-          comprehension: string | null;
-          created_at: string | null;
-          flashcard_id: number;
-          id: number;
-          new_ease: number;
-          new_interval: number;
-          prev_ease: number;
-          prev_interval: number;
-          response: string;
-          response_time_ms: number | null;
-          session_type: string | null;
-          user_id: string;
-          user_note: string | null;
-        };
-        Insert: {
-          comprehension?: string | null;
-          created_at?: string | null;
-          flashcard_id: number;
-          id?: number;
-          new_ease: number;
-          new_interval: number;
-          prev_ease: number;
-          prev_interval: number;
-          response: string;
-          response_time_ms?: number | null;
-          session_type?: string | null;
-          user_id: string;
-          user_note?: string | null;
-        };
-        Update: {
-          comprehension?: string | null;
-          created_at?: string | null;
-          flashcard_id?: number;
-          id?: number;
-          new_ease?: number;
-          new_interval?: number;
-          prev_ease?: number;
-          prev_interval?: number;
-          response?: string;
-          response_time_ms?: number | null;
-          session_type?: string | null;
-          user_id?: string;
-          user_note?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "review_sessions_flashcard_id_fkey";
-            columns: ["flashcard_id"];
-            isOneToOne: false;
-            referencedRelation: "flashcards";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       scenario_weight_configs: {
         Row: {
           ab_test_enabled: boolean | null;
@@ -6740,6 +6758,63 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_feedbacks: {
+        Row: {
+          admin_notes: string | null;
+          attachments: string[] | null;
+          category: string | null;
+          context: Json | null;
+          created_at: string | null;
+          description: string;
+          id: string;
+          is_anonymous: boolean | null;
+          priority: string | null;
+          resolution: string | null;
+          resolved_at: string | null;
+          status: string;
+          title: string;
+          type: string;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          admin_notes?: string | null;
+          attachments?: string[] | null;
+          category?: string | null;
+          context?: Json | null;
+          created_at?: string | null;
+          description: string;
+          id?: string;
+          is_anonymous?: boolean | null;
+          priority?: string | null;
+          resolution?: string | null;
+          resolved_at?: string | null;
+          status?: string;
+          title: string;
+          type: string;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          admin_notes?: string | null;
+          attachments?: string[] | null;
+          category?: string | null;
+          context?: Json | null;
+          created_at?: string | null;
+          description?: string;
+          id?: string;
+          is_anonymous?: boolean | null;
+          priority?: string | null;
+          resolution?: string | null;
+          resolved_at?: string | null;
+          status?: string;
+          title?: string;
+          type?: string;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       user_trust_mode: {
         Row: {
           auto_decisions_count: number;
@@ -6984,7 +7059,37 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      llm_usage_daily: {
+        Row: {
+          avg_execution_time_ms: number | null;
+          call_count: number | null;
+          date: string | null;
+          model: string | null;
+          operation: string | null;
+          total_cost_cents: number | null;
+          total_input_tokens: number | null;
+          total_output_tokens: number | null;
+          total_tokens: number | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
+      llm_usage_monthly: {
+        Row: {
+          analysis_calls: number | null;
+          call_count: number | null;
+          chat_calls: number | null;
+          classification_calls: number | null;
+          month: string | null;
+          naming_calls: number | null;
+          total_cost_cents: number | null;
+          total_input_tokens: number | null;
+          total_output_tokens: number | null;
+          total_tokens: number | null;
+          user_id: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       accept_classification_suggestions: {
@@ -7222,6 +7327,10 @@ export type Database = {
       };
       cleanup_old_ai_messages: { Args: { p_days?: number }; Returns: number };
       cleanup_old_ai_preferences_audit: { Args: never; Returns: number };
+      cleanup_old_audit_logs: {
+        Args: { p_retention_days?: number };
+        Returns: number;
+      };
       cleanup_old_chat_cache: { Args: { p_days?: number }; Returns: number };
       cleanup_old_intent_history: {
         Args: { p_days?: number };
@@ -7519,6 +7628,16 @@ export type Database = {
       };
       get_ai_folder_settings: { Args: { p_user_id: string }; Returns: Json };
       get_ai_global_insight: { Args: { p_user_id: string }; Returns: Json };
+      get_audit_statistics: {
+        Args: { p_days?: number; p_user_id?: string };
+        Returns: {
+          delete_count: number;
+          insert_count: number;
+          table_name: string;
+          total_count: number;
+          update_count: number;
+        }[];
+      };
       get_blueprint_recommendations: {
         Args: { p_limit?: number; p_user_id: string };
         Returns: {
@@ -7953,6 +8072,18 @@ export type Database = {
           summary: string;
         }[];
       };
+      get_record_audit_history: {
+        Args: { p_record_id: string; p_table_name: string };
+        Returns: {
+          changed_fields: string[];
+          event_timestamp: string;
+          event_type: string;
+          id: number;
+          new_data: Json;
+          old_data: Json;
+          user_email: string;
+        }[];
+      };
       get_related_bookmarks_with_details: {
         Args: {
           p_bookmark_id: number;
@@ -8106,6 +8237,26 @@ export type Database = {
           total_messages: number;
           total_skill_executions: number;
           total_tokens_used: number;
+        }[];
+      };
+      get_user_audit_history: {
+        Args: {
+          p_end_date?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_start_date?: string;
+          p_table_name?: string;
+          p_user_id?: string;
+        };
+        Returns: {
+          changed_fields: string[];
+          event_timestamp: string;
+          event_type: string;
+          id: number;
+          new_data: Json;
+          old_data: Json;
+          record_id: string;
+          table_name: string;
         }[];
       };
       get_user_chat_stats: {

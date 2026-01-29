@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Control, FieldValues } from "react-hook-form";
+import type { Control } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { X, Loader2, ImagePlus } from "lucide-react";
 import {
@@ -16,7 +16,8 @@ import { toast } from "sonner";
 import Image from "next/image";
 
 interface FeedbackAttachmentUploaderProps {
-  control: Control<FieldValues>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: Control<any>;
   name?: string;
 }
 

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       });
 
     if (error) {
-      logger.error("[UserFeedback] 上传文件失败", { error });
+      logger.error({ error }, "[UserFeedback] 上传文件失败");
       return Response.json(
         { success: false, error: "上传失败" },
         { status: 500 },
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    logger.error("[UserFeedback] 上传处理异常", { error });
+    logger.error({ error }, "[UserFeedback] 上传处理异常");
     return Response.json(
       { success: false, error: "服务器内部错误" },
       { status: 500 },
