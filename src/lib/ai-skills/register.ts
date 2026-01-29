@@ -43,7 +43,7 @@ import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 import { inboxTriageSkill } from "./skills/inbox-triage";
 import { folderRecommendSkill } from "./skills/folder-recommend";
 import { searchOptimizeSkill } from "./skills/search-optimize";
-import { knowledgeGraphExploreSkill } from "./skills/knowledge-graph-explore";
+// [已移除] knowledgeGraphExploreSkill - 知识图谱精简重构 2026-01-29
 import { folderHealthCheckSkill } from "./skills/folder-health-check";
 import { snapshotCompareSkill } from "./skills/snapshot-compare";
 import { unifiedEngine } from "./engine/unified-engine";
@@ -307,11 +307,7 @@ async function doInitializeUnifiedEngine(): Promise<void> {
     logger.debug("SearchOptimizeSkill registered");
   }
 
-  // P1: KnowledgeGraphExploreSkill - 知识图谱探索（编排类型）
-  if (process.env.ENABLE_KNOWLEDGE_GRAPH_EXPLORE !== "false") {
-    unifiedEngine.registerOrchestrationSkill(knowledgeGraphExploreSkill);
-    logger.debug("KnowledgeGraphExploreSkill registered");
-  }
+  // [已移除] KnowledgeGraphExploreSkill - 知识图谱精简重构 2026-01-29
 
   // P1: FolderHealthCheckSkill - 文件夹健康检查（编排类型）
   if (process.env.ENABLE_FOLDER_HEALTH_CHECK !== "false") {

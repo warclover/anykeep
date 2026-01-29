@@ -157,8 +157,7 @@ export const ANALYZE_TOOLS: readonly string[] = [
   "get_wechat_article_stats",
   "get_md_stats",
   "get_mastery_stats",
-  // 知识图谱
-  "get_knowledge_graph",
+  // 知识图谱（精简后保留主题关联）
   "find_related_by_topic",
   // 授权统计
   "get_plugin_auth_stats",
@@ -191,7 +190,7 @@ export const LEARN_TOOLS: readonly string[] = [
   "submit_review_response",
   "get_mastery_stats",
   "update_review_preferences",
-  "get_knowledge_graph",
+  // [已移除] get_knowledge_graph - 知识图谱精简重构 2026-01-29
 ] as const;
 
 /**

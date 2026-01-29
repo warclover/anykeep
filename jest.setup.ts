@@ -2,6 +2,29 @@
 import "@testing-library/jest-dom";
 import { randomUUID } from "crypto";
 
+// =============================================================================
+// Suppress Logger Output in Tests
+// =============================================================================
+// Mock the logger to prevent console noise during test runs
+jest.mock("@/lib/logger", () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    trace: jest.fn(),
+    fatal: jest.fn(),
+    child: jest.fn(() => ({
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      trace: jest.fn(),
+      fatal: jest.fn(),
+    })),
+  },
+}));
+
 // Configure React act() environment for React 18
 // This is required for async state updates in hook tests
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

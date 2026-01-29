@@ -381,10 +381,8 @@ export const API_FOLDER_EVOLUTION = {
 // ============================================
 
 export const API_KNOWLEDGE_LINK = {
-  /** 知识图谱 */
-  graph: "/api/knowledge-link/graph",
-  /** 图谱统计 */
-  graphStats: "/api/knowledge-link/graph/stats",
+  // [已移除] graph - 知识图谱精简重构 2026-01-29
+  // [已移除] graphStats - 知识图谱精简重构 2026-01-29
   /** 相关内容 */
   related: (bookmarkId: number) => `/api/knowledge-link/related/${bookmarkId}`,
 } as const;

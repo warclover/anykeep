@@ -3,11 +3,13 @@
  *
  * 知识图谱相关 AI Agent Tools 导出
  *
- * @version 1.0.0
+ * 精简重构 2026-01-29: 移除 get_knowledge_graph，保留 find_related_by_topic
+ *
+ * @version 1.1.0
  * @since 2025-12-28
  */
 
-export { getKnowledgeGraphTool } from "./get-knowledge-graph.tool";
+// [已移除] getKnowledgeGraphTool - 知识图谱精简重构 2026-01-29
 export { findRelatedByTopicTool } from "./find-related-by-topic.tool";
 
 export type {
@@ -21,10 +23,9 @@ export type {
 } from "./types";
 
 // 批量注册用的 Tools 数组
-import { getKnowledgeGraphTool } from "./get-knowledge-graph.tool";
 import { findRelatedByTopicTool } from "./find-related-by-topic.tool";
 
 export const knowledgeLinkTools = [
-  getKnowledgeGraphTool,
+  // [已移除] getKnowledgeGraphTool - 知识图谱精简重构 2026-01-29
   findRelatedByTopicTool,
 ];

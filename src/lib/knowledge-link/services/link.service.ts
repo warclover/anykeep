@@ -342,8 +342,7 @@ export class LinkService implements ILinkService {
   private async deleteAllUserLinks(userId: string): Promise<void> {
     const supabase = createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("knowledge_links")
       .delete()
       .eq("user_id", userId);
@@ -478,17 +477,13 @@ export class LinkService implements ILinkService {
   ): Promise<DiscoveredLink[]> {
     const supabase = createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "find_bookmarks_by_tags",
-      {
-        p_user_id: userId,
-        p_tags: tags,
-        p_exclude_id: excludeBookmarkId,
-        p_min_shared: this.config.tagMinShared,
-        p_limit: this.config.maxLinksPerType,
-      },
-    );
+    const { data, error } = await supabase.rpc("find_bookmarks_by_tags", {
+      p_user_id: userId,
+      p_tags: tags,
+      p_exclude_id: excludeBookmarkId,
+      p_min_shared: this.config.tagMinShared,
+      p_limit: this.config.maxLinksPerType,
+    });
 
     if (error) {
       logger.error({ error }, "[LinkService] Failed to find by tags");

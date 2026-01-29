@@ -167,7 +167,7 @@ export const STATIC_CAPSULES: StaticCapsule[] = [
       "update_review_preferences",
       // 知识链接
       "find_related_by_topic",
-      "get_knowledge_graph",
+      // [已移除] get_knowledge_graph - 知识图谱精简重构 2026-01-29
     ],
     intentTypes: ["learn"],
     priority: 1,
@@ -179,7 +179,7 @@ export const STATIC_CAPSULES: StaticCapsule[] = [
     toolIds: [
       "get_stats",
       "get_mastery_stats",
-      "get_knowledge_graph",
+      // [已移除] get_knowledge_graph - 知识图谱精简重构 2026-01-29
       // 插件授权统计
       "get_plugin_auth_stats",
     ],

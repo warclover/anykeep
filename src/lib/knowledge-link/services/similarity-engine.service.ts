@@ -81,8 +81,7 @@ export class SimilarityEngineService implements ISimilarityEngineService {
 
     try {
       // 调用数据库函数查找相似书签
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
+      const { data, error } = await this.supabase.rpc(
         "find_similar_bookmarks_for_linking",
         {
           p_user_id: userId,
