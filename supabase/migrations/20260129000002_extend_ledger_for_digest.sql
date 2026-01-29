@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
     platform TEXT,
     url TEXT,
     occurred_at TIMESTAMPTZ,
-    bookmark_id UUID REFERENCES bookmarks(id) ON DELETE SET NULL,
+    bookmark_id BIGINT REFERENCES bookmarks(id) ON DELETE SET NULL,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
