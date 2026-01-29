@@ -1,7 +1,4 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import createNextIntlPlugin from 'next-intl/plugin';
-
-const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -73,7 +70,7 @@ const nextConfig = {
     ],
   },
 
-  // 模块化导入优化：避免 barrel exports 导致的全量加载
+  // 模块化导入优化：避免 barrel exports 导致的��量加载
   modularizeImports: {
     // 优化 lucide-react 图标导入
     'lucide-react': {
@@ -116,7 +113,7 @@ const nextConfig = {
       { source: '/api/dev/:path*', destination: '/api/internal/dev/:path*' },
       // Debug APIs: /api/debug/* → /api/internal/debug/*
       { source: '/api/debug/:path*', destination: '/api/internal/debug/:path*' },
-      // Maintenance APIs: /api/maintenance/* → /api/internal/maintenance/*
+      // Maintenance APIs: /api/maintenance/* → /api/internal/maintenance/:path*' },
       { source: '/api/maintenance/:path*', destination: '/api/internal/maintenance/:path*' },
 
       // =====================================================
@@ -141,7 +138,7 @@ const nextConfig = {
   async headers() {
     // 构建预连接头数组
     const preconnectHeaders = [];
-    
+
     // 预连接 Supabase（减少 DNS + TLS 握手时间）
     // 仅在环境变量存在时添加
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -150,19 +147,19 @@ const nextConfig = {
         value: `<${process.env.NEXT_PUBLIC_SUPABASE_URL}>; rel=preconnect`,
       });
     }
-    
+
     // 预连接 Google Fonts（favicon 服务）
     preconnectHeaders.push({
       key: 'Link',
       value: '<https://www.google.com>; rel=preconnect',
     });
-    
+
     // DNS 预解析
     preconnectHeaders.push({
       key: 'Link',
       value: '<https://fonts.googleapis.com>; rel=dns-prefetch',
     });
-    
+
     return [
       {
         // 所有页面添加预连接头
@@ -250,11 +247,10 @@ const sentryWebpackPluginOptions = {
 
 // Export with Sentry wrapper (仅在生产环境且设置了 SENTRY_DSN 时启用)
 // 开发环境禁用 Sentry 可减少 2-5 秒启动时间
-const nextIntlConfig = withNextIntl(nextConfig);
 
 const exportedConfig =
   process.env.NODE_ENV === 'production' && process.env.SENTRY_DSN
-    ? withSentryConfig(nextIntlConfig, sentryWebpackPluginOptions)
-    : nextIntlConfig;
+    ? withSentryConfig(nextConfig, sentryWebpackPluginOptions)
+    : nextConfig;
 
 export default exportedConfig;
