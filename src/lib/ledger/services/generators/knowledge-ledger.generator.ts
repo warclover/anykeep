@@ -6,6 +6,11 @@ import type {
   LedgerItem,
   LedgerType,
 } from "../../types/ledger.types";
+import type { Database, Json } from "@/types/supabase.generated";
+
+/** Supabase ledger_entries 表的 Insert 类型 */
+type LedgerEntryInsert =
+  Database["public"]["Tables"]["ledger_entries"]["Insert"];
 
 interface BookmarkItem {
   id: string;
@@ -191,7 +196,7 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
     if (saveError) throw saveError;
 
     // Insert Entries
-    const entriesToInsert = items.map((item) => ({
+    const entriesToInsert: LedgerEntryInsert[] = items.map((item) => ({
       ledger_id: report.id,
       entry_type: item.type === "rediscover" ? "rediscover" : "bookmark",
       bookmark_id: item.id ? parseInt(item.id, 10) : null,
@@ -199,18 +204,12 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
       platform: item.platform,
       url: item.url,
       occurred_at: new Date(item.time).toISOString(), // approximation
-      metadata: item.metadata || {},
+      metadata: (item.metadata || {}) as Json,
     }));
 
     const { error: entriesError } = await supabase
       .from("ledger_entries")
-      .insert(
-        entriesToInsert as Parameters<
-          typeof supabase.from<"ledger_entries">
-        >["0"] extends infer T
-          ? T[]
-          : never,
-      );
+      .insert(entriesToInsert);
 
     if (entriesError) {
       logger.error(
@@ -253,7 +252,7 @@ export class KnowledgeLedgerGenerator implements LedgerGenerator {
       geek: "嘿，代码猎人！",
       designer: "你好，视觉捕手！",
       life_stylist: "Hey，生活家！",
-      knowledge_curator: "���好，知识探索者！",
+      knowledge_curator: "你好，知识探索者！",
     };
 
     return `${greetings[persona] || "你好！"} 本周你收藏了 ${count} 篇内容，重点关注了 ${titles} 等话题。继续保持好奇心！`;

@@ -6,6 +6,11 @@ import type {
   LedgerItem,
   LedgerType,
 } from "../../types/ledger.types";
+import type { Database, Json } from "@/types/supabase.generated";
+
+/** Supabase ledger_entries 表的 Insert 类型 */
+type LedgerEntryInsert =
+  Database["public"]["Tables"]["ledger_entries"]["Insert"];
 
 export class FinancialLedgerGenerator implements LedgerGenerator {
   getType(): LedgerType {
@@ -54,11 +59,11 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
 
     // 3. Format items (Optimized: Keep original timestamp for data integrity)
     const items: LedgerItem[] = bookmarks.map((b) => ({
-      id: b.id,
+      id: String(b.id),
       // Store formatted time for display only, or rely on client formatting
-      time: this.formatTime(b.created_at),
+      time: this.formatTime(b.created_at ?? new Date().toISOString()),
       // Keep original timestamp for accurate recording
-      originalTime: b.created_at,
+      originalTime: b.created_at ?? undefined,
       platform: b.platform || "Unknown",
       title: b.title || "Untitled",
       url: b.url || "",
@@ -88,7 +93,7 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
     // 5. Insert entries with rollback mechanism
     if (items.length > 0 && report) {
       try {
-        const entriesToInsert = items.map((item) => ({
+        const entriesToInsert: LedgerEntryInsert[] = items.map((item) => ({
           ledger_id: report.id,
           entry_type: "financial",
           bookmark_id: item.id ? parseInt(item.id, 10) : null,
@@ -97,18 +102,12 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
           url: item.url,
           // Use original ISO string directly, avoiding round-trip conversion errors
           occurred_at: item.originalTime || new Date().toISOString(),
-          metadata: item.metadata || {},
+          metadata: (item.metadata || {}) as Json,
         }));
 
         const { error: entriesError } = await supabase
           .from("ledger_entries")
-          .insert(
-            entriesToInsert as Parameters<
-              typeof supabase.from<"ledger_entries">
-            >["0"] extends infer T
-              ? T[]
-              : never,
-          );
+          .insert(entriesToInsert);
 
         if (entriesError) {
           throw entriesError;

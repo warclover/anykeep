@@ -16,6 +16,12 @@ import {
 import * as React from "react";
 import type { LedgerResult } from "../../ledger/types/ledger.types";
 
+/** 周报邮件文案常量 */
+const WEEKLY_DIGEST_COPY = {
+  /** 默认预览文案（无 AI 摘要时） */
+  DEFAULT_PREVIEW: "本周知识回顾",
+} as const;
+
 interface WeeklyDigestEmailProps {
   digest: NonNullable<LedgerResult>;
   username?: string;
@@ -34,7 +40,10 @@ export const WeeklyDigestEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>AnyKeep 周报：{aiSummary?.slice(0, 50)}...</Preview>
+      <Preview>
+        AnyKeep 周报：
+        {aiSummary?.slice(0, 50) ?? WEEKLY_DIGEST_COPY.DEFAULT_PREVIEW}...
+      </Preview>
       <Tailwind>
         <Body className="bg-white my-auto mx-auto font-sans">
           <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px]">
