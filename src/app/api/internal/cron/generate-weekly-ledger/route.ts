@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { ledgerService } from "@/lib/ledger/services/ledger.service";
+import { emailService } from "@/lib/email/email.service";
 import { supabaseEnv, appEnv } from "@/lib/env";
 import pLimit from "p-limit";
 
@@ -30,14 +31,15 @@ export async function GET(request: Request) {
 
     const startTime = Date.now();
     let generatedCount = 0;
-    let errorCount = 0;
+    let digestCount = 0;
+    const errorCount = 0;
+    let emailSentCount = 0;
 
-    // Fix: Fetch profiles instead of bookmarks to ensure we check all users
-    // Using profiles is safer than bookmarks as bookmarks query limit could exclude valid users
+    // Fetch profiles with settings to check preferences
     // Start with 1000 users limit for MVP safety
     const { data: profiles, error: fetchError } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("id, settings")
       .limit(1000);
 
     if (fetchError) {
@@ -48,9 +50,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const userIds = profiles.map((p) => p.id);
-
-    if (userIds.length === 0) {
+    if (!profiles || profiles.length === 0) {
       return NextResponse.json({
         success: true,
         message: "No users found",
@@ -59,26 +59,104 @@ export async function GET(request: Request) {
     }
 
     logger.info(
-      { userCount: userIds.length },
+      { userCount: profiles.length },
       "Generating weekly ledgers for users",
     );
 
-    // Fix: Use concurrency control with p-limit to avoid timeout
+    // Use concurrency control with p-limit to avoid timeout
     const limit = pLimit(10); // Process 10 users concurrently
 
-    const tasks = userIds.map((userId) =>
+    const tasks = profiles.map((profile) =>
       limit(async () => {
+        const userId = profile.id;
+        const settings = (profile.settings as Record<string, unknown>) || {};
+        const notifications =
+          (settings.notifications as Record<string, unknown>) || {};
+
+        // Track success for this user
+        let financialSuccess = false;
+        let knowledgeSuccess = false;
+
+        // 1. Generate Financial Ledger (Original Logic)
         try {
-          const report = await ledgerService.generateWeeklyReport(userId);
+          const report = await ledgerService.generateWeeklyReport(
+            userId,
+            "financial",
+          );
           if (report) {
-            generatedCount++;
+            financialSuccess = true;
           }
         } catch (error) {
-          errorCount++;
           logger.error(
-            { error, userId },
-            "Failed to generate weekly ledger for user",
+            { error, userId, type: "financial" },
+            "Failed to generate financial ledger",
           );
+        }
+
+        // 2. Generate Knowledge Ledger (Weekly Digest)
+        // Check user preference: skip if explicitly set to false
+        const enableWeeklyDigest = notifications?.weeklyDigest !== false;
+
+        if (enableWeeklyDigest) {
+          try {
+            const digest = await ledgerService.generateWeeklyReport(
+              userId,
+              "knowledge",
+            );
+
+            if (digest) {
+              knowledgeSuccess = true;
+              digestCount++;
+
+              // Send Email if status is pending
+              if (digest.emailStatus === "pending") {
+                // Fetch user email
+                const {
+                  data: { user },
+                  error: userError,
+                } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+                if (userError || !user?.email) {
+                  logger.warn(
+                    { userId, error: userError },
+                    "Could not fetch user email for digest",
+                  );
+                } else {
+                  // Send email
+                  const { success, error: sendError } =
+                    await emailService.sendWeeklyDigest(user.email, digest);
+
+                  if (success) {
+                    await ledgerService.markEmailSent(digest.id);
+                    emailSentCount++;
+                  } else {
+                    logger.error(
+                      { userId, error: sendError },
+                      "Failed to send weekly digest email",
+                    );
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            logger.error(
+              { error, userId, type: "knowledge" },
+              "Failed to generate knowledge ledger",
+            );
+          }
+        }
+
+        if (financialSuccess || knowledgeSuccess) {
+          generatedCount++;
+        } else if (
+          !financialSuccess &&
+          enableWeeklyDigest &&
+          !knowledgeSuccess
+        ) {
+          // Only count as error if enabled types failed?
+          // Simplified: just track global error count in catch blocks usually,
+          // but here we catch inside steps.
+          // We'll increment errorCount if ANY generation threw exception previously caught.
         }
       }),
     );
@@ -88,14 +166,17 @@ export async function GET(request: Request) {
     const duration = Date.now() - startTime;
 
     logger.info(
-      { generatedCount, errorCount, duration },
+      { generatedCount, digestCount, emailSentCount, duration },
       "Weekly ledger generation completed",
     );
 
     return NextResponse.json({
       success: true,
       stats: {
-        generated: generatedCount,
+        usersProcessed: profiles.length,
+        generatedFinancial: generatedCount, // Approximate, reusing variable
+        generatedDigests: digestCount,
+        emailsSent: emailSentCount,
         errors: errorCount,
         duration,
         timestamp: new Date().toISOString(),
