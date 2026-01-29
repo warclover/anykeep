@@ -44,13 +44,22 @@ export async function POST(request: Request) {
     // 自动设置优先级
     const priority = validatedData.type === "bug" ? "high" : "normal";
 
+    // 准备插入数据，确保 attachments 是数组格式
+    const insertData = {
+      user_id: user.id,
+      type: validatedData.type,
+      category: validatedData.category || null,
+      title: validatedData.title,
+      description: validatedData.description,
+      is_anonymous: validatedData.is_anonymous ?? false,
+      context: validatedData.context || {},
+      attachments: validatedData.attachments || [],
+      priority,
+    };
+
     const { data: feedback, error } = await supabase
       .from("user_feedbacks")
-      .insert({
-        user_id: user.id,
-        ...validatedData,
-        priority,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -64,11 +73,23 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true, data: feedback });
   } catch (error) {
-    logger.error("[UserFeedback] 创建失败", { error });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorDetails =
+      error && typeof error === "object" && "code" in error
+        ? { code: error.code, message: errorMessage }
+        : { message: errorMessage };
+
+    logger.error("[UserFeedback] 创建失败", {
+      error: errorDetails,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     return Response.json(
       {
         success: false,
         error: "提交失败，请稍后重试",
+        details:
+          process.env.NODE_ENV === "development" ? errorDetails : undefined,
       },
       { status: 500 },
     );

@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    logger.error("[AdminFeedback] 查询失败", { error });
+    logger.error({ error }, "[AdminFeedback] 查询失败");
     return Response.json(
       { success: false, error: "查询失败" },
       { status: 500 },

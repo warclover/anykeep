@@ -94,8 +94,12 @@ export function UserFeedbackForm({
           : {}),
       };
 
+      // 从提交数据中移除 reproduction_steps，因为它不在 API schema 中
+
+      const { reproduction_steps: _, ...submitData } = values;
+
       await FeedbackService.create({
-        ...values,
+        ...submitData,
         context,
       });
 

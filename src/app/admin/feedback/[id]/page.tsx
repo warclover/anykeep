@@ -69,7 +69,7 @@ export default function AdminFeedbackDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [params.id, router]);
+  }, [params.id]);
 
   useEffect(() => {
     loadFeedback();
@@ -116,10 +116,9 @@ export default function AdminFeedbackDetailPage({
   const typeInfo =
     FEEDBACK_TYPES.find((t) => t.value === feedback.type) || FEEDBACK_TYPES[2];
   const context = feedback.context as Record<string, unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const comments = (
     Array.isArray(context?.comments) ? context.comments : []
-  ) as Record<string, any>[];
+  ) as { content: string; created_at: string }[];
 
   return (
     <div className="container max-w-5xl py-8 space-y-6">
@@ -187,25 +186,25 @@ export default function AdminFeedbackDetailPage({
                   设备环境
                 </h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  {context.app_version && (
+                  {(context.app_version as string) && (
                     <>
                       <span className="text-muted-foreground">App版本:</span>
                       <span>{context.app_version as string}</span>
                     </>
                   )}
-                  {context.page_path && (
+                  {(context.page_path as string) && (
                     <>
-                      <span className="text-muted-foreground">���面路径:</span>
+                      <span className="text-muted-foreground">页面路径:</span>
                       <span>{context.page_path as string}</span>
                     </>
                   )}
-                  {context.screen_size && (
+                  {(context.screen_size as string) && (
                     <>
                       <span className="text-muted-foreground">屏幕尺寸:</span>
                       <span>{context.screen_size as string}</span>
                     </>
                   )}
-                  {context.user_agent && (
+                  {(context.user_agent as string) && (
                     <div className="col-span-2 text-xs text-muted-foreground break-all bg-muted p-2 rounded">
                       {context.user_agent as string}
                     </div>
@@ -325,7 +324,7 @@ export default function AdminFeedbackDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <User className="h-4 w-4" />
-                用户信息
+                用��信息
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">

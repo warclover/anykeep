@@ -58,11 +58,11 @@ export async function PATCH(
 
     if (error) throw error;
 
-    logger.info("[AdminFeedback] 更新成功", { id, adminId: user.id, updates });
+    logger.info({ id, adminId: user.id, updates }, "[AdminFeedback] 更新成功");
 
     return Response.json({ success: true, data });
   } catch (error) {
-    logger.error("[AdminFeedback] 更新失败", { error, id });
+    logger.error({ error, id }, "[AdminFeedback] 更新失败");
     return Response.json(
       { success: false, error: "更新失败" },
       { status: 500 },
@@ -104,7 +104,7 @@ export async function GET(
 
     return Response.json({ success: true, data });
   } catch (error) {
-    logger.error("[AdminFeedback] 获取详情失败", { error, id });
+    logger.error({ error, id }, "[AdminFeedback] 获取详情失败");
     return Response.json(
       { success: false, error: "获取详情失败" },
       { status: 500 },
