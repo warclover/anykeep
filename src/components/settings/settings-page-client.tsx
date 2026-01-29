@@ -42,7 +42,7 @@ import { ColorThemeSelector } from "./color-theme-selector";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
 import { AutoSnapshotSettings } from "./auto-snapshot-settings";
-import { WorkflowSettingsCard } from "./workflow-settings-card";
+// NOTE: WorkflowSettingsCard removed - migrated to workflow-lite
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -493,8 +493,7 @@ export function SettingsPageClient({
             {/* AI Provider 状态 - V4.3 */}
             <AIProviderSettingsCard />
 
-            {/* 自动化工作流设置 - Phase 4 */}
-            <WorkflowSettingsCard />
+            {/* NOTE: WorkflowSettingsCard removed - migrated to workflow-lite */}
 
             {/* 隐私与安全 */}
             <Card>

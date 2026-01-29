@@ -26,7 +26,6 @@ import {
   ExternalLink,
   MessageCircle,
   ArrowLeft,
-  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -51,15 +50,15 @@ import {
 } from "@/lib/ai-skills/get-all-skills-metadata";
 import type { SkillCategory } from "@/lib/ai-skills/core/types";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
-import { useWorkflowList } from "@/hooks/workflow/use-workflow-list";
-import { useWorkflowTrigger } from "@/hooks/workflow/use-workflow-trigger";
-import { WorkflowHubCard, WorkflowEmptyState } from "./workflow-hub-card";
-import {
-  type FilterCategory,
-  type WorkflowHubItem,
-  workflowToHubItem,
-  WORKFLOW_TAB_INFO,
-} from "./workflow-hub-types";
+
+// NOTE: Workflow imports removed - migrated to workflow-lite
+// import { useWorkflowList } from "@/hooks/workflow/use-workflow-list";
+// import { useWorkflowTrigger } from "@/hooks/workflow/use-workflow-trigger";
+// import { WorkflowHubCard, WorkflowEmptyState } from "./workflow-hub-card";
+// import { type FilterCategory, type WorkflowHubItem, workflowToHubItem, WORKFLOW_TAB_INFO } from "./workflow-hub-types";
+
+// FilterCategory type without workflow
+type FilterCategory = "all" | SkillCategory;
 
 // ============================================
 // 类型定义（使用 workflow-hub-types 导出的 FilterCategory）
@@ -80,14 +79,12 @@ const AI_HUB = {
     ORGANIZING: "整理优化",
     LEARNING: "学习助手",
     UTILITY: "实用工具",
-    WORKFLOW: "工作流",
   },
   STATS: {
     TOTAL: "总计",
     ORCHESTRATION: "编排型",
     ATOMIC: "原子型",
     FEATURE_FLAG: "需开关",
-    WORKFLOW: "工作流",
   },
   SKILL_CARD: {
     ORCHESTRATION: "编排",
@@ -548,41 +545,15 @@ export function AIHubClient() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiInitialMessage, setAiInitialMessage] = useState("");
 
-  // 工作流数据
-  const { workflows, isLoading: workflowsLoading } = useWorkflowList();
-  const {
-    triggerWorkflow,
-    isLoading: triggerLoading,
-    loadingWorkflowId,
-  } = useWorkflowTrigger();
+  // NOTE: Workflow hooks removed - migrated to workflow-lite
+  // const { workflows, isLoading: workflowsLoading } = useWorkflowList();
+  // const { triggerWorkflow, isLoading: triggerLoading, loadingWorkflowId } = useWorkflowTrigger();
 
   const stats = getSkillsStats();
   const skillsByCategory = getSkillsByCategory();
 
-  // 转换工作流为 Hub 展示格式
-  const workflowHubItems: WorkflowHubItem[] = useMemo(() => {
-    return workflows.map(workflowToHubItem);
-  }, [workflows]);
-
-  // 过滤工作流
-  const filteredWorkflows = useMemo(() => {
-    if (!searchQuery.trim()) return workflowHubItems;
-
-    const query = searchQuery.toLowerCase();
-    return workflowHubItems.filter(
-      (workflow) =>
-        workflow.name.toLowerCase().includes(query) ||
-        workflow.description.toLowerCase().includes(query),
-    );
-  }, [workflowHubItems, searchQuery]);
-
-  // 过滤 skills（排除 workflow tab）
+  // 过滤 skills
   const filteredSkills = useMemo(() => {
-    // workflow tab 不显示 skills
-    if (filterCategory === "workflow") {
-      return [];
-    }
-
     let skills = ALL_SKILLS_METADATA;
 
     // 按分类过滤
@@ -606,11 +577,6 @@ export function AIHubClient() {
 
   // 按分类分组
   const groupedSkills = useMemo(() => {
-    // workflow tab 不需要分组 skills
-    if (filterCategory === "workflow") {
-      return {};
-    }
-
     if (filterCategory !== "all") {
       return { [filterCategory]: filteredSkills };
     }
@@ -628,11 +594,6 @@ export function AIHubClient() {
 
     return groups;
   }, [filteredSkills, filterCategory]);
-
-  // 处理工作流执行
-  const handleWorkflowExecute = async (workflowId: string) => {
-    await triggerWorkflow(workflowId);
-  };
 
   // 处理立即使用
   const handleUseNow = (skill: ExtendedSkillMetadata) => {
@@ -695,12 +656,6 @@ export function AIHubClient() {
               icon={<Zap className="size-5 text-green-600" />}
               color="bg-green-100 dark:bg-green-900/30"
             />
-            <StatsCard
-              label={AI_HUB.STATS.WORKFLOW}
-              value={workflows.length}
-              icon={<Workflow className="size-5 text-amber-600" />}
-              color="bg-amber-100 dark:bg-amber-900/30"
-            />
           </div>
 
           {/* 搜索和筛选 */}
@@ -732,53 +687,12 @@ export function AIHubClient() {
                 <TabsTrigger value="utility">
                   {AI_HUB.FILTER.UTILITY}
                 </TabsTrigger>
-                <TabsTrigger value="workflow">
-                  {AI_HUB.FILTER.WORKFLOW}
-                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
-          {/* 工作流列表（仅在 workflow tab 显示） */}
-          {filterCategory === "workflow" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xl">{WORKFLOW_TAB_INFO.icon}</span>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {WORKFLOW_TAB_INFO.name}
-                </h2>
-                <Badge variant="secondary" className="text-xs">
-                  {filteredWorkflows.length}
-                </Badge>
-              </div>
-              {workflowsLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-pulse">
-                    <Workflow className="size-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">加载工作流中...</p>
-                  </div>
-                </div>
-              ) : filteredWorkflows.length === 0 ? (
-                <WorkflowEmptyState searchQuery={searchQuery} />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredWorkflows.map((workflow) => (
-                    <WorkflowHubCard
-                      key={workflow.id}
-                      workflow={workflow}
-                      onExecute={handleWorkflowExecute}
-                      isExecuting={
-                        triggerLoading && loadingWorkflowId === workflow.id
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Skills 列表（非 workflow tab 显示） */}
-          {filterCategory !== "workflow" && filteredSkills.length === 0 && (
+          {/* Skills 列表 */}
+          {filteredSkills.length === 0 && (
             <div className="text-center py-12">
               <Sparkles className="size-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">
@@ -790,7 +704,7 @@ export function AIHubClient() {
             </div>
           )}
 
-          {filterCategory !== "workflow" && filteredSkills.length > 0 && (
+          {filteredSkills.length > 0 && (
             <div className="space-y-8">
               {(
                 Object.entries(groupedSkills) as [

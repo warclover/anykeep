@@ -59,8 +59,9 @@ import { getFeedbackService, type FeedbackService } from "./feedback-service";
 import { l0Router, toL0RouteResult } from "@/lib/ai-agent/l0-rules";
 import { recordL0RouteResult } from "../observability/metrics";
 import { aiMetrics } from "@/lib/ai-agent/metrics";
-import { getWorkflowIntentMatcher } from "@/lib/workflow/integration/workflow-intent-matcher";
-import { isWorkflowConversationTriggerEnabled } from "@/lib/ai-agent/config/feature-flags";
+// NOTE: Workflow intent matcher removed - migrated to workflow-lite
+// import { getWorkflowIntentMatcher } from "@/lib/workflow/integration/workflow-intent-matcher";
+// import { isWorkflowConversationTriggerEnabled } from "@/lib/ai-agent/config/feature-flags";
 
 /**
  * 完整路由器配置
@@ -159,87 +160,22 @@ export class IntentRouter {
 
     try {
       // ========================================
-      // Gate -1: Workflow 意图检测 [P1-8 新增]
-      // 优先检查是否匹配已注册的工作流触发模式
+      // Gate -1: Workflow 意图检测 - DISABLED
+      // NOTE: Workflow conversation triggers temporarily disabled
+      // pending migration to workflow-lite system
       // ========================================
-      if (isWorkflowConversationTriggerEnabled() && request.context.userId) {
-        try {
-          const workflowMatcher = getWorkflowIntentMatcher();
-          const workflowMatch = await workflowMatcher.matchWorkflow(
-            request.message,
-            request.context.userId,
-          );
-
-          if (workflowMatch && workflowMatch.confidence >= 0.7) {
-            const metrics = collector.finalize();
-
-            logger.info(
-              {
-                workflowId: workflowMatch.workflowId,
-                workflowName: workflowMatch.workflowName,
-                pattern: workflowMatch.matchedPattern,
-                confidence: workflowMatch.confidence,
-                durationMs: metrics.totalDurationMs,
-              },
-              "IntentRouter: Workflow pattern matched",
-            );
-
-            // 返回 workflow 模式路由结果
-            const result: RouteResult = {
-              intent: {
-                type: "action",
-                subType: "workflow_trigger",
-                confidence: workflowMatch.confidence,
-                entities: [],
-                requiresMultiStep: true,
-                hasDeliverableExpectation: true,
-                source: "rule" as const,
-              },
-              complexity: {
-                level: "complex" as const,
-                score: 0.8,
-                factors: [
-                  {
-                    name: "workflow_match",
-                    weight: 1.0,
-                    value: workflowMatch.confidence,
-                    reason: `工作流 "${workflowMatch.workflowName}" 触发`,
-                  },
-                ],
-                estimatedSteps: 5,
-                estimatedDurationMs: 30000,
-              },
-              mode: "workflow",
-              suggestedSkill: null,
-              reason: `Workflow triggered: ${workflowMatch.workflowName}`,
-              routingDurationMs: metrics.totalDurationMs,
-              workflowId: workflowMatch.workflowId,
-              workflowName: workflowMatch.workflowName,
-            };
-
-            if (this.config.debug || this.config.includeMetrics) {
-              result.metrics = {
-                classificationDurationMs: 0,
-                complexityDurationMs: 0,
-                modeSelectorDurationMs: 0,
-                ruleMatchCount: 1,
-                disambiguationUsed: false,
-                llmFallbackUsed: false,
-                classificationSource: "rule",
-                llmCacheHit: false,
-              };
-            }
-
-            return result;
-          }
-        } catch (err) {
-          // Workflow 匹配失败，继续常规路由
-          logger.warn(
-            { error: err instanceof Error ? err.message : String(err) },
-            "IntentRouter: Workflow matching failed, continuing with regular routing",
-          );
-        }
-      }
+      // if (isWorkflowConversationTriggerEnabled() && request.context.userId) {
+      //   try {
+      //     const workflowMatcher = getWorkflowIntentMatcher();
+      //     const workflowMatch = await workflowMatcher.matchWorkflow(
+      //       request.message,
+      //       request.context.userId,
+      //     );
+      //     ... (workflow matching logic disabled)
+      //   } catch (err) {
+      //     logger.warn({ error: err }, "Workflow matching failed");
+      //   }
+      // }
 
       // ========================================
       // Gate 0: L0 规则直通车（最快路径）

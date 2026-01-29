@@ -55,11 +55,12 @@ import {
   type QuickAction,
 } from "../router/intent-predictor";
 import { type RuleExtractor } from "../../ai-agent/preferences/rule-learning";
-import {
-  getWorkflowModeExecutor,
-  type WorkflowExecuteResult,
-} from "@/lib/workflow/integration";
-import { isWorkflowTriggerEnabled } from "../../ai-agent/config/feature-flag-overrides";
+// NOTE: Workflow integration removed - migrated to workflow-lite
+// import {
+//   getWorkflowModeExecutor,
+//   type WorkflowExecuteResult,
+// } from "@/lib/workflow/integration";
+// import { isWorkflowTriggerEnabled } from "../../ai-agent/config/feature-flag-overrides";
 import { type ShortcutMatchResult } from "../learning";
 import { FeatureFlags } from "../../ai-agent/config/feature-flags";
 import {
@@ -276,25 +277,27 @@ export class UnifiedEngine {
       return;
     }
 
-    // Workflow Mode Detection
-    if (isWorkflowTriggerEnabled(context.debugOverrides ?? null)) {
-      const workflowExecutor = getWorkflowModeExecutor();
-      const workflowResult = await workflowExecutor.tryExecuteWorkflow(
-        processedInput,
-        {
-          userId: context.userId,
-          conversationId: context.conversationId,
-        },
-      );
-
-      if (workflowResult) {
-        yield* this.streamWorkflowResponseWithEnhancements(
-          workflowResult,
-          contextWithCallback,
-        );
-        return;
-      }
-    }
+    // NOTE: Workflow Mode Detection - DISABLED (migrated to workflow-lite)
+    // The workflow trigger is now handled by TriggerScheduler for scheduled tasks
+    // Conversation-triggered workflows are temporarily disabled pending Lite migration
+    // if (isWorkflowTriggerEnabled(context.debugOverrides ?? null)) {
+    //   const workflowExecutor = getWorkflowModeExecutor();
+    //   const workflowResult = await workflowExecutor.tryExecuteWorkflow(
+    //     processedInput,
+    //     {
+    //       userId: context.userId,
+    //       conversationId: context.conversationId,
+    //     },
+    //   );
+    //
+    //   if (workflowResult) {
+    //     yield* this.streamWorkflowResponseWithEnhancements(
+    //       workflowResult,
+    //       contextWithCallback,
+    //     );
+    //     return;
+    //   }
+    // }
 
     if (mergedOptions.forceMode === "atomic") {
       yield* this.executeWithEnhancements(

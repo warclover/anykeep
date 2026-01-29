@@ -9,9 +9,10 @@
 
 import type { Database } from "@/types/supabase";
 import { createClient } from "@/lib/supabase/server";
-import { getWorkflowOrchestrator } from "../orchestrator";
 import { getDistributedLockManager } from "./distributed-lock";
 import { logger } from "@/lib/logger";
+import { runLiteTask } from "@/lib/workflow-lite/core/runner";
+import { executeDailyDigest } from "@/lib/workflow-lite/tasks/daily-digest";
 import type {
   ScheduleTriggerConfig,
   ScheduledExecution,
@@ -72,11 +73,9 @@ type _TypedSupabaseClient = SupabaseClient<ExtendedDatabase, "public">;
 /**
  * 定时触发调度器
  *
- * 负责管理和执行定时工作流
+ * 负责管理和执行定时工作流（基于 Workflow Lite）
  */
 export class TriggerScheduler {
-  private orchestrator = getWorkflowOrchestrator();
-
   /**
    * 获取待执行的定时任务
    */
@@ -118,7 +117,7 @@ export class TriggerScheduler {
       const supabase = await createClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const typedSupabase = supabase as any;
-      const startTime = performance.now();
+      const _startTime = performance.now();
 
       try {
         // 双重检查：确认任务仍为 pending 状态
@@ -145,40 +144,55 @@ export class TriggerScheduler {
           .update({ status: "running", started_at: new Date().toISOString() })
           .eq("id", scheduled.id);
 
-        // 启动工作流
-        const execution = await this.orchestrator.startWorkflow(
-          scheduled.workflowId,
-          scheduled.userId,
-          {
-            triggerType: "schedule",
-            triggerContext: {
-              scheduledExecutionId: scheduled.id,
-              scheduledAt: scheduled.scheduledAt.toISOString(),
+        // =================================================================
+        // PHASE 4: Workflow Lite - Full Implementation (Legacy Removed)
+        // =================================================================
+        if (scheduled.workflowId === "daily_digest") {
+          logger.info(
+            { scheduledId: scheduled.id },
+            "TriggerScheduler: Executing Lite workflow for daily_digest",
+          );
+
+          const liteResult = await runLiteTask(
+            "daily-digest",
+            `cron-${scheduled.id}`,
+            executeDailyDigest,
+            { userId: scheduled.userId },
+          );
+
+          if (!liteResult.success) {
+            throw (
+              liteResult.error ||
+              new Error("Lite task failed without error details")
+            );
+          }
+
+          // Lite execution successful - mark as completed in DB
+          await typedSupabase
+            .from(SCHEDULED_EXECUTIONS_TABLE)
+            .update({
+              status: "completed",
+              execution_id: `lite-${scheduled.id}`,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", scheduled.id);
+
+          logger.info(
+            {
+              scheduledId: scheduled.id,
+              durationMs: liteResult.durationMs,
             },
-          },
+            "TriggerScheduler: Lite workflow completed successfully",
+          );
+
+          return { success: true, executionId: `lite-${scheduled.id}` };
+        }
+        // =================================================================
+
+        // 对于其他工作流，抛出错误（需要逐个迁移到 Lite）
+        throw new Error(
+          `Workflow '${scheduled.workflowId}' has not been migrated to Lite system yet`,
         );
-
-        // 更新执行 ID
-        await typedSupabase
-          .from(SCHEDULED_EXECUTIONS_TABLE)
-          .update({
-            status: "completed",
-            execution_id: execution.id,
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", scheduled.id);
-
-        logger.info(
-          {
-            scheduledId: scheduled.id,
-            workflowId: scheduled.workflowId,
-            executionId: execution.id,
-            durationMs: Math.round(performance.now() - startTime),
-          },
-          "TriggerScheduler: Scheduled workflow started",
-        );
-
-        return { success: true, executionId: execution.id };
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);

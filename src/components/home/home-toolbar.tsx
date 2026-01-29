@@ -30,11 +30,8 @@ import {
   RotateCcw,
   Search,
   Check,
-  Workflow,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { WorkflowQuickActions } from "@/components/workflow/quick-actions";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -200,10 +197,6 @@ export const HomeToolbar = memo(function HomeToolbar({
             <Search className="size-4" />
           </Button>
 
-          {/* 工作流快捷操作 */}
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          <WorkflowQuickActions variant="toolbar" maxVisible={2} />
-
           {/* 统一菜单 */}
           <DropdownMenu
             open={isMobileMoreMenuOpen}
@@ -320,18 +313,6 @@ export const HomeToolbar = memo(function HomeToolbar({
               >
                 <CheckSquare className="size-4 mr-2" />
                 {isSelectionMode ? "取消批量选择" : "批量选择"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-
-              {/* 工作流管理 */}
-              <DropdownMenuItem
-                onClick={() => {
-                  router.push("/workflows");
-                  onMobileMoreMenuOpenChange(false);
-                }}
-              >
-                <Workflow className="size-4 mr-2" />
-                工作流管理
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
