@@ -5,7 +5,6 @@
 
 export * from "./ai";
 export * from "./bookmark";
-export * from "./brain-sync";
 export * from "./folder";
 export * from "./import";
 export * from "./platform";

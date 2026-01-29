@@ -367,33 +367,6 @@ export function LearningHubClient() {
             />
           </div>
 
-          {/* 快捷入口 - Brain-Sync */}
-          <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50">
-                    <Brain className="size-8 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Brain-Sync 知识同步
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      基于 SM-2 算法的间隔复习，帮助你真正内化收藏的知识
-                    </p>
-                  </div>
-                </div>
-                <Link href="/brain-sync">
-                  <Button className="gap-2">
-                    <Brain className="size-4" />
-                    开始复习
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* 快捷操作 */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

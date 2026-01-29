@@ -4,7 +4,6 @@
  */
 
 export { MaterialSelector } from "./material-selector";
-export { BrainSyncButton } from "./brain-sync-button";
 export { ReportEditor } from "./report-editor";
 
 // Quota UI Components (Story 8.3)

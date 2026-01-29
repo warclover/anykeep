@@ -337,11 +337,6 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.ai;
   }
 
-  // Brain-Sync 复习系统
-  if (pathname.includes("/brain-sync") || pathname.includes("/active-recall")) {
-    return RATE_LIMIT_CONFIGS.brain_sync;
-  }
-
   // 搜索相关
   if (pathname.includes("/search") || pathname.includes("/semantic")) {
     return RATE_LIMIT_CONFIGS.search;

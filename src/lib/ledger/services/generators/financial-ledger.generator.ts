@@ -36,9 +36,7 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
       return null;
     }
 
-    // 2. Fetch bookmarks (Financial ledger treats bookmarks as "assets" or "entries")
-    // For financial view, we might just want a raw list or specific financial-related items
-    // adapting existing logic which fetches all bookmarks
+    // 2. Fetch bookmarks
     const { data: bookmarks, error } = await supabase
       .from("bookmarks")
       .select("id, created_at, title, url, platform")
@@ -54,10 +52,13 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
       return null;
     }
 
-    // 3. Format items
+    // 3. Format items (Optimized: Keep original timestamp for data integrity)
     const items: LedgerItem[] = bookmarks.map((b) => ({
       id: b.id,
+      // Store formatted time for display only, or rely on client formatting
       time: this.formatTime(b.created_at),
+      // Keep original timestamp for accurate recording
+      originalTime: b.created_at,
       platform: b.platform || "Unknown",
       title: b.title || "Untitled",
       url: b.url || "",
@@ -65,11 +66,6 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
     }));
 
     // 4. Save report
-    // Using the 'ledgers' table (previously ledger_reports in the old code, assuming migration renamed it or we align)
-    // The migration file 20260129000002_extend_ledger_for_digest.sql alters 'ledgers'.
-    // So we assume the table name is 'ledgers'.
-
-    // Calculate report type (weekly/monthly) based on duration
     const durationDays =
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
     const reportType = durationDays > 8 ? "monthly" : "weekly";
@@ -83,48 +79,44 @@ export class FinancialLedgerGenerator implements LedgerGenerator {
         period_start: startDate.toISOString(),
         period_end: endDate.toISOString(),
         item_count: items.length,
-        // In the new schema, we should probably save entries to ledger_entries table
-        // But for backward compatibility or simple storage, we might store JSON in content column if it exists?
-        // The migration added fields to 'ledgers' but didn't remove 'content' if it existed.
-        // However, the best practice is to insert into ledger_entries.
-        // Let's check if we should populate ledger_entries.
-        // For simplicity in this step, if the original code used a JSON column 'content' in 'ledger_reports' (now 'ledgers'?),
-        // we might stick to that or upgrade.
-        // The migration `20260127000000_add_ledger_system.sql` likely created `ledgers` and `ledger_entries`.
-        // Let's assume we need to insert entries separately.
       })
       .select()
       .single();
 
     if (saveError) throw saveError;
 
-    // Insert entries
+    // 5. Insert entries with rollback mechanism
     if (items.length > 0 && report) {
-      const entriesToInsert = items.map((item) => ({
-        ledger_id: report.id,
-        entry_type: "financial", // or 'bookmark' as per new schema
-        bookmark_id: item.id,
-        title: item.title,
-        platform: item.platform,
-        url: item.url,
-        occurred_at: new Date(item.time).toISOString(), // rough conversion back or use original
-        metadata: item.metadata || {},
-      }));
+      try {
+        const entriesToInsert = items.map((item) => ({
+          ledger_id: report.id,
+          entry_type: "financial",
+          bookmark_id: item.id,
+          title: item.title,
+          platform: item.platform,
+          url: item.url,
+          // Use original ISO string directly, avoiding round-trip conversion errors
+          occurred_at: item.originalTime || new Date().toISOString(),
+          metadata: item.metadata || {},
+        }));
 
-      // Note: We need to handle this properly.
-      // For now, let's assume we just return the report object as the interface expects.
-      // Actual DB insertion of entries might be needed if we want to query them later.
+        const { error: entriesError } = await supabase
+          .from("ledger_entries")
+          .insert(entriesToInsert);
 
-      const { error: entriesError } = await supabase
-        .from("ledger_entries")
-        .insert(entriesToInsert);
-
-      if (entriesError) {
+        if (entriesError) {
+          throw entriesError;
+        }
+      } catch (error) {
+        // Rollback: Delete the report if entries failed to save
         logger.error(
-          { error: entriesError },
-          "Failed to insert ledger entries",
+          { error, reportId: report.id },
+          "Failed to insert ledger entries, rolling back ledger creation",
         );
-        // Non-blocking?
+
+        await supabase.from("ledgers").delete().eq("id", report.id);
+
+        throw error; // Re-throw to inform caller
       }
     }
 
