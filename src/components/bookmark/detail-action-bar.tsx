@@ -19,6 +19,8 @@ import {
   Share2,
   Bot,
   Eye,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,12 @@ export interface DetailActionBarProps {
   onOpenAIPanel?: () => void;
   /** 添加监控回调 */
   onAddMonitor?: () => void;
+  /** 文章快照回调 */
+  onSnapshot?: () => void;
+  /** 是否正在获取快照 */
+  isSnapshotting?: boolean;
+  /** 是否已有快照 */
+  hasSnapshot?: boolean;
 }
 
 // ============================================
@@ -79,6 +87,9 @@ export function DetailActionBar({
   onDelete,
   onOpenAIPanel,
   onAddMonitor,
+  onSnapshot,
+  isSnapshotting,
+  hasSnapshot,
 }: DetailActionBarProps) {
   // 打开原文
   const handleOpenOriginal = () => {
@@ -200,6 +211,31 @@ export function DetailActionBar({
           <FolderInput className="size-3.5" />
           <span className="ml-1 hidden sm:inline">移动到</span>
         </Button>
+
+        {/* 文章快照按钮 */}
+        {userId && onSnapshot && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSnapshot}
+            disabled={isSnapshotting}
+            className={cn(
+              "h-8 px-2",
+              hasSnapshot
+                ? "text-green-600 dark:text-green-400"
+                : "text-primary hover:text-primary",
+            )}
+          >
+            {isSnapshotting ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Camera className="size-3.5" />
+            )}
+            <span className="ml-1 hidden sm:inline">
+              {isSnapshotting ? "获取中" : hasSnapshot ? "已快照" : "快照"}
+            </span>
+          </Button>
+        )}
       </div>
 
       {/* 右侧：删除按钮（危险操作分离） */}

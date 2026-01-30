@@ -14,9 +14,10 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Globe } from "lucide-react";
+import { toast } from "sonner";
 import { SourceBadge, inferSourceType } from "./source-badge";
 import type { SourceInfo } from "./source-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -99,6 +100,9 @@ export function BookmarkDetailClient({
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showMonitorDialog, setShowMonitorDialog] = useState(false);
+  // 文章快照状态
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [hasSnapshot, setHasSnapshot] = useState(false);
 
   // Phase 2.3.7: 使用提取的 mutations hook
   const {
@@ -158,14 +162,12 @@ export function BookmarkDetailClient({
 
   // 标记客户端挂载完成
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 用于客户端挂载检测，避免 Hydration 错误
     setMounted(true);
   }, []);
 
   // 在客户端计算视觉数据
   useEffect(() => {
     if (hasVisionData(bookmark.ai_vision_data)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 依赖 bookmark.ai_vision_data 变化时更新状态
       setExistingVisionData(
         bookmark.ai_vision_data as unknown as BookmarkVisionData,
       );
@@ -187,6 +189,55 @@ export function BookmarkDetailClient({
   const isWechatArticleEnabled = useWechatArticleFeature();
   const isWechatPlatform = bookmark.platform === "WECHAT_OFFICIAL_ACCOUNT";
   const showWechatArticle = isWechatArticleEnabled && isWechatPlatform;
+
+  // 检查是否已有快照
+  useEffect(() => {
+    const checkSnapshot = async () => {
+      try {
+        const response = await fetch(
+          `/api/snapshots?bookmarkId=${bookmark.id}`,
+        );
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data?.id) {
+            setHasSnapshot(true);
+          }
+        }
+      } catch {
+        // 静默处理错误
+      }
+    };
+    checkSnapshot();
+  }, [bookmark.id]);
+
+  // 创建文章快照
+  const handleSnapshot = useCallback(async () => {
+    try {
+      setIsSnapshotting(true);
+      const response = await fetch("/api/wechat-article/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookmarkId: bookmark.id }),
+      });
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("服务器响应异常，请稍后重试");
+      }
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error?.message || "创建快照失败");
+      }
+
+      setHasSnapshot(true);
+      toast.success("文章快照获取成功");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建快照失败");
+    } finally {
+      setIsSnapshotting(false);
+    }
+  }, [bookmark.id]);
 
   // V4.2.24: 自定义用途标签 - SWR 缓存 + SSR 初始数据
   // fallbackData 作为初始值，避免客户端首次请求
@@ -364,7 +415,9 @@ export function BookmarkDetailClient({
                   aiTags={bookmark.ai_tags || []}
                   bookmarkId={bookmark.id}
                   bookmarkUrl={bookmark.url}
-                  platform={(bookmark.platform ?? undefined) as Platform | undefined}
+                  platform={
+                    (bookmark.platform ?? undefined) as Platform | undefined
+                  }
                   selectedUsageTags={usageTags}
                   regularTags={regularTags}
                   onSaveSuccess={(newUsageTags) => {
@@ -391,6 +444,9 @@ export function BookmarkDetailClient({
                   onDelete={handleDelete}
                   onOpenAIPanel={() => setShowAIPanel(true)}
                   onAddMonitor={() => setShowMonitorDialog(true)}
+                  onSnapshot={handleSnapshot}
+                  isSnapshotting={isSnapshotting}
+                  hasSnapshot={hasSnapshot}
                 />
               </div>
             </CardHeader>
@@ -563,6 +619,7 @@ export function BookmarkDetailClient({
                     fallback={<Skeleton className="h-64 w-full rounded-lg" />}
                   >
                     <WechatArticleSectionLazy
+                      key={`wechat-article-${bookmark.id}-${hasSnapshot}`}
                       bookmarkId={bookmark.id}
                       bookmarkUrl={bookmark.url}
                       defaultExpanded={false}
