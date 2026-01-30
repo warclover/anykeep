@@ -4,10 +4,11 @@
  * 显示实时生成进度和流式内容预览
  * 支持取消生成任务
  * [I4] 增强生成体验：预计耗时、已用时间、剩余时间、平滑动画
+ * [I5] 水平步骤条布局：紧凑设计，无需滚动
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-29
- * @updated 2026-01-01 - [I4] 生成体验优化
+ * @updated 2026-01-30 - [I5] 水平步骤条布局优化
  */
 
 "use client";
@@ -25,8 +26,6 @@ import {
   Timer,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSynthesisStream } from "@/hooks/synthesis/use-synthesis-stream";
@@ -109,15 +108,16 @@ function TimeDisplay({
       : estimatedTotalSeconds - elapsedSeconds;
 
   return (
-    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+    <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
       <div className="flex items-center gap-1">
         <Timer className="h-3.5 w-3.5" />
-        <span>已用时: {formatTime(elapsedSeconds)}</span>
+        <span>{formatTime(elapsedSeconds)}</span>
       </div>
+      <span className="text-muted-foreground/50">|</span>
       <div className="flex items-center gap-1">
         <Clock className="h-3.5 w-3.5" />
         <span>
-          预计剩余: {percent >= 95 ? "即将完成" : formatTime(remainingSeconds)}
+          剩余 {percent >= 95 ? "即将完成" : formatTime(remainingSeconds)}
         </span>
       </div>
     </div>
@@ -125,164 +125,83 @@ function TimeDisplay({
 }
 
 /**
- * 步骤状态指示器 [I4] 增强动画效果
+ * [I5] 水平步骤指示器
  */
-function StepIndicator({
+function HorizontalStepIndicator({
   step,
+  index,
   currentStep,
   isCompleted,
   isCancelled,
+  isLast,
 }: {
   step: (typeof SYNTHESIS_STEPS)[0];
+  index: number;
   currentStep: string | null;
   isCompleted: boolean;
   isCancelled: boolean;
+  isLast: boolean;
 }) {
   const isCurrent = currentStep === step.id;
-  const stepIndex = SYNTHESIS_STEPS.findIndex((s) => s.id === step.id);
   const currentIndex = SYNTHESIS_STEPS.findIndex((s) => s.id === currentStep);
-  const isPast = stepIndex < currentIndex || isCompleted;
+  const isPast = index < currentIndex || isCompleted;
 
   return (
-    <motion.div
-      initial={{ opacity: 0.6, x: -10 }}
-      animate={{
-        opacity: isCurrent || isPast ? 1 : 0.6,
-        x: 0,
-        scale: isCurrent ? 1.02 : 1,
-      }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className={cn(
-        "flex items-center gap-3 p-3 rounded-lg transition-colors",
-        isCurrent && !isCancelled && "bg-primary/10 border border-primary/20",
-        isCancelled && isCurrent && "bg-muted/50",
-        isPast && !isCancelled && "bg-muted/30",
-      )}
-    >
-      <motion.div
-        initial={false}
-        animate={{
-          scale: isCurrent ? [1, 1.1, 1] : 1,
-          rotate: isPast ? [0, 360] : 0,
-        }}
-        transition={{
-          scale: {
-            duration: 0.5,
-            repeat: isCurrent ? Infinity : 0,
-            repeatDelay: 1,
-          },
-          rotate: { duration: 0.5 },
-        }}
-        className={cn(
-          "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
-          isCurrent && !isCancelled && "bg-primary text-primary-foreground",
-          isPast && !isCancelled && "bg-green-500 text-white",
-          isCancelled && "bg-muted text-muted-foreground",
-          !isCurrent &&
-            !isPast &&
-            !isCancelled &&
-            "bg-muted text-muted-foreground",
-        )}
-      >
-        {isCancelled && isCurrent ? (
-          <XCircle className="h-5 w-5" />
-        ) : isPast ? (
-          <CheckCircle2 className="h-5 w-5" />
-        ) : isCurrent ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Circle className="h-5 w-5" />
-        )}
-      </motion.div>
-      <div className="flex-1">
-        <p
+    <div className="flex items-center flex-1">
+      {/* 步骤节点 */}
+      <div className="flex flex-col items-center">
+        <motion.div
+          initial={false}
+          animate={{
+            scale: isCurrent ? 1.1 : 1,
+          }}
           className={cn(
-            "font-medium text-sm",
-            isCurrent && !isCancelled && "text-primary",
-            isCancelled && "text-muted-foreground",
+            "flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-colors",
+            isCurrent &&
+              !isCancelled &&
+              "bg-primary text-primary-foreground ring-4 ring-primary/20",
+            isPast && !isCancelled && "bg-green-500 text-white",
+            isCancelled && isCurrent && "bg-muted text-muted-foreground",
+            !isCurrent &&
+              !isPast &&
+              !isCancelled &&
+              "bg-muted text-muted-foreground",
           )}
         >
-          {step.icon} {step.name}
-        </p>
-        {/* [I4] 当前步骤显示权重提示 */}
-        {isCurrent && !isCancelled && (
-          <motion.p
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="text-xs text-muted-foreground mt-0.5"
-          >
-            此步骤约占 {step.weight}% 总进度
-          </motion.p>
-        )}
+          {isCancelled && isCurrent ? (
+            <XCircle className="h-4 w-4" />
+          ) : isPast ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : isCurrent ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Circle className="h-4 w-4" />
+          )}
+        </motion.div>
+        {/* 步骤名称 */}
+        <span
+          className={cn(
+            "text-xs mt-1.5 whitespace-nowrap",
+            isCurrent && !isCancelled && "text-primary font-medium",
+            isPast && !isCancelled && "text-green-600 dark:text-green-400",
+            !isCurrent && !isPast && "text-muted-foreground",
+          )}
+        >
+          {step.name}
+        </span>
       </div>
-    </motion.div>
-  );
-}
-
-/**
- * 流式内容预览
- */
-function StreamPreview({
-  overview,
-  consensusCount,
-  divergenceCount,
-  blindSpotCount,
-}: {
-  overview: string | null;
-  consensusCount: number;
-  divergenceCount: number;
-  blindSpotCount: number;
-}) {
-  if (
-    !overview &&
-    consensusCount === 0 &&
-    divergenceCount === 0 &&
-    blindSpotCount === 0
-  ) {
-    return null;
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">内容预览</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {overview && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">概述</p>
-            <p className="text-sm line-clamp-3">{overview}</p>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          {consensusCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-            >
-              共识 {consensusCount}
-            </Badge>
-          )}
-          {divergenceCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-            >
-              分歧 {divergenceCount}
-            </Badge>
-          )}
-          {blindSpotCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-            >
-              盲区 {blindSpotCount}
-            </Badge>
-          )}
+      {/* 连接线 */}
+      {!isLast && (
+        <div className="flex-1 h-0.5 mx-2 mt-[-1.25rem]">
+          <div
+            className={cn(
+              "h-full transition-colors",
+              isPast ? "bg-green-500" : "bg-muted",
+            )}
+          />
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -375,22 +294,37 @@ export function SynthesisProgress({
   const isCancelled = state.status === "cancelled";
 
   return (
-    <div className="space-y-4">
-      {/* 总体进度 */}
+    <div className="space-y-6">
+      {/* 状态标题 */}
+      <div className="text-center">
+        <h3 className="text-lg font-medium">
+          {state.status === "completed"
+            ? "✅ 分析完成"
+            : state.status === "error"
+              ? "❌ 分析失败"
+              : state.status === "cancelled"
+                ? "⏹ 已取消"
+                : "正在分析您的收藏内容..."}
+        </h3>
+      </div>
+
+      {/* [I5] 水平步骤条 */}
+      <div className="flex items-start justify-between px-2">
+        {SYNTHESIS_STEPS.map((step, index) => (
+          <HorizontalStepIndicator
+            key={step.id}
+            step={step}
+            index={index}
+            currentStep={currentStep}
+            isCompleted={state.status === "completed"}
+            isCancelled={isCancelled}
+            isLast={index === SYNTHESIS_STEPS.length - 1}
+          />
+        ))}
+      </div>
+
+      {/* 进度条 + 百分比 */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            {state.status === "completed"
-              ? "生成完成"
-              : state.status === "error"
-                ? "生成失败"
-                : state.status === "cancelled"
-                  ? "已取消"
-                  : state.progress?.message || "准备中..."}
-          </span>
-          <span className="font-medium">{percent}%</span>
-        </div>
-        {/* [I4] 增强进度条动画 */}
         <div className="relative">
           <Progress value={percent} className="h-2" />
           {isGenerating && (
@@ -402,32 +336,36 @@ export function SynthesisProgress({
             />
           )}
         </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            {state.progress?.message || "准备中..."}
+          </span>
+          <span className="font-medium">{percent}%</span>
+        </div>
       </div>
 
-      {/* [I4] 时间显示 */}
-      {isGenerating && (
-        <TimeDisplay
-          elapsedSeconds={elapsedSeconds}
-          estimatedTotalSeconds={estimatedTotalSeconds}
-          percent={percent}
-        />
-      )}
+      {/* 时间显示 + 取消按钮 */}
+      <div className="flex items-center justify-between">
+        {isGenerating ? (
+          <TimeDisplay
+            elapsedSeconds={elapsedSeconds}
+            estimatedTotalSeconds={estimatedTotalSeconds}
+            percent={percent}
+          />
+        ) : state.status === "completed" && elapsedSeconds > 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 text-sm text-green-600"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span>总用时 {formatTime(elapsedSeconds)}</span>
+          </motion.div>
+        ) : (
+          <div />
+        )}
 
-      {/* [I4] 完成时显示总用时 */}
-      {state.status === "completed" && elapsedSeconds > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 text-sm text-green-600"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          <span>总用时: {formatTime(elapsedSeconds)}</span>
-        </motion.div>
-      )}
-
-      {/* 取消按钮 */}
-      {isGenerating && (
-        <div className="flex justify-end">
+        {isGenerating && (
           <Button
             variant="outline"
             size="sm"
@@ -446,59 +384,37 @@ export function SynthesisProgress({
               </>
             )}
           </Button>
-        </div>
-      )}
-
-      {/* 步骤列表 */}
-      <div className="space-y-1">
-        {SYNTHESIS_STEPS.map((step) => (
-          <StepIndicator
-            key={step.id}
-            step={step}
-            currentStep={currentStep}
-            isCompleted={state.status === "completed"}
-            isCancelled={isCancelled}
-          />
-        ))}
+        )}
       </div>
 
-      {/* 已取消提示 */}
+      {/* 错误/取消提示 */}
       <AnimatePresence>
         {state.status === "cancelled" && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 p-3 rounded-lg bg-muted text-muted-foreground"
+            className="flex items-center justify-center gap-2 p-3 rounded-lg bg-muted text-muted-foreground"
           >
             <XCircle className="h-5 w-5" />
-            <p className="text-sm">综述生成已取消</p>
+            <p className="text-sm">分析已取消</p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 错误提示 */}
       <AnimatePresence>
         {state.status === "error" && state.error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive"
+            className="flex items-center justify-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive"
           >
             <AlertCircle className="h-5 w-5" />
             <p className="text-sm">{state.error}</p>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* 流式预览 */}
-      <StreamPreview
-        overview={state.overview}
-        consensusCount={state.consensus.length}
-        divergenceCount={state.divergence.length}
-        blindSpotCount={state.blindSpots.length}
-      />
     </div>
   );
 }

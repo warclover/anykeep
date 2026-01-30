@@ -240,7 +240,7 @@ export function SynthesisQuickPageClient() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <h1 className="text-xl font-bold">内容分析</h1>
+        <h1 className="text-xl font-bold">收藏内容对比分析</h1>
       </div>
 
       {/* 主内容区 */}

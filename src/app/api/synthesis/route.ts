@@ -20,6 +20,7 @@ import {
   mapRowToSummary,
   SynthesisErrorCode,
 } from "@/lib/synthesis";
+import { generateSynthesisTitle } from "@/lib/synthesis/utils/title-generator";
 import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
@@ -214,13 +215,32 @@ export async function POST(request: NextRequest) {
           .select("name")
           .eq("id", parseInt(sourceId, 10))
           .single()) as { data: FolderNameRow | null };
-        reportTitle = folder?.name ? `${folder.name} 综述` : "主题综述";
+        reportTitle = folder?.name ? `${folder.name} 对比分析` : "对比分析";
       } else if (sourceType === "tag" && sourceId) {
-        reportTitle = `#${sourceId} 综述`;
-      } else if (sourceType === "selection") {
-        reportTitle = `${bookmarkIds?.length || 0} 篇书签综述`;
+        reportTitle = `#${sourceId} 对比分析`;
+      } else if (
+        sourceType === "selection" &&
+        bookmarkIds &&
+        bookmarkIds.length > 0
+      ) {
+        // 查询书签标题，用于生成有意义的标题
+        type BookmarkTitleRow = { title: string };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: bookmarks } = (await (supabase.from("bookmarks") as any)
+          .select("title")
+          .in(
+            "id",
+            bookmarkIds.map((id) => Number(id)),
+          )) as { data: BookmarkTitleRow[] | null };
+
+        if (bookmarks && bookmarks.length > 0) {
+          const titles = bookmarks.map((b) => b.title);
+          reportTitle = generateSynthesisTitle(titles);
+        } else {
+          reportTitle = `${bookmarkIds.length} 篇收藏对比分析`;
+        }
       } else {
-        reportTitle = "主题综述";
+        reportTitle = "对比分析";
       }
     }
 
@@ -236,28 +256,27 @@ export async function POST(request: NextRequest) {
     // 如果迁移未执行，此处传 null 以避免类型错误，bookmarkIds 通过 source_count 和后续流程传递
     const bookmarkIdsForDb = bookmarkIds?.map((id) => Number(id)) || null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error: insertError } = (await (
-      supabase.from("synthesis_reports") as any
-    )
-      .insert({
-        user_id: user.id,
-        title: reportTitle,
-        source_type: sourceType,
-        source_id: sourceId || null,
-        source_bookmark_ids: bookmarkIdsForDb,
-        depth_mode: depthMode,
-        output_style: outputStyle || "narrative", // [S1] 输出风格
-        blueprint_type: "thematic", // 内容分析默认使用 thematic 类型
-        content: "", // 初始为空，生成完成后更新
-        status: "pending",
-        source_count: bookmarkIds?.length || 0,
-      })
-      .select()
-      .single()) as {
-      data: SynthesisReportInsertRow | null;
-      error: { message: string } | null;
-    };
+    const { data: report, error: insertError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from("synthesis_reports") as any)
+        .insert({
+          user_id: user.id,
+          title: reportTitle,
+          source_type: sourceType,
+          source_id: sourceId || null,
+          source_bookmark_ids: bookmarkIdsForDb,
+          depth_mode: depthMode,
+          output_style: outputStyle || "narrative", // [S1] 输出风格
+          blueprint_type: "thematic", // 内容分析默认使用 thematic 类型
+          content: "", // 初始为空，生成完成后更新
+          status: "pending",
+          source_count: bookmarkIds?.length || 0,
+        })
+        .select()
+        .single()) as {
+        data: SynthesisReportInsertRow | null;
+        error: { message: string } | null;
+      };
 
     if (insertError || !report) {
       logger.error({ error: insertError }, "Failed to create synthesis report");

@@ -27,6 +27,7 @@ import {
   Trash2,
   RefreshCcw,
   ArrowUpDown,
+  Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -351,16 +352,42 @@ export function SynthesisListPageClient() {
   );
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
+    <div className="container max-w-4xl py-6 space-y-6 h-full overflow-auto">
       {/* 标题和创建按钮 */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">内容分析</h1>
+        <h1 className="text-2xl font-bold">收藏内容对比分析</h1>
         <Button asChild>
           <Link href="/synthesis/new">
             <Plus className="mr-2 h-4 w-4" />
             新建分析
           </Link>
         </Button>
+      </div>
+
+      {/* 功能说明 - 紧凑徽章版 */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+        <Lightbulb className="h-4 w-4 shrink-0" />
+        <span>选择同主题收藏，AI 将生成三维对比分析报告</span>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant="outline"
+            className="text-green-600 border-green-300 dark:text-green-400 dark:border-green-700"
+          >
+            核心共识
+          </Badge>
+          <Badge
+            variant="outline"
+            className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700"
+          >
+            主要分歧
+          </Badge>
+          <Badge
+            variant="outline"
+            className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700"
+          >
+            知识盲区
+          </Badge>
+        </div>
       </div>
 
       {/* 搜索和筛选 */}
