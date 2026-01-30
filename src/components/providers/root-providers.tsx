@@ -39,10 +39,7 @@ import { SessionHeartbeatProvider } from "@/components/providers/session-heartbe
 import { GlobalErrorBoundary } from "@/components/error-boundary";
 import { QueryProvider } from "@/lib/query";
 import { TTSPlayerProvider } from "@/components/tts";
-import {
-  FeedbackProvider,
-  FeedbackFloatingButton,
-} from "@/components/feedback";
+import { FeedbackProvider } from "@/components/feedback";
 import {
   composeProviders,
   withProps,
@@ -134,7 +131,7 @@ export function RootProviders({ children }: RootProvidersProps) {
           <FeatureProviders>{children}</FeatureProviders>
           {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
           <Toaster position="top-center" offset={16} />
-          <FeedbackFloatingButton />
+          {/* FeedbackFloatingButton 已��至 FloatingActionMenu 统一管理 */}
           <ServiceWorkerRegister />
           {/* Web Vitals 性能监控 */}
           <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />

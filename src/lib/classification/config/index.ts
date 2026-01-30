@@ -31,9 +31,6 @@ export * from "./ai-summary-config";
 // 嵌入配置
 export * from "./embedding-config";
 
-// 调试配置存储
-export * from "./debug-config-store";
-
 // ============================================================================
 // 向后兼容导出（V3 别名）
 // @deprecated 请直接从 ./feature-flags 和 ./defaults 导入

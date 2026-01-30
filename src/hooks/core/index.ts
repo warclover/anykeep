@@ -5,7 +5,6 @@
 
 export * from "./use-abortable-fetch";
 export * from "./use-color-theme";
-export * from "./use-debug-config";
 export * from "./use-dialogs";
 export * from "./use-platform-cache";
 export * from "./use-selection-mode";

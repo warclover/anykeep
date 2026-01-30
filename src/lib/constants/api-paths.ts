@@ -626,10 +626,6 @@ export const API_INTERNAL = {
     /** 更新文件夹画像 */
     updateFolderProfiles: "/api/internal/cron/update-folder-profiles",
   },
-  debug: {
-    /** AI 摘要调试 */
-    aiSummary: "/api/internal/debug/ai-summary",
-  },
   dev: {
     /** 处理快照 */
     processSnapshots: "/api/internal/dev/process-snapshots",

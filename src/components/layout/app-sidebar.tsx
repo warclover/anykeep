@@ -165,14 +165,7 @@ const insightCenterItems: NavItem[] = [
  */
 const devToolsItems: NavItem[] = [
   { name: "RAG 监控", href: "/settings/rag-dashboard", icon: Gauge },
-  { name: "智能分类", href: "/classification-debugger", icon: BrainCircuit },
-  {
-    name: "分类对比",
-    href: "/dev/classification-debugger",
-    icon: FlaskConical,
-  },
   { name: "文件夹健康", href: "/folder-health", icon: HeartPulse },
-  { name: "摘要调试", href: "/debug/ai-summary", icon: Sparkles },
   { name: "AI 助手调试", href: "/dev/ai-debug", icon: Zap },
 ];
 
@@ -413,7 +406,9 @@ export function AppSidebar() {
     if (!isVisuallyExpanded) return null;
     return (
       <div className="px-3 mb-2">
-        <p className={cn("text-sm font-semibold uppercase", color)}>{title}</p>
+        <p className={cn("text-base font-semibold uppercase", color)}>
+          {title}
+        </p>
       </div>
     );
   };

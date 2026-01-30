@@ -25,7 +25,7 @@ import { MainContent } from "@/components/main/main-content";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
 import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
-import { FloatingQuickAdd } from "@/components/quick-add";
+import { FloatingActionMenu } from "@/components/fab";
 
 export default function MainLayout({
   children,
@@ -59,8 +59,8 @@ export default function MainLayout({
       {/* 底部导航栏（移动端） */}
       <MobileBottomNav />
 
-      {/* 悬浮快速添加按钮 */}
-      <FloatingQuickAdd />
+      {/* 悬浮操作菜单（快速收藏 + 反馈建议） */}
+      <FloatingActionMenu />
     </div>
   );
 }
