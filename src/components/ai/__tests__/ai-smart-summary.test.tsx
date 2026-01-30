@@ -1,15 +1,32 @@
 /**
  * AISmartSummary Component Tests
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @since 2025-12-22
+ * @updated 2026-01-30 - V4.2.8: 添加 TTSPlayerProvider 上下文包装
  */
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { AISmartSummary } from "../ai-smart-summary";
+import { TTSPlayerProvider } from "@/components/tts";
 
 // Mock fetch
 global.fetch = jest.fn();
+
+/**
+ * V4.2.8: 测试包装器，提供必需的 Context
+ */
+function TestWrapper({ children }: { children: ReactNode }) {
+  return <TTSPlayerProvider>{children}</TTSPlayerProvider>;
+}
+
+/**
+ * 使用 TTSPlayerProvider 包装的 render 函数
+ */
+function renderWithProviders(ui: React.ReactElement) {
+  return render(ui, { wrapper: TestWrapper });
+}
 
 // Mock clipboard
 Object.assign(navigator, {
@@ -29,7 +46,7 @@ describe("AISmartSummary", () => {
   });
 
   it("renders existing summary when provided", () => {
-    render(<AISmartSummary {...defaultProps} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} />);
 
     expect(
       screen.getByText("This is an existing summary for testing."),
@@ -37,7 +54,7 @@ describe("AISmartSummary", () => {
   });
 
   it("renders card header with title", () => {
-    render(<AISmartSummary {...defaultProps} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} />);
 
     // Component uses "AI 摘要" as title
     expect(screen.getByText("AI 摘要")).toBeInTheDocument();
@@ -45,7 +62,7 @@ describe("AISmartSummary", () => {
   });
 
   it("shows action buttons when not readonly and summary exists", () => {
-    render(<AISmartSummary {...defaultProps} readonly={false} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={false} />);
 
     // Should have buttons (copy, edit, regenerate)
     const buttons = screen.getAllByRole("button");
@@ -53,15 +70,15 @@ describe("AISmartSummary", () => {
   });
 
   it("hides edit and regenerate buttons when readonly", () => {
-    render(<AISmartSummary {...defaultProps} readonly={true} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={true} />);
 
-    // Only copy button should be visible when readonly with summary
+    // V4.2.8: readonly 模式下显示 TTS 按钮 + Copy 按钮 = 2个
     const buttons = screen.getAllByRole("button");
-    expect(buttons.length).toBe(1); // Only copy button
+    expect(buttons.length).toBe(2); // TTS + Copy buttons
   });
 
   it("shows empty state when no summary exists", () => {
-    render(
+    renderWithProviders(
       <AISmartSummary
         {...defaultProps}
         existingSummary={null}
@@ -75,12 +92,11 @@ describe("AISmartSummary", () => {
   });
 
   it("enters edit mode when edit button is clicked", () => {
-    render(<AISmartSummary {...defaultProps} readonly={false} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={false} />);
 
-    // Find edit button (second button, after copy)
+    // V4.2.8: Find edit button (3rd button: TTS, Copy, Edit, Regenerate)
     const buttons = screen.getAllByRole("button");
-    // First button is copy, second is edit
-    const editButton = buttons[1];
+    const editButton = buttons[2];
     fireEvent.click(editButton);
 
     // Should show textarea
@@ -90,11 +106,11 @@ describe("AISmartSummary", () => {
   });
 
   it("cancels edit mode when cancel button is clicked", () => {
-    render(<AISmartSummary {...defaultProps} readonly={false} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={false} />);
 
-    // Enter edit mode
+    // V4.2.8: Enter edit mode (3rd button: TTS, Copy, Edit, Regenerate)
     const buttons = screen.getAllByRole("button");
-    const editButton = buttons[1];
+    const editButton = buttons[2];
     fireEvent.click(editButton);
 
     // Click cancel
@@ -111,7 +127,7 @@ describe("AISmartSummary", () => {
   it("saves edited summary and calls onSummaryUpdate", () => {
     const onSummaryUpdate = jest.fn();
 
-    render(
+    renderWithProviders(
       <AISmartSummary
         {...defaultProps}
         readonly={false}
@@ -119,9 +135,9 @@ describe("AISmartSummary", () => {
       />,
     );
 
-    // Enter edit mode
+    // V4.2.8: Enter edit mode (3rd button: TTS, Copy, Edit, Regenerate)
     const buttons = screen.getAllByRole("button");
-    const editButton = buttons[1];
+    const editButton = buttons[2];
     fireEvent.click(editButton);
 
     // Change summary
@@ -158,11 +174,11 @@ describe("AISmartSummary", () => {
       body: { getReader: () => mockReader },
     });
 
-    render(<AISmartSummary {...defaultProps} readonly={false} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={false} />);
 
-    // Find regenerate button (third button, after copy and edit)
+    // V4.2.8: Find regenerate button (4th button: TTS, Copy, Edit, Regenerate)
     const buttons = screen.getAllByRole("button");
-    const regenerateButton = buttons[2];
+    const regenerateButton = buttons[3];
     fireEvent.click(regenerateButton);
 
     await waitFor(() => {
@@ -193,7 +209,7 @@ describe("AISmartSummary", () => {
       body: { getReader: () => mockReader },
     });
 
-    render(
+    renderWithProviders(
       <AISmartSummary bookmarkId={1} existingSummary={null} readonly={false} />,
     );
 
@@ -212,11 +228,11 @@ describe("AISmartSummary", () => {
   });
 
   it("copies summary to clipboard", async () => {
-    render(<AISmartSummary {...defaultProps} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} />);
 
-    // First button is copy
+    // V4.2.8: Second button is copy (1st: TTS, 2nd: Copy)
     const buttons = screen.getAllByRole("button");
-    const copyButton = buttons[0];
+    const copyButton = buttons[1];
     fireEvent.click(copyButton);
 
     await waitFor(() => {
@@ -232,10 +248,11 @@ describe("AISmartSummary", () => {
       json: async () => ({ error: "生成失败" }),
     });
 
-    render(<AISmartSummary {...defaultProps} readonly={false} />);
+    renderWithProviders(<AISmartSummary {...defaultProps} readonly={false} />);
 
+    // V4.2.8: 4th button is regenerate (TTS, Copy, Edit, Regenerate)
     const buttons = screen.getAllByRole("button");
-    const regenerateButton = buttons[2];
+    const regenerateButton = buttons[3];
     fireEvent.click(regenerateButton);
 
     await waitFor(() => {
@@ -244,7 +261,7 @@ describe("AISmartSummary", () => {
   });
 
   it("applies custom className", () => {
-    const { container } = render(
+    const { container } = renderWithProviders(
       <AISmartSummary {...defaultProps} className="custom-class" />,
     );
 

@@ -71,6 +71,19 @@ import {
 } from "../index";
 
 describe("AI Summary Module", () => {
+  // V4.2.8: 使用 fake timers 防止定时器泄漏
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+  });
+
   describe("Module Exports", () => {
     it("should export all required types", () => {
       // Types are compile-time only, so we just verify the module loads

@@ -235,9 +235,16 @@ export class ProviderFactory implements IProviderFactory {
 
   /**
    * 获取所有 Provider 健康状态
+   *
+   * 注意：不在此方法内调用 initialize()，避免递归调用
+   * 调用者应确保在调用此方法前已完成初始化
    */
   async getAllHealth(): Promise<Map<ProviderName, ProviderHealth>> {
-    this.initialize();
+    // V4.2.8: 移除 initialize() 调用，避免与 startHealthCheck() 形成递归
+    // 如果未初始化，返回空 Map
+    if (!this.initialized) {
+      return new Map();
+    }
 
     const healthMap = new Map<ProviderName, ProviderHealth>();
 
