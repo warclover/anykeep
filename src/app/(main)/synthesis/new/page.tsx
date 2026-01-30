@@ -1,19 +1,20 @@
 /**
- * 知识萃取创建页 - 服务端入口
- * 引导用户选择来源、深度模式并启动生成
+ * 内容分析创建页 - 服务端入口
+ * 单页完成书签选择和分析配置
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-29
+ * @updated 2026-01-30 - 简化为单页流程
  */
 
 import type { Metadata } from "next";
-import { SynthesisNewPageClient } from "@/components/synthesis/synthesis-new-page-client";
+import { SynthesisQuickPageClient } from "@/components/synthesis/synthesis-quick-page-client";
 
 export const metadata: Metadata = {
-  title: "创建知识萃取 - AnyKeep",
-  description: "选择书签来源和萃取深度，从多个书签中提炼知识精华",
+  title: "内��分析 - AnyKeep",
+  description: "选择多篇内容，AI 分析它们的共识、分歧与知识盲区",
 };
 
 export default function SynthesisNewPage() {
-  return <SynthesisNewPageClient />;
+  return <SynthesisQuickPageClient />;
 }

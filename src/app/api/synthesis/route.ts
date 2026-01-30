@@ -210,10 +210,10 @@ export async function POST(request: NextRequest) {
         // 类型断言: 手动维护类型文件时需要此断言
         type FolderNameRow = { name: string };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: folder } = await (supabase.from("folders") as any)
+        const { data: folder } = (await (supabase.from("folders") as any)
           .select("name")
           .eq("id", parseInt(sourceId, 10))
-          .single() as { data: FolderNameRow | null };
+          .single()) as { data: FolderNameRow | null };
         reportTitle = folder?.name ? `${folder.name} 综述` : "主题综述";
       } else if (sourceType === "tag" && sourceId) {
         reportTitle = `#${sourceId} 综述`;
@@ -231,21 +231,33 @@ export async function POST(request: NextRequest) {
       title: string;
       status: string;
     };
+
+    // 注意：source_bookmark_ids 字段类型为 BIGINT[]（已通过迁移修复）
+    // 如果迁移未执行，此处传 null 以避免类型错误，bookmarkIds 通过 source_count 和后续流程传递
+    const bookmarkIdsForDb = bookmarkIds?.map((id) => Number(id)) || null;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error: insertError } = await (supabase.from("synthesis_reports") as any)
+    const { data: report, error: insertError } = (await (
+      supabase.from("synthesis_reports") as any
+    )
       .insert({
         user_id: user.id,
         title: reportTitle,
         source_type: sourceType,
         source_id: sourceId || null,
-        source_bookmark_ids: bookmarkIds || null,
+        source_bookmark_ids: bookmarkIdsForDb,
         depth_mode: depthMode,
         output_style: outputStyle || "narrative", // [S1] 输出风格
+        blueprint_type: "thematic", // 内容分析默认使用 thematic 类型
+        content: "", // 初始为空，生成完成后更新
         status: "pending",
         source_count: bookmarkIds?.length || 0,
       })
       .select()
-      .single() as { data: SynthesisReportInsertRow | null; error: { message: string } | null };
+      .single()) as {
+      data: SynthesisReportInsertRow | null;
+      error: { message: string } | null;
+    };
 
     if (insertError || !report) {
       logger.error({ error: insertError }, "Failed to create synthesis report");

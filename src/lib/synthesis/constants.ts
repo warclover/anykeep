@@ -23,7 +23,7 @@ export const OUTPUT_TOKEN_RESERVE = 4000;
 // ============================================
 
 /** 最小书签数量 */
-export const MIN_BOOKMARKS_COUNT = 3;
+export const MIN_BOOKMARKS_COUNT = 2;
 
 /** 最大书签数量（标准模式） */
 export const MAX_BOOKMARKS_STANDARD = 100;

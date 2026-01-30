@@ -84,7 +84,7 @@ describe("Token 限制常量", () => {
 
 describe("书签限制常量", () => {
   it("MIN_BOOKMARKS_COUNT 定义合理", () => {
-    expect(MIN_BOOKMARKS_COUNT).toBe(3);
+    expect(MIN_BOOKMARKS_COUNT).toBe(2);
     expect(MIN_BOOKMARKS_COUNT).toBeGreaterThanOrEqual(1);
   });
 
