@@ -130,9 +130,9 @@ const smartListItems: NavItem[] = [
  */
 const learningCenterItems: NavItem[] = [
   { name: "学习助手", href: "/learning-hub", icon: BookMarked },
-  { name: "知识萃取", href: "/synthesis", icon: FlaskConical },
+  { name: "内容分析", href: "/synthesis", icon: FlaskConical },
   {
-    name: "知识工坊",
+    name: "草稿工坊",
     href: "/knowledge-studio/v2",
     icon: Sparkles,
     isPro: true,

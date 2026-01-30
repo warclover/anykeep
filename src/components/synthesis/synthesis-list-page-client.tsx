@@ -354,11 +354,11 @@ export function SynthesisListPageClient() {
     <div className="container max-w-4xl py-6 space-y-6">
       {/* 标题和创建按钮 */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">主题综述</h1>
+        <h1 className="text-2xl font-bold">内容分析</h1>
         <Button asChild>
           <Link href="/synthesis/new">
             <Plus className="mr-2 h-4 w-4" />
-            新建综述
+            新建分析
           </Link>
         </Button>
       </div>
