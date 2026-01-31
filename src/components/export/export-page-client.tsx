@@ -43,6 +43,11 @@ import type { Bookmark } from "@/types/supabase";
 /** 页面状态 */
 type PageState = "idle" | "loading" | "ready" | "error";
 
+interface ExportPageClientProps {
+  /** 嵌入模式：隐藏页面标题 */
+  embedded?: boolean;
+}
+
 /**
  * 预定义平台选项
  * 值必须与 validation.ts 中 getBookmarksQuerySchema.platform 枚举匹配
@@ -57,7 +62,7 @@ const PLATFORM_OPTIONS = [
   { value: "UNKNOWN", label: "其他" },
 ] as const;
 
-export function ExportPageClient() {
+export function ExportPageClient({ embedded = false }: ExportPageClientProps) {
   // ==================== URL 参数 ====================
   const searchParams = useSearchParams();
   const urlFolderId = searchParams?.get("folder") || "";
@@ -194,24 +199,26 @@ export function ExportPageClient() {
   // ==================== 渲染 ====================
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6">
-      {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">{EXPORT_PAGE_TEXT.title}</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={pageState === "loading"}
-          >
-            <RefreshCw
-              className={`size-4 mr-2 ${pageState === "loading" ? "animate-spin" : ""}`}
-            />
-            刷新
-          </Button>
+    <div className={embedded ? "" : "container max-w-4xl mx-auto px-4 py-6"}>
+      {/* 页面标题 - 嵌入模式下隐藏 */}
+      {!embedded && (
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">{EXPORT_PAGE_TEXT.title}</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={pageState === "loading"}
+            >
+              <RefreshCw
+                className={`size-4 mr-2 ${pageState === "loading" ? "animate-spin" : ""}`}
+              />
+              刷新
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-6">
         {/* 格式选择 */}

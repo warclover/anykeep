@@ -166,10 +166,17 @@ const STATUS_CONFIG: Record<
   },
 };
 
+interface DistributionPageClientProps {
+  /** 嵌入模式：隐藏页面标题 */
+  embedded?: boolean;
+}
+
 /**
  * 分发中心页面客户端组件
  */
-export function DistributionPageClient() {
+export function DistributionPageClient({
+  embedded = false,
+}: DistributionPageClientProps) {
   const router = useRouter();
   const [targets, setTargets] = useState<DistributionTarget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -463,22 +470,34 @@ export function DistributionPageClient() {
   );
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">分发中心</h1>
-          <p className="text-muted-foreground mt-1">
-            将收藏内容自动同步到其他平台
-          </p>
+    <div className={embedded ? "" : "container max-w-4xl mx-auto py-8 px-4"}>
+      {/* 页面标题 - 嵌入模式下隐藏 */}
+      {!embedded && (
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">分发中心</h1>
+            <p className="text-muted-foreground mt-1">
+              将收藏内容自动同步到其他平台
+            </p>
+          </div>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            添加目标
+          </Button>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          添加目标
-        </Button>
-      </div>
+      )}
 
-      <Separator className="mb-8" />
+      {/* 嵌入模式下的添加按钮 */}
+      {embedded && (
+        <div className="flex justify-end mb-4">
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            添加目标
+          </Button>
+        </div>
+      )}
+
+      {!embedded && <Separator className="mb-8" />}
 
       {/* 目标列表 */}
       {isLoading ? (
