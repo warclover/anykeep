@@ -22,7 +22,6 @@ import {
   Tags,
   FileText,
   Inbox,
-  ListFilter,
   CheckSquare,
   Database,
   LinkIcon,
@@ -33,10 +32,6 @@ import {
   Settings,
   Wrench,
   Trash2,
-  Star,
-  AlertCircle,
-  Clock,
-  BookMarked,
   ChevronRight,
   ChevronDown,
   PanelLeftClose,
@@ -48,6 +43,7 @@ import {
   Zap,
   Volume2,
   Workflow,
+  BookMarked,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
@@ -100,23 +96,12 @@ const contentCenterItems: NavItem[] = [
  */
 const organizeToolsItems: NavItem[] = [
   { name: "整理中心", href: "/organize", icon: Sparkles },
-  { name: "等待分类", href: "/inbox", icon: Inbox },
+  { name: "收件箱", href: "/inbox", icon: Inbox },
   { name: "数据中心", href: "/data", icon: Database },
   { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
   { name: "工作流", href: "/workflows", icon: Workflow },
   { name: "链接检测", href: "/link-health", icon: LinkIcon },
-];
-
-/**
- * 智能列表配置
- */
-const smartListItems: NavItem[] = [
-  { name: "全部书签", href: "/home", icon: BookOpen },
-  { name: "高价值", href: "/home?folder=high-value", icon: Star },
-  { name: "已失效", href: "/home?folder=invalid", icon: AlertCircle },
-  { name: "最近添加", href: "/home?folder=recent", icon: Clock },
-  { name: "未读内容", href: "/home?folder=unread", icon: BookMarked },
 ];
 
 /**
@@ -260,7 +245,6 @@ export function AppSidebar() {
   // 折叠状态管理
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {
-      smartList: false,
       devTools: false,
     },
   );
@@ -558,15 +542,6 @@ export function AppSidebar() {
                 {/* 待分类 */}
                 {renderNavItem(
                   organizeToolsItems[0],
-                  groupCandyColors.organize,
-                )}
-
-                {/* 智能列表（可折叠） */}
-                {renderCollapsibleMenu(
-                  "smartList",
-                  "智能列表",
-                  ListFilter,
-                  smartListItems,
                   groupCandyColors.organize,
                 )}
 

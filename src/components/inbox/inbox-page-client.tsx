@@ -1,21 +1,20 @@
 /**
  * 收件箱客户端组件
- * V4.2 托管模式感知
+ * V5.0 统一收件箱 - 合并等待分类与智能列表
  *
- * @description 展示待整理书签和智能整理建议
+ * @description 统一的待处理内容聚合中心
+ * - Tab 切换：待分类、未读、高价值、已失效、最近
  * - 根据托管模式显示不同的提示
- * - 全自动模式：显示 AI 自动处理状态
- * - 半自动模式：显示待确认分类提示
- * - 手动模式：显示传统整理建议
+ * - 智能整理建议面板
  *
- * @version 1.1.0
- * @since 2025-12-11
+ * @version 5.0.0
+ * @since 2026-01-31
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Inbox,
   FolderInput,
@@ -44,14 +43,24 @@ import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { OrganizationSuggestionsPanel } from "./organization-suggestions-panel";
 import { ClusterSuggestionsPanel } from "./cluster-suggestions-panel";
 import { ClusterAnalysisBanner } from "./cluster-analysis-banner";
+import { InboxTabs } from "./inbox-tabs";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { useTrustMode, useConfirmations } from "@/hooks/ui";
+import { useInboxCounts } from "@/hooks/data/use-inbox-counts";
 import { cn } from "@/lib/utils";
 import { dataCache } from "@/lib/cache";
-import type { Bookmark } from "@/types/supabase";
+import { createClient } from "@/lib/supabase/client";
+import {
+  DEFAULT_TAB,
+  INBOX_TABS,
+  isValidInboxTabId,
+  type InboxTabId,
+} from "@/lib/constants/inbox-tabs";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import type { Bookmark } from "@/types/supabase";
 
-// 扩展的书签类型
+// ==================== 类型定义 ====================
+
 type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
 };
@@ -66,21 +75,60 @@ interface InboxPageClientProps {
   availableFolders: FolderOption[];
   inboxFolderId: number | null;
   error?: string;
+  initialTab?: InboxTabId;
 }
+
+// ==================== Tab 配置映射 ====================
+
+const TAB_LABELS: Record<InboxTabId, { title: string; description: string }> = {
+  uncategorized: {
+    title: "待分类书签",
+    description: "这些书签尚未分类到任何文件夹，请查看左侧的智能建议或手动整理",
+  },
+  unread: {
+    title: "未读内容",
+    description: "您尚未阅读过的书签，点击书签即可标记为已读",
+  },
+  "high-value": {
+    title: "高价值书签",
+    description: "AI 评估的高质量内容，值得深度阅读和学习",
+  },
+  broken: {
+    title: "已失效链接",
+    description: "这些链接已无法访问，建议删除或更新 URL",
+  },
+  recent: {
+    title: "最近添加",
+    description: "最近 7 天内添加的书签",
+  },
+};
+
+// ==================== 主组件 ====================
 
 export function InboxPageClient({
   initialBookmarks,
   availableFolders,
   inboxFolderId: _inboxFolderId,
   error,
+  initialTab,
 }: InboxPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 从 URL 读取初始 Tab
+  const urlTab = searchParams?.get("tab") ?? null;
+  const defaultTab =
+    initialTab || (urlTab && isValidInboxTabId(urlTab) ? urlTab : DEFAULT_TAB);
+
+  const [activeTab, setActiveTab] = useState<InboxTabId>(defaultTab);
   const [bookmarks, setBookmarks] =
     useState<BookmarkWithFolder[]>(initialBookmarks);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
+  const [isLoadingTab, setIsLoadingTab] = useState(false);
 
-  // V4.2: 托管模式感知
+  // Hooks
+  const { refresh: refreshCounts } = useInboxCounts();
   const {
     mode,
     isFullAuto,
@@ -93,25 +141,106 @@ export function InboxPageClient({
     type: "classification",
   });
 
-  // 刷新书签列表
-  // V4.2.3: 添加缓存失效，确保数据一致性
+  // 当前 Tab 配置
+  const currentTabConfig = useMemo(() => TAB_LABELS[activeTab], [activeTab]);
+
+  // 是否显示整理建议面板（仅待分类 Tab）
+  const showOrganizePanels = activeTab === "uncategorized";
+
+  // ==================== Tab 切换 ====================
+
+  const handleTabChange = useCallback(
+    async (tab: InboxTabId) => {
+      if (tab === activeTab) return;
+
+      setActiveTab(tab);
+      setIsLoadingTab(true);
+
+      // 更新 URL（不刷新页面）
+      const newUrl = tab === DEFAULT_TAB ? "/inbox" : `/inbox?tab=${tab}`;
+      window.history.replaceState(null, "", newUrl);
+
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          toast.error("请先登录");
+          return;
+        }
+
+        // 根据 Tab 构建查询
+        let query = supabase
+          .from("bookmarks")
+          .select("*, folders!bookmarks_folder_id_fkey(name)")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .eq("is_in_trash", false);
+
+        // 应用 Tab 筛选条件
+        const tabConfig = INBOX_TABS.find((t) => t.id === tab);
+        if (tabConfig) {
+          const filter = tabConfig.getFilter();
+
+          if (filter.folderId === null) {
+            query = query.is("folder_id", null);
+          }
+          if (filter.isRead === false) {
+            query = query.eq("is_read", false);
+          }
+          if (filter.qualityScoreGte) {
+            query = query.gte("quality_score", filter.qualityScoreGte);
+          }
+          if (filter.linkStatus) {
+            query = query.eq("link_status", filter.linkStatus);
+          }
+          if (filter.createdAfter === "7d") {
+            query = query.gte(
+              "created_at",
+              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            );
+          }
+        }
+
+        const { data, error: queryError } = await query
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (queryError) {
+          toast.error("加载失败：" + queryError.message);
+          return;
+        }
+
+        setBookmarks((data as BookmarkWithFolder[]) || []);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "加载失败");
+      } finally {
+        setIsLoadingTab(false);
+      }
+    },
+    [activeTab],
+  );
+
+  // ==================== 刷新书签 ====================
+
   const refreshBookmarks = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // 失效书签相关缓存，确保获取最新数据
       dataCache.invalidate(/^bookmarks:/);
-      // 刷新页面数据
-      router.refresh();
+      // 重新加载当前 Tab
+      await handleTabChange(activeTab);
+      refreshCounts();
     } catch {
       toast.error("刷新失败");
     } finally {
       setIsRefreshing(false);
     }
-  }, [router]);
+  }, [activeTab, handleTabChange, refreshCounts]);
 
-  // P1-3: 一键整理功能
-  // 获取所有建议并自动应用
-  // C1+C3: 增加重试机制和并发控制
+  // ==================== 一键整理 ====================
+
   const handleOneClickOrganize = useCallback(async () => {
     if (bookmarks.length === 0) {
       toast.info("没有需要整理的书签");
@@ -121,7 +250,6 @@ export function InboxPageClient({
     setIsOrganizing(true);
     const loadingToast = toast.loading("正在分析并整理书签...");
 
-    // 带重试的请求函数
     const fetchWithRetry = async (
       url: string,
       options?: RequestInit,
@@ -132,16 +260,13 @@ export function InboxPageClient({
         try {
           const response = await fetch(url, options);
           if (response.ok) return response;
-          // 4xx 错误不重试（客户端错误）
           if (response.status >= 400 && response.status < 500) {
             return response;
           }
-          // 5xx 错误重试
           lastError = new Error(`HTTP ${response.status}`);
         } catch (err) {
           lastError = err instanceof Error ? err : new Error("Network error");
         }
-        // 指数退避：100ms, 200ms, 400ms
         if (attempt < maxRetries - 1) {
           await new Promise((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
         }
@@ -149,7 +274,6 @@ export function InboxPageClient({
       throw lastError || new Error("Request failed after retries");
     };
 
-    // 并发控制：每批最多 3 个并发请求
     const processBatch = async <T, R>(
       items: T[],
       processor: (item: T) => Promise<R>,
@@ -178,7 +302,6 @@ export function InboxPageClient({
     };
 
     try {
-      // 1. 获取整理建议（带重试）
       const analysisResponse = await fetchWithRetry(API_CLASSIFICATION.inbox);
       if (!analysisResponse.ok) {
         throw new Error("获取整理建议失败");
@@ -193,7 +316,6 @@ export function InboxPageClient({
         return;
       }
 
-      // 2. 并发应用建议（带重试，最多 3 并发）
       const results = await processBatch(
         suggestions,
         async (suggestion: { id: number }) => {
@@ -220,9 +342,9 @@ export function InboxPageClient({
       toast.dismiss(loadingToast);
 
       if (successCount > 0) {
-        // 失效缓存并刷新
         dataCache.invalidate(/^bookmarks:/);
-        router.refresh();
+        await refreshBookmarks();
+        refreshCounts();
 
         if (failCount === 0) {
           toast.success(`成功整理 ${successCount} 组书签`);
@@ -238,22 +360,36 @@ export function InboxPageClient({
     } finally {
       setIsOrganizing(false);
     }
-  }, [bookmarks.length, router]);
+  }, [bookmarks.length, refreshBookmarks, refreshCounts]);
 
-  // 建议应用后的回调
+  // ==================== 回调函数 ====================
+
   const handleSuggestionApplied = useCallback(() => {
-    // 刷新书签列表
     refreshBookmarks();
     toast.success("整理建议已应用");
   }, [refreshBookmarks]);
 
-  // 删除书签后的回调
-  const handleBookmarkDelete = useCallback((id: number) => {
-    setBookmarks((prev) => prev.filter((b) => b.id !== id));
-    toast.success("书签已删除");
+  const handleBookmarkDelete = useCallback(
+    (id: number) => {
+      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+      refreshCounts();
+      toast.success("书签已删除");
+    },
+    [refreshCounts],
+  );
+
+  // ==================== 初始化加载 ====================
+
+  useEffect(() => {
+    // 如果 URL 有 tab 参数且与默认不同，加载对应数据
+    if (urlTab && isValidInboxTabId(urlTab) && urlTab !== "uncategorized") {
+      handleTabChange(urlTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 错误状态
+  // ==================== 错误状态 ====================
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -270,134 +406,211 @@ export function InboxPageClient({
     );
   }
 
+  // ==================== 渲染 ====================
+
   return (
     <div className="space-y-6">
       {/* V4.2: AI 聚类分析状态横幅 */}
-      <ClusterAnalysisBanner className="mb-2" />
+      {showOrganizePanels && <ClusterAnalysisBanner className="mb-2" />}
 
       {/* V4.2: 托管模式提示横幅 */}
-      <TrustModeBanner
-        mode={mode}
-        isFullAuto={isFullAuto}
-        isSemiAuto={isSemiAuto}
-        isManual={isManual}
-        isLoading={isTrustModeLoading}
-        pendingCount={pendingCount}
-        onGoToMessages={() => router.push("/messages")}
-        onGoToSettings={() => router.push("/settings")}
-      />
+      {showOrganizePanels && (
+        <TrustModeBanner
+          mode={mode}
+          isFullAuto={isFullAuto}
+          isSemiAuto={isSemiAuto}
+          isManual={isManual}
+          isLoading={isTrustModeLoading}
+          pendingCount={pendingCount}
+          onGoToMessages={() => router.push("/messages")}
+          onGoToSettings={() => router.push("/settings")}
+        />
+      )}
 
-      {/* 页面标题 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-            <Inbox className="w-5 h-5 text-white" />
+      {/* 页面标题 + Tab 切换 */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+              <Inbox className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-gray-900 dark:text-white">
+                收件箱
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                待处理内容聚合中心
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-gray-900 dark:text-white">
-              待整理
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {bookmarks.length > 0
-                ? `${bookmarks.length} 个书签等待整理`
-                : "暂无待整理的书签"}
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* P1-3: 一键整理按钮 */}
-          {bookmarks.length > 0 && (
+          <div className="flex items-center gap-2">
+            {/* 一键整理按钮（仅待分类 Tab） */}
+            {showOrganizePanels && bookmarks.length > 0 && (
+              <Button
+                size="sm"
+                onClick={handleOneClickOrganize}
+                disabled={isOrganizing || isRefreshing}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+              >
+                <Wand2
+                  className={cn(
+                    "w-4 h-4 mr-2",
+                    isOrganizing && "animate-pulse",
+                  )}
+                />
+                {isOrganizing ? "整理中..." : "一键整理"}
+              </Button>
+            )}
             <Button
+              variant="outline"
               size="sm"
-              onClick={handleOneClickOrganize}
-              disabled={isOrganizing || isRefreshing}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+              onClick={refreshBookmarks}
+              disabled={isRefreshing || isOrganizing || isLoadingTab}
             >
-              <Wand2
-                className={cn("w-4 h-4 mr-2", isOrganizing && "animate-pulse")}
+              <RefreshCw
+                className={cn(
+                  "w-4 h-4 mr-2",
+                  (isRefreshing || isLoadingTab) && "animate-spin",
+                )}
               />
-              {isOrganizing ? "整理中..." : "一键整理"}
+              刷新
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshBookmarks}
-            disabled={isRefreshing || isOrganizing}
-          >
-            <RefreshCw
-              className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/home")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              返回
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab 切换器 */}
+        <InboxTabs activeTab={activeTab} onTabChange={handleTabChange} />
+      </div>
+
+      {/* 内容区域 */}
+      {showOrganizePanels ? (
+        // 待分类 Tab：两栏布局（左侧建议 + 右侧书签）
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 左侧：智能整理建议 */}
+          <div className="lg:col-span-1 order-2 lg:order-1 space-y-6">
+            <ClusterSuggestionsPanel onRefreshBookmarks={refreshBookmarks} />
+            <OrganizationSuggestionsPanel
+              availableFolders={availableFolders}
+              onSuggestionApplied={handleSuggestionApplied}
             />
-            刷新
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/home")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回首页
-          </Button>
-        </div>
-      </div>
+          </div>
 
-      {/* 内容区域 - 两栏布局 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左侧：智能整理建议 */}
-        <div className="lg:col-span-1 order-2 lg:order-1 space-y-6">
-          {/* V4.2: 聚类建议面板 */}
-          <ClusterSuggestionsPanel onRefreshBookmarks={refreshBookmarks} />
-
-          {/* 原有整理建议面板 */}
-          <OrganizationSuggestionsPanel
-            availableFolders={availableFolders}
-            onSuggestionApplied={handleSuggestionApplied}
-          />
+          {/* 右侧：书签列表 */}
+          <div className="lg:col-span-2 order-1 lg:order-2">
+            <BookmarkListCard
+              bookmarks={bookmarks}
+              isLoading={isLoadingTab}
+              tabConfig={currentTabConfig}
+              onDelete={handleBookmarkDelete}
+            />
+          </div>
         </div>
-
-        {/* 右侧：书签列表 */}
-        <div className="lg:col-span-2 order-1 lg:order-2">
-          {bookmarks.length === 0 ? (
-            <InboxEmptyState />
-          ) : (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FolderInput className="w-5 h-5 text-muted-foreground" />
-                    <CardTitle className="text-lg">待整理书签</CardTitle>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    共 {bookmarks.length} 个
-                  </span>
-                </div>
-                <CardDescription>
-                  这些书签尚未分类到任何文件夹，请查看左侧的智能建议或手动整理
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {bookmarks.map((bookmark) => (
-                    <BookmarkCard
-                      key={bookmark.id}
-                      bookmark={bookmark}
-                      onDelete={handleBookmarkDelete}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+      ) : (
+        // 其他 Tab：单栏布局
+        <BookmarkListCard
+          bookmarks={bookmarks}
+          isLoading={isLoadingTab}
+          tabConfig={currentTabConfig}
+          onDelete={handleBookmarkDelete}
+        />
+      )}
     </div>
   );
 }
 
-// ============================================================================
-// V4.2: 托管模式提示横幅
-// ============================================================================
+// ==================== 书签列表卡片 ====================
+
+interface BookmarkListCardProps {
+  bookmarks: BookmarkWithFolder[];
+  isLoading: boolean;
+  tabConfig: { title: string; description: string };
+  onDelete: (id: number) => void;
+}
+
+function BookmarkListCard({
+  bookmarks,
+  isLoading,
+  tabConfig,
+  onDelete,
+}: BookmarkListCardProps) {
+  const router = useRouter();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-40 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (bookmarks.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center mb-4">
+            <Sparkles className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            这里暂时没有内容
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
+            {tabConfig.description}
+          </p>
+          <Button onClick={() => router.push("/home")}>返回首页</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderInput className="w-5 h-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{tabConfig.title}</CardTitle>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            共 {bookmarks.length} 个
+          </span>
+        </div>
+        <CardDescription>{tabConfig.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {bookmarks.map((bookmark) => (
+            <BookmarkCard
+              key={bookmark.id}
+              bookmark={bookmark}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ==================== 托管模式横幅 ====================
 
 interface TrustModeBannerProps {
   mode: string;
@@ -420,12 +633,10 @@ function TrustModeBanner({
   onGoToMessages,
   onGoToSettings,
 }: TrustModeBannerProps) {
-  // 加载中不显示
   if (isLoading) {
     return null;
   }
 
-  // 全自动模式
   if (isFullAuto) {
     return (
       <Alert className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
@@ -452,7 +663,6 @@ function TrustModeBanner({
     );
   }
 
-  // 半自动模式
   if (isSemiAuto) {
     return (
       <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
@@ -492,7 +702,6 @@ function TrustModeBanner({
     );
   }
 
-  // 手动模式
   if (isManual) {
     return (
       <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
@@ -520,34 +729,8 @@ function TrustModeBanner({
   return null;
 }
 
-/**
- * 空状态组件
- */
-function InboxEmptyState() {
-  const router = useRouter();
+// ==================== 骨架屏 ====================
 
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center py-12">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center mb-4">
-          <Sparkles className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          太棒了！全部整理完毕
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
-          所有书签都已归类到相应的文件夹中。添加新书签时，AI
-          会自动建议合适的分类位置。
-        </p>
-        <Button onClick={() => router.push("/home")}>返回首页</Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * 加载状态骨架屏
- */
 export function InboxPageSkeleton() {
   return (
     <div className="space-y-6">
@@ -558,6 +741,13 @@ export function InboxPageSkeleton() {
           <Skeleton className="h-7 w-24 mb-1" />
           <Skeleton className="h-4 w-40" />
         </div>
+      </div>
+
+      {/* Tab 骨架 */}
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-24 rounded-md" />
+        ))}
       </div>
 
       {/* 内容骨架 */}
