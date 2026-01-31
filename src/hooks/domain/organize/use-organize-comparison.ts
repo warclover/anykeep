@@ -35,7 +35,9 @@ interface UseOrganizeComparisonReturn {
  * 获取收藏统计数据
  */
 async function fetchCollectionStats(): Promise<OrganizeSnapshot> {
-  const response = await fetch("/api/collection-stats");
+  const response = await fetch("/api/collection-stats", {
+    credentials: "include", // 确保携带认证 cookies
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch collection stats");
   }
