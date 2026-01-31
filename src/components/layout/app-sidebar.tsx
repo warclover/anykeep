@@ -24,9 +24,7 @@ import {
   Inbox,
   ListFilter,
   CheckSquare,
-  Download,
-  Upload,
-  Wand2,
+  Database,
   LinkIcon,
   FlaskConical,
   BarChart3,
@@ -46,7 +44,6 @@ import {
   BrainCircuit,
   HeartPulse,
   Sparkles,
-  Share2,
   Gauge,
   Zap,
   Volume2,
@@ -104,13 +101,10 @@ const contentCenterItems: NavItem[] = [
 const organizeToolsItems: NavItem[] = [
   { name: "整理中心", href: "/organize", icon: Sparkles },
   { name: "等待分类", href: "/inbox", icon: Inbox },
-  { name: "数据导入", href: "/import", icon: Upload },
+  { name: "数据中心", href: "/data", icon: Database },
   { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
-  { name: "内容导出", href: "/export", icon: Download, pageId: "export" },
   { name: "工作流", href: "/workflows", icon: Workflow },
-  { name: "分发中心", href: "/distribution", icon: Share2 },
-  { name: "整理大师", href: "/librarian", icon: Wand2 },
   { name: "链接检测", href: "/link-health", icon: LinkIcon },
 ];
 

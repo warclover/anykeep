@@ -2,13 +2,15 @@
  * 整理中心页面客户端组件
  *
  * 功能：
- * - 展示快速操作网格
+ * - 展示快速操作网格（左侧）
+ * - 展示健康诊断面板（右侧）- 合并自整理大师
  * - 触发 AI 整理流程
  * - 显示整理进度
  * - 展示整理前后对比
  *
- * @version 1.1.0
+ * @version 2.0.0 - 合并整理大师功能
  * @since 2026-01-10
+ * @updated 2026-01-31
  */
 
 "use client";
@@ -18,11 +20,16 @@ import { Sparkles, CheckCircle } from "lucide-react";
 import { QuickActionGrid } from "./quick-action-grid";
 import { OrganizeProgress } from "./organize-progress";
 import { OrganizeComparison } from "./organize-comparison";
+import { HealthDiagnosisPanel } from "./health-diagnosis-panel";
+import { IssueDetailDrawer } from "./issue-detail-drawer";
 import { useOrganizeComparison } from "@/hooks/domain/organize/use-organize-comparison";
+import { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
+import { useHealthActions } from "@/hooks/domain/organize/use-health-actions";
 import { useAIChat } from "@/hooks/domain/ai";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { OrganizePageState, QuickActionType } from "@/lib/organize/types";
+import type { IssueType, ActionType } from "./issue-summary-list";
 
 /**
  * 操作类型到消息的映射
@@ -64,6 +71,7 @@ export function OrganizePageClient() {
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [organizeError, setOrganizeError] = useState<string | null>(null);
+  const [showIssueDrawer, setShowIssueDrawer] = useState(false);
 
   const {
     beforeSnapshot,
@@ -74,6 +82,18 @@ export function OrganizePageClient() {
     hasComparison,
     error: snapshotError,
   } = useOrganizeComparison();
+
+  // 健康分析数据（用于抽屉）
+  const { analysis, refresh: refreshAnalysis } = useLibrarianAnalysis();
+
+  // 健康问题操作
+  const { mergeFolders, deleteFolder, renameFolder, createFolder } =
+    useHealthActions({
+      onSuccess: () => {
+        // 操作成功后刷新分析
+        refreshAnalysis();
+      },
+    });
 
   const { sendMessage, cancel } = useAIChat({
     onStream: (chunk) => {
@@ -96,6 +116,8 @@ export function OrganizePageClient() {
       try {
         // 整理完成，获取后快照
         await captureAfterSnapshot();
+        // 刷新健康分析（问题可能已减少）
+        await refreshAnalysis();
         setState("complete");
       } catch (error) {
         console.error("Failed to capture after snapshot:", error);
@@ -112,7 +134,7 @@ export function OrganizePageClient() {
   });
 
   /**
-   * 处理整理操作
+   * 处理整理��作
    */
   const handleOrganizeAction = useCallback(
     async (actionType: QuickActionType) => {
@@ -168,8 +190,60 @@ export function OrganizePageClient() {
     setOrganizeError(null);
   }, [cancel]);
 
+  /**
+   * 处理问题操作（来自健康诊断面板）
+   */
+  const handleIssueAction = useCallback(
+    async (type: IssueType, itemId: number, action: ActionType) => {
+      if (!analysis) return;
+
+      switch (action) {
+        case "merge": {
+          // 合并重复文件夹：需要找到目标文件夹
+          const group = analysis.duplicateFolders[itemId];
+          if (group && group.folders.length >= 2) {
+            // 将第一个文件夹合并到第二个
+            const [source, target] = group.folders;
+            await mergeFolders(source.id, target.id);
+          }
+          break;
+        }
+        case "delete": {
+          // 删除空文件夹
+          await deleteFolder(itemId);
+          break;
+        }
+        case "rename": {
+          // 重命名：找到建议的新名称
+          const namingItem = analysis.poorlyNamedFolders.find(
+            (item) => item.folder.id === itemId,
+          );
+          if (namingItem) {
+            await renameFolder(itemId, namingItem.suggestedName);
+          }
+          break;
+        }
+        case "create": {
+          // 创建缺失分类
+          const missingItem = analysis.missingCategories[itemId];
+          if (missingItem) {
+            await createFolder(missingItem.category);
+          }
+          break;
+        }
+        case "split": {
+          // TODO: 拆分文件夹需要更复杂的交互，暂不实现
+          break;
+        }
+      }
+    },
+    [analysis, mergeFolders, deleteFolder, renameFolder, createFolder],
+  );
+
+  const isExecuting = state === "analyzing" || state === "executing";
+
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
+    <div className="container max-w-6xl py-6 space-y-6">
       {/* 页面标题 */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -192,44 +266,73 @@ export function OrganizePageClient() {
         </Card>
       )}
 
-      {/* 主内容区 */}
-      {state === "idle" && <QuickActionGrid onAction={handleOrganizeAction} />}
+      {/* 主内容��� - 两栏布局 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* 左侧：快速操作 / 进度 / 结果 (占 3 列) */}
+        <div className="lg:col-span-3 space-y-6">
+          {state === "idle" && (
+            <QuickActionGrid onAction={handleOrganizeAction} />
+          )}
 
-      {(state === "analyzing" || state === "executing") && (
-        <OrganizeProgress
-          status={state}
-          message={progressMessage}
-          progress={progressPercent}
-          currentStep={currentStep}
-          onCancel={handleCancel}
-        />
-      )}
+          {isExecuting && (
+            <OrganizeProgress
+              status={state}
+              message={progressMessage}
+              progress={progressPercent}
+              currentStep={currentStep}
+              onCancel={handleCancel}
+            />
+          )}
 
-      {state === "complete" &&
-        hasComparison &&
-        beforeSnapshot &&
-        afterSnapshot && (
-          <OrganizeComparison
-            before={beforeSnapshot}
-            after={afterSnapshot}
-            onReset={handleReset}
+          {state === "complete" &&
+            hasComparison &&
+            beforeSnapshot &&
+            afterSnapshot && (
+              <OrganizeComparison
+                before={beforeSnapshot}
+                after={afterSnapshot}
+                onReset={handleReset}
+              />
+            )}
+
+          {/* 完成但没有对比数据时显示简单完成状态 */}
+          {state === "complete" && !hasComparison && (
+            <Card>
+              <CardContent className="p-6 text-center space-y-4">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                <div>
+                  <h3 className="text-lg font-semibold">整理完成！</h3>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {snapshotError || organizeError || "整理操作已完成"}
+                  </p>
+                </div>
+                <Button onClick={handleReset}>继续整理</Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* 右侧：健康诊断面板 (占 2 列) */}
+        <div className="lg:col-span-2">
+          <HealthDiagnosisPanel
+            onViewAllIssues={() => setShowIssueDrawer(true)}
+            onIssueAction={handleIssueAction}
+            disabled={isExecuting}
           />
-        )}
+        </div>
+      </div>
 
-      {/* 完成但没有对比数据时显示简单完成状态 */}
-      {state === "complete" && !hasComparison && (
-        <Card>
-          <CardContent className="p-6 text-center space-y-4">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-            <div>
-              <h3 className="text-lg font-semibold">整理完成！</h3>
-              <p className="text-muted-foreground text-sm mt-1">
-                {snapshotError || organizeError || "整理操作已完成"}
-              </p>
-            </div>
-            <Button onClick={handleReset}>继续整理</Button>
-          </CardContent>
-        </Card>
+      {/* 问题详情抽屉 */}
+      {analysis && (
+        <IssueDetailDrawer
+          open={showIssueDrawer}
+          onOpenChange={setShowIssueDrawer}
+          duplicateFolders={analysis.duplicateFolders}
+          emptyFolders={analysis.emptyFolders}
+          oversizedFolders={analysis.oversizedFolders}
+          poorlyNamedFolders={analysis.poorlyNamedFolders}
+          missingCategories={analysis.missingCategories}
+        />
       )}
     </div>
   );
