@@ -3,23 +3,22 @@
  *
  * 展示整理操作的实时进度和步骤状态
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
+ * @updated 2026-01-31
  */
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle, Circle, X } from "lucide-react";
 
 interface OrganizeProgressProps {
   status: "analyzing" | "executing" | "complete";
   message?: string;
-  steps?: OrganizeStep[];
   currentStep?: number;
   progress?: number;
   onCancel?: () => void;
@@ -42,14 +41,13 @@ const DEFAULT_STEPS: OrganizeStep[] = [
 export function OrganizeProgress({
   status,
   message,
-  steps = DEFAULT_STEPS,
   currentStep = 0,
   progress = 0,
   onCancel,
 }: OrganizeProgressProps) {
-  // 根据状态计算步骤显示（使用 useMemo 而非 useState + useEffect）
+  // 根据状态计算步骤显示
   const displaySteps = useMemo(() => {
-    return steps.map((step, index) => ({
+    return DEFAULT_STEPS.map((step, index) => ({
       ...step,
       status:
         index < currentStep
@@ -58,21 +56,7 @@ export function OrganizeProgress({
             ? ("running" as const)
             : ("pending" as const),
     }));
-  }, [steps, currentStep]);
-
-  // 模拟进度动画
-  const [animatedProgress, setAnimatedProgress] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAnimatedProgress((prev) => {
-        if (prev < progress) {
-          return Math.min(prev + 1, progress);
-        }
-        return prev;
-      });
-    }, 50);
-    return () => clearInterval(timer);
-  }, [progress]);
+  }, [currentStep]);
 
   return (
     <Card className="border-primary/30">
@@ -97,15 +81,20 @@ export function OrganizeProgress({
             )}
           </div>
 
-          {/* 主进度条 */}
+          {/* 主进度条 - 使用 CSS transition */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
                 {message || "正在整理..."}
               </span>
-              <span className="font-medium">{animatedProgress}%</span>
+              <span className="font-medium">{Math.round(progress)}%</span>
             </div>
-            <Progress value={animatedProgress} className="h-2" />
+            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
 
           {/* 步骤列表 */}

@@ -3,7 +3,7 @@
  *
  * 显示整理健康度分数和统计摘要
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-31
  */
 
@@ -15,6 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  HEALTH_SCORE_THRESHOLDS,
+  HEALTH_SCORE_LABELS,
+} from "@/lib/organize/types";
 
 interface HealthScoreCardProps {
   healthScore: number;
@@ -30,26 +34,26 @@ interface HealthScoreCardProps {
  * 获取健康度对应的颜色样式
  */
 function getScoreStyles(score: number) {
-  if (score >= 80) {
+  if (score >= HEALTH_SCORE_THRESHOLDS.HEALTHY) {
     return {
       badge:
         "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
       text: "text-green-600 dark:text-green-400",
-      label: "健康",
+      label: HEALTH_SCORE_LABELS.HEALTHY,
     };
   }
-  if (score >= 60) {
+  if (score >= HEALTH_SCORE_THRESHOLDS.MODERATE) {
     return {
       badge:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
       text: "text-yellow-600 dark:text-yellow-400",
-      label: "一般",
+      label: HEALTH_SCORE_LABELS.MODERATE,
     };
   }
   return {
     badge: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
     text: "text-red-600 dark:text-red-400",
-    label: "需改进",
+    label: HEALTH_SCORE_LABELS.NEEDS_IMPROVEMENT,
   };
 }
 

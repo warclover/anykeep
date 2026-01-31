@@ -2,11 +2,16 @@
  * V3.0 整理大师 (AI Librarian) React Hook
  *
  * 用于获取和管理文件夹结构分析数据
+ *
+ * @version 3.1.0
+ * @updated 2026-01-31
  */
 
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义（从统一类型文件重新导出）
@@ -67,11 +72,15 @@ export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
    */
   const fetchRecent = useCallback(async () => {
     try {
-      const response = await fetch("/api/librarian/analysis");
+      const response = await fetchWithRetry(
+        "/api/librarian/analysis",
+        {},
+        { requestId: "librarian-analysis-fetch" },
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
-          // 没有历史分析，这是正常的
+          // 没有历史分析，这是正常��
           setAnalysis(null);
           return;
         }
@@ -86,6 +95,7 @@ export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
         });
       }
     } catch (err) {
+      clientLogger.error({ error: err }, "Failed to fetch librarian analysis");
       setError(err instanceof Error ? err.message : "获取分析结果失败");
     }
   }, []);
@@ -98,9 +108,11 @@ export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
     setError(null);
 
     try {
-      const response = await fetch("/api/librarian/analysis", {
-        method: "POST",
-      });
+      const response = await fetchWithRetry(
+        "/api/librarian/analysis",
+        { method: "POST" },
+        { requestId: "librarian-analysis-run" },
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -115,6 +127,7 @@ export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
         });
       }
     } catch (err) {
+      clientLogger.error({ error: err }, "Failed to run librarian analysis");
       setError(err instanceof Error ? err.message : "分析失败");
     } finally {
       setIsAnalyzing(false);

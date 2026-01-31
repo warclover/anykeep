@@ -16,6 +16,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Sparkles, CheckCircle } from "lucide-react";
 import { QuickActionGrid } from "./quick-action-grid";
 import { OrganizeProgress } from "./organize-progress";
@@ -26,6 +27,7 @@ import { useOrganizeComparison } from "@/hooks/domain/organize/use-organize-comp
 import { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
 import { useHealthActions } from "@/hooks/domain/organize/use-health-actions";
 import { useAIChat } from "@/hooks/domain/ai";
+import { clientLogger } from "@/lib/client-logger";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { OrganizePageState, QuickActionType } from "@/lib/organize/types";
@@ -40,17 +42,6 @@ const ACTION_MESSAGES: Record<QuickActionType, string> = {
   "smart-categorize": "智能分类未分类的收藏",
   "auto-tag": "为没有标签的收藏自动打标签",
   "archive-stale": "归档长期未读的内容",
-};
-
-/**
- * 操作类型到 Skill 的映射（预留，后续实现 Skill 直接调用时使用）
- */
-const _ACTION_SKILLS: Record<QuickActionType, string> = {
-  "one-click": "batch_organize",
-  "clean-duplicates": "duplicate_cleanup",
-  "smart-categorize": "batch_organize",
-  "auto-tag": "smart_tagging",
-  "archive-stale": "batch_organize",
 };
 
 /**
@@ -120,14 +111,14 @@ export function OrganizePageClient() {
         await refreshAnalysis();
         setState("complete");
       } catch (error) {
-        console.error("Failed to capture after snapshot:", error);
+        clientLogger.error({ error }, "Failed to capture after snapshot");
         // 即使快照失败也显示完成状态
         setState("complete");
         setOrganizeError("获取整理后统计数据失败，但整理已完成");
       }
     },
     onError: (error) => {
-      console.error("Organize error:", error);
+      clientLogger.error({ error }, "Organize error");
       setOrganizeError(error.message || "整理过程中发生错误");
       setState("idle");
     },
@@ -157,7 +148,7 @@ export function OrganizePageClient() {
 
         // 完成状态在 onComplete 回调中设置
       } catch (error) {
-        console.error("Organize action failed:", error);
+        clientLogger.error({ error }, "Organize action failed");
         setOrganizeError(
           error instanceof Error ? error.message : "整理操作失败",
         );
@@ -232,7 +223,8 @@ export function OrganizePageClient() {
           break;
         }
         case "split": {
-          // TODO: 拆分文件夹需要更复杂的交互，暂不实现
+          // 拆分文件夹功能开发中
+          toast.info("拆分功能开发中，敬请期待");
           break;
         }
       }
@@ -332,6 +324,22 @@ export function OrganizePageClient() {
           oversizedFolders={analysis.oversizedFolders}
           poorlyNamedFolders={analysis.poorlyNamedFolders}
           missingCategories={analysis.missingCategories}
+          onMerge={(groupIndex) => {
+            const group = analysis.duplicateFolders[groupIndex];
+            if (group && group.folders.length >= 2) {
+              const [source, target] = group.folders;
+              mergeFolders(source.id, target.id);
+            }
+          }}
+          onDelete={(folderId) => deleteFolder(folderId)}
+          onSplit={() => toast.info("拆分功能开发中，敬请期待")}
+          onRename={(folderId, newName) => renameFolder(folderId, newName)}
+          onCreate={(categoryIndex) => {
+            const item = analysis.missingCategories[categoryIndex];
+            if (item) {
+              createFolder(item.category);
+            }
+          }}
         />
       )}
     </div>

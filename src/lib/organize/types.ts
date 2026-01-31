@@ -1,9 +1,58 @@
 /**
  * 整理中心类型定义
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
+ * @updated 2026-01-31
  */
+
+import type { LibrarianAnalysis } from "@/types/librarian.types";
+
+// ============================================================================
+// 健康度常量
+// ============================================================================
+
+/**
+ * 健康度评分阈值
+ */
+export const HEALTH_SCORE_THRESHOLDS = {
+  /** 健康：>= 80 分 */
+  HEALTHY: 80,
+  /** 一般：>= 60 分 */
+  MODERATE: 60,
+} as const;
+
+/**
+ * 健康度等级标签
+ */
+export const HEALTH_SCORE_LABELS = {
+  HEALTHY: "健康",
+  MODERATE: "一般",
+  NEEDS_IMPROVEMENT: "需改进",
+} as const;
+
+// ============================================================================
+// 工具函数
+// ============================================================================
+
+/**
+ * 计算分析结果中的问题总数
+ * @param analysis - 整��大师分析结果
+ * @returns 问题总数
+ */
+export function calculateTotalIssues(analysis: LibrarianAnalysis): number {
+  return (
+    analysis.duplicateFolders.length +
+    analysis.emptyFolders.length +
+    analysis.oversizedFolders.length +
+    analysis.poorlyNamedFolders.length +
+    analysis.missingCategories.length
+  );
+}
+
+// ============================================================================
+// 类型定义
+// ============================================================================
 
 /**
  * 整理操作快照 - 用于前后对比
