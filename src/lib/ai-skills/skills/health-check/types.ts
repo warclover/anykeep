@@ -59,15 +59,15 @@ export type LinkErrorType =
 
 export interface BrokenLinkIssue {
   id: string;
-  bookmarkId: string;
+  bookmarkId: number | null;
   title: string;
   url: string;
   httpStatus: number | null;
   errorType: LinkErrorType;
   errorMessage?: string;
   waybackUrl?: string;
-  lastCheckedAt: string;
-  detectedAt: string;
+  lastCheckedAt: string | null;
+  detectedAt: string | null;
 }
 
 // ============================================
@@ -75,7 +75,7 @@ export interface BrokenLinkIssue {
 // ============================================
 
 export interface DuplicateItem {
-  bookmarkId: string;
+  bookmarkId: number | null;
   title: string;
   url: string;
   createdAt: string;
@@ -88,7 +88,7 @@ export interface DuplicateGroup {
   similarity: number;
   matchType: "exact_url" | "normalized_url" | "semantic";
   items: DuplicateItem[];
-  recommendedKeepId: string;
+  recommendedKeepId: number | null;
   reason: string;
 }
 
@@ -97,10 +97,10 @@ export interface DuplicateGroup {
 // ============================================
 
 export interface StaleContentItem {
-  bookmarkId: string;
+  bookmarkId: number | null;
   title: string;
   url: string;
-  folderId?: string;
+  folderId?: number | null;
   folderName?: string;
   lastAccessedAt: string | null;
   createdAt: string;
@@ -133,7 +133,7 @@ export interface HealthOverview {
 export interface HealthCheckInput {
   checkTypes?: HealthCheckType[];
   scope?: "all" | "folder" | "selected";
-  folderId?: string;
+  folderId?: number | string;
   bookmarkIds?: string[];
   forceRefresh?: boolean;
   staleThresholdDays?: number;
@@ -192,8 +192,8 @@ export interface HealthCheckCacheRow {
   id: string;
   user_id: string;
   check_type: HealthCheckType;
-  bookmark_id: string;
-  related_bookmark_ids: string[] | null;
+  bookmark_id: number | null;
+  related_bookmark_ids: number[] | null;
   status: HealthIssueStatus;
   severity: HealthIssueSeverity;
   details: Record<string, unknown>;

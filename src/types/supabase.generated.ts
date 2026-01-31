@@ -1254,6 +1254,7 @@ export type Database = {
       };
       bookmarks: {
         Row: {
+          access_count: number | null;
           ai_content_type: string | null;
           ai_content_type_confidence: number | null;
           ai_summary: string | null;
@@ -1290,6 +1291,7 @@ export type Database = {
           is_marked_for_deletion: boolean | null;
           is_read: boolean | null;
           is_starred: boolean;
+          last_accessed_at: string | null;
           last_read_at: string | null;
           last_reviewed_at: string | null;
           last_snapshot_at: string | null;
@@ -1330,6 +1332,7 @@ export type Database = {
           word_count: number | null;
         };
         Insert: {
+          access_count?: number | null;
           ai_content_type?: string | null;
           ai_content_type_confidence?: number | null;
           ai_summary?: string | null;
@@ -1366,6 +1369,7 @@ export type Database = {
           is_marked_for_deletion?: boolean | null;
           is_read?: boolean | null;
           is_starred?: boolean;
+          last_accessed_at?: string | null;
           last_read_at?: string | null;
           last_reviewed_at?: string | null;
           last_snapshot_at?: string | null;
@@ -1406,6 +1410,7 @@ export type Database = {
           word_count?: number | null;
         };
         Update: {
+          access_count?: number | null;
           ai_content_type?: string | null;
           ai_content_type_confidence?: number | null;
           ai_summary?: string | null;
@@ -1442,6 +1447,7 @@ export type Database = {
           is_marked_for_deletion?: boolean | null;
           is_read?: boolean | null;
           is_starred?: boolean;
+          last_accessed_at?: string | null;
           last_read_at?: string | null;
           last_reviewed_at?: string | null;
           last_snapshot_at?: string | null;
@@ -2923,6 +2929,124 @@ export type Database = {
           {
             foreignKeyName: "folders_parent_id_fkey";
             columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      health_check_cache: {
+        Row: {
+          bookmark_id: number | null;
+          check_type: string;
+          details: Json | null;
+          detected_at: string | null;
+          id: string;
+          ignored_at: string | null;
+          last_checked_at: string | null;
+          related_bookmark_ids: number[] | null;
+          resolution_action: string | null;
+          resolved_at: string | null;
+          severity: string | null;
+          status: string;
+          user_id: string;
+        };
+        Insert: {
+          bookmark_id?: number | null;
+          check_type: string;
+          details?: Json | null;
+          detected_at?: string | null;
+          id?: string;
+          ignored_at?: string | null;
+          last_checked_at?: string | null;
+          related_bookmark_ids?: number[] | null;
+          resolution_action?: string | null;
+          resolved_at?: string | null;
+          severity?: string | null;
+          status?: string;
+          user_id: string;
+        };
+        Update: {
+          bookmark_id?: number | null;
+          check_type?: string;
+          details?: Json | null;
+          detected_at?: string | null;
+          id?: string;
+          ignored_at?: string | null;
+          last_checked_at?: string | null;
+          related_bookmark_ids?: number[] | null;
+          resolution_action?: string | null;
+          resolved_at?: string | null;
+          severity?: string | null;
+          status?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "health_check_cache_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      health_check_runs: {
+        Row: {
+          broken_links_count: number | null;
+          check_types: string[];
+          completed_at: string | null;
+          created_at: string | null;
+          duplicates_count: number | null;
+          error_message: string | null;
+          folder_id: number | null;
+          id: string;
+          progress: number | null;
+          scope: string | null;
+          stale_count: number | null;
+          started_at: string | null;
+          status: string | null;
+          total_checked: number | null;
+          user_id: string;
+        };
+        Insert: {
+          broken_links_count?: number | null;
+          check_types?: string[];
+          completed_at?: string | null;
+          created_at?: string | null;
+          duplicates_count?: number | null;
+          error_message?: string | null;
+          folder_id?: number | null;
+          id?: string;
+          progress?: number | null;
+          scope?: string | null;
+          stale_count?: number | null;
+          started_at?: string | null;
+          status?: string | null;
+          total_checked?: number | null;
+          user_id: string;
+        };
+        Update: {
+          broken_links_count?: number | null;
+          check_types?: string[];
+          completed_at?: string | null;
+          created_at?: string | null;
+          duplicates_count?: number | null;
+          error_message?: string | null;
+          folder_id?: number | null;
+          id?: string;
+          progress?: number | null;
+          scope?: string | null;
+          stale_count?: number | null;
+          started_at?: string | null;
+          status?: string | null;
+          total_checked?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "health_check_runs_folder_id_fkey";
+            columns: ["folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
@@ -5288,6 +5412,157 @@ export type Database = {
         };
         Relationships: [];
       };
+      payment_events: {
+        Row: {
+          created_at: string | null;
+          error_message: string | null;
+          event_id: string;
+          event_type: string;
+          id: string;
+          payload: Json;
+          processed: boolean | null;
+          processed_at: string | null;
+          provider: string;
+          retry_count: number | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          error_message?: string | null;
+          event_id: string;
+          event_type: string;
+          id?: string;
+          payload: Json;
+          processed?: boolean | null;
+          processed_at?: string | null;
+          provider: string;
+          retry_count?: number | null;
+        };
+        Update: {
+          created_at?: string | null;
+          error_message?: string | null;
+          event_id?: string;
+          event_type?: string;
+          id?: string;
+          payload?: Json;
+          processed?: boolean | null;
+          processed_at?: string | null;
+          provider?: string;
+          retry_count?: number | null;
+        };
+        Relationships: [];
+      };
+      payment_orders: {
+        Row: {
+          amount: number;
+          created_at: string | null;
+          currency: string;
+          expires_at: string;
+          id: string;
+          metadata: Json | null;
+          order_no: string;
+          paid_at: string | null;
+          payment_method: string | null;
+          payment_provider: string;
+          plan_id: string | null;
+          status: string;
+          user_id: string | null;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string | null;
+          currency?: string;
+          expires_at: string;
+          id?: string;
+          metadata?: Json | null;
+          order_no: string;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          payment_provider: string;
+          plan_id?: string | null;
+          status?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string | null;
+          currency?: string;
+          expires_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          order_no?: string;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          payment_provider?: string;
+          plan_id?: string | null;
+          status?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "subscription_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_records: {
+        Row: {
+          amount: number;
+          created_at: string | null;
+          currency: string;
+          id: string;
+          metadata: Json | null;
+          payment_method: string | null;
+          payment_provider: string;
+          provider_payment_id: string;
+          refund_amount: number | null;
+          refund_reason: string | null;
+          status: string;
+          subscription_id: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string | null;
+          currency: string;
+          id?: string;
+          metadata?: Json | null;
+          payment_method?: string | null;
+          payment_provider: string;
+          provider_payment_id: string;
+          refund_amount?: number | null;
+          refund_reason?: string | null;
+          status: string;
+          subscription_id?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string | null;
+          currency?: string;
+          id?: string;
+          metadata?: Json | null;
+          payment_method?: string | null;
+          payment_provider?: string;
+          provider_payment_id?: string;
+          refund_amount?: number | null;
+          refund_reason?: string | null;
+          status?: string;
+          subscription_id?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_records_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "user_subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       pending_confirmations: {
         Row: {
           bookmark_id: number | null;
@@ -6236,6 +6511,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      subscription_plans: {
+        Row: {
+          ai_quota: number;
+          created_at: string | null;
+          display_name: string;
+          features: Json;
+          id: string;
+          interval: string;
+          interval_count: number | null;
+          is_active: boolean | null;
+          name: string;
+          price_cny: number;
+          price_usd: number;
+          sort_order: number | null;
+          storage_quota_mb: number;
+          updated_at: string | null;
+        };
+        Insert: {
+          ai_quota: number;
+          created_at?: string | null;
+          display_name: string;
+          features?: Json;
+          id?: string;
+          interval?: string;
+          interval_count?: number | null;
+          is_active?: boolean | null;
+          name: string;
+          price_cny: number;
+          price_usd: number;
+          sort_order?: number | null;
+          storage_quota_mb: number;
+          updated_at?: string | null;
+        };
+        Update: {
+          ai_quota?: number;
+          created_at?: string | null;
+          display_name?: string;
+          features?: Json;
+          id?: string;
+          interval?: string;
+          interval_count?: number | null;
+          is_active?: boolean | null;
+          name?: string;
+          price_cny?: number;
+          price_usd?: number;
+          sort_order?: number | null;
+          storage_quota_mb?: number;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       synthesis_highlights: {
         Row: {
           color: string | null;
@@ -6289,7 +6615,7 @@ export type Database = {
           id: string;
           output_style: string | null;
           overview: string | null;
-          source_bookmark_ids: string[] | null;
+          source_bookmark_ids: number[] | null;
           source_count: number | null;
           source_id: string | null;
           source_type: string | null;
@@ -6316,7 +6642,7 @@ export type Database = {
           id?: string;
           output_style?: string | null;
           overview?: string | null;
-          source_bookmark_ids?: string[] | null;
+          source_bookmark_ids?: number[] | null;
           source_count?: number | null;
           source_id?: string | null;
           source_type?: string | null;
@@ -6343,7 +6669,7 @@ export type Database = {
           id?: string;
           output_style?: string | null;
           overview?: string | null;
-          source_bookmark_ids?: string[] | null;
+          source_bookmark_ids?: number[] | null;
           source_count?: number | null;
           source_id?: string | null;
           source_type?: string | null;
@@ -6758,6 +7084,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_entitlements: {
+        Row: {
+          ai_quota_daily_limit: number | null;
+          ai_quota_monthly: number | null;
+          created_at: string | null;
+          is_lifetime: boolean | null;
+          last_refunded_at: string | null;
+          plan_tier: string;
+          refund_count: number | null;
+          refund_reason: string | null;
+          storage_limit_mb: number | null;
+          trial_converted: boolean | null;
+          trial_ends_at: string | null;
+          trial_started_at: string | null;
+          trial_used: boolean | null;
+          tts_seconds_monthly: number | null;
+          updated_at: string | null;
+          user_id: string;
+          valid_until: string | null;
+        };
+        Insert: {
+          ai_quota_daily_limit?: number | null;
+          ai_quota_monthly?: number | null;
+          created_at?: string | null;
+          is_lifetime?: boolean | null;
+          last_refunded_at?: string | null;
+          plan_tier?: string;
+          refund_count?: number | null;
+          refund_reason?: string | null;
+          storage_limit_mb?: number | null;
+          trial_converted?: boolean | null;
+          trial_ends_at?: string | null;
+          trial_started_at?: string | null;
+          trial_used?: boolean | null;
+          tts_seconds_monthly?: number | null;
+          updated_at?: string | null;
+          user_id: string;
+          valid_until?: string | null;
+        };
+        Update: {
+          ai_quota_daily_limit?: number | null;
+          ai_quota_monthly?: number | null;
+          created_at?: string | null;
+          is_lifetime?: boolean | null;
+          last_refunded_at?: string | null;
+          plan_tier?: string;
+          refund_count?: number | null;
+          refund_reason?: string | null;
+          storage_limit_mb?: number | null;
+          trial_converted?: boolean | null;
+          trial_ends_at?: string | null;
+          trial_started_at?: string | null;
+          trial_used?: boolean | null;
+          tts_seconds_monthly?: number | null;
+          updated_at?: string | null;
+          user_id?: string;
+          valid_until?: string | null;
+        };
+        Relationships: [];
+      };
       user_feedbacks: {
         Row: {
           admin_notes: string | null;
@@ -6814,6 +7200,119 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      user_quota_usage: {
+        Row: {
+          ai_calls_today: number | null;
+          ai_calls_used: number | null;
+          bookmarks_count: number | null;
+          created_at: string | null;
+          id: string;
+          last_call_date: string | null;
+          month: string;
+          storage_used_mb: number | null;
+          synthesis_count: number | null;
+          tts_seconds_used: number | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          ai_calls_today?: number | null;
+          ai_calls_used?: number | null;
+          bookmarks_count?: number | null;
+          created_at?: string | null;
+          id?: string;
+          last_call_date?: string | null;
+          month: string;
+          storage_used_mb?: number | null;
+          synthesis_count?: number | null;
+          tts_seconds_used?: number | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          ai_calls_today?: number | null;
+          ai_calls_used?: number | null;
+          bookmarks_count?: number | null;
+          created_at?: string | null;
+          id?: string;
+          last_call_date?: string | null;
+          month?: string;
+          storage_used_mb?: number | null;
+          synthesis_count?: number | null;
+          tts_seconds_used?: number | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      user_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null;
+          canceled_at: string | null;
+          cancellation_reason: string | null;
+          created_at: string | null;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          grace_period_end: string | null;
+          id: string;
+          metadata: Json | null;
+          payment_provider: string;
+          plan_id: string | null;
+          provider_customer_id: string | null;
+          provider_subscription_id: string | null;
+          status: string;
+          trial_end: string | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          cancel_at_period_end?: boolean | null;
+          canceled_at?: string | null;
+          cancellation_reason?: string | null;
+          created_at?: string | null;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          grace_period_end?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          payment_provider: string;
+          plan_id?: string | null;
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          status?: string;
+          trial_end?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          cancel_at_period_end?: boolean | null;
+          canceled_at?: string | null;
+          cancellation_reason?: string | null;
+          created_at?: string | null;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          grace_period_end?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          payment_provider?: string;
+          plan_id?: string | null;
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          status?: string;
+          trial_end?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "subscription_plans";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_trust_mode: {
         Row: {
@@ -6997,30 +7496,6 @@ export type Database = {
           },
         ];
       };
-      workflow_locks: {
-        Row: {
-          acquired_at: string;
-          expires_at: string;
-          instance_id: string | null;
-          lock_id: number;
-          lock_key: string;
-        };
-        Insert: {
-          acquired_at?: string;
-          expires_at: string;
-          instance_id?: string | null;
-          lock_id: number;
-          lock_key: string;
-        };
-        Update: {
-          acquired_at?: string;
-          expires_at?: string;
-          instance_id?: string | null;
-          lock_id?: number;
-          lock_key?: string;
-        };
-        Relationships: [];
-      };
       workflows: {
         Row: {
           category: string;
@@ -7164,6 +7639,10 @@ export type Database = {
       };
       batch_update_health_status: {
         Args: { p_updates: Json; p_user_id: string };
+        Returns: number;
+      };
+      batch_upsert_health_cache: {
+        Args: { p_items: Json; p_user_id: string };
         Returns: number;
       };
       batch_upsert_knowledge_links: {
@@ -7345,6 +7824,10 @@ export type Database = {
       cleanup_old_trash: { Args: { days_to_keep?: number }; Returns: number };
       cleanup_orphaned_step_results: { Args: never; Returns: number };
       cleanup_rate_limit_records: { Args: never; Returns: undefined };
+      cleanup_resolved_health_issues: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
       cleanup_workflow_execution_history: {
         Args: never;
         Returns: {
@@ -7601,6 +8084,7 @@ export type Database = {
           similarity: number;
         }[];
       };
+      generate_order_no: { Args: never; Returns: string };
       get_active_operations: {
         Args: { p_limit?: number; p_user_id: string };
         Returns: {
@@ -7802,6 +8286,16 @@ export type Database = {
           system_type: string;
           updated_at: string;
           user_id: string;
+        }[];
+      };
+      get_health_overview: {
+        Args: { p_user_id: string };
+        Returns: {
+          broken_links_count: number;
+          duplicates_count: number;
+          last_checked_at: string;
+          stale_count: number;
+          total_issues: number;
         }[];
       };
       get_intent_cache_stats: {
@@ -8139,6 +8633,23 @@ export type Database = {
         Args: { p_time_range?: string; p_user_id: string };
         Returns: Json;
       };
+      get_stale_bookmarks: {
+        Args: {
+          p_days_threshold?: number;
+          p_limit?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          access_count: number;
+          bookmark_id: number;
+          created_at: string;
+          days_since_access: number;
+          folder_id: number;
+          last_accessed_at: string;
+          title: string;
+          url: string;
+        }[];
+      };
       get_suggestion_bookmark_ids: {
         Args: { p_suggestion_id: number };
         Returns: number[];
@@ -8290,6 +8801,19 @@ export type Database = {
           total_tokens: number;
         }[];
       };
+      get_user_entitlement: {
+        Args: { p_user_id: string };
+        Returns: {
+          ai_quota_daily_limit: number;
+          ai_quota_monthly: number;
+          is_lifetime: boolean;
+          is_trial: boolean;
+          plan_tier: string;
+          storage_limit_mb: number;
+          trial_ends_at: string;
+          valid_until: string;
+        }[];
+      };
       get_user_feedback_stats: {
         Args: { p_user_id: string };
         Returns: {
@@ -8410,6 +8934,10 @@ export type Database = {
         Args: { correction_id: string };
         Returns: undefined;
       };
+      increment_daily_ai_calls: {
+        Args: { p_month: string; p_user_id: string };
+        Returns: number;
+      };
       increment_folder_dirty_count: {
         Args: { p_folder_id: number };
         Returns: undefined;
@@ -8420,6 +8948,15 @@ export type Database = {
       };
       increment_monitor_change_count: {
         Args: { monitor_id: number };
+        Returns: undefined;
+      };
+      increment_quota_usage: {
+        Args: {
+          p_amount: number;
+          p_field: string;
+          p_month: string;
+          p_user_id: string;
+        };
         Returns: undefined;
       };
       increment_rule_match_count: {
@@ -8556,6 +9093,10 @@ export type Database = {
         };
         Returns: undefined;
       };
+      record_bookmark_access: {
+        Args: { p_bookmark_id: string };
+        Returns: undefined;
+      };
       record_classification_metrics: {
         Args: {
           p_action?: string;
@@ -8646,19 +9187,6 @@ export type Database = {
         Args: { p_suggestion_ids: number[]; p_user_id: string };
         Returns: number;
       };
-      release_workflow_lock:
-        | {
-            Args: { p_lock_id: number; p_lock_key: string };
-            Returns: undefined;
-          }
-        | {
-            Args: {
-              p_instance_id?: string;
-              p_lock_id: number;
-              p_lock_key: string;
-            };
-            Returns: boolean;
-          };
       remove_folder_alias: {
         Args: { p_alias: string; p_folder_id: number; p_user_id: string };
         Returns: undefined;
@@ -8670,6 +9198,10 @@ export type Database = {
       remove_pending_intent: {
         Args: { p_intent: string; p_user_id: string };
         Returns: undefined;
+      };
+      reset_daily_quota_if_needed: {
+        Args: { p_month: string; p_user_id: string };
+        Returns: number;
       };
       reset_ks_daily_counts: { Args: never; Returns: undefined };
       reset_ks_weekly_counts: { Args: never; Returns: undefined };
@@ -8948,10 +9480,6 @@ export type Database = {
       start_user_trial: {
         Args: { p_duration_days?: number; p_user_id: string };
         Returns: Json;
-      };
-      try_acquire_workflow_lock: {
-        Args: { p_lock_id: number; p_lock_key: string; p_ttl_ms: number };
-        Returns: string;
       };
       undo_ai_operation: {
         Args: { p_snapshot_id: string; p_user_id: string };

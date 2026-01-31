@@ -54,7 +54,9 @@ interface DuplicateGroupCardProps {
 }
 
 function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
-  const [selectedKeepId, setSelectedKeepId] = useState(group.recommendedKeepId);
+  const [selectedKeepId, setSelectedKeepId] = useState<string>(
+    group.recommendedKeepId?.toString() || "",
+  );
   const [isProcessing, setIsProcessing] = useState(false);
 
   const matchLabel = TAB_TEXT.matchTypes[group.matchType] || group.matchType;
@@ -62,12 +64,15 @@ function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
   const handleKeepOne = async () => {
     setIsProcessing(true);
     try {
+      const selectedIdNum = selectedKeepId
+        ? parseInt(selectedKeepId, 10)
+        : null;
       const deleteIds = group.items
-        .filter((item) => item.bookmarkId !== selectedKeepId)
+        .filter((item) => item.bookmarkId !== selectedIdNum)
         .map((item) => item.bookmarkId);
 
       await onAction("keep_one", {
-        keepBookmarkId: selectedKeepId,
+        keepBookmarkId: selectedIdNum,
         deleteBookmarkIds: deleteIds,
       });
       toast.success("已清理重复内容");
@@ -112,11 +117,11 @@ function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
         <RadioGroup value={selectedKeepId} onValueChange={setSelectedKeepId}>
           {group.items.map((item) => (
             <div
-              key={item.bookmarkId}
+              key={item.bookmarkId?.toString() || "unknown"}
               className="flex items-start gap-3 p-3 border rounded-lg"
             >
               <RadioGroupItem
-                value={item.bookmarkId}
+                value={item.bookmarkId?.toString() || ""}
                 id={`keep-${item.bookmarkId}`}
               />
               <Label

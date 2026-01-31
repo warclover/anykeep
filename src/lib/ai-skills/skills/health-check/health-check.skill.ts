@@ -17,6 +17,7 @@ import type {
 } from "../../orchestration/types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 // 复用现有检测器
 // TODO: 集成现有检测器进行实时检测
@@ -31,7 +32,6 @@ import type {
   BrokenLinkIssue,
   DuplicateGroup,
   StaleContentItem,
-  HealthCheckType,
 } from "./types";
 import { HEALTH_CHECK_CONFIG } from "./types";
 
@@ -83,6 +83,36 @@ export class HealthCheckSkill extends OrchestrationSkill<
   HealthCheckInput,
   HealthCheckOutput
 > {
+  // Zod Schemas for validation
+  readonly inputSchema = z.object({
+    checkTypes: z
+      .array(z.enum(["broken_link", "duplicate", "stale"]))
+      .optional(),
+    scope: z.enum(["all", "folder", "selected"]).optional(),
+    folderId: z.string().optional(),
+    bookmarkIds: z.array(z.string()).optional(),
+    forceRefresh: z.boolean().optional(),
+    staleThresholdDays: z.number().optional(),
+  });
+
+  readonly outputSchema = z.object({
+    runId: z.string(),
+    overview: z.object({
+      brokenLinks: z.number(),
+      duplicates: z.number(),
+      staleContent: z.number(),
+      totalIssues: z.number(),
+      healthScore: z.number(),
+      lastCheckedAt: z.string().nullable(),
+    }),
+    brokenLinks: z.array(z.any()),
+    duplicateGroups: z.array(z.any()),
+    staleContent: z.array(z.any()),
+    summary: z.string(),
+    suggestions: z.array(z.string()),
+    generatedAt: z.string(),
+  });
+
   readonly metadata: OrchestrationSkillMetadata = {
     id: "health_check",
     name: "健康检测",
@@ -254,7 +284,7 @@ export class HealthCheckSkill extends OrchestrationSkill<
             context.userId,
             {
               thresholdDays: input.staleThresholdDays,
-              folderId: input.folderId,
+              folderId: input.folderId ? String(input.folderId) : undefined,
               bookmarkIds: input.bookmarkIds,
             },
           );
@@ -481,7 +511,9 @@ export class HealthCheckSkill extends OrchestrationSkill<
 
         for (const row of cached) {
           const groupKey =
-            row.related_bookmark_ids?.sort().join(",") || row.bookmark_id;
+            row.related_bookmark_ids?.sort().join(",") ||
+            row.bookmark_id?.toString() ||
+            row.id;
           if (!groupMap.has(groupKey)) {
             const details = row.details as Record<string, unknown>;
             groupMap.set(groupKey, {
@@ -523,7 +555,7 @@ export class HealthCheckSkill extends OrchestrationSkill<
         user_id: userId,
         check_types: input.checkTypes || ["broken_link", "duplicate", "stale"],
         scope: input.scope || "all",
-        folder_id: input.folderId,
+        folder_id: input.folderId ? Number(input.folderId) : null,
         status: "running",
         progress: 0,
       })
@@ -573,9 +605,9 @@ export class HealthCheckSkill extends OrchestrationSkill<
   ): Promise<void> {
     const supabase = await createClient();
     const items: Array<{
-      check_type: HealthCheckType;
-      bookmark_id: string;
-      related_bookmark_ids?: string[];
+      check_type: string;
+      bookmark_id: number | null;
+      related_bookmark_ids?: (number | null)[];
       status: string;
       severity: string;
       details: Record<string, unknown>;
@@ -641,7 +673,7 @@ export class HealthCheckSkill extends OrchestrationSkill<
     if (items.length > 0) {
       await supabase.rpc("batch_upsert_health_cache", {
         p_user_id: userId,
-        p_items: items,
+        p_items: JSON.parse(JSON.stringify(items)),
       });
     }
   }

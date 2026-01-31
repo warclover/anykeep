@@ -25,10 +25,10 @@ interface StaleDetectorOptions {
 }
 
 interface StaleBookmarkRow {
-  bookmark_id: string;
+  bookmark_id: number;
   title: string;
   url: string;
-  folder_id: string | null;
+  folder_id: number | null;
   last_accessed_at: string | null;
   created_at: string;
   days_since_access: number;
@@ -76,12 +76,15 @@ export class StaleContentDetector {
 
       // 如果指定了文件夹，过滤结果
       if (folderId) {
-        staleBookmarks = staleBookmarks.filter((b) => b.folder_id === folderId);
+        const folderIdNum = parseInt(folderId, 10);
+        staleBookmarks = staleBookmarks.filter(
+          (b) => b.folder_id === folderIdNum,
+        );
       }
 
       // 如果指定了书签ID列表，过滤结果
       if (bookmarkIds?.length) {
-        const idSet = new Set(bookmarkIds);
+        const idSet = new Set(bookmarkIds.map((id) => parseInt(id, 10)));
         staleBookmarks = staleBookmarks.filter((b) => idSet.has(b.bookmark_id));
       }
 
@@ -90,7 +93,7 @@ export class StaleContentDetector {
         ...new Set(
           staleBookmarks
             .map((b) => b.folder_id)
-            .filter((id): id is string => id !== null),
+            .filter((id): id is number => id !== null),
         ),
       ];
 
@@ -266,9 +269,9 @@ export class StaleContentDetector {
    * 批量获取文件夹名称
    */
   private async getFolderNames(
-    folderIds: string[],
-  ): Promise<Map<string, string>> {
-    const folderNames = new Map<string, string>();
+    folderIds: number[],
+  ): Promise<Map<number, string>> {
+    const folderNames = new Map<number, string>();
 
     if (folderIds.length === 0) {
       return folderNames;

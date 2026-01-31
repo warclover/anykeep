@@ -86,7 +86,8 @@ function StaleItem({ item, selected, onSelect }: StaleItemProps) {
       <Checkbox
         checked={selected}
         onCheckedChange={(checked) =>
-          onSelect(item.bookmarkId, checked as boolean)
+          item.bookmarkId !== null &&
+          onSelect(item.bookmarkId.toString(), checked as boolean)
         }
       />
       <div className="flex-1 min-w-0">
@@ -144,7 +145,13 @@ export function StaleContentTab({ onUpdate }: StaleContentTabProps) {
     if (selectedIds.size === staleContent.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(staleContent.map((item) => item.bookmarkId)));
+      setSelectedIds(
+        new Set(
+          staleContent
+            .map((item) => item.bookmarkId?.toString())
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
     }
   };
 
@@ -320,9 +327,9 @@ export function StaleContentTab({ onUpdate }: StaleContentTabProps) {
       <div className="space-y-2">
         {staleContent.map((item) => (
           <StaleItem
-            key={item.bookmarkId}
+            key={item.bookmarkId?.toString() || "unknown"}
             item={item}
-            selected={selectedIds.has(item.bookmarkId)}
+            selected={selectedIds.has(item.bookmarkId?.toString() || "")}
             onSelect={handleSelect}
           />
         ))}

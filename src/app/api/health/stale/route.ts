@@ -131,10 +131,10 @@ export async function POST(request: NextRequest) {
             result.processed = bookmarkIds.length;
           }
         } else {
-          // 没有归档文件夹，标记为归档状态
+          // 没有归档文件夹，使用软删除代替归档
           const { error: archiveError } = await supabase
             .from("bookmarks")
-            .update({ is_archived: true })
+            .update({ deleted_at: new Date().toISOString() })
             .in("id", bookmarkIds)
             .eq("user_id", user.id);
 

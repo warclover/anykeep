@@ -84,7 +84,10 @@ function BrokenLinkItem({ item, selected, onSelect }: BrokenLinkItemProps) {
           {item.url}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          检测时间：{new Date(item.detectedAt).toLocaleString("zh-CN")}
+          检测时间：
+          {item.detectedAt
+            ? new Date(item.detectedAt).toLocaleString("zh-CN")
+            : "未知"}
         </p>
       </div>
       <div className="flex gap-1">

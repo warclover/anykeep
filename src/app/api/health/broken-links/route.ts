@@ -138,7 +138,14 @@ export async function POST(request: NextRequest) {
           .in("id", issueIds)
           .eq("user_id", user.id);
 
-        const bookmarkIds = issues?.map((i) => i.bookmark_id) || [];
+        const bookmarkIds = (issues?.map((i) => i.bookmark_id) || []).filter(
+          (id): id is number => id !== null,
+        );
+
+        if (bookmarkIds.length === 0) {
+          result.errors.push("没有找到关联的书签");
+          break;
+        }
 
         // 软删除书签
         const { error: deleteError } = await supabase

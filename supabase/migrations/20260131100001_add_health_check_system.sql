@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS health_check_cache (
   check_type TEXT NOT NULL,               -- 'broken_link', 'duplicate', 'stale'
 
   -- 关联书签
-  bookmark_id UUID REFERENCES bookmarks(id) ON DELETE CASCADE,
-  related_bookmark_ids UUID[],            -- 重复检测时的关联书签
+  bookmark_id BIGINT REFERENCES bookmarks(id) ON DELETE CASCADE,
+  related_bookmark_ids BIGINT[],          -- 重复检测时的关联书签
 
   -- 检测结果
   status TEXT NOT NULL DEFAULT 'issue',   -- 'issue', 'resolved', 'ignored'
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS health_check_runs (
   -- 检测范围
   check_types TEXT[] NOT NULL DEFAULT ARRAY['broken_link', 'duplicate', 'stale'],
   scope TEXT DEFAULT 'all',               -- 'all', 'folder', 'selected'
-  folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
+  folder_id BIGINT REFERENCES folders(id) ON DELETE SET NULL,
 
   -- 检测统计
   total_checked INTEGER DEFAULT 0,
@@ -166,10 +166,10 @@ CREATE OR REPLACE FUNCTION get_stale_bookmarks(
   p_limit INTEGER DEFAULT 100
 )
 RETURNS TABLE (
-  bookmark_id UUID,
+  bookmark_id BIGINT,
   title TEXT,
   url TEXT,
-  folder_id UUID,
+  folder_id BIGINT,
   last_accessed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ,
   days_since_access INTEGER,

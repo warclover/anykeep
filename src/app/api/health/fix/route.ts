@@ -120,9 +120,13 @@ export async function POST(request: NextRequest) {
 
     // 1. 处理失效链接
     if (strategy.brokenLinks !== "skip" && brokenLinkIssues.length > 0) {
-      const bookmarkIds = brokenLinkIssues.map((i) => i.bookmark_id);
+      const bookmarkIds = brokenLinkIssues
+        .map((i) => i.bookmark_id)
+        .filter((id): id is number => id !== null);
 
-      if (strategy.brokenLinks === "delete") {
+      if (bookmarkIds.length === 0) {
+        result.errors.push({ id: "broken_links", error: "没有有效的书签ID" });
+      } else if (strategy.brokenLinks === "delete") {
         const { error } = await supabase
           .from("bookmarks")
           .update({ deleted_at: new Date().toISOString() })
@@ -169,33 +173,34 @@ export async function POST(request: NextRequest) {
 
       for (const [, groupIssues] of groupMap) {
         // 确定保留哪个
-        let keepId: string;
+        let keepId: number | null;
 
         if (strategy.duplicates === "keep_oldest") {
           // 保留最早创建的
           keepId = groupIssues.sort(
             (a, b) =>
-              new Date(a.detected_at).getTime() -
-              new Date(b.detected_at).getTime(),
+              new Date(a.detected_at || 0).getTime() -
+              new Date(b.detected_at || 0).getTime(),
           )[0].bookmark_id;
         } else if (strategy.duplicates === "keep_newest") {
           // 保留最新创建的
           keepId = groupIssues.sort(
             (a, b) =>
-              new Date(b.detected_at).getTime() -
-              new Date(a.detected_at).getTime(),
+              new Date(b.detected_at || 0).getTime() -
+              new Date(a.detected_at || 0).getTime(),
           )[0].bookmark_id;
         } else {
           // keep_most_complete - 使用推荐的
           keepId =
             ((groupIssues[0].details as Record<string, unknown>)
-              ?.recommendedKeepId as string) || groupIssues[0].bookmark_id;
+              ?.recommendedKeepId as number) || groupIssues[0].bookmark_id;
         }
 
         // 删除其他书签
         const toDeleteIds = groupIssues
           .filter((i) => i.bookmark_id !== keepId)
-          .map((i) => i.bookmark_id);
+          .map((i) => i.bookmark_id)
+          .filter((id): id is number => id !== null);
 
         if (toDeleteIds.length > 0) {
           const { error } = await supabase
@@ -229,9 +234,13 @@ export async function POST(request: NextRequest) {
 
     // 3. 处理过期内容
     if (strategy.staleContent !== "skip" && staleIssues.length > 0) {
-      const bookmarkIds = staleIssues.map((i) => i.bookmark_id);
+      const bookmarkIds = staleIssues
+        .map((i) => i.bookmark_id)
+        .filter((id): id is number => id !== null);
 
-      if (strategy.staleContent === "delete") {
+      if (bookmarkIds.length === 0) {
+        result.errors.push({ id: "stale", error: "没有有效的书签ID" });
+      } else if (strategy.staleContent === "delete") {
         const { error } = await supabase
           .from("bookmarks")
           .update({ deleted_at: new Date().toISOString() })
@@ -244,9 +253,10 @@ export async function POST(request: NextRequest) {
           result.deleted += bookmarkIds.length;
         }
       } else if (strategy.staleContent === "archive") {
+        // 使用软删除代替归档（bookmarks 表没有 is_archived 字段）
         const { error } = await supabase
           .from("bookmarks")
-          .update({ is_archived: true })
+          .update({ deleted_at: new Date().toISOString() })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 

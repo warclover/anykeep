@@ -62,10 +62,10 @@ export async function GET(request: NextRequest) {
         similarity: number;
         matchType: string;
         items: Array<{
-          bookmarkId: string;
+          bookmarkId: number | null;
           isRecommendedKeep: boolean;
         }>;
-        recommendedKeepId: string;
+        recommendedKeepId: number | null;
         reason: string;
       }
     >();
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
           similarity: (details?.similarity as number) || 1,
           matchType: (details?.matchType as string) || "exact_url",
           items: [],
-          recommendedKeepId: (details?.recommendedKeepId as string) || "",
+          recommendedKeepId: (details?.recommendedKeepId as number) || null,
           reason: (details?.reason as string) || "",
         });
       }
@@ -93,13 +93,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取书签详情
-    const allBookmarkIds = Array.from(groupMap.values()).flatMap((g) =>
-      g.items.map((i) => i.bookmarkId),
-    );
+    const allBookmarkIds = Array.from(groupMap.values())
+      .flatMap((g) => g.items.map((i) => i.bookmarkId))
+      .filter((id): id is number => id !== null);
 
     const { data: bookmarks } = await supabase
       .from("bookmarks")
-      .select("id, title, url, created_at, folder_id, folders(name)")
+      .select("id, title, url, created_at, folder_id, folders!folder_id(name)")
       .in("id", allBookmarkIds);
 
     const bookmarkMap = new Map((bookmarks || []).map((b) => [b.id, b]));
@@ -110,8 +110,13 @@ export async function GET(request: NextRequest) {
       .map((group) => ({
         ...group,
         items: group.items.map((item) => {
-          const bookmark = bookmarkMap.get(item.bookmarkId);
-          const folder = bookmark?.folders as { name: string } | null;
+          const bookmark =
+            item.bookmarkId !== null
+              ? bookmarkMap.get(item.bookmarkId)
+              : undefined;
+          const folder = bookmark?.folders as unknown as {
+            name: string;
+          } | null;
           return {
             bookmarkId: item.bookmarkId,
             title: bookmark?.title || "",
