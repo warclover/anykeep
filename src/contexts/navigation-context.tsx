@@ -104,6 +104,7 @@ export type PageId =
   | "analytics"
   | "batch"
   | "export"
+  | "rules"
   | "settings";
 
 /**
@@ -117,6 +118,7 @@ export const PAGE_ROUTES: Record<PageId, string> = {
   analytics: "/analytics",
   batch: "/batch",
   export: "/export",
+  rules: "/rules",
   settings: "/settings",
 };
 
@@ -131,6 +133,7 @@ const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/analytics": "analytics",
   "/batch": "batch",
   "/export": "export",
+  "/rules": "rules",
   "/settings": "settings",
 };
 
