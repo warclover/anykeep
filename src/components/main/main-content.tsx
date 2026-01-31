@@ -47,12 +47,12 @@ export function MainContent({ children }: MainContentProps) {
   // 检查当前页面是否是 Keep-Alive 管理的页面
   const isCurrentPageKeepAlive = isKeepAlivePage(activePage);
 
-  // 如果不在主页面（如详情页）或不是 Keep-Alive 页面（如 batch/export），
+  // 如果不在主页面（如详情页）或不是 Keep-Alive 页面（如 batch/export、知识工坊），
   // 直接渲染 SSR children，让 Next.js 正常处理页面
-  // 使用 overflow-hidden，让子组件自己管理滚动（如 MdReaderView 的正文区域独立滚动）
+  // 使用 overflow-y-auto 使超出视口的内容可滚动浏览（如学习中心-草稿工坊）
   if (!isOnMainPage || !isCurrentPageKeepAlive) {
     return (
-      <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 relative overflow-x-hidden overflow-y-auto">
         {children}
       </div>
     );
