@@ -18,7 +18,7 @@ import type {
 import { InputPreprocessor } from "../preprocessing/input-preprocessor";
 import { IntentCache } from "../cache/intent-cache";
 import { ClassifierChain } from "../intent/classifier-chain";
-import { ModeSelector } from "../routing/mode-selector";
+import { ModeSelector, SkillMappingRegistry } from "../routing/mode-selector";
 import { ComplexityEvaluator } from "../routing/complexity-evaluator";
 import {
   DebugTracer,
@@ -210,11 +210,18 @@ export class UnifiedEntry {
       // 构建结果
       const routingDurationMs = Math.round(performance.now() - startTime);
 
+      // 🔧 修复 #4: 从 SkillMappingRegistry 获取 suggestedSkill
+      const skillRegistry = SkillMappingRegistry.getInstance();
+      const skillMapping = skillRegistry.find(intent.type, intent.subType);
+      const suggestedSkill = skillMapping?.enabled
+        ? skillMapping.skillId
+        : null;
+
       const result: RouteResult = {
         intent,
         complexity,
         mode: modeSelection.mode,
-        suggestedSkill: null, // TODO: 从 modeSelection 获取
+        suggestedSkill,
         reason: modeSelection.reason,
         routingDurationMs,
         cacheHit,

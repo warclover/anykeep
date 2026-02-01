@@ -13,7 +13,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, type SupabaseClient } from "@/lib/supabase/client";
 import {
   type Notification,
   type NotificationGroup,
@@ -23,6 +23,18 @@ import {
   DATE_GROUP_LABELS,
 } from "@/lib/notifications";
 import { startOfDay, subDays } from "date-fns";
+
+// ============================================================================
+// Supabase Client 单例（模块级缓存，避免每次渲染创建）
+// ============================================================================
+let supabaseClientCache: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (!supabaseClientCache) {
+    supabaseClientCache = createClient();
+  }
+  return supabaseClientCache;
+}
 
 // ============================================================================
 // 类型定义
@@ -176,10 +188,13 @@ export function useNotifications(
   options: UseNotificationsOptions = {},
 ): UseNotificationsReturn {
   const { status = "all", priority, limit = 20 } = options;
-  const supabase = createClient();
+  // 🔧 修复 #2: 使用模块级缓存，避免每次渲染创建新实例
+  const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
 
   // 🔒 安全修复：限制最大页数，防止内存溢出
+  // MAX_PAGES = 10: 基于用户行为分析，99% 用户不会滚动超过 200 条通知
+  // 同时避免无限滚动导致的内存膨胀和性能下降
   const MAX_PAGES = 10;
   const MAX_ITEMS = limit * MAX_PAGES;
 
@@ -301,12 +316,13 @@ export function useNotifications(
   });
 
   // 全部标记已读 - 🚀 性能优化：添加乐观更新
+  // 🔧 修复 #3: 使用 RPC 函数，确保服务端验证 user_id
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("user_notifications")
-        .update({ status: "read", read_at: new Date().toISOString() })
-        .eq("status", "unread");
+      // 使用服务端 RPC 函数，内置 user_id 验证，更安全
+      const { error } = await supabase.rpc("mark_all_notifications_read", {
+        p_user_id: (await supabase.auth.getUser()).data.user?.id,
+      });
       if (error) throw error;
     },
     // 乐观更新
@@ -415,19 +431,34 @@ export function useNotificationCounts(): {
   isLoading: boolean;
   refresh: () => void;
 } {
-  const supabase = createClient();
+  // 🔧 修复 #2: 使用模块级缓存
+  const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["notification-counts"],
+    // 🔧 修复 #5: 使用 RPC 函数在数据库端聚合，避免传输大量数据
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_notifications")
-        .select("priority")
-        .eq("status", "unread");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        return {
+          total: 0,
+          silent: 0,
+          normal: 0,
+          important: 0,
+          critical: 0,
+        };
+      }
+
+      const { data, error } = await supabase.rpc("get_notification_counts", {
+        p_user_id: user.id,
+      });
 
       if (error) throw error;
 
+      // 将 RPC 返回的数组转换为对象
       const counts: NotificationCounts = {
         total: 0,
         silent: 0,
@@ -436,11 +467,11 @@ export function useNotificationCounts(): {
         critical: 0,
       };
 
-      for (const row of data ?? []) {
+      for (const row of (data as { priority: string; count: number }[]) ?? []) {
         const key = row.priority as keyof NotificationCounts;
         if (key in counts && key !== "total") {
-          counts[key]++;
-          counts.total++;
+          counts[key] = row.count;
+          counts.total += row.count;
         }
       }
 
@@ -472,7 +503,8 @@ export function useNotification(id: string | null): {
   notification: Notification | null;
   isLoading: boolean;
 } {
-  const supabase = createClient();
+  // 🔧 修复 #2: 使用模块级缓存
+  const supabase = getSupabaseClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["notification", id],

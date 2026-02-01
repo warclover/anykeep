@@ -157,7 +157,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 生产环境：记录慢认证请求（>100ms 说明可能走了网络验证）
-  // 🔒 安全修复：生产环境不记录 jwtDebug 敏感信息
+  // 🔧 修复 #8: 生产环境绝不记录 jwtDebug，确保无条件安全
   if (authDurationRounded > 100) {
     logger.warn(
       {
@@ -165,8 +165,6 @@ export async function middleware(request: NextRequest) {
         authMethod,
         authDuration: authDurationRounded,
         isSlowAuth: true,
-        // 仅开发环境记录 JWT 诊断信息，防止敏感信息泄露
-        ...(process.env.NODE_ENV === "development" && { jwtDebug }),
       },
       `[Middleware:SLOW] ${pathname} | Auth: ${authMethod} | ${authDurationRounded}ms - 认证耗时过长`,
     );
