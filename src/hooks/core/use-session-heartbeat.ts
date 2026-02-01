@@ -1,16 +1,18 @@
 /**
  * 会话心跳检测 Hook
- * 定期检查和刷新用户会话，防止长时间操作时会话意外过期
+ * 基于行业最佳实践的会���管理，依赖 Supabase 内置自动刷新机制
  *
- * V4.2.30: 解决 AUTH-001 会话过期问题
+ * V4.2.31: 对齐行业标准优化
+ * - 依赖 Supabase onAuthStateChange 监听内置刷新
+ * - Visibility 恢复立即刷新（删除 2 分钟等待）
+ * - 添加多 Tab 同步机制（BroadcastChannel）
+ * - 心跳仅作为兜底机制（10 分钟间隔）
  *
- * 功能：
- * - 每 4 分钟检查一次会话状态
- * - 页面从后台恢复时立即检查
- * - 会话即将过期时自动刷新
- * - 会话失效时触发回调
+ * 参考：
+ * - Supabase 官方文档：https://supabase.com/docs/guides/auth/sessions
+ * - Next.js + Supabase 最佳实践
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-22
  */
 
@@ -20,11 +22,16 @@ import { useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 
-/** 心跳检测间隔（毫秒）- 4分钟 */
-const HEARTBEAT_INTERVAL = 4 * 60 * 1000;
+/** 心跳检测间隔（毫秒）- 10 分钟（仅作为兜底，主要依赖 Supabase 自动刷新） */
+const HEARTBEAT_INTERVAL = 10 * 60 * 1000;
 
-/** 会话即将过期阈值（秒）- 5分钟 */
-const EXPIRY_THRESHOLD = 5 * 60;
+/** 多 Tab 同步频道名称 */
+const BROADCAST_CHANNEL_NAME = "anykeep-session-sync";
+
+/** 会话同步消息类型 */
+type SessionSyncMessage =
+  | { type: "SESSION_REFRESHED"; timestamp: number }
+  | { type: "SESSION_EXPIRED"; timestamp: number };
 
 interface UseSessionHeartbeatOptions {
   /** 会话失效时的回调 */
@@ -36,23 +43,19 @@ interface UseSessionHeartbeatOptions {
 }
 
 /**
- * 检查会话是否即将过期
- */
-function isSessionNearExpiry(expiresAt: number): boolean {
-  const now = Math.floor(Date.now() / 1000);
-  const expiresIn = expiresAt - now;
-  return expiresIn < EXPIRY_THRESHOLD;
-}
-
-/**
- * 会话心跳检测 Hook
+ * 会话心跳检测 Hook（V2.0 - 行业标准版）
+ *
+ * 核心策略：
+ * 1. 使用 onAuthStateChange 监听 Supabase 内置刷新事件
+ * 2. Visibility 恢复时立即触发会话检查
+ * 3. 使用 BroadcastChannel 同步多 Tab 状态
+ * 4. 心跳仅作为兜底机制（10 分钟间隔）
  *
  * @example
  * ```tsx
- * // 在根布局或认证上下文中使用
  * useSessionHeartbeat({
  *   onSessionExpired: () => router.push('/login'),
- *   onSessionRefreshed: () => clientLogger.info({}, 'Session refreshed'),
+ *   onSessionRefreshed: () => console.log('Session refreshed'),
  * });
  * ```
  */
@@ -60,114 +63,188 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
   const { onSessionExpired, onSessionRefreshed, enabled = true } = options;
 
   const supabaseRef = useRef(createClient());
-  const lastCheckRef = useRef<number>(0);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const isCheckingRef = useRef(false);
+  const lastRefreshTimestampRef = useRef<number>(0);
 
   /**
-   * 检查并刷新会话
+   * 广播会话状态变更到其他 Tab
    */
-  const checkAndRefreshSession = useCallback(async () => {
-    // 防止并发检查
-    if (isCheckingRef.current) {
-      return;
+  const broadcastSessionEvent = useCallback((message: SessionSyncMessage) => {
+    try {
+      broadcastChannelRef.current?.postMessage(message);
+    } catch {
+      // BroadcastChannel 可能在某些环境不可用
     }
+  }, []);
 
+  /**
+   * 触发会话刷新（使用 Supabase 内置机制）
+   */
+  const triggerSessionRefresh = useCallback(async () => {
+    if (isCheckingRef.current) return;
     isCheckingRef.current = true;
 
     try {
       const supabase = supabaseRef.current;
+
+      // 使用 getUser() 触发服务端验证，这会自动刷新即将过期的 Token
       const {
-        data: { session },
+        data: { user },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getUser();
 
-      if (error) {
-        clientLogger.error(
-          { error: error.message },
-          "[SessionHeartbeat] 获取会话失败",
+      if (error || !user) {
+        clientLogger.warn(
+          { error: error?.message },
+          "[SessionHeartbeat] 会话验证失败",
         );
-        return;
+        // 不立即触发 expired，让 onAuthStateChange 处理
       }
-
-      // 没有会话，可能已登出
-      if (!session) {
-        onSessionExpired?.();
-        return;
-      }
-
-      // 检查会话是否即将过期
-      if (isSessionNearExpiry(session.expires_at ?? 0)) {
-        const { data: refreshData, error: refreshError } =
-          await supabase.auth.refreshSession();
-
-        if (refreshError) {
-          clientLogger.error(
-            { error: refreshError.message },
-            "[SessionHeartbeat] 刷新会话失败",
-          );
-          // 刷新失败，会话可能已完全过期
-          if (
-            refreshError.message.includes("expired") ||
-            refreshError.message.includes("invalid")
-          ) {
-            onSessionExpired?.();
-          }
-          return;
-        }
-
-        if (refreshData.session) {
-          onSessionRefreshed?.();
-        }
-      }
-
-      lastCheckRef.current = Date.now();
     } catch (err) {
       clientLogger.error(
         { error: err instanceof Error ? err.message : String(err) },
-        "[SessionHeartbeat] 检查会话时发生错误",
+        "[SessionHeartbeat] 触发刷新时发生错误",
       );
     } finally {
       isCheckingRef.current = false;
     }
-  }, [onSessionExpired, onSessionRefreshed]);
+  }, []);
 
   /**
-   * 处理页面可见性变化
+   * 处理页面可见性变化 - 立即刷新（行业标准）
    */
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === "visible") {
-      const timeSinceLastCheck = Date.now() - lastCheckRef.current;
-
-      // 如果超过 2 分钟没检查，立即检查一次
-      if (timeSinceLastCheck > 2 * 60 * 1000) {
-        checkAndRefreshSession();
-      }
+      // 行业标准：切回 Tab 时立即触发刷新检查，不等待
+      triggerSessionRefresh();
     }
-  }, [checkAndRefreshSession]);
+  }, [triggerSessionRefresh]);
+
+  /**
+   * 处理窗口获得焦点 - 立即刷新
+   */
+  const handleFocus = useCallback(() => {
+    triggerSessionRefresh();
+  }, [triggerSessionRefresh]);
 
   /**
    * 处理网络恢复
    */
   const handleOnline = useCallback(() => {
-    checkAndRefreshSession();
-  }, [checkAndRefreshSession]);
+    triggerSessionRefresh();
+  }, [triggerSessionRefresh]);
 
+  /**
+   * 处理其他 Tab 的会话同步消息
+   */
+  const handleBroadcastMessage = useCallback(
+    (event: MessageEvent<SessionSyncMessage>) => {
+      const message = event.data;
+
+      // 防止处理自己发出的消息或过期消息
+      if (message.timestamp <= lastRefreshTimestampRef.current) {
+        return;
+      }
+
+      lastRefreshTimestampRef.current = message.timestamp;
+
+      if (message.type === "SESSION_EXPIRED") {
+        onSessionExpired?.();
+      } else if (message.type === "SESSION_REFRESHED") {
+        onSessionRefreshed?.();
+      }
+    },
+    [onSessionExpired, onSessionRefreshed],
+  );
+
+  // 主要效果：设置 Supabase onAuthStateChange 监听
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled) return;
+
+    const supabase = supabaseRef.current;
+
+    // 核心：监听 Supabase 内置的认证状态变化
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const timestamp = Date.now();
+
+      switch (event) {
+        case "TOKEN_REFRESHED":
+          clientLogger.debug({}, "[SessionHeartbeat] Token 已自动刷新");
+          lastRefreshTimestampRef.current = timestamp;
+          onSessionRefreshed?.();
+          broadcastSessionEvent({ type: "SESSION_REFRESHED", timestamp });
+          break;
+
+        case "SIGNED_OUT":
+          clientLogger.info({}, "[SessionHeartbeat] 用户已登出");
+          onSessionExpired?.();
+          broadcastSessionEvent({ type: "SESSION_EXPIRED", timestamp });
+          break;
+
+        case "USER_UPDATED":
+          // 用户信息更新，可能需要刷新 UI
+          break;
+
+        case "SIGNED_IN":
+        case "INITIAL_SESSION":
+          // 初始会话或登录，记录时间戳
+          if (session) {
+            lastRefreshTimestampRef.current = timestamp;
+          }
+          break;
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [enabled, onSessionExpired, onSessionRefreshed, broadcastSessionEvent]);
+
+  // 设置 BroadcastChannel 多 Tab 同步
+  useEffect(() => {
+    if (!enabled) return;
+
+    // 检查 BroadcastChannel 支持
+    if (typeof BroadcastChannel === "undefined") {
       return;
     }
 
-    // 初始检查
-    checkAndRefreshSession();
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      broadcastChannelRef.current = channel;
+      channel.addEventListener("message", handleBroadcastMessage);
 
-    // 设置定时心跳
+      return () => {
+        channel.removeEventListener("message", handleBroadcastMessage);
+        channel.close();
+        broadcastChannelRef.current = null;
+      };
+    } catch {
+      // BroadcastChannel 创建失败，静默处理
+    }
+  }, [enabled, handleBroadcastMessage]);
+
+  // 设置事件监听和兜底心跳
+  useEffect(() => {
+    if (!enabled) return;
+
+    // 初始检查
+    triggerSessionRefresh();
+
+    // 兜底心跳（10 分钟间隔，主要依赖 Supabase 自动刷新）
     const heartbeatTimer = setInterval(
-      checkAndRefreshSession,
+      triggerSessionRefresh,
       HEARTBEAT_INTERVAL,
     );
 
-    // 监听页面可见性变化
+    // 监听页面可见性变化（立即刷新）
     document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // 监听窗口焦点（立即刷新）
+    window.addEventListener("focus", handleFocus);
 
     // 监听网络状态变化
     window.addEventListener("online", handleOnline);
@@ -175,9 +252,16 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
     return () => {
       clearInterval(heartbeatTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("online", handleOnline);
     };
-  }, [enabled, checkAndRefreshSession, handleVisibilityChange, handleOnline]);
+  }, [
+    enabled,
+    triggerSessionRefresh,
+    handleVisibilityChange,
+    handleFocus,
+    handleOnline,
+  ]);
 }
 
 export default useSessionHeartbeat;
