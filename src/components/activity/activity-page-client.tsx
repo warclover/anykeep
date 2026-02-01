@@ -212,18 +212,18 @@ export function ActivityPageClient() {
     setTimeout(() => setRefreshing(false), 500);
   };
 
-  // 过滤通知
-  const filterNotifications = (
-    notifications: Notification[],
-  ): Notification[] => {
-    if (filter === "all") return notifications;
-
-    const allowedTypes = FILTER_TYPE_MAP[filter];
-    return notifications.filter((n) => allowedTypes.includes(n.typeCode));
-  };
-
   // 过滤后的分组
   const filteredGroups = useMemo(() => {
+    // 过滤通知函数（内联以避免依赖警告）
+    const filterNotifications = (
+      notifications: Notification[],
+    ): Notification[] => {
+      if (filter === "all") return notifications;
+
+      const allowedTypes = FILTER_TYPE_MAP[filter];
+      return notifications.filter((n) => allowedTypes.includes(n.typeCode));
+    };
+
     return groups
       .map((group) => ({
         ...group,
