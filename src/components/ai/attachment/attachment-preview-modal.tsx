@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -349,6 +350,9 @@ export function AttachmentPreviewModal({
         <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-sm sm:text-base">{title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {isBookmark ? "查看书签详情和内容摘要" : "查看文件详情和内容预览"}
+            </DialogDescription>
             <Button
               variant="ghost"
               size="icon-sm"
