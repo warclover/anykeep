@@ -1,10 +1,14 @@
 /**
  * 升级版文件夹卡片组件
  * 更大尺寸、语义化颜色、始终可见的操作按钮
+ *
+ * V5.3 性能优化 (2026-02-01):
+ * - P1-3.4: 使用 React.memo 避免列表中其他卡片变化时的不必要重渲染
  */
 
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Inbox, TrendingUp, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +35,7 @@ interface FolderCardProps extends FolderActionCallbacks {
 
 // ==================== 主组件 ====================
 
-export function FolderCard({
+export const FolderCard = memo(function FolderCard({
   folder,
   allFolders,
   lockStatus,
@@ -185,7 +189,7 @@ export function FolderCard({
       </div>
     </div>
   );
-}
+});
 
 // ==================== 列表项组件 ====================
 
@@ -195,7 +199,7 @@ interface FolderListItemProps extends FolderActionCallbacks {
   lockStatus?: LockStatus;
 }
 
-export function FolderListItem({
+export const FolderListItem = memo(function FolderListItem({
   folder,
   allFolders,
   lockStatus,
@@ -304,7 +308,7 @@ export function FolderListItem({
       </div>
     </div>
   );
-}
+});
 
 // ==================== 卡片网格组件 ====================
 
