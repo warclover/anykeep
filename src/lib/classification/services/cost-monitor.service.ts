@@ -10,7 +10,7 @@
 
 import { logger } from "@/lib/logger";
 import { BaseSupabaseService } from "./base-supabase.service";
-import { MessageService } from "@/lib/messages/message-service";
+import { Notify } from "@/lib/notifications";
 import type { Json } from "@/types/supabase";
 
 // ============================================
@@ -387,13 +387,19 @@ export class CostMonitorService extends BaseSupabaseService {
           "CostMonitor: Daily cost alert threshold reached",
         );
 
-        // V4.2: Send notification to user
-        await MessageService.notifyCostAlert(
-          userId,
-          "daily",
-          daily.totalCostCents,
-          config.dailyLimitCents,
+        // V5.0: Send notification via new notification system
+        const percentage = Math.round(
+          (daily.totalCostCents / config.dailyLimitCents) * 100,
         );
+        if (daily.totalCostCents >= config.dailyLimitCents) {
+          await Notify.costDailyExceeded(
+            userId,
+            daily.totalCostCents / 100,
+            config.dailyLimitCents / 100,
+          );
+        } else {
+          await Notify.quotaWarning(userId, percentage);
+        }
       }
 
       // Also check monthly limit
@@ -411,13 +417,17 @@ export class CostMonitorService extends BaseSupabaseService {
           "CostMonitor: Monthly cost alert threshold reached",
         );
 
-        // V4.2: Send monthly notification
-        await MessageService.notifyCostAlert(
-          userId,
-          "monthly",
-          monthly.totalCostCents,
-          config.monthlyLimitCents,
+        // V5.0: Send monthly notification via new notification system
+        const monthlyPercentage = Math.round(
+          (monthly.totalCostCents / config.monthlyLimitCents) * 100,
         );
+        if (monthlyPercentage >= 100) {
+          await Notify.quotaExceeded(userId);
+        } else if (monthlyPercentage >= 90) {
+          await Notify.quotaCritical(userId, monthlyPercentage);
+        } else {
+          await Notify.quotaWarning(userId, monthlyPercentage);
+        }
       }
     } catch (error) {
       logger.error(

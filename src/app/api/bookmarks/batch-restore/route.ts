@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { MessageService } from "@/lib/messages/server";
+import { Notify } from "@/lib/notifications";
 import {
   successResponse,
   badRequestError,
@@ -62,9 +62,12 @@ export async function POST(request: NextRequest) {
 
     // 3. 批量恢复（仅恢复属于当前用户且在垃圾箱中的收藏）
     const serviceClient = await createServiceClient();
-     
-    const { data: restoredBookmarks, error: restoreError } = await (serviceClient
-      .from("bookmarks") as any)
+
+    const { data: restoredBookmarks, error: restoreError } = (await (
+      serviceClient
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        .from("bookmarks") as any
+    )
       .update({
         is_in_trash: false,
         trashed_at: null,
@@ -73,7 +76,10 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .eq("is_in_trash", true)
       .is("deleted_at", null)
-      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
+      .select("id")) as {
+      data: { id: number }[] | null;
+      error: { message: string } | null;
+    };
 
     logger.debug(
       {
@@ -93,11 +99,12 @@ export async function POST(request: NextRequest) {
 
     // 4. 发送批量恢复消息通知（静默级别）
     if (restoredCount > 0) {
-      await MessageService.notifyBatchRestore(user.id, restoredCount).catch(
-        (err) => {
-          logger.warn({ error: err }, "Failed to create batch restore message");
-        },
-      );
+      await Notify.batchRestore(user.id, restoredCount).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to create batch restore notification",
+        );
+      });
     }
 
     // 5. 返回成功响应

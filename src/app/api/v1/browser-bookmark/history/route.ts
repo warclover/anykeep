@@ -13,7 +13,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { MessageService } from "@/lib/messages/server";
+import { Notify } from "@/lib/notifications";
 import type { ImportSource, Json } from "@/types/supabase";
 
 const VALID_IMPORT_SOURCES: ImportSource[] = [
@@ -155,7 +155,9 @@ export const POST = withAuthMiddleware(
     // 类型断言: 手动维护类型文件时需要此断言
     type ImportHistoryRow = { id: number };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: created, error } = await (supabase.from("import_history") as any)
+    const { data: created, error } = (await (
+      supabase.from("import_history") as any
+    )
       .insert({
         user_id: userId,
         import_source: data.import_source,
@@ -170,7 +172,10 @@ export const POST = withAuthMiddleware(
         options: (data.options || null) as Json,
       })
       .select()
-      .single() as { data: ImportHistoryRow | null; error: { message: string } | null };
+      .single()) as {
+      data: ImportHistoryRow | null;
+      error: { message: string } | null;
+    };
 
     if (error || !created) {
       logger.error(
@@ -198,15 +203,13 @@ export const POST = withAuthMiddleware(
     );
 
     // 发送通知
-    await MessageService.notifyImportComplete(
+    await Notify.importComplete(
       userId,
-      created.id,
       data.total_count,
       data.success_count,
-      data.failed_count,
-      "浏览器书签",
+      String(created.id),
     ).catch((err) => {
-      logger.warn({ error: err }, "[v1] Failed to create import message");
+      logger.warn({ error: err }, "[v1] Failed to create import notification");
     });
 
     return NextResponse.json({

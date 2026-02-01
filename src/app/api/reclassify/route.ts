@@ -21,7 +21,7 @@ import {
 import { logger } from "@/lib/logger";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
-import { MessageService } from "@/lib/messages/message-service";
+import { Notify } from "@/lib/notifications";
 import type { Database, ProfileSettings } from "@/types/supabase";
 
 // 请求体验证
@@ -267,14 +267,27 @@ export async function POST(request: NextRequest) {
 
     // 13. 创建消息通知
     if (bookmarks.length > 0) {
-      await MessageService.notifyReclassifyComplete(
-        user.id,
-        bookmarks.length,
-        movedCount,
-        suggestions.length,
-        isFullAuto,
-        batchId,
-      );
+      if (movedCount > 0) {
+        await Notify.classificationBatch(
+          user.id,
+          movedCount,
+          "目标文件夹",
+          batchId,
+        );
+      }
+      if (suggestions.length > 0) {
+        await Notify.custom(
+          user.id,
+          "ai.classification.batch",
+          "分类建议已生成",
+          `${suggestions.length} 个书签需要确认分类`,
+          {
+            actionUrl: "/messages/pending",
+            actionLabel: "查看建议",
+            metadata: { batchId, suggestionsCount: suggestions.length },
+          },
+        );
+      }
     }
 
     logger.info(

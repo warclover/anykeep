@@ -13,7 +13,7 @@ import {
   databaseError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { MessageService } from "@/lib/messages/server";
+import { Notify } from "@/lib/notifications";
 import type { ImportSource, Json } from "@/types/supabase";
 
 // 有效的导入来源列表
@@ -158,12 +158,18 @@ export async function POST(request: NextRequest) {
     };
 
     // 5. 插入数据库
-     
-    const { data: created, error: insertError } = await (supabase
-      .from("import_history") as any)
+
+    const { data: created, error: insertError } = (await (
+      supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        .from("import_history") as any
+    )
       .insert(insertData)
       .select()
-      .single() as { data: { id: number; [key: string]: unknown } | null; error: { message: string } | null };
+      .single()) as {
+      data: { id: number; [key: string]: unknown } | null;
+      error: { message: string } | null;
+    };
 
     if (insertError) {
       logger.error(
@@ -189,15 +195,13 @@ export async function POST(request: NextRequest) {
     );
 
     // 发送导入完成消息通知
-    await MessageService.notifyImportComplete(
+    await Notify.importComplete(
       user.id,
-      created.id,
       total_count || 0,
       success_count || 0,
-      failed_count || 0,
-      "浏览器书签", // 默认文件夹名称
+      String(created.id),
     ).catch((err) => {
-      logger.warn({ error: err }, "Failed to create import message");
+      logger.warn({ error: err }, "Failed to create import notification");
     });
 
     return successResponse({

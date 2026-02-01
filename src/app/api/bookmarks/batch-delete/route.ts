@@ -15,7 +15,7 @@ import {
 } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
-import { MessageService } from "@/lib/messages/server";
+import { Notify } from "@/lib/notifications";
 
 /**
  * POST /api/bookmarks/batch-delete
@@ -73,14 +73,20 @@ export async function POST(request: NextRequest) {
     const { ids } = validation.data;
 
     // 3. 批量软删除收藏（单次事务）
-     
-    const { data: deletedBookmarks, error: deleteError } = await (supabase
-      .from("bookmarks") as any)
+
+    const { data: deletedBookmarks, error: deleteError } = (await (
+      supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        .from("bookmarks") as any
+    )
       .update({ deleted_at: new Date().toISOString() })
       .in("id", ids)
       .eq("user_id", user.id)
       .is("deleted_at", null) // 只删除未删除的记录
-      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
+      .select("id")) as {
+      data: { id: number }[] | null;
+      error: { message: string } | null;
+    };
 
     if (deleteError) {
       return databaseError("批量删除收藏失败", deleteError);
@@ -91,13 +97,13 @@ export async function POST(request: NextRequest) {
     // 4. 批量减少用户存储计数
     if (deletedCount > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: decrementError } = await (supabase.rpc as any)(
+      const { error: decrementError } = (await (supabase.rpc as any)(
         "decrement_storage_used",
         {
           target_user_id: user.id,
           decrement_by: deletedCount,
         },
-      ) as { error: { message: string } | null };
+      )) as { error: { message: string } | null };
 
       if (decrementError) {
         // 存储计数更新失败，但收藏已删除，记录错误但不影响返回
@@ -114,11 +120,12 @@ export async function POST(request: NextRequest) {
 
     // 5. 发送批量删除消息通知（静默级别）
     if (deletedCount > 0) {
-      await MessageService.notifyBatchDelete(user.id, deletedCount).catch(
-        (err) => {
-          logger.warn({ error: err }, "Failed to create batch delete message");
-        },
-      );
+      await Notify.batchDelete(user.id, deletedCount).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to create batch delete notification",
+        );
+      });
     }
 
     // 6. 返回删除结果

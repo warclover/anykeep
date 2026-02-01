@@ -17,7 +17,7 @@ import type {
   MergeOperationState,
   RenameOperationState,
 } from "@/lib/classification/types";
-import { MessageService } from "@/lib/messages/message-service";
+import { Notify } from "@/lib/notifications";
 import { eventBus, OrganizationEvents } from "@/lib/shared/event-bus";
 import type { SupabaseClientType, UndoResult } from "../types";
 import { getSnapshotById, markSnapshotAsUndone } from "../persistence";
@@ -83,11 +83,7 @@ export async function undoOperation(
       const actionLabel = getActionLabel(
         snapshot.action as OperationSnapshotAction,
       );
-      await MessageService.notifyOperationUndone(
-        userId,
-        actionLabel,
-        result.message,
-      );
+      await Notify.folderOperationUndone(userId, actionLabel);
 
       // 6. 发布撤销事件
       eventBus.emit(OrganizationEvents.OPERATION_UNDONE, {

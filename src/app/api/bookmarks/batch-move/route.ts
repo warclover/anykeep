@@ -15,7 +15,7 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { MessageService } from "@/lib/messages/server";
+import { Notify } from "@/lib/notifications";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 
 /**
@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
 
     // 2.5 获取要移动的书签的当前文件夹（用于更新源文件夹 profile）
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: bookmarksToMove } = await supabase
+    const { data: bookmarksToMove } = (await supabase
       .from("bookmarks")
       .select("id, folder_id")
       .in("id", ids)
       .eq("user_id", user.id)
-      .is("deleted_at", null) as unknown as {
+      .is("deleted_at", null)) as unknown as {
       data: { id: number; folder_id: number | null }[] | null;
       error: unknown;
     };
@@ -65,13 +65,13 @@ export async function POST(request: NextRequest) {
     // 3. 如果指定了文件夹，验证文件夹是否存在且属于当前用户
     let folderName = "待整理";
     if (folderId !== null) {
-      const { data: folder, error: folderError } = await supabase
+      const { data: folder, error: folderError } = (await supabase
         .from("folders")
         .select("id, name")
         .eq("id", folderId)
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .single() as unknown as {
+        .single()) as unknown as {
         data: { id: number; name: string } | null;
         error: unknown;
       };
@@ -83,9 +83,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 批量更新收藏的 folder_id
-     
-    const { data: movedBookmarks, error: moveError } = await (supabase
-      .from("bookmarks") as any)
+
+    const { data: movedBookmarks, error: moveError } = (await (
+      supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 类型推断限制
+        .from("bookmarks") as any
+    )
       .update({
         folder_id: folderId,
         updated_at: new Date().toISOString(),
@@ -93,7 +96,10 @@ export async function POST(request: NextRequest) {
       .in("id", ids)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .select("id") as { data: { id: number }[] | null; error: { message: string } | null };
+      .select("id")) as {
+      data: { id: number }[] | null;
+      error: { message: string } | null;
+    };
 
     if (moveError) {
       return databaseError("批量移动收藏失败", moveError);
@@ -103,13 +109,8 @@ export async function POST(request: NextRequest) {
 
     // 5. 发送批量移动消息通知（静默级别）
     if (movedCount > 0 && folderId !== null) {
-      await MessageService.notifyBatchMove(
-        user.id,
-        movedCount,
-        folderName,
-        folderId,
-      ).catch((err) => {
-        logger.warn({ error: err }, "Failed to create batch move message");
+      await Notify.batchMove(user.id, movedCount, folderName).catch((err) => {
+        logger.warn({ error: err }, "Failed to create batch move notification");
       });
     }
 
