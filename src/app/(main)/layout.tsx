@@ -5,7 +5,7 @@
  * 性能优化：
  * 1. 用户数据通过 UserContext 客户端获取
  * 2. 页面切换使用客户端导航（Keep-Alive 模式）
- * 避免每次页面切换都执行服务端数据库查询
+ * 避免每次页面切换都执行服��端数据库查询
  *
  * Phase 4: 集成 AI 对话功能
  * Phase 5: 可折叠侧边栏，内容区联动
@@ -13,19 +13,44 @@
  *
  * 架构改进 v1.0 (2025-12-28):
  * - 添加 FeatureErrorBoundary 实现局部错误隔离
+ *
+ * V5.2 性能优化 (2026-02-01):
+ * - 非关键组件使用 dynamic() 懒加载
+ * - LayoutAIPanel、MobileBottomNav、FloatingActionMenu 延迟加载
+ * - 添加 Suspense 边界实现流式渲染
+ *
+ * V5.3 性能优化 (2026-02-01):
+ * - P2-3.3: 移动/桌面条件渲染，按设备类型按需加载组件
  */
 
 // v2 性能优化：移除 force-dynamic，让 Next.js 自动决定渲染模式
 // UserProvider 已优化为非阻塞式加载
 
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { AppHeader } from "@/components/layout/app-header";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { MainContent } from "@/components/main/main-content";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
-import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
 import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
-import { FloatingActionMenu } from "@/components/fab";
+// V5.3: P2-3.3 响应式布局组件（条件渲染优化）
+import {
+  DesktopSidebar,
+  MobileNav,
+} from "@/components/layout/responsive-layout-wrapper";
+
+// V5.2: 非关键组件懒加载，减少首屏 JS 体积
+const LayoutAIPanel = dynamic(
+  () =>
+    import("@/components/layout/layout-ai-panel").then(
+      (mod) => mod.LayoutAIPanel,
+    ),
+  { ssr: false },
+);
+
+const FloatingActionMenu = dynamic(
+  () => import("@/components/fab").then((mod) => mod.FloatingActionMenu),
+  { ssr: false },
+);
 
 export default function MainLayout({
   children,
@@ -42,25 +67,31 @@ export default function MainLayout({
       <AppHeader />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* 侧边栏（桌面端） */}
-        <AppSidebar />
+        {/* V5.3: 侧边栏（条件渲染 - 仅桌面端） */}
+        <DesktopSidebar />
 
-        {/* 主内容区 - 使用 FeatureErrorBoundary 隔离错误 */}
+        {/* 主内容区 - 使用 Suspense + ErrorBoundary 隔离 */}
         <MainLayoutErrorBoundary>
-          <MainContentWrapper>
-            <MainContent>{children}</MainContent>
-          </MainContentWrapper>
+          <Suspense fallback={null}>
+            <MainContentWrapper>
+              <MainContent>{children}</MainContent>
+            </MainContentWrapper>
+          </Suspense>
         </MainLayoutErrorBoundary>
 
         {/* V4.3: AI 助手面板（挤压式布局，与主内容区同级） */}
-        <LayoutAIPanel />
+        <Suspense fallback={null}>
+          <LayoutAIPanel />
+        </Suspense>
       </div>
 
-      {/* 底部导航栏（移动端） */}
-      <MobileBottomNav />
+      {/* V5.3: 底部导航栏（条件渲染 - 仅移动端） */}
+      <MobileNav />
 
       {/* 悬浮操作菜单（快速收藏 + 反馈建议） */}
-      <FloatingActionMenu />
+      <Suspense fallback={null}>
+        <FloatingActionMenu />
+      </Suspense>
     </div>
   );
 }

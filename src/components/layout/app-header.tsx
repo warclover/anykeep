@@ -5,11 +5,14 @@
  * 避免每次页面切换都执行服务端数据库查询
  *
  * V4.3: 集成快速添加区域（第二行）
+ *
+ * V5.3 性能优化 (2026-02-01):
+ * - P2-3.4: 使用 React.memo 避免不必要的重渲染
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -34,7 +37,7 @@ import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { QuickAddBookmark } from "@/components/quick-add";
 
-export function AppHeader() {
+export const AppHeader = memo(function AppHeader() {
   const { user, profile, isLoading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
@@ -268,4 +271,4 @@ export function AppHeader() {
       )}
     </header>
   );
-}
+});

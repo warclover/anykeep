@@ -3,6 +3,7 @@
  * 为各页面提供客户端数据获取能力，支持 Keep-Alive 模式
  *
  * V5.1: 收藏夹数据支持本地持久化缓存
+ * V5.3: P2-2.4 添加 AbortController 请求中断机制
  */
 
 "use client";
@@ -12,13 +13,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
 import { dataCache, CACHE_KEYS } from "@/lib/cache";
-import type { Bookmark, Platform } from "@/types/supabase";
+import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
-import {
-  getPlatformName,
-  getPlatformHexColor,
-} from "@/lib/constants/platforms";
 import type { FolderWithStats } from "@/types/domain";
 
 // ==================== 通用类型 ====================
@@ -31,7 +28,7 @@ interface DataState<T> {
 }
 
 // 本地类型定义（绕过 Supabase 类型推断问题）
-interface FolderRow {
+interface _FolderRow {
   id: number;
   user_id: string;
   name: string;
@@ -48,7 +45,7 @@ interface FolderRow {
   source?: string | null;
 }
 
-interface BookmarkCountRow {
+interface _BookmarkCountRow {
   folder_id: number | null;
   created_at: string | null;
 }
@@ -62,7 +59,7 @@ interface _RecentBookmarkRow {
   folders: { name: string } | null;
 }
 
-interface AnalyticsBookmarkRow {
+interface _AnalyticsBookmarkRow {
   id: number;
   platform: string | null;
   folder_id: number | null;
@@ -84,12 +81,17 @@ interface FoldersData {
 /**
  * 收藏夹页面数据获取 Hook
  * V5.1: 支持本地持久化缓存，启动即显示
+ * V5.2: 使用聚合 API 优化性能（3次串行查询 → 1次 API 调用）
+ * V5.3: P2-2.4 添加 AbortController 请求中断，防止竞态条件
  */
 export function useFoldersData() {
   const { user } = useUser();
 
   // V5.1: 生成缓存键
   const cacheKey = user ? CACHE_KEYS.folders(user.id) : "";
+
+  // V5.3: AbortController ref，用于取消进行中的请求
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // V5.1: 同步读取缓存（包括从 localStorage 恢复的数据）
   const [state, setState] = useState<DataState<FoldersData>>(() => {
@@ -121,6 +123,13 @@ export function useFoldersData() {
       return;
     }
 
+    // V5.3: 取消之前的请求，防止竞态条件
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const currentCacheKey = CACHE_KEYS.folders(user.id);
 
     // V5.1: 有缓存时只设置 isValidating，不阻塞 UI
@@ -132,111 +141,28 @@ export function useFoldersData() {
     }
 
     try {
-      const supabase = createClient();
+      // V5.2: 使用聚合 API 替代 3 次串行数据库查询
+      // V5.3: 传入 AbortController signal
+      const response = await fetch(
+        "/api/folders/with-stats?include_recent=true&recent_limit=6",
+        {
+          signal: controller.signal,
+        },
+      );
 
-      // 获取文件夹
-      const { data: folders, error: foldersError } =
-        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("folders") as any)
-          .select("*")
-          .eq("user_id", user.id)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false })) as {
-          data: FolderRow[] | null;
-          error: Error | null;
-        };
-
-      if (foldersError) throw foldersError;
-
-      // 计算统计数据
-      let foldersWithStats: FolderWithStats[] = [];
-
-      if (folders && folders.length > 0) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayISO = today.toISOString();
-
-        const folderIds = folders.map((f) => f.id);
-        const { data: allBookmarks } =
-          (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (supabase.from("bookmarks") as any)
-            .select("folder_id, created_at")
-            .eq("user_id", user.id)
-            .is("deleted_at", null)
-            .in("folder_id", folderIds)) as {
-            data: BookmarkCountRow[] | null;
-            error: Error | null;
-          };
-
-        const countMap = new Map<number, number>();
-        const todayCountMap = new Map<number, number>();
-
-        if (allBookmarks) {
-          for (const bookmark of allBookmarks) {
-            if (bookmark.folder_id) {
-              countMap.set(
-                bookmark.folder_id,
-                (countMap.get(bookmark.folder_id) || 0) + 1,
-              );
-              if (bookmark.created_at && bookmark.created_at >= todayISO) {
-                todayCountMap.set(
-                  bookmark.folder_id,
-                  (todayCountMap.get(bookmark.folder_id) || 0) + 1,
-                );
-              }
-            }
-          }
-        }
-
-        const systemFolders = folders.filter((f) => f.is_system);
-        const normalFolders = folders.filter((f) => !f.is_system);
-
-        foldersWithStats = [...systemFolders, ...normalFolders].map(
-          (folder): FolderWithStats => ({
-            id: folder.id,
-            user_id: folder.user_id,
-            name: folder.name,
-            parent_id: folder.parent_id,
-            created_at: folder.created_at,
-            updated_at: folder.updated_at,
-            deleted_at: folder.deleted_at,
-            folder_group: folder.folder_group,
-            sort_order: folder.sort_order,
-            source: folder.source ?? null,
-            system_type: folder.system_type,
-            is_system: folder.is_system ?? false,
-            is_archived: folder.is_archived ?? false,
-            // Crystal Growth 字段
-            ai_generation_source: null,
-            crystal_birth_time: null,
-            is_ai_generated: null,
-            is_naming_pending: null,
-            origin_bookmark_ids: null,
-            // 统计字段
-            bookmark_count: countMap.get(folder.id) || 0,
-            today_count: todayCountMap.get(folder.id) || 0,
-          }),
-        );
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // 获取最近书签
-      const { data: recentBookmarks, error: bookmarksError } =
-        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("bookmarks") as any)
-          .select("*, folders!bookmarks_folder_id_fkey(name)")
-          .eq("user_id", user.id)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false })
-          .limit(6)) as {
-          data: (Bookmark & { folders?: { name: string } | null })[] | null;
-          error: Error | null;
-        };
+      const result = await response.json();
 
-      if (bookmarksError) throw bookmarksError;
+      if (!result.success) {
+        throw new Error(result.error?.message || "加载文件夹失败");
+      }
 
       const newData: FoldersData = {
-        folders: foldersWithStats,
-        recentBookmarks: recentBookmarks || [],
+        folders: result.data.folders || [],
+        recentBookmarks: result.data.recentBookmarks || [],
       };
 
       // V5.1: 存入缓存（自动持久化到 localStorage）
@@ -249,6 +175,10 @@ export function useFoldersData() {
         lastFetched: Date.now(),
       });
     } catch (err) {
+      // V5.3: 忽略被取消的请求错误
+      if ((err as Error).name === "AbortError") {
+        return;
+      }
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -264,6 +194,16 @@ export function useFoldersData() {
     fetchData();
   }, [fetchData]);
 
+  // V5.3: 组件卸载时取消进行中的请求
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   return {
     ...state,
     isValidating, // V5.1: 新增后台刷新状态
@@ -274,15 +214,18 @@ export function useFoldersData() {
 // ==================== 数据统计页面数据 ====================
 
 import type { AnalyticsData } from "@/lib/analytics";
-import { isBrowserPlatform } from "@/lib/analytics";
 
-const ANALYTICS_TREND_DAYS = 30;
-const ANALYTICS_TOP_TAGS_COUNT = 15;
+// 保留类型导入供未来使用
+
+const _ANALYTICS_TREND_DAYS = 30;
+
+const _ANALYTICS_TOP_TAGS_COUNT = 15;
 
 /**
- * 创建空的 AnalyticsData 对象
+ * 创建空的 AnalyticsData 对象（保留供未来使用）
  */
-function createEmptyAnalyticsData(): AnalyticsData {
+
+function _createEmptyAnalyticsData(): AnalyticsData {
   return {
     stats: {
       totalBookmarks: 0,
@@ -306,6 +249,8 @@ function createEmptyAnalyticsData(): AnalyticsData {
 /**
  * 数据统计页面数据获取 Hook
  * 返回与服务层 AnalyticsData 兼容的数据结构
+ * V5.2: 使用聚合 API 优化性能（全量查询 → 服务端聚合）
+ * V5.3: P2-2.4 添加 AbortController 请求中断，防止竞态条件
  */
 export function useAnalyticsData() {
   const { user } = useUser();
@@ -316,219 +261,53 @@ export function useAnalyticsData() {
     lastFetched: 0,
   });
 
+  // V5.3: AbortController ref，用于取消进行中的请求
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!user) {
       setState((prev) => ({ ...prev, isLoading: false }));
       return;
     }
 
+    // V5.3: 取消之前的请求，防止竞态条件
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const supabase = createClient();
+      // V5.2: 使用聚合 API 替代客户端全量查询 + 计算
+      // V5.3: 传入 AbortController signal
+      const response = await fetch("/api/analytics/stats", {
+        signal: controller.signal,
+      });
 
-      // 获取所有书签
-      const { data: bookmarks, error } =
-        (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("bookmarks") as any)
-          .select("*")
-          .eq("user_id", user.id)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: true })) as {
-          data: AnalyticsBookmarkRow[] | null;
-          error: Error | null;
-        };
-
-      if (error) throw error;
-
-      if (!bookmarks || bookmarks.length === 0) {
-        setState({
-          data: createEmptyAnalyticsData(),
-          isLoading: false,
-          error: null,
-          lastFetched: Date.now(),
-        });
-        return;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // 分离内容收藏和浏览器书签
-      const contentBookmarks = bookmarks.filter(
-        (b) => !isBrowserPlatform(b.platform as Platform),
-      );
-      const browserBookmarks = bookmarks.filter((b) =>
-        isBrowserPlatform(b.platform as Platform),
-      );
+      const result = await response.json();
 
-      // 计算统计数据
-      const now = new Date();
-      const todayStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      );
-      const weekStart = new Date(todayStart);
-      weekStart.setDate(weekStart.getDate() - 7);
-      const monthStart = new Date(todayStart);
-      monthStart.setDate(monthStart.getDate() - 30);
-
-      const todayCount = bookmarks.filter(
-        (b) => b.created_at && new Date(b.created_at) >= todayStart,
-      ).length;
-      const weekCount = bookmarks.filter(
-        (b) => b.created_at && new Date(b.created_at) >= weekStart,
-      ).length;
-      const last30DaysCount = bookmarks.filter(
-        (b) => b.created_at && new Date(b.created_at) >= monthStart,
-      ).length;
-      const unclassifiedCount = bookmarks.filter((b) => !b.folder_id).length;
-
-      // 1. 收藏趋势数据
-      const trendDaysAgo = new Date();
-      trendDaysAgo.setDate(trendDaysAgo.getDate() - ANALYTICS_TREND_DAYS);
-
-      const contentTrendMap = new Map<string, number>();
-      const browserTrendMap = new Map<string, number>();
-
-      bookmarks.forEach((bookmark) => {
-        if (!bookmark.created_at) return;
-        const date = new Date(bookmark.created_at);
-        if (date >= trendDaysAgo) {
-          const dateKey = date.toISOString().split("T")[0];
-          const isBrowser = isBrowserPlatform(bookmark.platform as Platform);
-
-          if (isBrowser) {
-            browserTrendMap.set(
-              dateKey,
-              (browserTrendMap.get(dateKey) || 0) + 1,
-            );
-          } else {
-            contentTrendMap.set(
-              dateKey,
-              (contentTrendMap.get(dateKey) || 0) + 1,
-            );
-          }
-        }
-      });
-
-      const trendData = [];
-      for (let i = ANALYTICS_TREND_DAYS - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateKey = date.toISOString().split("T")[0];
-        const count = contentTrendMap.get(dateKey) || 0;
-        const browserCount = browserTrendMap.get(dateKey) || 0;
-
-        trendData.push({
-          date: dateKey,
-          count,
-          browserCount,
-          total: count + browserCount,
-        });
+      if (!result.success) {
+        throw new Error(result.error?.message || "加载统计数据失败");
       }
-
-      // 2. 平台分布数据（合并浏览器平台）
-      const platformMap = new Map<string, number>();
-      bookmarks.forEach((bookmark) => {
-        const platform = bookmark.platform as Platform;
-        const displayPlatform = isBrowserPlatform(platform)
-          ? "BROWSER"
-          : platform;
-        platformMap.set(
-          displayPlatform,
-          (platformMap.get(displayPlatform) || 0) + 1,
-        );
-      });
-
-      const platformData = Array.from(platformMap.entries())
-        .map(([platform, value]) => ({
-          platform,
-          name:
-            platform === "BROWSER"
-              ? "浏览器书签"
-              : getPlatformName(platform as Platform),
-          value,
-          color:
-            platform === "BROWSER"
-              ? "#6366f1"
-              : getPlatformHexColor(platform as Platform),
-          percentage:
-            bookmarks.length > 0
-              ? Math.round((value / bookmarks.length) * 100)
-              : 0,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-      // 3. 热门标签数据（仅内容收藏）
-      const tagMap = new Map<string, number>();
-      contentBookmarks.forEach((bookmark) => {
-        bookmark.ai_tags?.forEach((tag: string) => {
-          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
-        });
-      });
-
-      const tagData = Array.from(tagMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, ANALYTICS_TOP_TAGS_COUNT)
-        .map(([tag, count]) => ({ tag, count }));
-
-      // 4. 内容类型统计（仅内容收藏）
-      const typeMap: Record<string, number> = {
-        文章: 0,
-        视频: 0,
-        图文: 0,
-      };
-
-      contentBookmarks.forEach((bookmark) => {
-        if (bookmark.platform === "BILIBILI") {
-          typeMap["视频"]++;
-        } else if (bookmark.platform === "XIAOHONGSHU") {
-          typeMap["图文"]++;
-        } else {
-          typeMap["文章"]++;
-        }
-      });
-
-      const contentTotal = contentBookmarks.length;
-      const typeData = Object.entries(typeMap)
-        .filter(([_, count]) => count > 0)
-        .map(([type, count]) => ({
-          type,
-          count,
-          percentage:
-            contentTotal > 0 ? Math.round((count / contentTotal) * 100) : 0,
-        }));
 
       setState({
-        data: {
-          stats: {
-            totalBookmarks: bookmarks.length,
-            contentBookmarks: contentBookmarks.length,
-            browserBookmarks: browserBookmarks.length,
-            todayCount,
-            weekCount,
-            last30DaysCount,
-            unclassifiedCount,
-            classificationRate:
-              bookmarks.length > 0
-                ? Math.round(
-                    ((bookmarks.length - unclassifiedCount) /
-                      bookmarks.length) *
-                      100,
-                  )
-                : 0,
-          },
-          trendData,
-          platformData,
-          folderData: [], // 客户端 hook 暂不获取文件夹分布
-          tagData,
-          typeData,
-          generatedAt: new Date().toISOString(),
-        },
+        data: result.data,
         isLoading: false,
         error: null,
         lastFetched: Date.now(),
       });
     } catch (err) {
+      // V5.3: 忽略被取消的请求错误
+      if ((err as Error).name === "AbortError") {
+        return;
+      }
+      clientLogger.error({ error: err }, "useAnalyticsData fetch failed");
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -540,6 +319,16 @@ export function useAnalyticsData() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // V5.3: 组件卸载时取消进行中的请求
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     ...state,

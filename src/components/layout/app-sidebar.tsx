@@ -8,11 +8,14 @@
  * - 学习中心：知识回顾、知识萃取、知识工坊
  * - 洞察中心：数据分析、活动日志、消息通知
  * - 系统：设置、开发者工具
+ *
+ * V5.3 性能优化 (2026-02-01):
+ * - P2-3.4: 使用 React.memo 避免不必要的重渲染
  */
 
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -199,7 +202,7 @@ const groupCandyColors: Record<GroupColorKey, GroupColorScheme> = {
 
 // ==================== 组件 ====================
 
-export function AppSidebar() {
+export const AppSidebar = memo(function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFolder = searchParams?.get("folder") ?? null;
@@ -642,4 +645,4 @@ export function AppSidebar() {
       </aside>
     </TooltipProvider>
   );
-}
+});
