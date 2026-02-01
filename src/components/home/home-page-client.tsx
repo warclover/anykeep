@@ -27,11 +27,8 @@ import { useInitData } from "@/hooks/data";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { clientLogger } from "@/lib/client-logger";
 import { Button } from "@/components/ui/button";
-import { BrowserBookmarkVirtualList } from "@/components/bookmark/browser-bookmark-virtual-list";
-import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
-import { VirtualBookmarkGrid } from "@/components/bookmark/virtual-bookmark-grid";
-import { VirtualTrashBookmarkGrid } from "@/components/bookmark/virtual-trash-bookmark-grid";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
+import { VirtualListSkeleton } from "./virtual-list-skeleton";
 // V3.1: FolderRecommendationToast 已废弃，由 useClassificationPolling 的 toast 通知替代
 import { EmptyState } from "@/components/bookmark/empty-state";
 // Phase 3.4: 使用 HomePageContext 替代 Event 监听
@@ -67,12 +64,43 @@ const ProactiveBriefingCard = lazy(() =>
     default: mod.ProactiveBriefingCard,
   })),
 );
+
+// 懒加载虚拟列表组件（性能优化：根据 viewMode/platform 按需加载）
+const VirtualBookmarkGrid = lazy(() =>
+  import("@/components/bookmark/virtual-bookmark-grid").then((mod) => ({
+    default: mod.VirtualBookmarkGrid,
+  })),
+);
+
+const VirtualBookmarkList = lazy(() =>
+  import("@/components/bookmark/virtual-bookmark-list").then((mod) => ({
+    default: mod.VirtualBookmarkList,
+  })),
+);
+
+const VirtualTrashBookmarkGrid = lazy(() =>
+  import("@/components/bookmark/virtual-trash-bookmark-grid").then((mod) => ({
+    default: mod.VirtualTrashBookmarkGrid,
+  })),
+);
+
+const BrowserBookmarkVirtualList = lazy(() =>
+  import("@/components/bookmark/browser-bookmark-virtual-list").then((mod) => ({
+    default: mod.BrowserBookmarkVirtualList,
+  })),
+);
+
+// 懒加载综述确认对话框（减少首屏 AlertDialog/Radix UI 依赖）
+const SynthesisConfirmDialog = lazy(() =>
+  import("./synthesis-confirm-dialog").then((mod) => ({
+    default: mod.SynthesisConfirmDialog,
+  })),
+);
 // V3.1: 替换 V1 的 useFolderRecommendation 为 V3 的分类轮询
 import { useClassificationPolling } from "@/hooks/ui";
 import { useDialogs, useSelectionMode } from "@/hooks/core";
 import { useProcessingPoller } from "@/hooks/ui";
 import { ErrorMessage } from "@/components/ui/error-message";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import type { Bookmark } from "@/types/supabase";
 import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
@@ -83,16 +111,6 @@ import { HomeToolbar } from "./home-toolbar";
 import { HomeDialogs } from "./home-dialogs";
 import { SmartListView } from "@/components/smart-list";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { SynthesisRecommendBubble } from "@/components/synthesis/synthesis-recommend-bubble";
 import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 
@@ -398,12 +416,16 @@ export function HomePageClient({
   });
 
   // 延迟触发 AI 功能（首屏渲染完成后）
+  // 修复内存泄漏：添加清理函数取消未完成的回调
   useEffect(() => {
+    let idleCallbackId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     // 使用 requestIdleCallback 在浏览器空闲时加载
     // 如果不支持则使用 setTimeout 降级
-    const scheduleAILoad = () => {
+    if (typeof window !== "undefined") {
       if ("requestIdleCallback" in window) {
-        (
+        idleCallbackId = (
           window as Window & {
             requestIdleCallback: (
               cb: () => void,
@@ -419,17 +441,24 @@ export function HomePageClient({
         );
       } else {
         // Safari 等不支持 requestIdleCallback 的浏览器
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           setDeferredAIReady(true);
           refreshSynthesisRecommend();
         }, 1500); // 延迟 1.5 秒
       }
-    };
-
-    // 确保首屏渲染完成后再触发
-    if (typeof window !== "undefined") {
-      scheduleAILoad();
     }
+
+    // 清理函数：组件卸载时取消未完成的回调，防止内存泄漏
+    return () => {
+      if (idleCallbackId !== undefined && "cancelIdleCallback" in window) {
+        (
+          window as Window & { cancelIdleCallback: (id: number) => void }
+        ).cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [refreshSynthesisRecommend]);
 
   // 批量选择模式
@@ -826,93 +855,84 @@ export function HomePageClient({
           </SilentErrorBoundary>
         )}
 
-        {/* 初始加载骨架屏 */}
+        {/* 初始加载骨架屏 - 复用 VirtualListSkeleton 组件 */}
         {isInitialLoading ? (
-          <div className="masonry-grid">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="masonry-item">
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <Skeleton className="w-full h-40" />
-                  <div className="p-4 space-y-3">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <div className="flex gap-2 pt-2">
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <VirtualListSkeleton variant="grid" count={8} />
         ) : error ? (
           <ErrorMessage message={error} retry={handleRetry} />
         ) : bookmarks && bookmarks.length > 0 ? (
           <>
             {/* 浏览器书签专用列表视图（虚拟滚动） */}
             {isBrowserPlatform ? (
-              <BrowserBookmarkVirtualList
-                bookmarks={bookmarks}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                isSelectionMode={isSelectionMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-              />
-            ) : isTrashFolder ? (
-              <>
-                {/* V4.2.3: 垃圾箱视图使用虚拟滚动网格 */}
-                <VirtualTrashBookmarkGrid
+              <Suspense fallback={<VirtualListSkeleton variant="list" />}>
+                <BrowserBookmarkVirtualList
                   bookmarks={bookmarks}
-                  hasMore={hasMore}
-                  isLoadingMore={isLoadingMore}
-                  onLoadMore={handleLoadMore}
-                  onRestore={handleRestore}
-                  onPermanentDelete={handlePermanentDelete}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
                   isSelectionMode={isSelectionMode}
                   selectedIds={selectedIds}
                   onToggleSelect={toggleSelect}
-                  customScrollParent={scrollContainer}
                 />
+              </Suspense>
+            ) : isTrashFolder ? (
+              <>
+                {/* V4.2.3: 垃圾箱视图使用虚拟滚动网格 */}
+                <Suspense fallback={<VirtualListSkeleton variant="grid" />}>
+                  <VirtualTrashBookmarkGrid
+                    bookmarks={bookmarks}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={handleLoadMore}
+                    onRestore={handleRestore}
+                    onPermanentDelete={handlePermanentDelete}
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    customScrollParent={scrollContainer}
+                  />
+                </Suspense>
               </>
             ) : (
               <>
                 {/* V4.2.2: 卡片视图使用虚拟滚动网格 */}
                 {viewMode === "card" && (
-                  <VirtualBookmarkGrid
-                    bookmarks={bookmarks}
-                    enableFlipCard={enableFlipCard}
-                    hasMore={hasMore}
-                    isLoadingMore={isLoadingMore}
-                    onLoadMore={handleLoadMore}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onToggleRead={handleToggleRead}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    layoutMode={layoutMode}
-                    customScrollParent={scrollContainer}
-                  />
+                  <Suspense fallback={<VirtualListSkeleton variant="grid" />}>
+                    <VirtualBookmarkGrid
+                      bookmarks={bookmarks}
+                      enableFlipCard={enableFlipCard}
+                      hasMore={hasMore}
+                      isLoadingMore={isLoadingMore}
+                      onLoadMore={handleLoadMore}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleRead={handleToggleRead}
+                      isSelectionMode={isSelectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      layoutMode={layoutMode}
+                      customScrollParent={scrollContainer}
+                    />
+                  </Suspense>
                 )}
 
                 {/* V4.2.1: 列表/紧凑视图使用虚拟滚动 */}
                 {(viewMode === "list" || viewMode === "compact") && (
-                  <VirtualBookmarkList
-                    bookmarks={bookmarks}
-                    viewMode={viewMode}
-                    hasMore={hasMore}
-                    isLoadingMore={isLoadingMore}
-                    onLoadMore={handleLoadMore}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onToggleRead={handleToggleRead}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    customScrollParent={scrollContainer}
-                  />
+                  <Suspense fallback={<VirtualListSkeleton variant="list" />}>
+                    <VirtualBookmarkList
+                      bookmarks={bookmarks}
+                      viewMode={viewMode}
+                      hasMore={hasMore}
+                      isLoadingMore={isLoadingMore}
+                      onLoadMore={handleLoadMore}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleRead={handleToggleRead}
+                      isSelectionMode={isSelectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      customScrollParent={scrollContainer}
+                    />
+                  </Suspense>
                 )}
               </>
             )}
@@ -988,40 +1008,18 @@ export function HomePageClient({
         }}
       />
 
-      {/* 综述确认对话框 */}
-      <AlertDialog
-        open={showSynthesisDialog}
-        onOpenChange={setShowSynthesisDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>生成主题综述</AlertDialogTitle>
-            <AlertDialogDescription>
-              将为选中的 {selectedIds.size} 个书签生成 AI 综述报告。
-              报告将包含概述、共识、分歧点和知识盲区分析。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCreatingSynthesis}>
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCreateSynthesis}
-              disabled={isCreatingSynthesis}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              {isCreatingSynthesis ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  创建中...
-                </>
-              ) : (
-                "开始生成"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* 综述确认对话框（懒加载） */}
+      {showSynthesisDialog && (
+        <Suspense fallback={null}>
+          <SynthesisConfirmDialog
+            open={showSynthesisDialog}
+            onOpenChange={setShowSynthesisDialog}
+            selectedCount={selectedIds.size}
+            isCreating={isCreatingSynthesis}
+            onConfirm={handleCreateSynthesis}
+          />
+        </Suspense>
+      )}
 
       {/* E8: 综述智能推荐气泡 */}
       <SynthesisRecommendBubble
