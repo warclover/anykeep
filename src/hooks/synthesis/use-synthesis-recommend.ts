@@ -3,8 +3,9 @@
  *
  * 管理综述推荐的获取、显示控制和用户偏好
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ * @updated 2026-02-01 - 添加请求去重机制
  */
 
 "use client";
@@ -16,6 +17,7 @@ import type {
   SynthesisRecommendResponse,
 } from "@/lib/synthesis/types/recommend";
 import { RECOMMEND_LIMITS } from "@/lib/synthesis/types/recommend";
+import { requestDeduplicator } from "@/lib/utils/request-deduplicator";
 
 interface UseSynthesisRecommendResult {
   /** 当前推荐 (用于气泡显示) */
@@ -79,13 +81,17 @@ export function useSynthesisRecommend(
     setError(null);
 
     try {
-      const response = await fetch("/api/synthesis/recommend");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch recommendations");
-      }
-
-      const data: SynthesisRecommendResponse = await response.json();
+      // 使用请求去重器，防止并发重复请求
+      const data = await requestDeduplicator.dedupe(
+        "/api/synthesis/recommend",
+        async () => {
+          const response = await fetch("/api/synthesis/recommend");
+          if (!response.ok) {
+            throw new Error("Failed to fetch recommendations");
+          }
+          return response.json() as Promise<SynthesisRecommendResponse>;
+        },
+      );
 
       if (data.success) {
         setRecommendations(data.data.recommendations);

@@ -3,8 +3,9 @@
  *
  * 管理主动简报的获取、状态和操作
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-30
+ * @updated 2026-02-01 - 添加请求去重机制
  */
 
 "use client";
@@ -15,6 +16,7 @@ import type {
   ProactiveInsight,
   BriefingApiResponse,
 } from "@/lib/ai-agent/proactive-briefing";
+import { requestDeduplicator } from "@/lib/utils/request-deduplicator";
 
 // ============================================
 // 类型定义
@@ -134,22 +136,25 @@ export function useBriefing(
     }));
 
     try {
-      const url = isRefresh ? "/api/agent/briefing" : "/api/agent/briefing";
+      const url = "/api/agent/briefing";
 
-      const response = await fetch(url, {
-        method: isRefresh ? "POST" : "GET",
-        headers: isRefresh ? { "Content-Type": "application/json" } : undefined,
-        body: isRefresh ? JSON.stringify({ action: "refresh" }) : undefined,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error?.message || `请求失败: ${response.status}`,
-        );
-      }
-
-      const result = await response.json();
+      // 使用请求去重器，防止并发重复请求（仅 GET 请求去重���
+      const result = isRefresh
+        ? await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "refresh" }),
+          }).then((r) => r.json())
+        : await requestDeduplicator.dedupe("/api/agent/briefing", async () => {
+            const response = await fetch(url);
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(
+                errorData.error?.message || `请求失败: ${response.status}`,
+              );
+            }
+            return response.json();
+          });
 
       if (!result.success) {
         throw new Error(result.error?.message || "获取简报失败");

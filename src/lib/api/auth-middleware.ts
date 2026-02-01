@@ -1,12 +1,12 @@
 /**
  * API 认证中间件
  * @description 服务端认证工具，支持 Token 验证和请求头验证
- * @version 1.0.0
+ * @version 1.1.0
  *
  * 性能优化：
- * - 支持从 Authorization header 验证 token（~50ms）
+ * - 优先使用本地 JWT 验证（~1-5ms）
  * - 支持从 Middleware 注入的 x-user-id header 快速验证
- * - 回退到完整认证流程（兼容现有代码）
+ * - 回退到 Supabase 网络验证（兼容现有代码）
  */
 
 import type { NextRequest } from "next/server";
@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { User } from "@supabase/supabase-js";
+import { verifyJwtLocally, extractAccessToken } from "@/lib/auth/jwt-verifier";
 
 /**
  * 认证结果类型
@@ -69,6 +70,22 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
 
+    // 优先使用本地 JWT 验证（~1-5ms）
+    const localResult = await verifyJwtLocally(token);
+
+    if (localResult.valid && !localResult.nearExpiry) {
+      // 快速路径：本地验证成功且 Token 未即���过期
+      const duration = performance.now() - startTime;
+      return {
+        user: null, // 本地验证不返回完整 user 对象
+        userId: localResult.userId,
+        error: null,
+        method: "token",
+        duration,
+      };
+    }
+
+    // 回退到 Supabase 网络验证（Token 即将过期或本地验证失败）
     try {
       const supabase = await createClient();
       const {
@@ -94,8 +111,13 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
 
       if (duration > 500) {
         logger.warn(
-          { duration: duration.toFixed(2) },
-          "[Auth] Slow token verification",
+          {
+            duration: duration.toFixed(2),
+            reason: localResult.nearExpiry
+              ? "token-near-expiry"
+              : "local-verify-failed",
+          },
+          "[Auth] Slow token verification (fallback to network)",
         );
       }
 
@@ -121,6 +143,26 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
   // 方式 3: 回退到 Cookie 验证（完整认证）
   try {
     const supabase = await createClient();
+
+    // 优先尝试从 Cookie 中提取 Token 并本地验证
+    const cookieToken = extractAccessToken(request.cookies);
+    if (cookieToken) {
+      const localResult = await verifyJwtLocally(cookieToken);
+
+      if (localResult.valid && !localResult.nearExpiry) {
+        // 快速路径：本地验证成功且 Token 未即将过期
+        const duration = performance.now() - startTime;
+        return {
+          user: null,
+          userId: localResult.userId,
+          error: null,
+          method: "cookie",
+          duration,
+        };
+      }
+    }
+
+    // 回退到 Supabase 网络验证
     const {
       data: { user },
       error,
@@ -129,7 +171,13 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
     const duration = performance.now() - startTime;
 
     if (duration > 500) {
-      logger.warn({ duration: duration.toFixed(2) }, "[Auth] Slow cookie auth");
+      logger.warn(
+        {
+          duration: duration.toFixed(2),
+          reason: cookieToken ? "token-near-expiry" : "no-cookie-token",
+        },
+        "[Auth] Slow cookie auth (fallback to network)",
+      );
     }
 
     if (error) {

@@ -63,7 +63,7 @@ let cachedSecret: Uint8Array | null = null;
 
 /**
  * 获取 JWT 密钥
- * Supabase JWT Secret 应该直接作为字符串使用（UTF-8 编码），不需要 Base64 解码
+ * V5.3 修复：Supabase JWT Secret 为 UTF-8 纯文本字符串，直接使用
  */
 function getJwtSecret(): Uint8Array | null {
   if (cachedSecret) {
@@ -76,8 +76,7 @@ function getJwtSecret(): Uint8Array | null {
     return null;
   }
 
-  // Supabase 使用 JWT Secret 作为原始字符串进行 HMAC-SHA256 签名
-  // 不要 Base64 解码，直接将字符串转换为 UTF-8 字节
+  // Supabase JWT Secret 是 UTF-8 纯文��字符串，直接编码使用
   cachedSecret = new TextEncoder().encode(secret);
   return cachedSecret;
 }

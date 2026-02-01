@@ -3,9 +3,9 @@
  *
  * GET /api/synthesis/recommend - 获取 AI 推荐的可合成主题
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-29
- * @updated 2025-12-29 - 添加用户偏好返回和代表书签
+ * @updated 2026-02-01 - 性能优化：N+1 查询 → RPC 聚合查询
  */
 
 import type { NextRequest } from "next/server";
@@ -15,6 +15,10 @@ import { logger } from "@/lib/logger";
 import { type SynthesisSourceType, SynthesisErrorCode } from "@/lib/synthesis";
 import { MIN_BOOKMARKS_COUNT } from "@/lib/synthesis/constants";
 import type { SynthesisRecommendPreferences } from "@/lib/synthesis/types/recommend";
+
+// 内存缓存（5分钟有效期）
+const cache = new Map<string, { data: RecommendResponse; expiry: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface RecommendedTopic {
   id: string;
@@ -40,6 +44,20 @@ interface RecommendResponse {
   };
 }
 
+// RPC 返回类型
+interface FolderStatRow {
+  folder_id: number;
+  folder_name: string;
+  bookmark_count: number;
+  sample_bookmarks: Array<{ id: string; title: string }>;
+}
+
+interface TagStatRow {
+  tag: string;
+  bookmark_count: number;
+  sample_bookmarks: Array<{ id: string; title: string }>;
+}
+
 /**
  * GET /api/synthesis/recommend - 获取推荐主题
  */
@@ -58,6 +76,13 @@ export async function GET(_request: NextRequest) {
         { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
         { status: 401 },
       );
+    }
+
+    // P2: 检查缓存
+    const cacheKey = `synthesis:recommend:${user.id}`;
+    const cached = cache.get(cacheKey);
+    if (cached && cached.expiry > Date.now()) {
+      return NextResponse.json(cached.data);
     }
 
     // 获取用户偏好
@@ -99,96 +124,16 @@ export async function GET(_request: NextRequest) {
 
     const recommendations: RecommendedTopic[] = [];
 
-    // 1. 基于文件夹推荐
-    // 类型断言: 手动维护类型文件时需要此断言
-    type FolderRow = { id: number; name: string };
+    // 1. 基于文件夹推荐 - 使用 RPC 聚合查询（替代 N+1 循环）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folders } = await (supabase.from("folders") as any)
-      .select("id, name")
-      .eq("user_id", user.id) as { data: FolderRow[] | null };
+    const { data: folderStats } = (await (supabase.rpc as any)(
+      "get_folder_bookmark_stats",
+      { p_user_id: user.id, p_min_count: MIN_BOOKMARKS_COUNT },
+    )) as { data: FolderStatRow[] | null };
 
-    if (folders) {
-      for (const folder of folders) {
-        // 获取文件夹内书签数量和代表书签
-        type FolderBookmarkRow = { id: number; title: string | null };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: folderBookmarks, count } = await (supabase.from("bookmarks") as any)
-          .select("id, title", { count: "exact" })
-          .eq("user_id", user.id)
-          .eq("folder_id", folder.id)
-          .order("created_at", { ascending: false })
-          .limit(3) as { data: FolderBookmarkRow[] | null; count: number | null };
-
-        const folderBookmarkCount = count || 0;
-
-        if (folderBookmarkCount >= MIN_BOOKMARKS_COUNT) {
-          const topicId = `folder-${folder.id}`;
-
-          // 跳过已忽略的主题
-          if (preferences.dismissedTopics.includes(topicId)) {
-            continue;
-          }
-
-          recommendations.push({
-            id: topicId,
-            title: `${folder.name} 主题综述`,
-            description: `基于「${folder.name}」文件夹中的 ${folderBookmarkCount} 篇收藏生成综述`,
-            sourceType: "folder",
-            sourceId: String(folder.id),
-            bookmarkCount: folderBookmarkCount,
-            relevanceScore: Math.min(1, folderBookmarkCount / 20),
-            suggestedDepthMode: folderBookmarkCount > 30 ? "standard" : "quick",
-            reason: `文件夹「${folder.name}」包含 ${folderBookmarkCount} 篇相关收藏`,
-            sampleBookmarks: folderBookmarks?.map((b) => ({
-              id: String(b.id),
-              title: b.title || "无标题",
-            })),
-          });
-        }
-      }
-    }
-
-    // 2. 基于标签推荐
-    type TagStatsRow = { id: number; title: string | null; ai_tags: string[] | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: tagStats } = await (supabase.from("bookmarks") as any)
-      .select("id, title, ai_tags")
-      .eq("user_id", user.id)
-      .not("ai_tags", "is", null) as { data: TagStatsRow[] | null };
-
-    if (tagStats) {
-      // 统计标签频率和收集代表书签
-      const tagData: Record<
-        string,
-        { count: number; samples: Array<{ id: string; title: string }> }
-      > = {};
-
-      for (const bookmark of tagStats) {
-        const tags = bookmark.ai_tags as string[] | null;
-        if (tags && Array.isArray(tags)) {
-          for (const tag of tags) {
-            if (!tagData[tag]) {
-              tagData[tag] = { count: 0, samples: [] };
-            }
-            tagData[tag].count += 1;
-            if (tagData[tag].samples.length < 3) {
-              tagData[tag].samples.push({
-                id: String(bookmark.id),
-                title: bookmark.title || "无标题",
-              });
-            }
-          }
-        }
-      }
-
-      // 筛选出满足条件的标签
-      const eligibleTags = Object.entries(tagData)
-        .filter(([, data]) => data.count >= MIN_BOOKMARKS_COUNT)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 5);
-
-      for (const [tag, data] of eligibleTags) {
-        const topicId = `tag-${tag}`;
+    if (folderStats) {
+      for (const folder of folderStats) {
+        const topicId = `folder-${folder.folder_id}`;
 
         // 跳过已忽略的主题
         if (preferences.dismissedTopics.includes(topicId)) {
@@ -197,15 +142,47 @@ export async function GET(_request: NextRequest) {
 
         recommendations.push({
           id: topicId,
-          title: `#${tag} 主题综述`,
-          description: `基于标签「${tag}」下的 ${data.count} 篇收藏生成综述`,
+          title: `${folder.folder_name} 主题综述`,
+          description: `基于「${folder.folder_name}」文件夹中的 ${folder.bookmark_count} 篇收藏生成综述`,
+          sourceType: "folder",
+          sourceId: String(folder.folder_id),
+          bookmarkCount: folder.bookmark_count,
+          relevanceScore: Math.min(1, folder.bookmark_count / 20),
+          suggestedDepthMode: folder.bookmark_count > 30 ? "standard" : "quick",
+          reason: `文件夹「${folder.folder_name}」包含 ${folder.bookmark_count} 篇相关收藏`,
+          sampleBookmarks: folder.sample_bookmarks,
+        });
+      }
+    }
+
+    // 2. 基于标签推荐 - 使用 RPC 聚合查询（替代内存遍历）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagStats } = (await (supabase.rpc as any)(
+      "get_tag_bookmark_stats",
+      { p_user_id: user.id, p_min_count: MIN_BOOKMARKS_COUNT, p_limit: 5 },
+    )) as { data: TagStatRow[] | null };
+
+    if (tagStats) {
+      for (const tagStat of tagStats) {
+        const topicId = `tag-${tagStat.tag}`;
+
+        // 跳过已忽略的主题
+        if (preferences.dismissedTopics.includes(topicId)) {
+          continue;
+        }
+
+        recommendations.push({
+          id: topicId,
+          title: `#${tagStat.tag} 主题综述`,
+          description: `基于标签「${tagStat.tag}」下的 ${tagStat.bookmark_count} 篇收藏生成综述`,
           sourceType: "tag",
-          sourceId: tag,
-          bookmarkCount: data.count,
-          relevanceScore: Math.min(1, data.count / 15),
-          suggestedDepthMode: data.count > 25 ? "standard" : "quick",
-          reason: `标签「${tag}」下有 ${data.count} 篇相关内容`,
-          sampleBookmarks: data.samples,
+          sourceId: tagStat.tag,
+          bookmarkCount: tagStat.bookmark_count,
+          relevanceScore: Math.min(1, tagStat.bookmark_count / 15),
+          suggestedDepthMode:
+            tagStat.bookmark_count > 25 ? "standard" : "quick",
+          reason: `标签「${tagStat.tag}」下有 ${tagStat.bookmark_count} 篇相关内容`,
+          sampleBookmarks: tagStat.sample_bookmarks,
         });
       }
     }
@@ -216,12 +193,14 @@ export async function GET(_request: NextRequest) {
 
     type RecentBookmarkRow = { id: number; title: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentBookmarks, count: recentCount } = await (supabase.from("bookmarks") as any)
+    const { data: recentBookmarks, count: recentCount } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, title", { count: "exact" })
       .eq("user_id", user.id)
       .gte("created_at", oneWeekAgo.toISOString())
       .order("created_at", { ascending: false })
-      .limit(3) as { data: RecentBookmarkRow[] | null; count: number | null };
+      .limit(3)) as { data: RecentBookmarkRow[] | null; count: number | null };
 
     if (recentCount && recentCount >= MIN_BOOKMARKS_COUNT) {
       const topicId = "recent-week";
@@ -252,6 +231,19 @@ export async function GET(_request: NextRequest) {
     // 限制推荐数量
     const topRecommendations = recommendations.slice(0, 10);
 
+    const response: RecommendResponse = {
+      success: true,
+      data: {
+        recommendations: topRecommendations,
+        totalBookmarks: bookmarkCount,
+        eligibleForSynthesis: bookmarkCount >= MIN_BOOKMARKS_COUNT,
+        preferences,
+      },
+    };
+
+    // P2: 写入缓存
+    cache.set(cacheKey, { data: response, expiry: Date.now() + CACHE_TTL });
+
     logger.info(
       {
         userId: user.id,
@@ -261,15 +253,7 @@ export async function GET(_request: NextRequest) {
       "Synthesis recommendations generated",
     );
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        recommendations: topRecommendations,
-        totalBookmarks: bookmarkCount,
-        eligibleForSynthesis: bookmarkCount >= MIN_BOOKMARKS_COUNT,
-        preferences,
-      },
-    } as RecommendResponse);
+    return NextResponse.json(response);
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
