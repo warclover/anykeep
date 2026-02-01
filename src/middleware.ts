@@ -91,11 +91,34 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // API 路由依然需要 Auth 处理 (updateSession)
-    const { supabaseResponse } = await updateSession(request);
+    // API 路由 Auth 处理 + 用户信息注入（性能优化）
+    const { supabaseResponse, user } = await updateSession(request);
 
     // 添加 Request ID
     supabaseResponse.headers.set("x-request-id", requestId);
+
+    // V5.4: API 路由也注入用户 header，让 withAuth 走快速路径（~1ms vs 230ms）
+    if (user) {
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-user-id", user.id);
+      requestHeaders.set("x-user-verified", "true");
+
+      const newResponse = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+
+      // 复制所有 headers 和 cookies
+      supabaseResponse.headers.forEach((value, key) => {
+        newResponse.headers.set(key, value);
+      });
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        newResponse.cookies.set(cookie);
+      });
+
+      return newResponse;
+    }
 
     return supabaseResponse;
   }

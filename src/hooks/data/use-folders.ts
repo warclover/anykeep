@@ -1,15 +1,20 @@
 /**
  * 文件夹列表缓存 Hook
- * @version V4.2.24 - 性能优化：使用 SWR 统一缓存，避免重复请求
+ * @version V5.4 - 统一使用 TanStack Query，消除 SWR 双缓存问题
  *
  * 解决的问题：
- * - 之前多个组件独立调用 /api/folders，导致 5+ 次重复请求
- * - 现在统一使用 SWR 缓存，所有组件共享同一份数据
+ * - 之前 SWR 和 TanStack Query 并存，导致 3+ 次重复请求
+ * - 现在统一使用 TanStack Query，所有组件共享同一份缓存
+ *
+ * 变更历史：
+ * - V4.2.24: 使用 SWR 统一缓存
+ * - V5.4: 迁移到 TanStack Query，与 use-folders-query.ts 共享缓存
  */
 
 "use client";
 
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { folderKeys } from "@/hooks/queries/keys";
 import type { Folder } from "@/types/supabase";
 
 // ============================================
@@ -45,11 +50,8 @@ interface UseFoldersResult {
 // 常量配置
 // ============================================
 
-/** SWR 缓存 Key */
-const SWR_KEY = "/api/folders";
-
 /** 缓存时间：5 分钟 */
-const DEDUPING_INTERVAL = 300000;
+const STALE_TIME = 5 * 60 * 1000;
 
 // ============================================
 // Fetcher 函数
@@ -57,9 +59,10 @@ const DEDUPING_INTERVAL = 300000;
 
 /**
  * 文件夹列表 Fetcher
+ * 使用 /api/folders 端点（与原 SWR 版本保持一致）
  */
-async function foldersFetcher(url: string): Promise<Folder[]> {
-  const response = await fetch(url);
+async function foldersFetcher(): Promise<Folder[]> {
+  const response = await fetch("/api/folders");
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -93,25 +96,24 @@ async function foldersFetcher(url: string): Promise<Folder[]> {
  */
 export function useFolders(options: UseFoldersOptions = {}): UseFoldersResult {
   const { enabled = true, forMove = false } = options;
+  const queryClient = useQueryClient();
 
   const {
     data,
-    error: swrError,
+    error: queryError,
     isLoading,
-    isValidating,
-    mutate,
-  } = useSWR<Folder[]>(enabled ? SWR_KEY : null, foldersFetcher, {
-    // 5 分钟内不重复请求
-    dedupingInterval: DEDUPING_INTERVAL,
-    // 不在聚焦时自动刷新
-    revalidateOnFocus: false,
-    // 网络恢复时不自动刷新
-    revalidateOnReconnect: false,
-    // 保持之前的数据（避免闪烁）
-    keepPreviousData: true,
-    // 错误重试配置
-    errorRetryCount: 2,
-    errorRetryInterval: 3000,
+    isFetching,
+    refetch,
+  } = useQuery<Folder[]>({
+    // 使用统一的 folderKeys，与 use-folders-query.ts 共享缓存
+    queryKey: folderKeys.list(),
+    queryFn: foldersFetcher,
+    enabled,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
+    retryDelay: 3000,
   });
 
   // 过滤文件夹（用于移动场景）
@@ -129,12 +131,34 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersResult {
   return {
     folders,
     isLoading,
-    isValidating,
-    error: swrError || null,
+    isValidating: isFetching && !isLoading,
+    error: queryError || null,
     refresh: async () => {
-      await mutate();
+      await refetch();
     },
-    mutate,
+    mutate: async (updater, shouldRevalidate = true) => {
+      if (typeof updater === "function") {
+        const prev = queryClient.getQueryData<Folder[]>(folderKeys.list());
+        const next = updater(prev);
+        if (next !== undefined) {
+          queryClient.setQueryData(folderKeys.list(), next);
+        }
+        if (shouldRevalidate) {
+          await refetch();
+        }
+        return next;
+      } else if (updater !== undefined) {
+        queryClient.setQueryData(folderKeys.list(), updater);
+        if (shouldRevalidate) {
+          await refetch();
+        }
+        return updater;
+      }
+      if (shouldRevalidate) {
+        await refetch();
+      }
+      return queryClient.getQueryData<Folder[]>(folderKeys.list());
+    },
   };
 }
 
@@ -142,8 +166,8 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersResult {
  * 预取文件夹数据（用于预热缓存）
  */
 export async function prefetchFolders(): Promise<void> {
-  // 触发一次请求，SWR 会自动缓存
-  await foldersFetcher(SWR_KEY);
+  // 触发一次请求，TanStack Query 会自动缓存
+  await foldersFetcher();
 }
 
 export default useFolders;
