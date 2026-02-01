@@ -56,31 +56,21 @@ export function formatOfflineDuration(durationMs: number): string {
 // =============================================================================
 
 /**
- * 生成随机后缀
- * @returns 随机字符串（13位时间戳 + 4位随机数）
- */
-function generateRandomSuffix(): string {
-  const timestamp = Date.now().toString(36); // 时间戳转36进制
-  const random = Math.random().toString(36).substring(2, 6); // 4位随机数
-  return `${timestamp}_${random}`;
-}
-
-/**
  * 生成洞察 ID
- * @param type - 洞察类型
- * @returns 格式为 `insight_{type}_{timestamp}_{random}` 的唯一 ID
+ * @param _type - 洞察类型（保留参数以保持 API 兼容性，类型信息存储在 insight.type 字段）
+ * @returns 标准 UUID v4 格式
  */
-export function generateInsightId(type: string): string {
-  return `insight_${type}_${generateRandomSuffix()}`;
+export function generateInsightId(_type: string): string {
+  return crypto.randomUUID();
 }
 
 /**
  * 生成操作 ID
- * @param type - 操作类型
- * @returns 格式为 `action_{type}_{timestamp}_{random}` 的唯一 ID
+ * @param _type - 操作类型（保留参数以保持 API 兼容性）
+ * @returns 标准 UUID v4 格式
  */
-export function generateActionId(type: string): string {
-  return `action_${type}_${generateRandomSuffix()}`;
+export function generateActionId(_type: string): string {
+  return crypto.randomUUID();
 }
 
 // =============================================================================

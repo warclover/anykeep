@@ -28,6 +28,14 @@ interface UpdateSessionResult {
   authMethod: "local" | "network" | "none";
   /** 认证耗时（毫秒） */
   authDuration: number;
+  /** V5.2: JWT 验证诊断信息 */
+  jwtDebug?: {
+    hasToken: boolean;
+    valid?: boolean;
+    nearExpiry?: boolean;
+    error?: string | null;
+    verifyDuration?: number;
+  };
 }
 
 /**
@@ -55,8 +63,26 @@ export async function updateSession(
   // ============================================
   const accessToken = extractAccessToken(request.cookies);
 
+  // V5.2 诊断：记录 token 提取和验证结果
+  let jwtDebugInfo: {
+    hasToken: boolean;
+    valid?: boolean;
+    nearExpiry?: boolean;
+    error?: string | null;
+    verifyDuration?: number;
+  } = { hasToken: !!accessToken };
+
   if (accessToken) {
     const localResult = await verifyJwtLocally(accessToken);
+
+    // 记录验证结果用于诊断
+    jwtDebugInfo = {
+      hasToken: true,
+      valid: localResult.valid,
+      nearExpiry: localResult.nearExpiry,
+      error: localResult.error,
+      verifyDuration: Math.round(localResult.duration),
+    };
 
     // 本地验证成功且 Token 未即将过期
     if (localResult.valid && !localResult.nearExpiry && localResult.payload) {
@@ -70,6 +96,7 @@ export async function updateSession(
         },
         authMethod: "local",
         authDuration,
+        jwtDebug: jwtDebugInfo,
       };
     }
 
@@ -116,6 +143,7 @@ export async function updateSession(
     user: user ? { id: user.id, email: user.email } : null,
     authMethod: user ? "network" : "none",
     authDuration,
+    jwtDebug: jwtDebugInfo,
   };
 }
 

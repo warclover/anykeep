@@ -105,14 +105,32 @@ export async function middleware(request: NextRequest) {
   // =====================================================
 
   // 3.1 运行 Supabase Auth
-  const { supabaseResponse, user, authMethod, authDuration } =
+  const { supabaseResponse, user, authMethod, authDuration, jwtDebug } =
     await updateSession(request);
 
-  // 3.2 开发环境日志
+  // 3.2 性能监控日志（开发和生产环境都记录慢请求）
+  const authDurationRounded = Math.round(authDuration);
+
   if (process.env.NODE_ENV === "development") {
     logger.debug(
-      { pathname, authMethod, authDuration: Math.round(authDuration) },
-      `[Middleware] ${pathname} | Auth: ${authMethod} | ${Math.round(authDuration)}ms`,
+      { pathname, authMethod, authDuration: authDurationRounded, jwtDebug },
+      `[Middleware] ${pathname} | Auth: ${authMethod} | ${authDurationRounded}ms`,
+    );
+  }
+
+  // 生产环境：记录慢认证请求（>100ms 说明可能走了网络验证）
+  // 🔒 安全修复：生产环境不记录 jwtDebug 敏感信息
+  if (authDurationRounded > 100) {
+    logger.warn(
+      {
+        pathname,
+        authMethod,
+        authDuration: authDurationRounded,
+        isSlowAuth: true,
+        // 仅开发环境记录 JWT 诊断信息，防止敏感信息泄露
+        ...(process.env.NODE_ENV === "development" && { jwtDebug }),
+      },
+      `[Middleware:SLOW] ${pathname} | Auth: ${authMethod} | ${authDurationRounded}ms - 认证耗时过长`,
     );
   }
 

@@ -264,8 +264,12 @@ export function extractAccessToken(cookies: {
         // Base64 解码失败
       }
 
-      // 方式 4: 检查是否是直接的 JWT token
-      if (rawValue.includes(".") && rawValue.split(".").length === 3) {
+      // 方式 4: 检查是否是直接的 JWT token（严格格式验证）
+      // 🔒 安全修复：使用严格正则验证 JWT 格式，防止格式��过攻击
+      // JWT 格式: header.payload.signature (均为 base64url 编码)
+      const jwtRegex = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+      if (jwtRegex.test(rawValue)) {
+        // 仅返回格式符合的 token，实际签名验证由 verifyJwtLocally 完成
         return rawValue;
       }
     }

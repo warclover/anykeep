@@ -30,6 +30,7 @@ BEGIN
 END $$;
 
 -- 1. 获取文件夹书签统计（替代循环查询）
+-- @version 1.1.0 - 添加权限检查和超时保护
 CREATE OR REPLACE FUNCTION get_folder_bookmark_stats(
   p_user_id UUID,
   p_min_count INT DEFAULT 5
@@ -42,8 +43,15 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET statement_timeout = '5s'  -- 强制 5 秒超时防止慢查询
 AS $$
 BEGIN
+  -- 🔒 安全检查：验证调用者只能查询自己的数据
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot query other user data'
+      USING HINT = 'p_user_id must match authenticated user ID';
+  END IF;
+
   RETURN QUERY
   WITH folder_stats AS (
     SELECT
@@ -76,6 +84,7 @@ END;
 $$;
 
 -- 2. 获取标签书签统计（替代内存遍历）
+-- @version 1.1.0 - 添加权限检查、超时保护和数组长度限制
 CREATE OR REPLACE FUNCTION get_tag_bookmark_stats(
   p_user_id UUID,
   p_min_count INT DEFAULT 5,
@@ -88,14 +97,22 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET statement_timeout = '5s'  -- 强制 5 秒超时防止慢查询
 AS $$
 BEGIN
+  -- 🔒 安全检查：验证调用者只能查询自己的数据
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: Cannot query other user data'
+      USING HINT = 'p_user_id must match authenticated user ID';
+  END IF;
+
   RETURN QUERY
   WITH tag_expanded AS (
     SELECT
       b.id,
       b.title,
-      unnest(b.ai_tags) as tag_name
+      -- 🔒 安全限制：最多处理前 100 个标签，防止恶意数据导致 OOM
+      unnest(b.ai_tags[1:100]) as tag_name
     FROM bookmarks b
     WHERE b.user_id = p_user_id
       AND b.ai_tags IS NOT NULL
