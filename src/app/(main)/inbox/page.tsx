@@ -5,11 +5,13 @@
  * 包含智能整理建议面板
  */
 
-import { unstable_noStore } from "next/cache";
 import { InboxPageClient } from "@/components/inbox/inbox-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
 import type { Bookmark } from "@/types/supabase";
+
+// 确保每次请求都获取最新数据
+export const dynamic = "force-dynamic";
 
 type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
@@ -116,9 +118,6 @@ async function getInboxData(): Promise<{
 }
 
 export default async function InboxPage() {
-  // 禁用缓存，确保每次都获取最新数据
-  unstable_noStore();
-
   const { bookmarks, folders, inboxFolderId, error } = await getInboxData();
 
   return (
