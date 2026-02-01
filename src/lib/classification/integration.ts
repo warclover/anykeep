@@ -36,6 +36,7 @@ export {
   updateFolderProfileAfterClassification,
   updateFolderProfilesOnBookmarkChange,
   initializeFolderNameProfile,
+  preserveOldNameAsAlias,
 } from "./folder-profile-manager";
 
 // ============================================================================

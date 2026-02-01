@@ -12,6 +12,71 @@
  */
 
 import { logger } from "@/lib/logger";
+import type { FolderId } from "@/lib/shared/types";
+
+// ============================================
+// 文件夹别名保留（重命名时）
+// ============================================
+
+/**
+ * 重命名时保留旧名称为别名
+ *
+ * 解决问题：用户把"代码"改成"开发"后，原有的"代码相关"书签无法匹配
+ * 解决方案：自动将旧名称添加到 folder_tag_profiles.aliases
+ *
+ * @param folderId - 文件夹 ID
+ * @param oldName - 旧名称
+ * @param userId - 用户 ID
+ */
+export async function preserveOldNameAsAlias(
+  folderId: number,
+  oldName: string,
+  userId: string,
+): Promise<void> {
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    // 1. 确保 folder_tag_profiles 记录存在
+    await supabase.from("folder_tag_profiles").upsert(
+      {
+        user_id: userId,
+        folder_id: folderId,
+        aliases: [],
+        core_tags: [],
+        related_tags: [],
+      },
+      {
+        onConflict: "user_id,folder_id",
+        ignoreDuplicates: true,
+      },
+    );
+
+    // 2. 使用 FolderAliasManager 添加别名（内置去重逻辑）
+    const { FolderAliasManager } = await import(
+      "./strategies/modern/folder-alias-manager"
+    );
+    const aliasManager = new FolderAliasManager(supabase);
+
+    await aliasManager.addAlias(userId, folderId as FolderId, oldName);
+
+    logger.info(
+      { folderId, oldName, userId },
+      "FolderProfileManager: Preserved old folder name as alias",
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error: error instanceof Error ? error.message : String(error),
+        folderId,
+        oldName,
+        userId,
+      },
+      "FolderProfileManager: Failed to preserve old name as alias",
+    );
+    // 不抛出异常，避免阻塞主流程
+  }
+}
 
 // ============================================
 // 单文件夹 Profile 更新
@@ -180,7 +245,12 @@ export async function initializeFolderNameProfile(
     const smartTags = generateFolderTags(folderName);
 
     logger.info(
-      { folderId, folderName, tags: smartTags.slice(0, 5), totalTags: smartTags.length },
+      {
+        folderId,
+        folderName,
+        tags: smartTags.slice(0, 5),
+        totalTags: smartTags.length,
+      },
       "FolderProfileManager: Generated smart tags",
     );
 
@@ -216,19 +286,21 @@ export async function initializeFolderNameProfile(
 
     if (error) {
       // Fallback to v1 if v2 doesn't exist
-      if (error.message?.includes("function") && error.message?.includes("does not exist")) {
+      if (
+        error.message?.includes("function") &&
+        error.message?.includes("does not exist")
+      ) {
         logger.warn(
           { folderId },
           "FolderProfileManager: v2 function not found, falling back to v1",
         );
 
-        const { error: fallbackError } = await (supabase.rpc as CallableFunction)(
-          "update_folder_name_embedding",
-          {
-            p_folder_id: folderId,
-            p_name_embedding: embeddingString,
-          },
-        );
+        const { error: fallbackError } = await (
+          supabase.rpc as CallableFunction
+        )("update_folder_name_embedding", {
+          p_folder_id: folderId,
+          p_name_embedding: embeddingString,
+        });
 
         if (fallbackError) {
           logger.error(

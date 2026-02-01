@@ -20,6 +20,7 @@ export {
   updateFolderProfileAfterClassification,
   updateFolderProfilesOnBookmarkChange,
   initializeFolderNameProfile,
+  preserveOldNameAsAlias,
   shouldUseV2Classification,
 } from "./integration";
 

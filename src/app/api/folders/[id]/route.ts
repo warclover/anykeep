@@ -24,7 +24,10 @@ import { logger } from "@/lib/logger";
 import type { FolderUpdate, Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FOLDER, AUTH } from "@/lib/constants/messages";
-import { initializeFolderNameProfile } from "@/lib/classification/server";
+import {
+  initializeFolderNameProfile,
+  preserveOldNameAsAlias,
+} from "@/lib/classification/server";
 
 // 事务函数返回类型
 interface DeleteFolderCascadeResult {
@@ -74,13 +77,13 @@ export async function GET(
       created_at: string;
       updated_at: string;
     };
-    const { data: folder, error: queryError } = await supabase
+    const { data: folder, error: queryError } = (await supabase
       .from("folders")
       .select("*")
       .eq("id", folderId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: FolderRow | null;
       error: { code?: string; message: string } | null;
     };
@@ -179,12 +182,12 @@ export async function PUT(
       is_system: boolean;
       system_type: string | null;
     };
-    const { data: existingFolder, error: checkError } = await supabase
+    const { data: existingFolder, error: checkError } = (await supabase
       .from("folders")
       .select("id, user_id, parent_id, is_system, system_type")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: ExistingFolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -231,20 +234,36 @@ export async function PUT(
     // Note: color and icon are not in the database schema yet, removing for now
 
     // 6. 更新文件夹
-     
-    const { data: updatedFolder, error: updateError } = await (supabase
-      .from("folders") as any)
+    const { data: updatedFolder, error: updateError } = (await (
+      supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("folders") as any
+    )
       .update(updateData)
       .eq("id", folderId)
       .select()
-      .single() as { data: Record<string, unknown> | null; error: { message: string } | null };
+      .single()) as {
+      data: Record<string, unknown> | null;
+      error: { message: string } | null;
+    };
 
     if (updateError) {
       return databaseError(FOLDER.UPDATE_ERROR, updateError);
     }
 
     // 7. 如果文件夹名称变更，异步更新 Profile（不阻塞响应）
-    if (name !== undefined) {
+    if (name !== undefined && name !== existingFolder.name) {
+      // 【新增】保留旧名称为别名，确保旧名称仍可匹配
+      preserveOldNameAsAlias(folderId, existingFolder.name, user.id).catch(
+        (err) => {
+          logger.warn(
+            { error: err, folderId, oldName: existingFolder.name },
+            "Failed to preserve old folder name as alias",
+          );
+        },
+      );
+
+      // 更新名称嵌入向量
       initializeFolderNameProfile(folderId, name, user.id).catch((err) => {
         logger.warn(
           { error: err, folderId },
@@ -301,12 +320,12 @@ export async function DELETE(
       user_id: string;
       is_system: boolean;
     };
-    const { data: existingFolder, error: checkError } = await supabase
+    const { data: existingFolder, error: checkError } = (await supabase
       .from("folders")
       .select("id, user_id, is_system")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: DeleteFolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -350,14 +369,14 @@ export async function DELETE(
     // 5. 使用事务函数执行原子删除操作
     // 安全说明：已验证用户身份、文件夹所有权、非系统文件夹、无书签
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)(
+    const { data: rpcResult, error: rpcError } = (await (supabase.rpc as any)(
       "delete_folder_cascade",
       {
         p_folder_id: folderId,
         p_user_id: user.id,
         p_delete_bookmarks: false, // 已验证文件夹为空
       },
-    ) as { data: unknown; error: { message: string } | null };
+    )) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -434,12 +453,12 @@ async function checkCircularReference(
 
   // 获取当前文件夹的所有子文件夹
   type FolderIdOnly = { id: number };
-  const { data: children, error } = await supabase
+  const { data: children, error } = (await supabase
     .from("folders")
     .select("id")
     .eq("parent_id", folderId)
     .eq("user_id", userId)
-    .is("deleted_at", null) as unknown as {
+    .is("deleted_at", null)) as unknown as {
     data: FolderIdOnly[] | null;
     error: unknown;
   };
