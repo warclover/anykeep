@@ -3,12 +3,14 @@
  *
  * 展示整理中心的快速操作入口
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
+ * @updated 2026-02-01 - 添加键盘可访问性支持
  */
 
 "use client";
 
+import { useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +80,19 @@ export function QuickActionGrid({ onAction, disabled }: QuickActionGridProps) {
   const highlightAction = QUICK_ACTIONS.find((a) => a.highlight);
   const otherActions = QUICK_ACTIONS.filter((a) => !a.highlight);
 
+  /**
+   * 处理键盘事件，支持 Enter 和 Space 触发操作
+   */
+  const handleKeyDown = useCallback(
+    (actionId: QuickActionType) => (e: React.KeyboardEvent) => {
+      if ((e.key === "Enter" || e.key === " ") && !disabled) {
+        e.preventDefault();
+        onAction(actionId);
+      }
+    },
+    [onAction, disabled],
+  );
+
   return (
     <div className="space-y-4">
       {/* 主操作：一键整理 */}
@@ -111,16 +126,21 @@ export function QuickActionGrid({ onAction, disabled }: QuickActionGridProps) {
       )}
 
       {/* 快捷操作网格 */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4" role="list" aria-label="快捷操作">
         {otherActions.map((action) => (
           <Card
             key={action.id}
-            className="cursor-pointer hover:border-primary/50 transition-colors"
+            role="listitem"
+            tabIndex={disabled ? -1 : 0}
+            aria-label={`${action.title}: ${action.description}`}
+            aria-disabled={disabled}
+            className="cursor-pointer hover:border-primary/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             onClick={() => !disabled && onAction(action.id)}
+            onKeyDown={handleKeyDown(action.id)}
           >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-muted rounded">
+                <div className="p-2 bg-muted rounded" aria-hidden="true">
                   <action.icon className="h-5 w-5" />
                 </div>
                 <div>

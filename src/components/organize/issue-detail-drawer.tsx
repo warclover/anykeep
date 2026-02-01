@@ -140,6 +140,9 @@ function OversizedCard({
   item: OversizedFolder;
   onSplit?: () => void;
 }) {
+  // 拆分功能尚未实现，暂时隐藏按钮
+  const isSplitImplemented = false;
+
   return (
     <div className="rounded-lg border p-4">
       <div className="flex items-center justify-between">
@@ -147,14 +150,16 @@ function OversizedCard({
           <span className="font-medium">{item.folder.name}</span>
           <Badge variant="secondary">{item.bookmarkCount} 条书签</Badge>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onSplit}
-          disabled={!onSplit}
-        >
-          拆分
-        </Button>
+        {isSplitImplemented && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onSplit}
+            disabled={!onSplit}
+          >
+            拆分
+          </Button>
+        )}
       </div>
       {item.suggestedSplits.length > 0 && (
         <p className="mt-2 text-sm text-muted-foreground">

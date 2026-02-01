@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, BookOpen, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowRight, BookOpen, AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,8 +28,6 @@ import {
 } from "@/components/ui/select";
 import {
   BlueprintSelectorV2,
-  ScenarioQuickEntry,
-  BlueprintRecommendations,
   MaterialRecommendations,
   type BlueprintListItem,
 } from "@/components/knowledge-studio/v2";
@@ -277,7 +275,7 @@ export function KnowledgeStudioV2PageClient() {
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-8">
+    <div className="container max-w-6xl py-6 space-y-4">
       {/* 错误提示 */}
       {errorType === "invalid-materials" && (
         <Alert variant="destructive">
@@ -289,67 +287,17 @@ export function KnowledgeStudioV2PageClient() {
         </Alert>
       )}
 
-      {/* 页面标题 */}
-      <div className="space-y-2">
+      {/* 页面标题 - 紧凑版 */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">知识工坊</h1>
+          <h1 className="text-2xl font-bold">知识工坊</h1>
           <Badge variant="secondary" className="text-xs">
             Beta
           </Badge>
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           选择增强蓝图和素材，生成专业内容
         </p>
-      </div>
-
-      {/* 步骤指示器 */}
-      <div className="flex items-center gap-4">
-        <div
-          className={`flex items-center gap-2 ${
-            step === "blueprint" ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-              step === "blueprint"
-                ? "border-primary bg-primary text-primary-foreground"
-                : selectedBlueprintId
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-muted-foreground"
-            }`}
-          >
-            1
-          </div>
-          <span className="font-medium">选择蓝图</span>
-        </div>
-
-        <div className="flex-1 h-0.5 bg-border" />
-
-        <div
-          className={`flex items-center gap-2 ${
-            step === "materials" ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-              step === "materials"
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-muted-foreground"
-            }`}
-          >
-            2
-          </div>
-          <span className="font-medium">选择素材</span>
-        </div>
-
-        <div className="flex-1 h-0.5 bg-border" />
-
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-muted-foreground">
-            3
-          </div>
-          <span className="font-medium">生成内容</span>
-        </div>
       </div>
 
       {/* 主内容区 - P0-6: 步骤切换动画 */}
@@ -361,43 +309,16 @@ export function KnowledgeStudioV2PageClient() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="space-y-6"
           >
-            {/* Phase 2: 场景快速入口 */}
-            <ScenarioQuickEntry onSelect={handleBlueprintSelect} />
-
-            {/* 蓝图选择区域（上下布局，全宽适配） */}
-            <div className="flex flex-col gap-6">
-              {/* 上方：为你推荐 */}
-              <BlueprintRecommendations
-                onSelect={handleBlueprintSelect}
-                selectedBlueprintId={selectedBlueprintId}
-                layout="horizontal"
-              />
-
-              {/* 下方：选择蓝图 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
-                    选择蓝图
-                  </CardTitle>
-                  <CardDescription>
-                    选择一个增强蓝图来定义生成内容的类型和格式
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <BlueprintSelectorV2
-                    blueprints={blueprints}
-                    value={selectedBlueprintId}
-                    onChange={handleBlueprintSelect}
-                    userTier={userTier}
-                    onUpgradeClick={handleUpgrade}
-                    isLoading={isLoading}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            {/* 蓝图选择区域 - 紧凑���局，无 Card 包裹 */}
+            <BlueprintSelectorV2
+              blueprints={blueprints}
+              value={selectedBlueprintId}
+              onChange={handleBlueprintSelect}
+              userTier={userTier}
+              onUpgradeClick={handleUpgrade}
+              isLoading={isLoading}
+            />
           </motion.div>
         )}
 

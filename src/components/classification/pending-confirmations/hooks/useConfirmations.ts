@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
+import { useFolders } from "@/hooks/data/use-folders";
 import type {
   ConfirmationMessage,
   FolderOption,
@@ -56,10 +57,22 @@ function transformApiConfirmation(c: ApiConfirmation): ConfirmationMessage {
 
 export function useConfirmations(): UseConfirmationsReturn {
   const [messages, setMessages] = useState<ConfirmationMessage[]>([]);
-  const [folders, setFolders] = useState<FolderOption[]>([]);
   const [isLoading, setIsLoading] = useState(false); // 初始为 false，静默加载
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // 🔧 修复重复请求：复用 useFolders 的 TanStack Query 缓存
+  // 之前：独立调用 /api/folders，导致多次重复请求
+  // 现在：共享全局文件夹缓存，请求数从 4 次降为 1 次
+  const { folders: cachedFolders } = useFolders();
+
+  // 转换为 FolderOption 格式
+  const folders: FolderOption[] = useMemo(() => {
+    return cachedFolders.map((f) => ({
+      id: f.id,
+      name: f.name,
+    }));
+  }, [cachedFolders]);
 
   // ============================================================================
   // 统计计算
@@ -86,16 +99,12 @@ export function useConfirmations(): UseConfirmationsReturn {
     try {
       setError(null);
 
-      const [confirmationsRes, foldersRes] = await Promise.all([
-        fetchWithRetry(
-          API_CLASSIFICATION.confirmations + "?status=pending",
-          undefined,
-          { requestId: "confirmations-list-v2" },
-        ),
-        fetchWithRetry("/api/folders", undefined, {
-          requestId: "folders-list-v2",
-        }),
-      ]);
+      // 🔧 优化：只获取 confirmations，folders 已通过 useFolders Hook 共享缓存
+      const confirmationsRes = await fetchWithRetry(
+        API_CLASSIFICATION.confirmations + "?status=pending",
+        undefined,
+        { requestId: "confirmations-list-v2" },
+      );
 
       if (confirmationsRes.ok) {
         const confirmationsData = await confirmationsRes.json();
@@ -103,16 +112,6 @@ export function useConfirmations(): UseConfirmationsReturn {
         setMessages(confirmations.map(transformApiConfirmation));
       } else {
         throw new Error("获取确认消息失败");
-      }
-
-      if (foldersRes.ok) {
-        const foldersData = await foldersRes.json();
-        setFolders(
-          (foldersData.data || []).map((f: { id: number; name: string }) => ({
-            id: f.id,
-            name: f.name,
-          })),
-        );
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "加载失败";

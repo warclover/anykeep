@@ -3,8 +3,9 @@
  *
  * 管理整理前后快照的获取和对比逻辑
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
+ * @updated 2026-02-01 - 添加 API 响应验证
  */
 
 "use client";
@@ -32,6 +33,37 @@ interface UseOrganizeComparisonReturn {
 }
 
 /**
+ * 验证 OrganizeSnapshot 数据结构
+ */
+function validateSnapshot(data: unknown): OrganizeSnapshot {
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid snapshot: expected object");
+  }
+
+  const snapshot = data as Record<string, unknown>;
+
+  // 验证必需字段存在且类型正确
+  if (typeof snapshot.timestamp !== "string") {
+    throw new Error("Invalid snapshot: missing or invalid timestamp");
+  }
+  if (typeof snapshot.total !== "number" || isNaN(snapshot.total)) {
+    throw new Error("Invalid snapshot: missing or invalid total");
+  }
+
+  // 返回验证后的快照，使用默认值填充可选字段
+  return {
+    timestamp: snapshot.timestamp,
+    total: snapshot.total,
+    uncategorized:
+      typeof snapshot.uncategorized === "number" ? snapshot.uncategorized : 0,
+    duplicates:
+      typeof snapshot.duplicates === "number" ? snapshot.duplicates : 0,
+    untagged: typeof snapshot.untagged === "number" ? snapshot.untagged : 0,
+    stale: typeof snapshot.stale === "number" ? snapshot.stale : 0,
+  };
+}
+
+/**
  * 获取收藏统计数据
  */
 async function fetchCollectionStats(): Promise<OrganizeSnapshot> {
@@ -46,7 +78,8 @@ async function fetchCollectionStats(): Promise<OrganizeSnapshot> {
   if (!result.success || !result.data) {
     throw new Error(result.error?.message || "Invalid response format");
   }
-  return result.data;
+  // 验证返回数据结构
+  return validateSnapshot(result.data);
 }
 
 /**

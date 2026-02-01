@@ -481,8 +481,12 @@ export class HealthCheckSkill extends OrchestrationSkill<
       }
     }
 
-    // 如果没有缓存或需要强制刷新，使用现有 Skill 检测
-    // 注意：这里简化处理，实际应该调用 linkHealthCheckSkill
+    // 如果没有缓存或需要强制刷新，记录警告并返回空数组
+    // TODO: 集成 linkHealthCheckSkill 进行实时检测
+    logger.warn(
+      { userId, forceRefresh: input.forceRefresh },
+      "HealthCheckSkill: Real-time broken link detection not implemented, returning cached or empty results",
+    );
     return [];
   }
 
@@ -533,6 +537,11 @@ export class HealthCheckSkill extends OrchestrationSkill<
       }
     }
 
+    // TODO: 集成 duplicateCleanupSkill 进行实时检测
+    logger.warn(
+      { userId, forceRefresh: input.forceRefresh },
+      "HealthCheckSkill: Real-time duplicate detection not implemented, returning cached or empty results",
+    );
     return [];
   }
 

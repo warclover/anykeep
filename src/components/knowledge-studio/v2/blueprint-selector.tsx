@@ -311,9 +311,9 @@ export function BlueprintSelectorV2({
                 aria-disabled={disabled}
                 aria-label={`${blueprint.displayName}${isLocked ? " (需升级)" : ""}`}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3">
                   {/* 顶部标记区域 */}
-                  <div className="absolute right-3 top-3 flex items-center gap-1">
+                  <div className="absolute right-2 top-2 flex items-center gap-1">
                     {/* NEW 标签 */}
                     {blueprint.isNew && (
                       <Badge
@@ -342,32 +342,32 @@ export function BlueprintSelectorV2({
 
                     {/* 锁定图标 */}
                     {isLocked && (
-                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
 
                     {/* 选中指示器 */}
                     {isSelected && blueprint.canAccess && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                        <Check className="h-3 w-3 text-primary-foreground" />
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                        <Check className="h-2.5 w-2.5 text-primary-foreground" />
                       </div>
                     )}
                   </div>
 
-                  {/* 图标 */}
-                  <div className="mb-3 text-3xl">{blueprint.icon}</div>
+                  {/* 图标 + 名称 - 同行布局 */}
+                  <div className="flex items-center gap-2 mb-1.5 pr-16">
+                    <span className="text-xl">{blueprint.icon}</span>
+                    <h3 className="font-semibold text-sm line-clamp-1">
+                      {blueprint.displayName}
+                    </h3>
+                  </div>
 
-                  {/* 名称 */}
-                  <h3 className="font-semibold text-base">
-                    {blueprint.displayName}
-                  </h3>
-
-                  {/* 描述 */}
-                  <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+                  {/* 描述 - 单行 */}
+                  <p className="text-xs text-muted-foreground line-clamp-1">
                     {blueprint.description}
                   </p>
 
                   {/* 底部信息 */}
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{blueprint.creditsCost} 配额</span>
                     {blueprint.briefingEnabled && (
                       <span className="flex items-center gap-0.5">

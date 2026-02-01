@@ -45,15 +45,25 @@ const ACTION_MESSAGES: Record<QuickActionType, string> = {
 };
 
 /**
+ * 进度步骤阈值配置
+ * 与 OrganizeProgress 中的 DEFAULT_STEPS 保持同步
+ */
+const PROGRESS_STEP_THRESHOLDS = [
+  { maxPercent: 15, step: 0 }, // 扫描收藏库
+  { maxPercent: 30, step: 1 }, // 分析问题
+  { maxPercent: 50, step: 2 }, // 生成方案
+  { maxPercent: 70, step: 3 }, // 执行整理
+  { maxPercent: 90, step: 4 }, // 验证结果
+] as const;
+
+/**
  * 根据进度百分比计算当前步骤
  */
 function calculateStep(percent: number): number {
-  if (percent < 15) return 0; // 收集数据
-  if (percent < 30) return 1; // 分析内容
-  if (percent < 50) return 2; // 智能分类
-  if (percent < 70) return 3; // 智能打标
-  if (percent < 90) return 4; // 整理清理
-  return 4; // 生成报告
+  for (const { maxPercent, step } of PROGRESS_STEP_THRESHOLDS) {
+    if (percent < maxPercent) return step;
+  }
+  return PROGRESS_STEP_THRESHOLDS.length - 1;
 }
 
 export function OrganizePageClient() {
@@ -190,12 +200,19 @@ export function OrganizePageClient() {
 
       switch (action) {
         case "merge": {
-          // 合并重复文件夹：需要找到目标文件夹
+          // 合并重复文件夹：优先使用建议的合并目标
           const group = analysis.duplicateFolders[itemId];
           if (group && group.folders.length >= 2) {
-            // 将第一个文件夹合并到第二个
-            const [source, target] = group.folders;
-            await mergeFolders(source.id, target.id);
+            // 查找建议保留的目标文件夹（基于 suggestedMerge）
+            const suggestedTarget = group.folders.find((f) =>
+              group.suggestedMerge?.includes(f.name),
+            );
+            const target = suggestedTarget || group.folders[0];
+            // 源文件夹为除目标外的第一个
+            const source = group.folders.find((f) => f.id !== target.id);
+            if (source) {
+              await mergeFolders(source.id, target.id);
+            }
           }
           break;
         }

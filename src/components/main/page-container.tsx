@@ -199,6 +199,7 @@ const PAGE_LABELS: Record<PageId, string> = {
   batch: "批量操作",
   export: "数据导出",
   settings: "设置",
+  rules: "规则设置",
 };
 
 /**

@@ -3,13 +3,17 @@
  *
  * 展示整理前后的统计对比和改进效果
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-10
+ * @updated 2026-02-01
  */
 
 "use client";
 
-import type { OrganizeSnapshot } from "@/lib/organize/types";
+import {
+  type OrganizeSnapshot,
+  ORGANIZE_CHART_COLORS,
+} from "@/lib/organize/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,13 +39,6 @@ interface OrganizeComparisonProps {
   onShare?: () => void;
   className?: string;
 }
-
-const CHART_COLORS = {
-  categorized: "#22c55e", // 绿色 - 已分类
-  uncategorized: "#ef4444", // 红色 - 未分类
-  tagged: "#3b82f6", // 蓝色 - 已标签
-  untagged: "#f59e0b", // 橙色 - 无标签
-};
 
 export function OrganizeComparison({
   before,
@@ -76,12 +73,12 @@ export function OrganizeComparison({
     {
       name: "已分类",
       value: beforeTotal - safeNum(before.uncategorized),
-      color: CHART_COLORS.categorized,
+      color: ORGANIZE_CHART_COLORS.categorized,
     },
     {
       name: "未分类",
       value: safeNum(before.uncategorized),
-      color: CHART_COLORS.uncategorized,
+      color: ORGANIZE_CHART_COLORS.uncategorized,
     },
   ].filter((d) => d.value > 0);
 
@@ -89,12 +86,12 @@ export function OrganizeComparison({
     {
       name: "已分类",
       value: afterTotal - safeNum(after.uncategorized),
-      color: CHART_COLORS.categorized,
+      color: ORGANIZE_CHART_COLORS.categorized,
     },
     {
       name: "未分类",
       value: safeNum(after.uncategorized),
-      color: CHART_COLORS.uncategorized,
+      color: ORGANIZE_CHART_COLORS.uncategorized,
     },
   ].filter((d) => d.value > 0);
 

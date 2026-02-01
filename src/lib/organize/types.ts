@@ -1,9 +1,9 @@
 /**
  * 整理中心类型定义
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2026-01-10
- * @updated 2026-01-31
+ * @updated 2026-02-01
  */
 
 import type { LibrarianAnalysis } from "@/types/librarian.types";
@@ -29,6 +29,25 @@ export const HEALTH_SCORE_LABELS = {
   HEALTHY: "健康",
   MODERATE: "一般",
   NEEDS_IMPROVEMENT: "需改进",
+} as const;
+
+// ============================================================================
+// 图表颜色常量（使用 Tailwind 调色板值）
+// ============================================================================
+
+/**
+ * 整理对比图表颜色
+ * 使用 Tailwind CSS 调色板保持一致性
+ */
+export const ORGANIZE_CHART_COLORS = {
+  /** 已分类 - green-500 */
+  categorized: "#22c55e",
+  /** 未分类 - red-500 */
+  uncategorized: "#ef4444",
+  /** 已标签 - blue-500 */
+  tagged: "#3b82f6",
+  /** 无标签 - amber-500 */
+  untagged: "#f59e0b",
 } as const;
 
 // ============================================================================

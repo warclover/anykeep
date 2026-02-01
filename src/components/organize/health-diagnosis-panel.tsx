@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
+import { calculateTotalIssues } from "@/lib/organize/types";
 import { HealthScoreCard } from "./health-score-card";
 import {
   IssueSummaryList,
@@ -113,13 +114,8 @@ export function HealthDiagnosisPanel({
     );
   }
 
-  // 计算问题总数
-  const totalIssues =
-    analysis.duplicateFolders.length +
-    analysis.emptyFolders.length +
-    analysis.oversizedFolders.length +
-    analysis.poorlyNamedFolders.length +
-    analysis.missingCategories.length;
+  // 使用统一的计算函数（避免重复逻辑）
+  const totalIssues = calculateTotalIssues(analysis);
 
   return (
     <Card className={cn("", className)}>

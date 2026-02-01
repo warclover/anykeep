@@ -352,146 +352,154 @@ export function SynthesisListPageClient() {
   );
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6 h-full overflow-auto">
-      {/* 标题和创建按钮 */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">收藏内容对比分析</h1>
-        <Button asChild>
-          <Link href="/synthesis/new">
-            <Plus className="mr-2 h-4 w-4" />
-            新建分析
-          </Link>
-        </Button>
-      </div>
+    <div className="flex-1 min-h-0 relative">
+      <div className="absolute inset-0 overflow-auto">
+        <div className="container max-w-4xl py-6 space-y-6">
+          {/* 标题和创建按钮 */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">收藏内容对比分析</h1>
+            <Button asChild>
+              <Link href="/synthesis/new">
+                <Plus className="mr-2 h-4 w-4" />
+                新建分析
+              </Link>
+            </Button>
+          </div>
 
-      {/* 功能说明 - 紧凑徽章版 */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-        <Lightbulb className="h-4 w-4 shrink-0" />
-        <span>选择同主题收藏，AI 将生成三维对比分析报告</span>
-        <div className="flex items-center gap-1.5">
-          <Badge
-            variant="outline"
-            className="text-green-600 border-green-300 dark:text-green-400 dark:border-green-700"
+          {/* 功能说明 - 紧凑徽章版 */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <Lightbulb className="h-4 w-4 shrink-0" />
+            <span>选择同主题收藏，AI 将生成三维对比分析报告</span>
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className="text-green-600 border-green-300 dark:text-green-400 dark:border-green-700"
+              >
+                核心共识
+              </Badge>
+              <Badge
+                variant="outline"
+                className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700"
+              >
+                主要分歧
+              </Badge>
+              <Badge
+                variant="outline"
+                className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700"
+              >
+                知识盲区
+              </Badge>
+            </div>
+          </div>
+
+          {/* 搜索和筛选 */}
+          <div className="flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索综述..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={sortValue} onValueChange={setSortValue}>
+              <SelectTrigger className="w-32">
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="排序" />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={depthFilter} onValueChange={setDepthFilter}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="深度" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部深度</SelectItem>
+                <SelectItem value="quick">⚡ 快读</SelectItem>
+                <SelectItem value="standard">📖 标准</SelectItem>
+                <SelectItem value="academic">🎓 学术</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部状态</SelectItem>
+                <SelectItem value="completed">已完成</SelectItem>
+                <SelectItem value="generating">生成中</SelectItem>
+                <SelectItem value="pending">等待中</SelectItem>
+                <SelectItem value="failed">失败</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 列表内容 */}
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              加载中...
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-destructive">
+              加载失败，请刷新重试
+            </div>
+          ) : reports.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-4">
+              {reports.map((report) => (
+                <SynthesisCard
+                  key={report.id}
+                  report={report}
+                  onDelete={handleDelete}
+                  onRetry={handleRetry}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* 分页信息 */}
+          {data?.pagination && data.pagination.total > 0 && (
+            <div className="text-center text-sm text-muted-foreground">
+              共 {data.pagination.total} 份综述
+            </div>
+          )}
+
+          {/* 删除确认对话框 */}
+          <AlertDialog
+            open={!!deleteTarget}
+            onOpenChange={(open) => !open && cancelDelete()}
           >
-            核心共识
-          </Badge>
-          <Badge
-            variant="outline"
-            className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700"
-          >
-            主要分歧
-          </Badge>
-          <Badge
-            variant="outline"
-            className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700"
-          >
-            知识盲区
-          </Badge>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>确认删除</AlertDialogTitle>
+                <AlertDialogDescription>
+                  确定要删除综述「{deleteTarget?.title}」吗？此操作不可撤销。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>
+                  取消
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? "删除中..." : "删除"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
-
-      {/* 搜索和筛选 */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索综述..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={sortValue} onValueChange={setSortValue}>
-          <SelectTrigger className="w-32">
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="排序" />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={depthFilter} onValueChange={setDepthFilter}>
-          <SelectTrigger className="w-28">
-            <SelectValue placeholder="深度" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部深度</SelectItem>
-            <SelectItem value="quick">⚡ 快读</SelectItem>
-            <SelectItem value="standard">📖 标准</SelectItem>
-            <SelectItem value="academic">🎓 学术</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-28">
-            <SelectValue placeholder="状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="completed">已完成</SelectItem>
-            <SelectItem value="generating">生成中</SelectItem>
-            <SelectItem value="pending">等待中</SelectItem>
-            <SelectItem value="failed">失败</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 列表内容 */}
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">加载中...</div>
-      ) : error ? (
-        <div className="text-center py-8 text-destructive">
-          加载失败，请刷新重试
-        </div>
-      ) : reports.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="space-y-4">
-          {reports.map((report) => (
-            <SynthesisCard
-              key={report.id}
-              report={report}
-              onDelete={handleDelete}
-              onRetry={handleRetry}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* 分页信息 */}
-      {data?.pagination && data.pagination.total > 0 && (
-        <div className="text-center text-sm text-muted-foreground">
-          共 {data.pagination.total} 份综述
-        </div>
-      )}
-
-      {/* 删除确认对话框 */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && cancelDelete()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除综述「{deleteTarget?.title}」吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "删除中..." : "删除"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
