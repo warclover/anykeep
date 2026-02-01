@@ -1,21 +1,32 @@
 /**
  * 消息通知 Hook
  * @description 统一管理消息分发、Toast/Modal 展示、未读数刷新
- * @solution 解决消息分发链路断裂问题
+ * @version 2.0.0 - 重构：使用新通知系统
  */
 
 "use client";
 
 import { useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { useSWRConfig } from "swr";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { MessageResult, MessageLevel, Message } from "@/lib/messages";
-import { getLevelConfig } from "@/lib/messages";
+import type { NotificationPriority } from "@/lib/notifications";
 
 // ============================================
 // 类型定义
 // ============================================
+
+export type MessageLevel = NotificationPriority;
+
+export interface MessageResult {
+  success: boolean;
+  messageId?: number;
+  title?: string;
+  content?: string;
+  level: MessageLevel;
+  actionUrl?: string;
+  actionLabel?: string;
+}
 
 export interface UseMessageNotificationOptions {
   /** 是否自动刷新消息列表（仅在消息页生效） */
@@ -60,7 +71,7 @@ export interface UseMessageNotificationResult {
 // 全局 Modal 处理器
 // ============================================
 
-type ModalHandler = (message: Partial<Message>) => void;
+type ModalHandler = (message: Record<string, unknown>) => void;
 let globalModalHandler: ModalHandler | null = null;
 
 /**
@@ -79,6 +90,25 @@ export function unregisterGlobalModalHandler(): void {
 }
 
 // ============================================
+// 辅助函数
+// ============================================
+
+interface LevelConfig {
+  showToast: boolean;
+  showModal: boolean;
+}
+
+function getLevelConfig(level: MessageLevel): LevelConfig {
+  const configs: Record<MessageLevel, LevelConfig> = {
+    silent: { showToast: false, showModal: false },
+    normal: { showToast: true, showModal: false },
+    important: { showToast: true, showModal: false },
+    critical: { showToast: true, showModal: true },
+  };
+  return configs[level] ?? configs.normal;
+}
+
+// ============================================
 // Hook 实现
 // ============================================
 
@@ -88,13 +118,14 @@ export function useMessageNotification(
   const { autoRefreshList = true, debounceMs = 300 } = options;
 
   const pathname = usePathname();
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
 
   // 去抖定时器
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 判断是否在消息页
-  const isOnMessagesPage = pathname === "/messages";
+  // 判断是否在通知页
+  const isOnNotificationsPage =
+    pathname === "/notifications" || pathname === "/messages";
 
   /**
    * 刷新未读数（去抖）
@@ -104,20 +135,16 @@ export function useMessageNotification(
       clearTimeout(debounceTimerRef.current);
     }
     debounceTimerRef.current = setTimeout(() => {
-      mutate("/api/messages/unread-count");
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
     }, debounceMs);
-  }, [mutate, debounceMs]);
+  }, [queryClient, debounceMs]);
 
   /**
-   * 刷新消息列表
+   * 刷新通知列表
    */
-  const refreshMessageList = useCallback(() => {
-    // 使用正则匹配所有消息列表 key
-    mutate(
-      (key: string) =>
-        typeof key === "string" && key.startsWith("/api/messages?"),
-    );
-  }, [mutate]);
+  const refreshNotificationList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  }, [queryClient]);
 
   /**
    * 显示 Toast 通知
@@ -130,7 +157,7 @@ export function useMessageNotification(
       actionUrl?: string,
       actionLabel?: string,
     ) => {
-      const isImportant = level === "important";
+      const isImportant = level === "important" || level === "critical";
       const duration = isImportant ? 8000 : 4000;
 
       const toastOptions = {
@@ -163,13 +190,13 @@ export function useMessageNotification(
       globalModalHandler({
         title: result.title,
         content: result.content,
-        type: "system_announcement", // 默认类型
+        type: "system.announcement",
         level: result.level,
         action_url: result.actionUrl,
         action_label: result.actionLabel,
         status: "unread",
         id: result.messageId ?? 0,
-      } as Message);
+      });
     }
   }, []);
 
@@ -204,9 +231,9 @@ export function useMessageNotification(
       // 刷新未读数
       refreshUnreadCount();
 
-      // 如果在消息页且启用自动刷新，刷新列表
-      if (autoRefreshList && isOnMessagesPage) {
-        refreshMessageList();
+      // 如果在通知页且启用自动刷新，刷新列表
+      if (autoRefreshList && isOnNotificationsPage) {
+        refreshNotificationList();
       }
     },
     [
@@ -214,8 +241,8 @@ export function useMessageNotification(
       showModal,
       refreshUnreadCount,
       autoRefreshList,
-      isOnMessagesPage,
-      refreshMessageList,
+      isOnNotificationsPage,
+      refreshNotificationList,
     ],
   );
 
@@ -259,8 +286,8 @@ export function useMessageNotification(
       refreshUnreadCount();
 
       // 刷新列表
-      if (autoRefreshList && isOnMessagesPage) {
-        refreshMessageList();
+      if (autoRefreshList && isOnNotificationsPage) {
+        refreshNotificationList();
       }
     },
     [
@@ -268,8 +295,8 @@ export function useMessageNotification(
       showModal,
       refreshUnreadCount,
       autoRefreshList,
-      isOnMessagesPage,
-      refreshMessageList,
+      isOnNotificationsPage,
+      refreshNotificationList,
     ],
   );
 

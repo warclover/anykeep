@@ -409,18 +409,33 @@ export const API_MD_COLLECTIONS = {
 } as const;
 
 // ============================================
-// 消息中心
+// 通知中心（V2 重构后）
 // ============================================
 
-export const API_MESSAGES = {
-  /** 消息列表 */
-  list: "/api/messages",
-  /** 消息详情 */
-  detail: (id: string) => `/api/messages/${id}`,
+export const API_NOTIFICATIONS = {
+  /** 通知列表（直接查询 Supabase） */
+  list: "/api/notifications",
+  /** 通知详情 */
+  detail: (id: string) => `/api/notifications/${id}`,
   /** 批量已读 */
-  batchRead: "/api/messages/batch-read",
+  batchRead: "/api/notifications/batch-read",
   /** 未读数量 */
-  unreadCount: "/api/messages/unread-count",
+  unreadCount: "/api/notifications/unread-count",
+} as const;
+
+/**
+ * @deprecated 使用 API_NOTIFICATIONS 代替
+ * 旧消息 API 路径（保留用于向后兼容）
+ */
+export const API_MESSAGES = {
+  /** @deprecated 使用 API_NOTIFICATIONS.list */
+  list: "/api/notifications",
+  /** @deprecated 使用 API_NOTIFICATIONS.detail */
+  detail: (id: string) => `/api/notifications/${id}`,
+  /** @deprecated 使用 API_NOTIFICATIONS.batchRead */
+  batchRead: "/api/notifications/batch-read",
+  /** @deprecated 使用 API_NOTIFICATIONS.unreadCount */
+  unreadCount: "/api/notifications/unread-count",
 } as const;
 
 // ============================================
@@ -675,6 +690,7 @@ export const API_PATHS = {
   learning: API_LEARNING,
   mdCollections: API_MD_COLLECTIONS,
   messages: API_MESSAGES,
+  notifications: API_NOTIFICATIONS,
   misc: API_MISC,
   search: API_SEARCH,
   settings: API_SETTINGS,

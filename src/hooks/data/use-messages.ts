@@ -1,22 +1,53 @@
 /**
  * 消息列表 Hook
- * @description 获取消息列表，支持分页、筛选、按日期分组
+ * @description 获取消息列表，代理到新的 useNotifications Hook
+ * @version 2.0.0 - 重构：使用 useNotifications 代理
  */
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import useSWR from "swr";
+import { useCallback, useMemo } from "react";
+import {
+  useNotifications,
+  type UseNotificationsOptions,
+} from "./use-notifications";
 import type {
-  MessageGroup,
-  MessageStatus,
-  MessageLevel,
-  GetMessagesResponse,
-} from "@/lib/messages";
+  NotificationStatus,
+  NotificationPriority,
+} from "@/lib/notifications";
 
 // ============================================
-// 类型定义
+// 类型定义（保持向后兼容）
 // ============================================
+
+export type MessageStatus = NotificationStatus;
+export type MessageLevel = NotificationPriority;
+
+export interface MessageGroup {
+  date_group: string;
+  label: string;
+  messages: Message[];
+}
+
+export interface Message {
+  id: string;
+  user_id: string;
+  type: string;
+  level: MessageLevel;
+  title: string;
+  content: string | null;
+  action_url: string | null;
+  action_label: string | null;
+  status: MessageStatus;
+  priority: number;
+  created_at: string;
+  read_at: string | null;
+  expires_at?: string;
+  metadata: Record<string, unknown>;
+  related_bookmark_id: string | null;
+  related_folder_id: string | null;
+  related_import_id: string | null;
+}
 
 export interface UseMessagesOptions {
   /** 状态筛选 */
@@ -48,311 +79,132 @@ export interface UseMessagesResult {
   /** 加载更多 */
   loadMore: () => void;
   /** 标记消息已读 */
-  markAsRead: (messageId: number) => Promise<boolean>;
+  markAsRead: (messageId: number | string) => Promise<boolean>;
   /** 删除消息 */
-  deleteMessage: (messageId: number) => Promise<boolean>;
+  deleteMessage: (messageId: number | string) => Promise<boolean>;
   /** 标记所有已读 */
   markAllAsRead: () => Promise<boolean>;
   /** 归档消息 */
-  archiveMessage: (messageId: number) => Promise<boolean>;
+  archiveMessage: (messageId: number | string) => Promise<boolean>;
 }
 
 // ============================================
-// Fetcher
+// Hook 实现（代理到新 Hook）
 // ============================================
 
-async function fetcher(url: string): Promise<GetMessagesResponse> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("获取消息列表失败");
-  }
-  const result = await response.json();
-  if (!result.success) {
-    throw new Error(result.error?.message || "获取消息列表失败");
-  }
-  return result.data;
-}
-
-// ============================================
-// Hook 实现
-// ============================================
-
+/**
+ * 获取消息列表
+ * @deprecated 建议直接使用 useNotifications
+ */
 export function useMessages(
   options: UseMessagesOptions = {},
 ): UseMessagesResult {
-  const { status = "all", level, limit = 20, refreshInterval } = options;
+  const { status = "all", level, limit = 20 } = options;
 
-  const [page, setPage] = useState(1);
-  const [allGroups, setAllGroups] = useState<MessageGroup[]>([]);
+  // 映射到新 Hook 的参数
+  const notificationOptions: UseNotificationsOptions = {
+    status: status === "all" ? undefined : status,
+    priority: level ? [level] : undefined,
+    limit,
+  };
 
-  // 用于追踪筛选条件变化
-  const prevFilterKeyRef = useRef(`${status}-${level}`);
-  const currentFilterKey = `${status}-${level}`;
+  const {
+    groups: notificationGroups,
+    notifications,
+    isLoading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refresh,
+    markAsRead: notificationMarkAsRead,
+    markAllAsRead: notificationMarkAllAsRead,
+    deleteNotification,
+    archiveNotification,
+  } = useNotifications(notificationOptions);
 
-  // 构建查询 URL
-  const buildUrl = useCallback(
-    (pageNum: number) => {
-      const params = new URLSearchParams();
-      params.set("page", String(pageNum));
-      params.set("limit", String(limit));
-      if (status !== "all") {
-        params.set("status", status);
-      }
-      if (level) {
-        params.set("level", level);
-      }
-      return `/api/messages?${params.toString()}`;
-    },
-    [status, level, limit],
-  );
-
-  // 当筛选条件变化时重置 page（使用 microtask 异步执行避免 lint 警告）
-  useEffect(() => {
-    if (prevFilterKeyRef.current !== currentFilterKey) {
-      prevFilterKeyRef.current = currentFilterKey;
-      queueMicrotask(() => {
-        setPage(1);
-        setAllGroups([]);
-      });
-    }
-  }, [currentFilterKey]);
-
-  // SWR 获取数据
-  const { data, error, isLoading, mutate } = useSWR<GetMessagesResponse>(
-    buildUrl(page),
-    fetcher,
-    {
-      refreshInterval,
-      revalidateOnFocus: false,
-    },
-  );
-
-  // 合并分页数据
-  const prevDataRef = useRef<GetMessagesResponse | undefined>(undefined);
-  useEffect(() => {
-    if (data && data !== prevDataRef.current) {
-      prevDataRef.current = data;
-      queueMicrotask(() => {
-        if (page === 1) {
-          setAllGroups(data.groups);
-        } else {
-          setAllGroups((prev) => mergeGroups(prev, data.groups));
-        }
-      });
-    }
-  }, [data, page]);
+  // 转换为旧格式的消息分组
+  const groups: MessageGroup[] = useMemo(() => {
+    return notificationGroups.map((group) => ({
+      date_group: group.dateGroup,
+      label: group.label,
+      messages: group.notifications.map((n) => ({
+        id: n.id,
+        user_id: n.userId,
+        type: n.typeCode,
+        level: n.priority as MessageLevel,
+        title: n.title,
+        content: n.body ?? null,
+        action_url: n.actionUrl ?? null,
+        action_label: n.actionLabel ?? null,
+        status: n.status as MessageStatus,
+        priority: getPriorityNumber(n.priority),
+        created_at: n.createdAt,
+        read_at: n.readAt ?? null,
+        expires_at: n.expiresAt,
+        metadata: n.metadata ?? {},
+        related_bookmark_id:
+          n.entityType === "bookmark" ? (n.entityId ?? null) : null,
+        related_folder_id:
+          n.entityType === "folder" ? (n.entityId ?? null) : null,
+        related_import_id:
+          n.entityType === "import" ? (n.entityId ?? null) : null,
+      })),
+    }));
+  }, [notificationGroups]);
 
   // 加载更多
   const loadMore = useCallback(() => {
-    if (data?.pagination.hasMore) {
-      setPage((p) => p + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, [data?.pagination.hasMore]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // 刷新
-  const refresh = useCallback(async () => {
-    setPage(1);
-    setAllGroups([]);
-    await mutate();
-  }, [mutate]);
-
-  // 乐观更新辅助函数：更新消息状态
-  const optimisticUpdateStatus = useCallback(
-    (messageId: number, newStatus: MessageStatus) => {
-      setAllGroups((prevGroups) =>
-        prevGroups.map((group) => ({
-          ...group,
-          messages: group.messages.map((msg) =>
-            msg.id === messageId
-              ? {
-                  ...msg,
-                  status: newStatus,
-                  read_at:
-                    newStatus === "read"
-                      ? new Date().toISOString()
-                      : msg.read_at,
-                }
-              : msg,
-          ),
-        })),
-      );
-    },
-    [],
-  );
-
-  // 乐观更新辅助函数：删除消息
-  const optimisticDelete = useCallback((messageId: number) => {
-    setAllGroups(
-      (prevGroups) =>
-        prevGroups
-          .map((group) => ({
-            ...group,
-            messages: group.messages.filter((msg) => msg.id !== messageId),
-          }))
-          .filter((group) => group.messages.length > 0), // 移除空分组
-    );
-  }, []);
-
-  // 乐观更新辅助函数：标记所有已读
-  const optimisticMarkAllRead = useCallback(() => {
-    setAllGroups((prevGroups) =>
-      prevGroups.map((group) => ({
-        ...group,
-        messages: group.messages.map((msg) =>
-          msg.status === "unread"
-            ? {
-                ...msg,
-                status: "read" as MessageStatus,
-                read_at: new Date().toISOString(),
-              }
-            : msg,
-        ),
-      })),
-    );
-  }, []);
-
-  // 标记已读（带乐观更新）
+  // 标记已读
   const markAsRead = useCallback(
-    async (messageId: number): Promise<boolean> => {
-      // 保存原始状态用于回滚
-      const originalGroups = [...allGroups];
-
-      // 乐观更新
-      optimisticUpdateStatus(messageId, "read");
-
-      try {
-        const response = await fetch(`/api/messages/${messageId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "read" }),
-        });
-
-        if (!response.ok) {
-          // 回滚
-          setAllGroups(originalGroups);
-          return false;
-        }
-
-        // 后台重新验证（不阻塞）
-        mutate();
-        return true;
-      } catch {
-        // 回滚
-        setAllGroups(originalGroups);
-        return false;
-      }
+    async (messageId: number | string): Promise<boolean> => {
+      const id = typeof messageId === "number" ? String(messageId) : messageId;
+      return notificationMarkAsRead(id);
     },
-    [allGroups, optimisticUpdateStatus, mutate],
+    [notificationMarkAsRead],
   );
 
-  // 删除消息（带乐观更新）
+  // 删除消息
   const deleteMessage = useCallback(
-    async (messageId: number): Promise<boolean> => {
-      // 保存原始状态用于回滚
-      const originalGroups = [...allGroups];
-
-      // 乐观更新
-      optimisticDelete(messageId);
-
-      try {
-        const response = await fetch(`/api/messages/${messageId}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          // 回滚
-          setAllGroups(originalGroups);
-          return false;
-        }
-
-        // 后台重新验证
-        mutate();
-        return true;
-      } catch {
-        // 回滚
-        setAllGroups(originalGroups);
-        return false;
-      }
+    async (messageId: number | string): Promise<boolean> => {
+      const id = typeof messageId === "number" ? String(messageId) : messageId;
+      return deleteNotification(id);
     },
-    [allGroups, optimisticDelete, mutate],
+    [deleteNotification],
   );
 
-  // 标记所有已读（带乐观更新）
+  // 标记所有已读
   const markAllAsRead = useCallback(async (): Promise<boolean> => {
-    // 保存原始状态用于回滚
-    const originalGroups = [...allGroups];
+    return notificationMarkAllAsRead();
+  }, [notificationMarkAllAsRead]);
 
-    // 乐观更新
-    optimisticMarkAllRead();
-
-    try {
-      const response = await fetch("/api/messages/batch-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        // 回滚
-        setAllGroups(originalGroups);
-        return false;
-      }
-
-      // 后台重新验证
-      mutate();
-      return true;
-    } catch {
-      // 回滚
-      setAllGroups(originalGroups);
-      return false;
-    }
-  }, [allGroups, optimisticMarkAllRead, mutate]);
-
-  // 归档消息（带乐观更新）
+  // 归档消息
   const archiveMessage = useCallback(
-    async (messageId: number): Promise<boolean> => {
-      // 保存原始状态用于回滚
-      const originalGroups = [...allGroups];
-
-      // 乐观更新
-      optimisticUpdateStatus(messageId, "archived");
-
-      try {
-        const response = await fetch(`/api/messages/${messageId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "archived" }),
-        });
-
-        if (!response.ok) {
-          // 回滚
-          setAllGroups(originalGroups);
-          return false;
-        }
-
-        // 后台重新验证
-        mutate();
-        return true;
-      } catch {
-        // 回滚
-        setAllGroups(originalGroups);
-        return false;
-      }
+    async (messageId: number | string): Promise<boolean> => {
+      const id = typeof messageId === "number" ? String(messageId) : messageId;
+      return archiveNotification(id);
     },
-    [allGroups, optimisticUpdateStatus, mutate],
+    [archiveNotification],
   );
 
   return {
-    groups: allGroups,
+    groups,
     isLoading,
-    error: error || null,
-    pagination: data?.pagination ?? {
+    error: error ?? null,
+    pagination: {
       page: 1,
       limit,
-      total: 0,
-      hasMore: false,
+      total: notifications.length,
+      hasMore: hasNextPage,
     },
-    refresh,
+    refresh: async () => {
+      refresh();
+    },
     loadMore,
     markAsRead,
     deleteMessage,
@@ -365,59 +217,12 @@ export function useMessages(
 // 辅助函数
 // ============================================
 
-/**
- * 合并消息分组（用于加载更多）
- * @description 合并时按 created_at 降序排序，确保时间顺序正确
- */
-function mergeGroups(
-  existing: MessageGroup[],
-  newGroups: MessageGroup[],
-): MessageGroup[] {
-  const result = [...existing];
-
-  for (const newGroup of newGroups) {
-    const existingIndex = result.findIndex(
-      (g) => g.date_group === newGroup.date_group,
-    );
-    if (existingIndex >= 0) {
-      // 合并消息，避免重复
-      const existingIds = new Set(
-        result[existingIndex].messages.map((m) => m.id),
-      );
-      const uniqueNewMessages = newGroup.messages.filter(
-        (m) => !existingIds.has(m.id),
-      );
-
-      // 合并后按时间降序排序
-      const mergedMessages = [
-        ...result[existingIndex].messages,
-        ...uniqueNewMessages,
-      ].sort((a, b) => {
-        const timeA = new Date(a.created_at).getTime();
-        const timeB = new Date(b.created_at).getTime();
-        return timeB - timeA; // 降序：最新的在前
-      });
-
-      result[existingIndex].messages = mergedMessages;
-    } else {
-      // 添加新分组
-      result.push(newGroup);
-    }
-  }
-
-  // 确保分组按正确顺序排列（today > yesterday > this_week > earlier）
-  const groupOrder: Record<string, number> = {
-    today: 0,
-    yesterday: 1,
-    this_week: 2,
-    earlier: 3,
+function getPriorityNumber(priority: NotificationPriority): number {
+  const priorityMap: Record<NotificationPriority, number> = {
+    silent: 1,
+    normal: 5,
+    important: 8,
+    critical: 10,
   };
-
-  result.sort((a, b) => {
-    const orderA = groupOrder[a.date_group] ?? 4;
-    const orderB = groupOrder[b.date_group] ?? 4;
-    return orderA - orderB;
-  });
-
-  return result;
+  return priorityMap[priority] ?? 5;
 }

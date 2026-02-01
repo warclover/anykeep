@@ -37,7 +37,8 @@ const TEST_ENDPOINTS = [
   { method: "GET", path: "/api/bookmarks?limit=20" },
   { method: "GET", path: "/api/folders" },
   { method: "GET", path: "/api/smart-lists?includePresets=true" },
-  { method: "GET", path: "/api/messages/unread-count" },
+  // 注意：/api/messages/unread-count 已废弃，通知系统现在直接查询 Supabase
+  // { method: "GET", path: "/api/messages/unread-count" },
   { method: "GET", path: "/api/classification/confirmations?status=pending" },
   { method: "GET", path: "/api/snapshots/quota" },
   { method: "GET", path: "/api/settings/notifications" },

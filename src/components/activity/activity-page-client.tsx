@@ -1,13 +1,13 @@
 /**
  * 活动日志客户端组件
- * @description V4.3 L3 活动日志 - 时间轴视图
- * @version 1.0.0
- * @since 2025-12-12
+ * @description V5.0 活动日志 - 时间轴视图（使用新通知系统）
+ * @version 2.0.0
+ * @since 2026-02-01
  */
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,11 +31,9 @@ import {
   Bot,
   FileX,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { MessageGroup, Message } from "@/lib/messages";
-import type { ActivityLogItem } from "@/lib/notifications/types";
-import { clientLogger } from "@/lib/client-logger";
+import { useNotifications } from "@/hooks/data/use-notifications";
+import type { Notification } from "@/lib/notifications";
 
 // ============================================================================
 // 类型定义
@@ -61,95 +59,95 @@ interface ActivityTypeConfig {
 
 const ACTIVITY_TYPE_CONFIG: Record<string, ActivityTypeConfig> = {
   // 批量操作
-  classification_auto: {
+  "ai.classification.auto": {
     icon: Bot,
     color: "text-emerald-600 dark:text-emerald-400",
     bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
     label: "自动分类",
   },
-  classification_batch: {
+  "ai.classification.batch": {
     icon: FolderSync,
     color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
     label: "批量分类",
   },
-  import_complete: {
+  "import.complete": {
     icon: FileCheck,
     color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-100 dark:bg-green-900/30",
     label: "导入完成",
   },
-  import_partial: {
+  "import.partial": {
     icon: FileCheck,
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/30",
     label: "部分导入",
   },
-  batch_move: {
+  "batch.move": {
     icon: FolderSync,
     color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
     label: "批量移动",
   },
-  batch_delete: {
+  "batch.delete": {
     icon: FileX,
     color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-100 dark:bg-red-900/30",
     label: "批量删除",
   },
   // AI 报告
-  ai_evolution_report: {
+  "ai.evolution_report": {
     icon: Bot,
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
     label: "AI 报告",
   },
-  ai_summary_complete: {
+  "ai.summary.complete": {
     icon: Bot,
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
     label: "摘要生成",
   },
   // 系统
-  system_announcement: {
+  "system.announcement": {
     icon: Megaphone,
     color: "text-indigo-600 dark:text-indigo-400",
     bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
     label: "系统公告",
   },
-  system_update: {
+  "system.update": {
     icon: Megaphone,
     color: "text-indigo-600 dark:text-indigo-400",
     bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
     label: "版本更新",
   },
   // 配额
-  quota_warning: {
+  "quota.warning": {
     icon: Gauge,
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/30",
     label: "配额预警",
   },
-  quota_critical: {
+  "quota.critical": {
     icon: Gauge,
     color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-100 dark:bg-red-900/30",
     label: "配额临界",
   },
   // 错误
-  classification_failed: {
+  "ai.classification.failed": {
     icon: AlertCircle,
     color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-100 dark:bg-red-900/30",
     label: "分类失败",
   },
-  import_failed: {
+  "import.failed": {
     icon: AlertCircle,
     color: "text-red-600 dark:text-red-400",
     bgColor: "bg-red-100 dark:bg-red-900/30",
     label: "导入失败",
   },
-  bookmark_invalid: {
+  "bookmark.invalid": {
     icon: AlertCircle,
     color: "text-orange-600 dark:text-orange-400",
     bgColor: "bg-orange-100 dark:bg-orange-900/30",
@@ -164,104 +162,79 @@ const DEFAULT_CONFIG: ActivityTypeConfig = {
   label: "活动",
 };
 
+// 过滤器映射
+const FILTER_TYPE_MAP: Record<ActivityFilter, string[]> = {
+  all: [],
+  batch_operation: [
+    "ai.classification.auto",
+    "ai.classification.batch",
+    "import.complete",
+    "import.partial",
+    "batch.move",
+    "batch.delete",
+    "batch.tag",
+    "batch.restore",
+    "folder.merged",
+    "folder.auto_created",
+    "folder.auto_split",
+    "folder.auto_merged",
+    "folder.auto_renamed",
+  ],
+  ai_report: ["ai.summary.complete", "ai.tags.complete", "ai.evolution_report"],
+  system: ["system.announcement", "system.maintenance", "system.update"],
+  error: [
+    "ai.classification.failed",
+    "import.failed",
+    "bookmark.invalid",
+    "bookmark.expired",
+    "ai.processing.failed",
+  ],
+};
+
 // ============================================================================
 // 主组件
 // ============================================================================
 
 export function ActivityPageClient() {
-  const [groups, setGroups] = useState<MessageGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<ActivityFilter>("all");
 
-  // 获取活动日志
-  const fetchActivityLogs = useCallback(async () => {
-    try {
-      // V4.3: classification_suggest 消息已在数据库迁移中删除
-      // 直接获取所有消息作为活动日志
-      const response = await fetch("/api/messages?status=all&limit=100");
+  // 使用新的通知 Hook
+  const { groups, isLoading, refresh } = useNotifications({
+    limit: 100,
+  });
 
-      if (!response.ok) throw new Error("Failed to fetch activity logs");
-
-      const data = await response.json();
-      setGroups(data.groups || []);
-    } catch (error) {
-      clientLogger.error({ error }, "Failed to fetch activity logs");
-      toast.error("获取活动日志失败");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchActivityLogs();
-  }, [fetchActivityLogs]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 刷新
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchActivityLogs();
+    refresh();
+    setTimeout(() => setRefreshing(false), 500);
   };
 
-  // 过滤消息（兼容 items 或 messages）
-  const filterItems = (
-    items: (Message | ActivityLogItem)[],
-  ): (Message | ActivityLogItem)[] => {
-    if (filter === "all") return items;
+  // 过滤通知
+  const filterNotifications = (
+    notifications: Notification[],
+  ): Notification[] => {
+    if (filter === "all") return notifications;
 
-    const filterMap: Record<ActivityFilter, string[]> = {
-      all: [],
-      batch_operation: [
-        "classification_auto",
-        "classification_batch",
-        "import_complete",
-        "import_partial",
-        "batch_move",
-        "batch_delete",
-        "batch_tag",
-        "batch_restore",
-        "folder_merged",
-        "folder_auto_created",
-        "folder_auto_split",
-        "folder_auto_merged",
-        "folder_auto_renamed",
-      ],
-      ai_report: [
-        "ai_summary_complete",
-        "ai_tags_complete",
-        "ai_evolution_report",
-      ],
-      system: ["system_announcement", "system_maintenance", "system_update"],
-      error: [
-        "classification_failed",
-        "import_failed",
-        "bookmark_invalid",
-        "bookmark_expired",
-        "ai_processing_failed",
-      ],
-    };
-
-    const allowedTypes = filterMap[filter];
-    return items.filter((m) => allowedTypes.includes(m.type));
+    const allowedTypes = FILTER_TYPE_MAP[filter];
+    return notifications.filter((n) => allowedTypes.includes(n.typeCode));
   };
 
-  // 过滤后的分组（兼容 items 或 messages 属性）
-  const filteredGroups = groups
-    .map((group) => {
-      const items =
-        (group as { items?: (Message | ActivityLogItem)[] }).items ||
-        group.messages;
-      return {
+  // 过滤后的分组
+  const filteredGroups = useMemo(() => {
+    return groups
+      .map((group) => ({
         ...group,
-        items: filterItems(items),
-      };
-    })
-    .filter((group) => group.items.length > 0);
+        notifications: filterNotifications(group.notifications),
+      }))
+      .filter((group) => group.notifications.length > 0);
+  }, [groups, filter]);
 
   // 总消息数
   const totalMessages = filteredGroups.reduce(
-    (sum, group) => sum + group.items.length,
+    (sum, group) => sum + group.notifications.length,
     0,
   );
 
@@ -314,7 +287,7 @@ export function ActivityPageClient() {
 
       {/* 时间轴列表 */}
       <div className="flex-1 overflow-auto">
-        {loading ? (
+        {isLoading ? (
           <div className="p-4 sm:p-6 space-y-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="space-y-3">
@@ -341,7 +314,7 @@ export function ActivityPageClient() {
         ) : (
           <div className="p-4 sm:p-6 space-y-6">
             {filteredGroups.map((group) => (
-              <div key={group.date_group} className="space-y-3">
+              <div key={group.dateGroup} className="space-y-3">
                 {/* 日期标签 */}
                 <div className="flex items-center gap-2">
                   <Calendar className="size-4 text-muted-foreground" />
@@ -349,13 +322,13 @@ export function ActivityPageClient() {
                     {group.label}
                   </span>
                   <Badge variant="secondary" className="text-xs">
-                    {group.items.length}
+                    {group.notifications.length}
                   </Badge>
                 </div>
 
                 {/* 时间轴 */}
                 <div className="space-y-2 pl-4 border-l-2 border-muted">
-                  {group.items.map((item) => (
+                  {group.notifications.map((item) => (
                     <ActivityItem key={item.id} item={item} />
                   ))}
                 </div>
@@ -372,21 +345,15 @@ export function ActivityPageClient() {
 // 活动项组件
 // ============================================================================
 
-function ActivityItem({ item }: { item: Message | ActivityLogItem }) {
-  const config = ACTIVITY_TYPE_CONFIG[item.type] || DEFAULT_CONFIG;
+function ActivityItem({ item }: { item: Notification }) {
+  const config = ACTIVITY_TYPE_CONFIG[item.typeCode] || DEFAULT_CONFIG;
   const IconComponent = config.icon;
 
   // 格式化时间
-  const time = new Date(item.created_at).toLocaleTimeString("zh-CN", {
+  const time = new Date(item.createdAt).toLocaleTimeString("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
   });
-
-  // 获取 action_url（兼容两种类型）
-  const actionUrl =
-    "action_url" in item
-      ? item.action_url
-      : (item as ActivityLogItem).detail_url;
 
   return (
     <div className="relative flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group">
@@ -416,15 +383,15 @@ function ActivityItem({ item }: { item: Message | ActivityLogItem }) {
             {time}
           </span>
         </div>
-        {item.content && (
+        {item.body && (
           <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-            {item.content}
+            {item.body}
           </p>
         )}
       </div>
 
       {/* 链接指示 */}
-      {actionUrl && (
+      {item.actionUrl && (
         <ChevronRight className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       )}
     </div>

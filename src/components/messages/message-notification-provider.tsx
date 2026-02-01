@@ -1,6 +1,7 @@
 /**
  * 消息通知 Provider
- * @description 提供全局消息通知能力，注册 Modal 处理器
+ * @description 提供全局消息通知能力，使用新的通知系统
+ * @version 2.0.0 - 重构：使用新通知系统
  */
 
 "use client";
@@ -11,7 +12,8 @@ import {
   registerGlobalModalHandler,
   unregisterGlobalModalHandler,
 } from "@/hooks/ui";
-import type { Message } from "@/lib/messages";
+import { createClient } from "@/lib/supabase/client";
+import type { Notification as _Notification } from "@/lib/notifications";
 
 // ============================================
 // 类型定义
@@ -21,6 +23,27 @@ export interface MessageNotificationProviderProps {
   children: React.ReactNode;
 }
 
+// 兼容旧 Message 类型的接口
+interface LegacyMessage {
+  id: number;
+  user_id: string;
+  type: string;
+  level: string;
+  title: string;
+  content: string | null;
+  action_url: string | null;
+  action_label: string | null;
+  status: string;
+  priority: number;
+  created_at: string;
+  read_at: string | null;
+  expires_at?: string;
+  metadata: Record<string, unknown>;
+  related_bookmark_id: string | null;
+  related_folder_id: string | null;
+  related_import_id: string | null;
+}
+
 // ============================================
 // 组件实现
 // ============================================
@@ -28,18 +51,18 @@ export interface MessageNotificationProviderProps {
 export function MessageNotificationProvider({
   children,
 }: MessageNotificationProviderProps) {
-  const [modalMessage, setModalMessage] = useState<Message | null>(null);
+  const [modalMessage, setModalMessage] = useState<LegacyMessage | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   // 消息队列（处理多个重要消息）
-  const [messageQueue, setMessageQueue] = useState<Message[]>([]);
+  const [messageQueue, setMessageQueue] = useState<LegacyMessage[]>([]);
 
   // Modal 处理器
-  const handleShowModal = useCallback((message: Partial<Message>) => {
-    const fullMessage: Message = {
+  const handleShowModal = useCallback((message: Partial<LegacyMessage>) => {
+    const fullMessage: LegacyMessage = {
       id: message.id ?? 0,
       user_id: "",
-      type: message.type ?? "system_announcement",
+      type: message.type ?? "system.announcement",
       level: message.level ?? "important",
       title: message.title ?? "",
       content: message.content ?? null,
@@ -91,18 +114,19 @@ export function MessageNotificationProvider({
     }
   }, []);
 
-  // 标记已读回调
+  // 标记已读回调（使用新的通知系统）
   const handleMarkAsRead = useCallback(
     async (messageId: number): Promise<boolean> => {
       if (!messageId) return true;
 
       try {
-        const response = await fetch(`/api/messages/${messageId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "read" }),
-        });
-        return response.ok;
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("user_notifications")
+          .update({ status: "read", read_at: new Date().toISOString() })
+          .eq("id", String(messageId));
+
+        return !error;
       } catch {
         return false;
       }

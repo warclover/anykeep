@@ -9,11 +9,11 @@
 // V5.0 新通知系统（推荐使用）
 // ============================================================================
 
-// 核心服务
-export { NotificationService } from "./notification.service";
+// 核心服务 - 仅服务端使用，请从 ./notification.service 直接导入
+// export { NotificationService } from "./notification.service";
 
-// 业务快捷方法
-export { Notify } from "./notification.helpers";
+// 业务快捷方法 - 仅服务端使用，请从 ./notification.helpers 直接导入
+// export { Notify } from "./notification.helpers";
 
 // 类型定义
 export type {
@@ -62,11 +62,14 @@ export type {
 
 export { MESSAGE_TYPE_MIGRATION_MAP } from "./types";
 
-// Toast Service (L1)
+// Toast Service (L1) - 客户端安全
 export { toastService } from "./toast/toast.service";
 
-// Inbox Service (L2) - 复用现有 confirmationService
-export { confirmationService as inboxService } from "@/lib/confirmation";
+// ============================================================================
+// 服务端模块（请直接导入，避免污染客户端）
+// ============================================================================
+// Inbox Service (L2) - 仅服务端使用
+// import { confirmationService } from "@/lib/confirmation";
 
-// Activity Service (L3)
-export { activityService } from "./activity/activity.service";
+// Activity Service (L3) - 仅服务端使用
+// import { activityService } from "./activity/activity.service";

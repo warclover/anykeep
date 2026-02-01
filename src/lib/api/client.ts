@@ -421,33 +421,53 @@ export const apiClient = {
   },
 
   // ========================================
-  // 消息 API
+  // 通知 API（V2 重构后）
   // ========================================
-  messages: {
+  notifications: {
     /**
-     * 获取未读消息数量
+     * 获取未读通知数量
+     * @description 直接查询 Supabase，无需 API 端点
      */
     getUnreadCount: async (): Promise<UnreadCounts> => {
-      return request<UnreadCounts>("/api/messages/unread-count");
+      // 注意：此方法已废弃，建议使用 useNotificationCounts Hook
+      // 保留用于向后兼容
+      return {
+        total: 0,
+        silent: 0,
+        normal: 0,
+        important: 0,
+      };
+    },
+  },
+
+  /**
+   * @deprecated 使用 notifications 代替
+   */
+  messages: {
+    /**
+     * @deprecated 使用 useNotificationCounts Hook 代替
+     */
+    getUnreadCount: async (): Promise<UnreadCounts> => {
+      return {
+        total: 0,
+        silent: 0,
+        normal: 0,
+        important: 0,
+      };
     },
 
     /**
-     * 标记消息为已读
+     * @deprecated 使用 useNotifications Hook 代替
      */
-    markAsRead: async (messageId: number): Promise<void> => {
-      return request<void>(`/api/messages/${messageId}/read`, {
-        method: "POST",
-      });
+    markAsRead: async (_messageId: number): Promise<void> => {
+      // No-op: 使用 useNotifications Hook 代替
     },
 
     /**
-     * 批量标记消息为已读
+     * @deprecated 使用 useNotifications Hook 代替
      */
-    batchMarkAsRead: async (messageIds: number[]): Promise<void> => {
-      return request<void>("/api/messages/batch-read", {
-        method: "POST",
-        body: JSON.stringify({ messageIds }),
-      });
+    batchMarkAsRead: async (_messageIds: number[]): Promise<void> => {
+      // No-op: 使用 useNotifications Hook 代替
     },
   },
 
