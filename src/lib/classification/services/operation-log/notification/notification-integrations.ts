@@ -13,7 +13,7 @@ import type {
   SplitOperationState,
   MergeOperationState,
 } from "@/lib/classification/types";
-import { MessageService } from "@/lib/messages/message-service";
+import { Notify } from "@/lib/notifications";
 import { eventBus, OrganizationEvents } from "@/lib/shared/event-bus";
 import type {
   SupabaseClientType,
@@ -240,13 +240,11 @@ export async function createFolderWithNotification(
     reason,
   );
 
-  await MessageService.notifyFolderAutoCreated(
+  await Notify.folderAutoCreated(
     userId,
-    folder.id,
     folder.name,
-    bookmarks.length,
+    String(folder.id),
     reason,
-    String(snapshot.id),
   );
 
   eventBus.emit(OrganizationEvents.FOLDER_CREATED, {
@@ -281,13 +279,14 @@ export async function renameFolderWithNotification(
     reason,
   );
 
-  await MessageService.notifyFolderAutoRenamed(
+  await Notify.custom(
     userId,
-    folderId,
-    oldName,
-    newName,
-    reason,
-    String(snapshot.id),
+    "folder.auto_renamed",
+    "AI 重命名了文件夹",
+    `「${oldName}」→「${newName}」${reason ? `（${reason}）` : ""}`,
+    {
+      metadata: { folderId, oldName, newName, snapshotId: String(snapshot.id) },
+    },
   );
 
   return snapshot;
@@ -313,12 +312,10 @@ export async function splitFolderWithNotification(
     reason,
   );
 
-  await MessageService.notifyFolderAutoSplit(
+  await Notify.folderAutoSplit(
     userId,
     originalFolder.name,
     newFolders.map((f) => f.name),
-    reason,
-    String(snapshot.id),
   );
 
   return snapshot;
@@ -344,13 +341,11 @@ export async function mergeFoldersWithNotification(
     reason,
   );
 
-  await MessageService.notifyFolderAutoMerged(
+  await Notify.folderAutoMerged(
     userId,
-    targetFolder.id,
+    sourceFolders.map((f) => f.name),
     targetFolder.name,
-    sourceFolders.length,
-    reason,
-    String(snapshot.id),
+    String(targetFolder.id),
   );
 
   return snapshot;
@@ -366,11 +361,15 @@ export async function sendEvolutionReport(
   createdFolders: number,
   reportUrl?: string,
 ): Promise<void> {
-  await MessageService.notifyEvolutionReport(
+  await Notify.custom(
     userId,
-    month,
-    classifiedCount,
-    createdFolders,
-    reportUrl,
+    "ai.evolution_report",
+    `${month} AI 进化报告`,
+    `本月 AI 分类了 ${classifiedCount} 条内容，创建了 ${createdFolders} 个文件夹`,
+    {
+      actionUrl: reportUrl,
+      actionLabel: reportUrl ? "查看报告" : undefined,
+      metadata: { month, classifiedCount, createdFolders },
+    },
   );
 }

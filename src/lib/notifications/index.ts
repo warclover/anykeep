@@ -1,9 +1,42 @@
 /**
  * 统一通知系统模块导出
- * @description V4.3 三层通知体系入口
- * @version 1.0.0
- * @since 2025-12-12
+ * @description V5.0 重构版 - 统一通知系统
+ * @version 2.0.0
+ * @since 2026-02-01
  */
+
+// ============================================================================
+// V5.0 新通知系统（推荐使用）
+// ============================================================================
+
+// 核心服务
+export { NotificationService } from "./notification.service";
+
+// 业务快捷方法
+export { Notify } from "./notification.helpers";
+
+// 类型定义
+export type {
+  NotificationChannel,
+  NotificationPriority,
+  NotificationStatus,
+  NotificationCategory,
+  NotificationEntityType,
+  NotificationDateGroup,
+  NotificationType as NotificationTypeConfig,
+  Notification,
+  NotificationGroup,
+  NotificationPayload,
+  NotificationQueryParams,
+  NotificationCounts,
+} from "./notification.types";
+
+// 常量
+export { DATE_GROUP_LABELS, PRIORITY_CONFIG } from "./notification.types";
+
+// ============================================================================
+// V4.3 旧版导出（兼容性保留，后续迁移后删除）
+// ============================================================================
 
 // Types
 export type {
