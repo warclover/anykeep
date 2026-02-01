@@ -4,8 +4,9 @@
  * 核心入口，协调三个阶段的执行：沉淀期 -> 结晶期 -> 精炼期
  *
  * @module classification/batch-classification/coordinator
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-01
+ * @updated 2026-02-02 - 性能优化：分批加载、批量插入
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -40,12 +41,15 @@ export interface CoordinatorConfig {
   autoConfirmThreshold: number;
   /** 是否保留原始结构 */
   preserveOriginalStructure: boolean;
+  /** 分批加载书签的批次大小 */
+  batchLoadSize: number;
 }
 
 export const DEFAULT_COORDINATOR_CONFIG: CoordinatorConfig = {
   sampledDbscanThreshold: 100,
   autoConfirmThreshold: 0.8,
   preserveOriginalStructure: true,
+  batchLoadSize: 200,
 };
 
 // ============================================
@@ -381,23 +385,14 @@ export class BatchClassificationCoordinator {
       );
       await this.updateProgress(transactionId, "mapping", 50);
 
-      // 生成命名
-      for (const cluster of clusteringResult.clusters) {
-        const nameResult =
-          await representativeNamingService.generateClusterName(
-            cluster,
-            bookmarkMap,
-          );
-        // 更新数据库
-        await this.saveClusterResult(
-          transactionId,
-          cluster,
-          mappingResults.find((m) => m.clusterId === cluster.id),
-          nameResult,
-          bookmarkMap,
-          userId,
-        );
-      }
+      // 批量保存聚类结果（优化 N+1 查询）
+      await this.saveClusterResultsBatch(
+        transactionId,
+        clusteringResult.clusters,
+        mappingResults,
+        bookmarkMap,
+        userId,
+      );
 
       await this.updateProgress(transactionId, "completed", 100);
 
@@ -421,49 +416,72 @@ export class BatchClassificationCoordinator {
   }
 
   /**
-   * 加载书签
+   * 加载书签（分批加载，避免内存溢出）
    */
   private async loadBookmarks(
     request: StartClassificationRequest,
     userId: string,
   ): Promise<BookmarkWithEmbedding[]> {
-    let query = this.supabase
-      .from("bookmarks")
-      .select(
-        "id, title, url, embedding, created_at, original_path, original_path_parts, ai_tags",
-      )
-      .eq("user_id", userId)
-      .not("embedding", "is", null);
+    const allBookmarks: BookmarkWithEmbedding[] = [];
+    const batchSize = this.config.batchLoadSize;
+    let offset = 0;
+    let hasMore = true;
 
-    if (request.bookmarkIds && request.bookmarkIds.length > 0) {
-      query = query.in("id", request.bookmarkIds);
-    } else if (request.batchId || request.importSessionId) {
-      query = query.eq(
-        "import_batch_id",
-        request.batchId || request.importSessionId,
-      );
+    while (hasMore) {
+      let query = this.supabase
+        .from("bookmarks")
+        .select(
+          "id, title, url, embedding, created_at, original_path, original_path_parts, ai_tags",
+        )
+        .eq("user_id", userId)
+        .not("embedding", "is", null)
+        .range(offset, offset + batchSize - 1);
+
+      if (request.bookmarkIds && request.bookmarkIds.length > 0) {
+        query = query.in("id", request.bookmarkIds);
+      } else if (request.batchId || request.importSessionId) {
+        query = query.eq(
+          "import_batch_id",
+          request.batchId || request.importSessionId,
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`Failed to load bookmarks: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      const mappedBookmarks = data.map((b) => ({
+        id: b.id,
+        title: b.title || "",
+        url: b.url,
+        domain: this.extractDomain(b.url),
+        meaningfulDomain: this.extractMeaningfulDomain(b.url),
+        embedding: b.embedding as number[],
+        createdAt: new Date(b.created_at!),
+        originalPath: b.original_path,
+        originalPathParts: b.original_path_parts as string[] | null,
+        keywords: (b.ai_tags as string[]) || [],
+        description: null,
+        platform: "other" as const,
+      }));
+
+      allBookmarks.push(...mappedBookmarks);
+
+      if (data.length < batchSize) {
+        hasMore = false;
+      } else {
+        offset += batchSize;
+      }
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to load bookmarks: ${error.message}`);
-    }
-
-    return (data || []).map((b) => ({
-      id: b.id,
-      title: b.title || "",
-      url: b.url,
-      domain: this.extractDomain(b.url),
-      meaningfulDomain: this.extractMeaningfulDomain(b.url),
-      embedding: b.embedding as number[],
-      createdAt: new Date(b.created_at!),
-      originalPath: b.original_path,
-      originalPathParts: b.original_path_parts as string[] | null,
-      keywords: (b.ai_tags as string[]) || [],
-      description: null,
-      platform: "other",
-    }));
+    return allBookmarks;
   }
 
   /**
@@ -530,7 +548,111 @@ export class BatchClassificationCoordinator {
   }
 
   /**
-   * 保存聚类结果
+   * 批量保存聚类结果（优化 N+1 查询）
+   */
+  private async saveClusterResultsBatch(
+    transactionId: string,
+    clusters: BatchCluster[],
+    mappingResults: MappingResult[],
+    bookmarkMap: Map<number, BookmarkWithEmbedding>,
+    userId: string,
+  ): Promise<void> {
+    if (clusters.length === 0) return;
+
+    // 获取 batch_id
+    const { data: transaction } = await this.supabase
+      .from("batch_import_transactions")
+      .select("batch_id")
+      .eq("id", transactionId)
+      .single();
+
+    if (!transaction?.batch_id) return;
+
+    // 并行生成所有聚类的命名
+    const nameResults = await Promise.all(
+      clusters.map((cluster) =>
+        representativeNamingService.generateClusterName(cluster, bookmarkMap),
+      ),
+    );
+
+    // 构建聚类插入数据
+    const clusterInserts = clusters.map((cluster, index) => {
+      const mapping = mappingResults.find((m) => m.clusterId === cluster.id);
+      const nameResult = nameResults[index];
+      return {
+        import_batch_id: transaction.batch_id,
+        user_id: userId,
+        cluster_index: cluster.index,
+        centroid: cluster.centroid,
+        cohesion: cluster.cohesion,
+        member_count: cluster.memberIds.length,
+        suggested_name: nameResult.name,
+        suggested_name_confidence: nameResult.confidence,
+        suggested_folder_id: mapping?.targetFolderId,
+        match_confidence: mapping?.confidence || 0,
+        match_type:
+          mapping?.action === "MERGE"
+            ? "exact"
+            : mapping?.action === "SUGGEST_MERGE"
+              ? "fuzzy"
+              : "create_new",
+        conflict_type: mapping?.conflictType || "none",
+        status: "pending",
+      };
+    });
+
+    // 批量插入聚类
+    const { data: insertedClusters } = await this.supabase
+      .from("import_clusters")
+      .insert(clusterInserts)
+      .select("id, cluster_index");
+
+    if (!insertedClusters || insertedClusters.length === 0) return;
+
+    // 构建成员关系数据
+    const allMembers: Array<{
+      cluster_id: string;
+      bookmark_id: number;
+      distance_to_centroid: number;
+      is_representative: boolean;
+      representative_type: string | null;
+    }> = [];
+
+    for (const insertedCluster of insertedClusters) {
+      const originalCluster = clusters.find(
+        (c) => c.index === insertedCluster.cluster_index,
+      );
+      if (!originalCluster) continue;
+
+      const members = originalCluster.memberIds.map((bookmarkId) => ({
+        cluster_id: insertedCluster.id,
+        bookmark_id: bookmarkId,
+        distance_to_centroid: 0,
+        is_representative:
+          originalCluster.representatives.core.includes(bookmarkId) ||
+          originalCluster.representatives.edge.includes(bookmarkId),
+        representative_type: originalCluster.representatives.core.includes(
+          bookmarkId,
+        )
+          ? "core"
+          : originalCluster.representatives.edge.includes(bookmarkId)
+            ? "edge"
+            : null,
+      }));
+
+      allMembers.push(...members);
+    }
+
+    // 批量插入成员（分批处理避免超限）
+    const MEMBER_BATCH_SIZE = 500;
+    for (let i = 0; i < allMembers.length; i += MEMBER_BATCH_SIZE) {
+      const batch = allMembers.slice(i, i + MEMBER_BATCH_SIZE);
+      await this.supabase.from("import_cluster_members").insert(batch);
+    }
+  }
+
+  /**
+   * 保存聚类结果（保留用于兼容）
    */
   private async saveClusterResult(
     transactionId: string,
