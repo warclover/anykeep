@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import type {
   Notification,
   NotificationPayload,
@@ -14,6 +15,49 @@ import type {
   NotificationChannel,
   NotificationPriority,
 } from "./notification.types";
+
+// ============================================================================
+// 错误处理工具
+// ============================================================================
+
+/**
+ * 🔒 安全修复：将数据库错误转换为用户友好的错误消息
+ * 避免暴露数据库结构（表名、列名）等敏感信息
+ */
+function wrapDatabaseError(error: unknown, operation: string): Error {
+  const dbError = error as { code?: string; message?: string };
+
+  // 外键约束违反
+  if (dbError.code === "23503") {
+    return new Error("通知类型不存在，请联系管理员");
+  }
+
+  // 唯一约束违反
+  if (dbError.code === "23505") {
+    return new Error("操作冲突，请刷新后重试");
+  }
+
+  // 连接超时
+  if (
+    dbError.message?.includes("timeout") ||
+    dbError.message?.includes("ETIMEDOUT")
+  ) {
+    return new Error("网络超时，请稍后重试");
+  }
+
+  // 表不存在
+  if (dbError.code === "42P01") {
+    return new Error("系统配置错误，请联系技术支持");
+  }
+
+  // 权限不足
+  if (dbError.code === "42501") {
+    return new Error("权限不足，请重新登录");
+  }
+
+  // 通用错误
+  return new Error(`${operation}失败，请稍后重试`);
+}
 
 // ============================================================================
 // 类型转换工具
@@ -102,8 +146,11 @@ export const NotificationService = {
       .single();
 
     if (error) {
-      console.error("[NotificationService] send error:", error);
-      throw error;
+      logger.error("[NotificationService] send error", {
+        error,
+        typeCode: payload.type,
+      });
+      throw wrapDatabaseError(error, "发送通知");
     }
 
     return mapRowToNotification(data as NotificationRow);
@@ -111,20 +158,27 @@ export const NotificationService = {
 
   /**
    * 批量发送通知
+   * 🔒 性能修复：使用批量查询替代循环查询，解决 N+1 问题
    */
   async sendBatch(payloads: NotificationPayload[]): Promise<Notification[]> {
     if (payloads.length === 0) return [];
 
     const supabase = await createClient();
 
-    // 获取所有类型配置
+    // 🚀 性能优化：一次性查询所有类型配置，避免 N+1 查询
     const typeConfigs = new Map<string, NotificationType>();
     const uniqueTypes = [...new Set(payloads.map((p) => p.type))];
 
-    for (const type of uniqueTypes) {
-      const config = await this.getTypeConfig(type);
-      if (config) {
-        typeConfigs.set(type, config);
+    if (uniqueTypes.length > 0) {
+      const { data: typeData, error: typeError } = await supabase
+        .from("notification_types")
+        .select("*")
+        .in("code", uniqueTypes);
+
+      if (!typeError && typeData) {
+        for (const row of typeData as NotificationTypeRow[]) {
+          typeConfigs.set(row.code, mapTypeRowToType(row));
+        }
       }
     }
 
@@ -152,8 +206,11 @@ export const NotificationService = {
       .select("*, notification_types(*)");
 
     if (error) {
-      console.error("[NotificationService] sendBatch error:", error);
-      throw error;
+      logger.error("[NotificationService] sendBatch error", {
+        error,
+        count: payloads.length,
+      });
+      throw wrapDatabaseError(error, "批量发送通知");
     }
 
     return (data as NotificationRow[]).map(mapRowToNotification);
@@ -196,8 +253,8 @@ export const NotificationService = {
     const { data, error } = await query;
 
     if (error) {
-      console.error("[NotificationService] list error:", error);
-      throw error;
+      logger.error("[NotificationService] list error", { error, userId });
+      throw wrapDatabaseError(error, "获取通知列表");
     }
 
     return (data as NotificationRow[]).map(mapRowToNotification);
@@ -218,8 +275,8 @@ export const NotificationService = {
 
     if (error) {
       if (error.code === "PGRST116") return null; // Not found
-      console.error("[NotificationService] get error:", error);
-      throw error;
+      logger.error("[NotificationService] get error", { error, userId, id });
+      throw wrapDatabaseError(error, "获取通知详情");
     }
 
     return mapRowToNotification(data as NotificationRow);
@@ -243,8 +300,12 @@ export const NotificationService = {
     });
 
     if (error) {
-      console.error("[NotificationService] markAsRead error:", error);
-      throw error;
+      logger.error("[NotificationService] markAsRead error", {
+        error,
+        userId,
+        ids,
+      });
+      throw wrapDatabaseError(error, "标记已读");
     }
 
     return data as number;
@@ -261,8 +322,11 @@ export const NotificationService = {
     });
 
     if (error) {
-      console.error("[NotificationService] markAllAsRead error:", error);
-      throw error;
+      logger.error("[NotificationService] markAllAsRead error", {
+        error,
+        userId,
+      });
+      throw wrapDatabaseError(error, "全部标记已读");
     }
 
     return data as number;
@@ -281,8 +345,12 @@ export const NotificationService = {
       .eq("id", id);
 
     if (error) {
-      console.error("[NotificationService] archive error:", error);
-      throw error;
+      logger.error("[NotificationService] archive error", {
+        error,
+        userId,
+        id,
+      });
+      throw wrapDatabaseError(error, "归档通知");
     }
   },
 
@@ -299,8 +367,8 @@ export const NotificationService = {
       .eq("id", id);
 
     if (error) {
-      console.error("[NotificationService] delete error:", error);
-      throw error;
+      logger.error("[NotificationService] delete error", { error, userId, id });
+      throw wrapDatabaseError(error, "删除通知");
     }
   },
 
@@ -319,8 +387,12 @@ export const NotificationService = {
       .in("id", ids);
 
     if (error) {
-      console.error("[NotificationService] deleteBatch error:", error);
-      throw error;
+      logger.error("[NotificationService] deleteBatch error", {
+        error,
+        userId,
+        ids,
+      });
+      throw wrapDatabaseError(error, "批量删除通知");
     }
   },
 
@@ -339,8 +411,11 @@ export const NotificationService = {
     });
 
     if (error) {
-      console.error("[NotificationService] getUnreadCounts error:", error);
-      throw error;
+      logger.error("[NotificationService] getUnreadCounts error", {
+        error,
+        userId,
+      });
+      throw wrapDatabaseError(error, "获取未读计数");
     }
 
     const counts: NotificationCounts = {
@@ -376,8 +451,11 @@ export const NotificationService = {
     );
 
     if (error) {
-      console.error("[NotificationService] getUnreadCount error:", error);
-      throw error;
+      logger.error("[NotificationService] getUnreadCount error", {
+        error,
+        userId,
+      });
+      throw wrapDatabaseError(error, "获取未读总数");
     }
 
     return (data as number) ?? 0;
@@ -401,7 +479,7 @@ export const NotificationService = {
 
     if (error) {
       if (error.code === "PGRST116") return null; // Not found
-      console.error("[NotificationService] getTypeConfig error:", error);
+      logger.warn("[NotificationService] getTypeConfig error", { error, code });
       return null; // 类型不存在时返回 null，不抛错
     }
 
@@ -422,8 +500,8 @@ export const NotificationService = {
       .order("code", { ascending: true });
 
     if (error) {
-      console.error("[NotificationService] getAllTypeConfigs error:", error);
-      throw error;
+      logger.error("[NotificationService] getAllTypeConfigs error", { error });
+      throw wrapDatabaseError(error, "获取类型配置列表");
     }
 
     return (data as NotificationTypeRow[]).map(mapTypeRowToType);

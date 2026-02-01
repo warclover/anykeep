@@ -72,32 +72,43 @@ export interface UseNotificationsReturn {
 
 /** 将数据库行映射为 Notification 对象 */
 function mapRowToNotification(row: Record<string, unknown>): Notification {
+  // 🔒 安全修复：添加类型守卫和空值检查，防止 TypeError
+  const notificationTypes = row.notification_types as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const isValidTypeObject =
+    notificationTypes && typeof notificationTypes === "object";
+
   return {
-    id: row.id,
-    userId: row.user_id,
-    typeCode: row.type_code,
-    channels: row.channels,
-    priority: row.priority,
-    title: row.title,
-    body: row.body ?? undefined,
-    entityType: row.entity_type ?? undefined,
-    entityId: row.entity_id ?? undefined,
-    actionUrl: row.action_url ?? undefined,
-    actionLabel: row.action_label ?? undefined,
-    metadata: row.metadata ?? {},
-    status: row.status,
-    readAt: row.read_at ?? undefined,
-    createdAt: row.created_at,
-    expiresAt: row.expires_at,
-    type: row.notification_types
+    id: row.id as string,
+    userId: row.user_id as string,
+    typeCode: row.type_code as string,
+    channels: row.channels as string[],
+    priority: row.priority as string,
+    title: row.title as string,
+    body: (row.body as string) ?? undefined,
+    entityType: (row.entity_type as string) ?? undefined,
+    entityId: (row.entity_id as string) ?? undefined,
+    actionUrl: (row.action_url as string) ?? undefined,
+    actionLabel: (row.action_label as string) ?? undefined,
+    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    status: row.status as string,
+    readAt: (row.read_at as string) ?? undefined,
+    createdAt: row.created_at as string,
+    expiresAt: row.expires_at as string,
+    type: isValidTypeObject
       ? {
-          code: row.notification_types.code,
-          category: row.notification_types.category,
-          label: row.notification_types.label,
-          icon: row.notification_types.icon ?? "Bell",
-          color: row.notification_types.color ?? "blue",
-          defaultChannels: row.notification_types.default_channels,
-          defaultPriority: row.notification_types.default_priority,
+          code: (notificationTypes.code as string) ?? "",
+          category: (notificationTypes.category as string) ?? "system",
+          label: (notificationTypes.label as string) ?? "",
+          icon: (notificationTypes.icon as string) ?? "Bell",
+          color: (notificationTypes.color as string) ?? "blue",
+          defaultChannels: (notificationTypes.default_channels as string[]) ?? [
+            "inbox",
+          ],
+          defaultPriority:
+            (notificationTypes.default_priority as string) ?? "normal",
         }
       : undefined,
   };
@@ -168,6 +179,10 @@ export function useNotifications(
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  // 🔒 安全修复：限制最大页数，防止内存溢出
+  const MAX_PAGES = 10;
+  const MAX_ITEMS = limit * MAX_PAGES;
+
   // 无限滚动查询
   const {
     data,
@@ -200,8 +215,15 @@ export function useNotifications(
       return data ?? [];
     },
     getNextPageParam: (lastPage, allPages) => {
+      const currentTotal = allPages.flat().length;
+
+      // 🔒 边界检查：达到最大条目数时停止加载
+      if (currentTotal >= MAX_ITEMS) {
+        return undefined;
+      }
+
       if (lastPage.length < limit) return undefined;
-      return allPages.flat().length;
+      return currentTotal;
     },
     initialPageParam: 0,
   });
@@ -218,7 +240,7 @@ export function useNotifications(
     [notifications],
   );
 
-  // 标记已读
+  // 标记已读 - 🚀 性能优化：添加乐观更新，避免 UI 闪烁
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -226,14 +248,59 @@ export function useNotifications(
         .update({ status: "read", read_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    // 乐观更新
+    onMutate: async (id) => {
+      // 取消正在进行的请求，避免覆盖乐观更新
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      // 保存旧数据用于回滚
+      const previousData = queryClient.getQueryData([
+        "notifications",
+        { status, priority, limit },
+      ]);
+
+      // 乐观更新缓存
+      queryClient.setQueryData(
+        ["notifications", { status, priority, limit }],
+        (old: { pages: Record<string, unknown>[][] } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((item) =>
+                (item as { id: string }).id === id
+                  ? {
+                      ...item,
+                      status: "read",
+                      read_at: new Date().toISOString(),
+                    }
+                  : item,
+              ),
+            ),
+          };
+        },
+      );
+
+      return { previousData };
+    },
+    onError: (_err, _id, context) => {
+      // 回滚到之前的数据
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ["notifications", { status, priority, limit }],
+          context.previousData,
+        );
+      }
+    },
+    onSettled: () => {
+      // 防抖刷新：仅刷新计数，通知列表依赖乐观更新
       queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
     },
   });
 
-  // 全部标记已读
+  // 全部标记已读 - 🚀 性能优化：添加乐观更新
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -242,8 +309,48 @@ export function useNotifications(
         .eq("status", "unread");
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    // 乐观更新
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      const previousData = queryClient.getQueryData([
+        "notifications",
+        { status, priority, limit },
+      ]);
+
+      // 将所有 unread 标记为 read
+      queryClient.setQueryData(
+        ["notifications", { status, priority, limit }],
+        (old: { pages: Record<string, unknown>[][] } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((item) =>
+                (item as { status: string }).status === "unread"
+                  ? {
+                      ...item,
+                      status: "read",
+                      read_at: new Date().toISOString(),
+                    }
+                  : item,
+              ),
+            ),
+          };
+        },
+      );
+
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ["notifications", { status, priority, limit }],
+          context.previousData,
+        );
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
     },
   });

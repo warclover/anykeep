@@ -58,27 +58,51 @@ export interface JwtVerifyResult {
   nearExpiry: boolean;
 }
 
-// JWT 密钥缓存
+// JWT 密钥缓存 - 🔒 安全修复：添加 TTL 和版本校验机制
 let cachedSecret: Uint8Array | null = null;
+let cachedSecretVersion: string | null = null;
+let cachedAt: number = 0;
+
+/** 密钥缓存 TTL: 1小时 */
+const JWT_SECRET_CACHE_TTL = 3600000;
 
 /**
  * 获取 JWT 密钥
- * V5.3 修复：Supabase JWT Secret 为 UTF-8 纯文本字符串，直接使用
+ * V5.4 修复：添加缓存过期机制，支持密钥轮换
  */
 function getJwtSecret(): Uint8Array | null {
-  if (cachedSecret) {
+  const secret = process.env.SUPABASE_JWT_SECRET;
+  const version = process.env.SUPABASE_JWT_SECRET_VERSION || "1";
+  const now = Date.now();
+
+  // 检查缓存是否有效（版本匹配 + 未过期）
+  if (
+    cachedSecret &&
+    cachedSecretVersion === version &&
+    now - cachedAt < JWT_SECRET_CACHE_TTL
+  ) {
     return cachedSecret;
   }
 
-  const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
     // 配置缺失时静默返回 null，让调用方回退到网络验证
     return null;
   }
 
-  // Supabase JWT Secret 是 UTF-8 纯文��字符串，直接编码使用
+  // Supabase JWT Secret 是 UTF-8 纯文本字符串，直接编码使用
   cachedSecret = new TextEncoder().encode(secret);
+  cachedSecretVersion = version;
+  cachedAt = now;
   return cachedSecret;
+}
+
+/**
+ * 清理 JWT 密钥缓存（用于测试和密钥轮换）
+ */
+export function clearJwtSecretCache(): void {
+  cachedSecret = null;
+  cachedSecretVersion = null;
+  cachedAt = 0;
 }
 
 /**
@@ -265,12 +289,34 @@ export function extractAccessToken(cookies: {
       }
 
       // 方式 4: 检查是否是直接的 JWT token（严格格式验证）
-      // 🔒 安全修复：使用严格正则验证 JWT 格式，防止格式��过攻击
-      // JWT 格式: header.payload.signature (均为 base64url 编码)
-      const jwtRegex = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-      if (jwtRegex.test(rawValue)) {
-        // 仅返回格式符合的 token，实际签名验证由 verifyJwtLocally 完成
-        return rawValue;
+      // 🔒 安全修复 V5.4：使用更严格的正则验证 JWT 格式，防止格式绕过攻击
+      // JWT 格式: header.payload.signature (均为 base64url 编码，每段至少 20 字符)
+      const jwtRegex =
+        /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}$/;
+
+      // 验证 cookie 名称来源于 Supabase
+      const isSupabaseCookie =
+        authTokenCookie.name.startsWith("sb-") &&
+        authTokenCookie.name.includes("auth-token");
+
+      if (jwtRegex.test(rawValue) && isSupabaseCookie) {
+        // 额外安全检查：快速解码验证基本结构
+        try {
+          const parts = rawValue.split(".");
+          if (parts.length !== 3) return null;
+
+          // 验证 header 至少包含 alg 字段且为 HS256
+          const headerBase64 = parts[0].replace(/-/g, "+").replace(/_/g, "/");
+          const header = JSON.parse(
+            Buffer.from(headerBase64, "base64").toString("utf-8"),
+          );
+          if (!header.alg || header.alg !== "HS256") return null;
+
+          // 仅返回格式符合的 token，实际签名验证由 verifyJwtLocally 完成
+          return rawValue;
+        } catch {
+          return null;
+        }
       }
     }
 

@@ -135,8 +135,23 @@ export async function middleware(request: NextRequest) {
   const authDurationRounded = Math.round(authDuration);
 
   if (process.env.NODE_ENV === "development") {
+    // 🔒 安全修复：仅记录非敏感的调试信息，防止 JWT 内容泄露到日志系统
+    const safeDebugInfo = jwtDebug
+      ? {
+          hasToken: !!jwtDebug.token,
+          tokenLength: jwtDebug.token?.length,
+          isValid: jwtDebug.isValid,
+          // 不记录完整 token 和 payload
+        }
+      : undefined;
+
     logger.debug(
-      { pathname, authMethod, authDuration: authDurationRounded, jwtDebug },
+      {
+        pathname,
+        authMethod,
+        authDuration: authDurationRounded,
+        jwtDebug: safeDebugInfo,
+      },
       `[Middleware] ${pathname} | Auth: ${authMethod} | ${authDurationRounded}ms`,
     );
   }
