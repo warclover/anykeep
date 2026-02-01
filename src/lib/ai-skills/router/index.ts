@@ -268,3 +268,44 @@ export type {
   FeedbackStats,
   FeedbackServiceConfig,
 } from "./feedback-service";
+
+// ============================================
+// Layer 4: AI Routing 统一路由层
+// ============================================
+// 注意：ai-routing 是新的统一入口层，推荐直接使用
+// 这里提供重导出以保持向后兼容
+
+export {
+  // 统一入口
+  UnifiedEntry,
+  getUnifiedEntry,
+  createUnifiedEntry,
+  resetUnifiedEntry,
+  // 分类器链
+  ClassifierChain,
+  createClassifierChain,
+  // Debug Trace
+  DebugTracer,
+  createDebugTracer,
+  generateRequestId,
+  isDebugTraceEnabled,
+} from "@/lib/ai-routing";
+
+export type {
+  // 统一入口类型
+  UnifiedRequest,
+  UnifiedEntryConfig,
+  RouteResult as UnifiedRouteResult,
+  RouteMetrics as UnifiedRouteMetrics,
+  // 分类器接口
+  IntentClassifier as IIntentClassifier,
+  ClassifierResult,
+  ClassifierChainConfig,
+  ClassifierMetadata,
+  // Debug Trace 类型
+  DebugTrace,
+  TraceStage,
+  TraceSummary,
+  // 缓存类型
+  CacheStats,
+} from "@/lib/ai-routing";
