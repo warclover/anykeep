@@ -40,6 +40,19 @@ export interface CacheStats {
 }
 
 /**
+ * 缓存统计持久化格式
+ * 用于跨重启保存统计信息
+ */
+export interface CacheStatsPersistence {
+  /** 累计命中次数 */
+  hits: number;
+  /** 累计未命中次数 */
+  misses: number;
+  /** 最后更新时间戳 */
+  lastUpdatedAt: number;
+}
+
+/**
  * 意图缓存值类型
  */
 export type IntentCacheValue = ClassifierResult;

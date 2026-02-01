@@ -79,28 +79,36 @@ export class UnifiedEntry {
     const startTime = performance.now();
     const requestId = generateRequestId();
 
-    // 创建追踪器
-    const tracer = new DebugTracer(requestId, {
-      userId: request.userId,
-      sessionId: request.sessionId,
-      originalMessage: request.message,
-    });
+    // 仅在启用调试追踪时创建追踪器实例，避免性能开销
+    const debugEnabled = this.config.enableDebugTrace;
+    const tracer = debugEnabled
+      ? new DebugTracer(requestId, {
+          userId: request.userId,
+          sessionId: request.sessionId,
+          originalMessage: request.message,
+        })
+      : null;
 
     try {
       // 1. 预处理
-      const preprocessed = await tracer.traceStage(
-        "preprocessing",
-        { message: request.message },
-        () => this.preprocessor.process(request),
-        (r) => (r.modified ? "消息已预处理" : "消息无需处理"),
-      );
+      let preprocessed;
+      if (tracer) {
+        preprocessed = await tracer.traceStage(
+          "preprocessing",
+          { message: request.message },
+          () => this.preprocessor.process(request),
+          (r) => (r.modified ? "消息已预处理" : "消息无需处理"),
+        );
+      } else {
+        preprocessed = await this.preprocessor.process(request);
+      }
 
       // 2. 缓存查询
       let cacheHit: "L1" | "none" = "none";
       let cachedResult = null;
 
       if (this.config.enableCache) {
-        tracer.startStage("cache_lookup");
+        tracer?.startStage("cache_lookup");
         cachedResult = this.intentCache.get(
           preprocessed.message,
           request.userId,
@@ -108,7 +116,7 @@ export class UnifiedEntry {
         if (cachedResult) {
           cacheHit = "L1";
         }
-        tracer.endStage(
+        tracer?.endStage(
           "cache_lookup",
           { message: preprocessed.message },
           { hit: cacheHit },
@@ -129,13 +137,20 @@ export class UnifiedEntry {
           recentMessages: preprocessed.recentMessages,
         };
 
-        classificationResult = await tracer.traceStage(
-          "intent",
-          { message: preprocessed.message },
-          () => this.classifierChain.classify(preprocessed.message, context),
-          (r) =>
-            `意图: ${r.intent}${r.subType ? `:${r.subType}` : ""}, 置信度: ${(r.confidence * 100).toFixed(0)}%`,
-        );
+        if (tracer) {
+          classificationResult = await tracer.traceStage(
+            "intent",
+            { message: preprocessed.message },
+            () => this.classifierChain.classify(preprocessed.message, context),
+            (r) =>
+              `意图: ${r.intent}${r.subType ? `:${r.subType}` : ""}, 置信度: ${(r.confidence * 100).toFixed(0)}%`,
+          );
+        } else {
+          classificationResult = await this.classifierChain.classify(
+            preprocessed.message,
+            context,
+          );
+        }
 
         // 写入缓存
         if (this.config.enableCache) {
@@ -163,21 +178,34 @@ export class UnifiedEntry {
       };
 
       // 5. 复杂度评估
-      const complexity = await tracer.traceStage(
-        "complexity",
-        { intent },
-        async () =>
-          this.complexityEvaluator.evaluate(intent, request.context ?? {}),
-        (r) => `复杂度: ${r.level} (${r.score}分)`,
-      );
+      let complexity;
+      if (tracer) {
+        complexity = await tracer.traceStage(
+          "complexity",
+          { intent },
+          async () =>
+            this.complexityEvaluator.evaluate(intent, request.context ?? {}),
+          (r) => `复杂度: ${r.level} (${r.score}分)`,
+        );
+      } else {
+        complexity = this.complexityEvaluator.evaluate(
+          intent,
+          request.context ?? {},
+        );
+      }
 
       // 6. 模式选择
-      const modeSelection = await tracer.traceStage(
-        "routing",
-        { intent, complexity },
-        async () => this.modeSelector.select(intent, complexity),
-        (r) => `模式: ${r.mode}, 原因: ${r.reason}`,
-      );
+      let modeSelection;
+      if (tracer) {
+        modeSelection = await tracer.traceStage(
+          "routing",
+          { intent, complexity },
+          async () => this.modeSelector.select(intent, complexity),
+          (r) => `模式: ${r.mode}, 原因: ${r.reason}`,
+        );
+      } else {
+        modeSelection = this.modeSelector.select(intent, complexity);
+      }
 
       // 构建结果
       const routingDurationMs = Math.round(performance.now() - startTime);
@@ -195,34 +223,38 @@ export class UnifiedEntry {
         reactReason: modeSelection.reactReason,
       };
 
-      // 设置追踪摘要
-      tracer.setSummary({
-        intent: intent.type,
-        subType: intent.subType,
-        confidence: intent.confidence,
-        mode: modeSelection.mode,
-        cacheHit,
-        success: true,
-      });
+      // 设置追踪摘要（仅在启用调试时）
+      if (tracer) {
+        tracer.setSummary({
+          intent: intent.type,
+          subType: intent.subType,
+          confidence: intent.confidence,
+          mode: modeSelection.mode,
+          cacheHit,
+          success: true,
+        });
 
-      // 输出追踪日志
-      tracer.log();
+        // 输出追踪日志
+        tracer.log();
+      }
 
       return result;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      tracer.setSummary({
-        intent: "unknown",
-        confidence: 0,
-        mode: "atomic",
-        cacheHit: "none",
-        success: false,
-        errorMessage,
-      });
+      if (tracer) {
+        tracer.setSummary({
+          intent: "unknown",
+          confidence: 0,
+          mode: "atomic",
+          cacheHit: "none",
+          success: false,
+          errorMessage,
+        });
 
-      tracer.log();
+        tracer.log();
+      }
 
       logger.error(
         { error: errorMessage, requestId },

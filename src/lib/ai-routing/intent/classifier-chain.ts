@@ -34,6 +34,41 @@ const DEFAULT_CONFIG: Required<ClassifierChainConfig> = {
 };
 
 // ============================================
+// 并发控制配置
+// ============================================
+
+/**
+ * 并发控制配置
+ */
+interface ParallelConfig {
+  /** 最大并发数 */
+  maxConcurrency: number;
+  /** 单个分类器超时时间（毫秒） */
+  timeoutMs: number;
+}
+
+const PARALLEL_CONFIG: ParallelConfig = {
+  maxConcurrency: 3,
+  timeoutMs: 5000,
+};
+
+/**
+ * 带超时的 Promise 包装器
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs),
+    ),
+  ]);
+}
+
+// ============================================
 // ClassifierChain 类
 // ============================================
 
@@ -192,6 +227,7 @@ export class ClassifierChain {
    * 并行分类（可选）
    *
    * 同时执行所有分类器，选择置信度最高的结果
+   * 包含并发控制和超时机制
    */
   async classifyParallel(
     message: string,
@@ -208,33 +244,54 @@ export class ClassifierChain {
       return this.fallbackResult(message);
     }
 
-    // 并行执行所有分类器
-    const results = await Promise.allSettled(
-      eligibleClassifiers.map((c) => c.classify(message, context)),
-    );
-
-    // 收集成功的结果
-    const successfulResults: Array<{
+    // 并发控制：分批执行
+    const batchSize = PARALLEL_CONFIG.maxConcurrency;
+    const allResults: Array<{
       classifier: IntentClassifier;
       result: ClassifierResult;
     }> = [];
 
-    results.forEach((r, index) => {
-      if (r.status === "fulfilled") {
-        successfulResults.push({
-          classifier: eligibleClassifiers[index],
-          result: r.value,
-        });
-      }
-    });
+    for (let i = 0; i < eligibleClassifiers.length; i += batchSize) {
+      const batch = eligibleClassifiers.slice(i, i + batchSize);
 
-    if (successfulResults.length === 0) {
+      // 带超时的并行执行
+      const batchResults = await Promise.allSettled(
+        batch.map((c) =>
+          withTimeout(
+            c.classify(message, context),
+            PARALLEL_CONFIG.timeoutMs,
+            `Classifier ${c.name} timed out after ${PARALLEL_CONFIG.timeoutMs}ms`,
+          ),
+        ),
+      );
+
+      // 收集成功的结果
+      batchResults.forEach((r, index) => {
+        if (r.status === "fulfilled") {
+          allResults.push({
+            classifier: batch[index],
+            result: r.value,
+          });
+        } else if (this.config.debug) {
+          logger.debug(
+            {
+              classifier: batch[index].name,
+              error:
+                r.reason instanceof Error ? r.reason.message : String(r.reason),
+            },
+            "ClassifierChain: Parallel classifier failed or timed out",
+          );
+        }
+      });
+    }
+
+    if (allResults.length === 0) {
       return this.fallbackResult(message);
     }
 
     // 按置信度排序，选择最高的
-    successfulResults.sort((a, b) => b.result.confidence - a.result.confidence);
-    const best = successfulResults[0];
+    allResults.sort((a, b) => b.result.confidence - a.result.confidence);
+    const best = allResults[0];
 
     // 应用校准
     const calibrated = best.classifier.calibrate?.(best.result) ?? best.result;
@@ -245,7 +302,7 @@ export class ClassifierChain {
           classifier: best.classifier.name,
           intent: calibrated.intent,
           confidence: calibrated.confidence,
-          candidateCount: successfulResults.length,
+          candidateCount: allResults.length,
           durationMs: Math.round(performance.now() - startTime),
         },
         "ClassifierChain: Parallel classification completed",
@@ -266,8 +323,11 @@ export class ClassifierChain {
     // 简单启发式：如果包含问号，倾向于 query
     const hasQuestion = message.includes("?") || message.includes("？");
 
+    // 使用类型安全的方式定义 intent
+    const fallbackIntent: IntentType = hasQuestion ? "query" : "chitchat";
+
     return {
-      intent: hasQuestion ? "query" : ("chitchat" as IntentType),
+      intent: fallbackIntent,
       subType: "general",
       confidence: 0.3,
       entities: [],

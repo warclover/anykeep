@@ -237,17 +237,40 @@ export class ComplexityEvaluator {
 
   /**
    * 估算数据规模
+   *
+   * 优先级规则（从高到低）：
+   * 1. selectedBookmarks - 用户明确选中的书签
+   * 2. bookmarkIds - 明确指定的书签 ID 列表
+   * 3. totalBookmarks - 基于意图类型的估算
+   *
+   * 注意：selectedBookmarks 和 bookmarkIds 不应同时存在，
+   * 如果同时存在，优先使用 selectedBookmarks
    */
   private estimateDataScale(
     intent: IntentClassification,
     context: Partial<RequestContext>,
   ): number {
-    if (context.bookmarkIds?.length) {
-      return context.bookmarkIds.length;
-    }
+    // 优先级 1: 用户明确选中的书签（最高优先级）
     if (context.selectedBookmarks?.length) {
       return context.selectedBookmarks.length;
     }
+
+    // 优先级 2: 明确指定的书签 ID 列表
+    if (context.bookmarkIds?.length) {
+      // 一致性校验：如果同时存在 selectedBookmarks（空数组）和 bookmarkIds
+      // 这可能表示数据不一致，记录警告
+      if (
+        context.selectedBookmarks !== undefined &&
+        context.selectedBookmarks.length === 0 &&
+        context.bookmarkIds.length > 0
+      ) {
+        // 数据可能不一致，但仍使用 bookmarkIds
+        // 在生产环境中可以添加日志
+      }
+      return context.bookmarkIds.length;
+    }
+
+    // 优先级 3: 基于总数和意图类型的估算
     if (context.totalBookmarks) {
       switch (intent.type) {
         case "query":
@@ -263,6 +286,7 @@ export class ComplexityEvaluator {
           return DATA_SCALE_THRESHOLDS.FALLBACK;
       }
     }
+
     return DATA_SCALE_THRESHOLDS.DEFAULT;
   }
 

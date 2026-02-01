@@ -3,7 +3,7 @@
  *
  * 根据意图分类和复杂度评估结果，选择合适的执行模式
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-01
  */
 
@@ -27,6 +27,8 @@ export interface ModeSelectorConfig {
   forceAtomicMode?: boolean;
   /** 调试模式 */
   debug?: boolean;
+  /** 自定义 Skill 映射（可选，用于覆盖默认映射） */
+  customMappings?: Record<string, SkillMapping>;
 }
 
 // ============================================
@@ -36,7 +38,7 @@ export interface ModeSelectorConfig {
 /**
  * 意图到 Skill 的映射
  */
-interface SkillMapping {
+export interface SkillMapping {
   /** Skill ID */
   skillId: string;
   /** 映射名称 */
@@ -50,99 +52,217 @@ interface SkillMapping {
 }
 
 /**
- * 意图映射索引
- * key: `${intentType}:${subType}` 或 `${intentType}:*`
+ * Skill 映射注册表
+ *
+ * 支持动态注册和更新映射，解决硬编码问题
  */
-const SKILL_MAPPINGS: Record<string, SkillMapping> = {
-  // 学习类
-  "learn:review": {
-    skillId: "knowledge_review",
-    name: "知识回顾",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "learn:active_recall_start": {
-    skillId: "active_recall",
-    name: "主动复习",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 整理类
-  "organize:cleanup": {
-    skillId: "organize_cleanup",
-    name: "智能整理",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "organize:dedupe": {
-    skillId: "dedupe",
-    name: "去重",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 分析类
-  "analyze:report": {
-    skillId: "report_generator",
-    name: "报告生成",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "analyze:insight": {
-    skillId: "insight_analyzer",
-    name: "洞察分析",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  // 创建类
-  "create:synthesis": {
-    skillId: "synthesis",
-    name: "主题合成",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:digest": {
-    skillId: "content_digest",
-    name: "内容摘要",
-    mode: "orchestration",
-    minComplexity: "simple",
-    enabled: true,
-  },
-  "create:tts": {
-    skillId: "tts_reader",
-    name: "语音朗读",
-    mode: "atomic",
-    enabled: true,
-  },
-  // 查询类（大部分走原子模式）
-  "query:search": {
-    skillId: "knowledge_search",
-    name: "知识搜索",
-    mode: "atomic",
-    enabled: true,
-  },
-  // 通配符映射
-  "analyze:*": {
-    skillId: "general_analyzer",
-    name: "通用分析",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "create:*": {
-    skillId: "general_creator",
-    name: "通用创建",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-  },
-};
+export class SkillMappingRegistry {
+  private mappings: Map<string, SkillMapping> = new Map();
+  private static instance: SkillMappingRegistry | null = null;
+
+  private constructor() {
+    // 初始化默认映射
+    this.initializeDefaultMappings();
+  }
+
+  /**
+   * 获取单例实例
+   */
+  static getInstance(): SkillMappingRegistry {
+    if (!SkillMappingRegistry.instance) {
+      SkillMappingRegistry.instance = new SkillMappingRegistry();
+    }
+    return SkillMappingRegistry.instance;
+  }
+
+  /**
+   * 重置实例（用于测试）
+   */
+  static resetInstance(): void {
+    SkillMappingRegistry.instance = null;
+  }
+
+  /**
+   * 初始化默认映射
+   */
+  private initializeDefaultMappings(): void {
+    const defaults: Record<string, SkillMapping> = {
+      // 学习类
+      "learn:review": {
+        skillId: "knowledge_review",
+        name: "知识回顾",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      "learn:active_recall_start": {
+        skillId: "active_recall",
+        name: "主动复习",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      // 整理类
+      "organize:cleanup": {
+        skillId: "organize_cleanup",
+        name: "智能整理",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      "organize:dedupe": {
+        skillId: "dedupe",
+        name: "去重",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      // 分析类
+      "analyze:report": {
+        skillId: "report_generator",
+        name: "报告生成",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      "analyze:insight": {
+        skillId: "insight_analyzer",
+        name: "洞察分析",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      // 创建类
+      "create:synthesis": {
+        skillId: "synthesis",
+        name: "主题合成",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      "create:digest": {
+        skillId: "content_digest",
+        name: "内容摘要",
+        mode: "orchestration",
+        minComplexity: "simple",
+        enabled: true,
+      },
+      "create:tts": {
+        skillId: "tts_reader",
+        name: "语音朗读",
+        mode: "atomic",
+        enabled: true,
+      },
+      // 查询类
+      "query:search": {
+        skillId: "knowledge_search",
+        name: "知识搜索",
+        mode: "atomic",
+        enabled: true,
+      },
+      // 通配符映射
+      "analyze:*": {
+        skillId: "general_analyzer",
+        name: "通用分析",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+      "create:*": {
+        skillId: "general_creator",
+        name: "通用创建",
+        mode: "orchestration",
+        minComplexity: "medium",
+        enabled: true,
+      },
+    };
+
+    for (const [key, mapping] of Object.entries(defaults)) {
+      this.mappings.set(key, mapping);
+    }
+  }
+
+  /**
+   * 注册或更新映射
+   */
+  register(key: string, mapping: SkillMapping): void {
+    this.mappings.set(key, mapping);
+  }
+
+  /**
+   * 批量注册映射
+   */
+  registerBatch(mappings: Record<string, SkillMapping>): void {
+    for (const [key, mapping] of Object.entries(mappings)) {
+      this.mappings.set(key, mapping);
+    }
+  }
+
+  /**
+   * 获取映射
+   */
+  get(key: string): SkillMapping | undefined {
+    return this.mappings.get(key);
+  }
+
+  /**
+   * 查找映射（支持通配符）
+   */
+  find(intentType: string, subType?: string): SkillMapping | null {
+    // 精确匹配
+    const exactKey = `${intentType}:${subType ?? "general"}`;
+    const exactMatch = this.mappings.get(exactKey);
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // 通配符匹配
+    const wildcardKey = `${intentType}:*`;
+    const wildcardMatch = this.mappings.get(wildcardKey);
+    if (wildcardMatch) {
+      return wildcardMatch;
+    }
+
+    return null;
+  }
+
+  /**
+   * 移除映射
+   */
+  remove(key: string): boolean {
+    return this.mappings.delete(key);
+  }
+
+  /**
+   * 启用/禁用映射
+   */
+  setEnabled(key: string, enabled: boolean): boolean {
+    const mapping = this.mappings.get(key);
+    if (mapping) {
+      mapping.enabled = enabled;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 获取所有映射
+   */
+  getAll(): Record<string, SkillMapping> {
+    const result: Record<string, SkillMapping> = {};
+    for (const [key, mapping] of this.mappings.entries()) {
+      result[key] = mapping;
+    }
+    return result;
+  }
+
+  /**
+   * 获取映射数量
+   */
+  get size(): number {
+    return this.mappings.size;
+  }
+}
 
 // ============================================
 // ModeSelector 类

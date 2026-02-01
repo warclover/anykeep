@@ -8,7 +8,24 @@
  */
 
 import type { ClassifierResult } from "../types";
-import type { CacheEntry, CacheStats } from "./types";
+import type { CacheEntry, CacheStats, CacheStatsPersistence } from "./types";
+
+// ============================================
+// 哈希工具
+// ============================================
+
+/**
+ * 简单的 FNV-1a 哈希算法
+ * 用于将长消息转换为固定长度的哈希值
+ */
+function fnv1aHash(str: string): string {
+  let hash = 2166136261; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 16777619) >>> 0; // FNV prime, 保持为 32 位无符号整数
+  }
+  return hash.toString(36);
+}
 
 // ============================================
 // 配置
@@ -52,11 +69,32 @@ export class IntentCache {
     this.stats = { hits: 0, misses: 0 };
   }
 
+  /** 消息长度阈值，超过此长度使用哈希 */
+  private static readonly MESSAGE_HASH_THRESHOLD = 200;
+
   /**
    * 生成缓存键
+   *
+   * 解决问题:
+   * 1. 长消息占用内存 - 超过阈值使用哈希
+   * 2. 特殊字符(:)导致键冲突 - 转义特殊字符
    */
   private generateKey(message: string, userId: string): string {
-    return `${userId}:${message.toLowerCase().trim()}`;
+    const normalizedMessage = message.toLowerCase().trim();
+    // 转义 userId 中的分隔符，防止键冲突
+    const safeUserId = userId.replace(/:/g, "\\:");
+
+    // 长消息使用哈希以减少内存占用
+    if (normalizedMessage.length > IntentCache.MESSAGE_HASH_THRESHOLD) {
+      const hash = fnv1aHash(normalizedMessage);
+      // 保留前 50 个字符作为可读性前缀
+      const prefix = normalizedMessage.slice(0, 50).replace(/:/g, "\\:");
+      return `${safeUserId}:h:${prefix}...${hash}`;
+    }
+
+    // 短消息直接使用，但转义特殊字符
+    const safeMessage = normalizedMessage.replace(/:/g, "\\:");
+    return `${safeUserId}:m:${safeMessage}`;
   }
 
   /**
@@ -197,6 +235,106 @@ export class IntentCache {
       hitRate: total > 0 ? this.stats.hits / total : 0,
       expiredCount,
     };
+  }
+
+  // ============================================
+  // M3: 缓存预热机制
+  // ============================================
+
+  /**
+   * 缓存预热
+   *
+   * 批量加载常见查询到缓存中，减少冷启动延迟
+   *
+   * @param entries 预热条目列表
+   * @returns 成功加载的条目数
+   */
+  warmup(
+    entries: Array<{
+      message: string;
+      userId: string;
+      result: ClassifierResult;
+      ttl?: number;
+    }>,
+  ): number {
+    let loaded = 0;
+
+    for (const entry of entries) {
+      // 检查是否还有空间
+      if (this.cache.size >= this.config.maxSize) {
+        break;
+      }
+
+      this.set(entry.message, entry.userId, entry.result, entry.ttl);
+      loaded++;
+    }
+
+    return loaded;
+  }
+
+  /**
+   * 从持久化存储恢复统计信息
+   */
+  restoreStats(persistence: CacheStatsPersistence): void {
+    this.stats.hits = persistence.hits;
+    this.stats.misses = persistence.misses;
+  }
+
+  /**
+   * 导出统计信息用于持久化
+   */
+  exportStats(): CacheStatsPersistence {
+    return {
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      lastUpdatedAt: Date.now(),
+    };
+  }
+
+  /**
+   * 导出缓存条目用于持久化
+   *
+   * @param maxEntries 最大导出条目数
+   * @returns 可持久化的缓存条目
+   */
+  exportEntries(maxEntries = 100): Array<{
+    message: string;
+    userId: string;
+    result: ClassifierResult;
+    accessCount: number;
+    expiresAt: number;
+  }> {
+    const now = Date.now();
+    const entries: Array<{
+      key: string;
+      entry: CacheEntry<ClassifierResult>;
+    }> = [];
+
+    // 收集未过期的条目
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.expiresAt > now) {
+        entries.push({ key, entry });
+      }
+    }
+
+    // 按访问频率排序，优先导出高频条目
+    entries.sort((a, b) => b.entry.accessCount - a.entry.accessCount);
+
+    // 只导出前 N 个
+    return entries.slice(0, maxEntries).map(({ key, entry }) => {
+      // 解析 key 以提取原始信息（简化处理）
+      const parts = key.split(":m:");
+      const userId = parts[0]?.replace(/\\:/g, ":") ?? "unknown";
+      const message = parts[1]?.replace(/\\:/g, ":") ?? "";
+
+      return {
+        message,
+        userId,
+        result: entry.value,
+        accessCount: entry.accessCount,
+        expiresAt: entry.expiresAt,
+      };
+    });
   }
 }
 
