@@ -152,9 +152,9 @@ export const listMessagesTool: Tool<ListMessagesParams, ListMessagesResult> = {
 
     // 构建查询
     let query = supabase
-      .from("messages")
+      .from("user_notifications")
       .select(
-        "id, type, level, title, content, status, created_at, read_at, action_url",
+        "id, type_code, priority, title, body, status, created_at, read_at, action_url",
         { count: "exact" },
       )
       .eq("user_id", context.userId)
@@ -166,9 +166,9 @@ export const listMessagesTool: Tool<ListMessagesParams, ListMessagesResult> = {
       query = query.eq("status", status);
     }
 
-    // 级别筛选
+    // 级别筛选 (priority 替代 level)
     if (level) {
-      query = query.eq("level", level);
+      query = query.eq("priority", level);
     }
 
     const { data, count, error } = await query;
@@ -193,7 +193,7 @@ export const listMessagesTool: Tool<ListMessagesParams, ListMessagesResult> = {
 
     // 获取未读数
     const { count: unreadCount } = await supabase
-      .from("messages")
+      .from("user_notifications")
       .select("id", { count: "exact", head: true })
       .eq("user_id", context.userId)
       .eq("status", "unread");

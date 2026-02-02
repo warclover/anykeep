@@ -307,9 +307,9 @@ export class InboxDigestSkill extends OrchestrationSkill<
     }
 
     let query = supabase
-      .from("messages")
+      .from("user_notifications")
       .select(
-        "id, type, level, title, content, status, created_at, read_at, action_url",
+        "id, type_code, priority, title, body, status, created_at, read_at, action_url",
       )
       .eq("user_id", userId)
       .gte("created_at", periodStart.toISOString())
@@ -322,7 +322,7 @@ export class InboxDigestSkill extends OrchestrationSkill<
 
     // 消息类型筛选
     if (input.messageTypes && input.messageTypes.length > 0) {
-      query = query.in("type", input.messageTypes);
+      query = query.in("type_code", input.messageTypes);
     }
 
     const { data, error } = await query;

@@ -493,17 +493,17 @@ async function autoCreateFolder(
     // 5. 移动书签到新文件夹
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
-     
-    const { error: moveError } = (await (
-      getSupabaseAdmin().from("bookmarks") as any
-    )
-      .update({
-        folder_id: newFolder.id,
-        pending_cluster: false,
-        pending_since: null,
-        cluster_id: null,
-      })
-      .in("id", bookmarkIds)) as { error: { message: string } | null };
+
+    const { error: moveError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (getSupabaseAdmin().from("bookmarks") as any)
+        .update({
+          folder_id: newFolder.id,
+          pending_cluster: false,
+          pending_since: null,
+          cluster_id: null,
+        })
+        .in("id", bookmarkIds)) as { error: { message: string } | null };
 
     if (moveError) {
       throw new Error(`Failed to move bookmarks: ${moveError.message}`);
@@ -531,19 +531,22 @@ async function autoCreateFolder(
 
     // 7. 创建消息通知
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabaseAdmin().from("messages") as any).insert({
+    await (getSupabaseAdmin().from("user_notifications") as any).insert({
       user_id: userId,
-      type: "folder_auto_created",
-      level: "normal",
+      type_code: "folder.auto_created",
+      priority: "normal",
       title: `AI 自动创建了「${newFolder.name}」`,
-      content: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
+      body: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
+      channels: ["in_app"],
+      status: "unread",
       metadata: {
         folderId: newFolder.id,
         folderName: newFolder.name,
         bookmarkCount: bookmarkIds.length,
         reason: folderName.reason,
       },
-      related_folder_id: newFolder.id,
+      entity_id: String(newFolder.id),
+      entity_type: "folder",
     });
 
     logger.info(

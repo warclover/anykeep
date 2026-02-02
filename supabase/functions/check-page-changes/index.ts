@@ -541,19 +541,22 @@ Deno.serve(async (req) => {
             result.similarityScore !== null &&
             result.similarityScore < 80
           ) {
-            await supabaseClient.from("messages").insert({
+            await supabaseClient.from("user_notifications").insert({
               user_id: monitor.userId,
-              type: "page_change",
+              type_code: "monitor.content_changed",
+              priority: "normal",
               title: `📄 ${monitor.bookmarkTitle} 内容已更新`,
-              content: result.changeSummary,
+              body: result.changeSummary,
+              channels: ["in_app"],
+              status: "unread",
               metadata: {
                 monitorId: monitor.id,
                 bookmarkId: monitor.bookmarkId,
                 bookmarkUrl: monitor.bookmarkUrl,
                 similarityScore: result.similarityScore,
               },
-              is_read: false,
-              created_at: new Date().toISOString(),
+              entity_id: String(monitor.bookmarkId),
+              entity_type: "bookmark",
             });
           }
 

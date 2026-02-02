@@ -46,7 +46,7 @@ class ActivityService {
 
       // 构建查询
       let query = supabase
-        .from("messages")
+        .from("user_notifications")
         .select("*", { count: "exact" })
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
@@ -55,7 +55,7 @@ class ActivityService {
       // 类型筛选（映射到旧类型）
       if (type) {
         const oldTypes = this.mapToOldTypes(type);
-        query = query.in("type", oldTypes);
+        query = query.in("type_code", oldTypes);
       }
 
       // 日期筛选
@@ -122,10 +122,10 @@ class ActivityService {
 
       // 查询自动分类数量
       const { count: autoClassified } = await supabase
-        .from("messages")
+        .from("user_notifications")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
-        .eq("type", "classification_auto")
+        .eq("type_code", "ai.classification.auto")
         .gte("created_at", startDate)
         .lte("created_at", endDate);
 
@@ -225,14 +225,14 @@ class ActivityService {
     try {
       const supabase = await createServerSupabaseClient();
 
-      await supabase.from("messages").insert({
+      await supabase.from("user_notifications").insert({
         user_id: userId,
-        type: "batch_operation",
-        level: "silent",
+        type_code: "batch.operation",
+        priority: "silent",
         title: `${data.action} ${data.count} 条`,
-        content: null,
+        body: null,
         status: "read", // 活动日志默认已读
-        priority: 0,
+        channels: ["in_app"],
         metadata: JSON.parse(
           JSON.stringify({
             action: data.action,
@@ -240,8 +240,15 @@ class ActivityService {
             ...data.details,
           }),
         ),
-        related_bookmark_id: data.bookmarkIds?.[0] || null,
-        related_folder_id: data.folderIds?.[0] || null,
+        entity_id:
+          data.bookmarkIds?.[0]?.toString() ||
+          data.folderIds?.[0]?.toString() ||
+          null,
+        entity_type: data.bookmarkIds?.[0]
+          ? "bookmark"
+          : data.folderIds?.[0]
+            ? "folder"
+            : null,
       });
     } catch (error) {
       logger.error({ error, data }, "Failed to log batch operation");
@@ -258,14 +265,14 @@ class ActivityService {
       const title = `${report.month} AI 整理报告`;
       const content = `本月自动分类 ${report.autoClassifiedCount} 条，准确率 ${report.accuracyRate}%`;
 
-      await supabase.from("messages").insert({
+      await supabase.from("user_notifications").insert({
         user_id: userId,
-        type: "ai_report",
-        level: "normal",
+        type_code: "ai.report",
+        priority: "normal",
         title,
-        content,
+        body: content,
         status: "unread",
-        priority: 0,
+        channels: ["in_app"],
         metadata: JSON.parse(JSON.stringify(report)),
       });
     } catch (error) {
@@ -287,14 +294,14 @@ class ActivityService {
     try {
       const supabase = await createServerSupabaseClient();
 
-      await supabase.from("messages").insert({
+      await supabase.from("user_notifications").insert({
         user_id: userId,
-        type: "error_log",
-        level: "normal",
+        type_code: "error.log",
+        priority: "normal",
         title: data.title,
-        content: data.error,
+        body: data.error,
         status: "unread",
-        priority: 0,
+        channels: ["in_app"],
         metadata: JSON.parse(JSON.stringify(data.context || {})),
       });
     } catch (error) {

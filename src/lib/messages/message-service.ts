@@ -7,12 +7,12 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { Json } from "@/types/supabase";
 import type { CreateMessageParams, MessageResult, MessageType } from "./types";
-import {
-  getMessageLevel,
-  getLevelConfig,
-  getDefaultPriority,
-} from "./message-levels";
+import { getMessageLevel, getLevelConfig } from "./message-levels";
 import { renderMessage } from "./message-templates";
+import {
+  MESSAGE_TYPE_TO_NOTIFICATION_CODE,
+  MESSAGE_LEVEL_TO_PRIORITY,
+} from "./type-mapping";
 
 // ============================================
 // MessageService 核心类
@@ -49,27 +49,41 @@ export class MessageService {
       };
     }
 
-    const { title, content, actionUrl, actionLabel, defaultPriority } =
-      rendered;
+    const { title, content, actionUrl, actionLabel } = rendered;
 
     try {
       // 3. 写入数据库
       const supabase = await createClient();
+
+      // 构建 entity_id 和 entity_type
+      let entityId: string | null = null;
+      let entityType: string | null = null;
+      if (relatedBookmarkId) {
+        entityId = String(relatedBookmarkId);
+        entityType = "bookmark";
+      } else if (relatedFolderId) {
+        entityId = String(relatedFolderId);
+        entityType = "folder";
+      } else if (relatedImportId) {
+        entityId = String(relatedImportId);
+        entityType = "import";
+      }
+
       const { data: message, error } = await supabase
-        .from("messages")
+        .from("user_notifications")
         .insert({
           user_id: userId,
-          type,
-          level,
+          type_code: MESSAGE_TYPE_TO_NOTIFICATION_CODE[type] || type,
+          priority: MESSAGE_LEVEL_TO_PRIORITY[level] || "normal",
           title,
-          content,
+          body: content,
           action_url: actionUrl,
           action_label: actionLabel,
-          related_bookmark_id: relatedBookmarkId,
-          related_folder_id: relatedFolderId,
-          related_import_id: relatedImportId,
+          entity_id: entityId,
+          entity_type: entityType,
           metadata: data as Json,
-          priority: defaultPriority,
+          channels: ["in_app"],
+          status: "unread",
         })
         .select("id")
         .single();
@@ -128,24 +142,39 @@ export class MessageService {
         const level = getMessageLevel(params.type);
         const rendered = renderMessage(params.type, params.data);
 
+        // 构建 entity_id 和 entity_type
+        let entityId: string | null = null;
+        let entityType: string | null = null;
+        if (params.relatedBookmarkId) {
+          entityId = String(params.relatedBookmarkId);
+          entityType = "bookmark";
+        } else if (params.relatedFolderId) {
+          entityId = String(params.relatedFolderId);
+          entityType = "folder";
+        } else if (params.relatedImportId) {
+          entityId = String(params.relatedImportId);
+          entityType = "import";
+        }
+
         return {
           user_id: params.userId,
-          type: params.type,
-          level,
+          type_code:
+            MESSAGE_TYPE_TO_NOTIFICATION_CODE[params.type] || params.type,
+          priority: MESSAGE_LEVEL_TO_PRIORITY[level] || "normal",
           title: rendered?.title ?? "",
-          content: rendered?.content,
+          body: rendered?.content,
           action_url: rendered?.actionUrl,
           action_label: rendered?.actionLabel,
-          related_bookmark_id: params.relatedBookmarkId,
-          related_folder_id: params.relatedFolderId,
-          related_import_id: params.relatedImportId,
+          entity_id: entityId,
+          entity_type: entityType,
           metadata: params.data as Json,
-          priority: rendered?.defaultPriority ?? getDefaultPriority(level),
+          channels: ["in_app"],
+          status: "unread",
         };
       });
 
       const { error, data } = await supabase
-        .from("messages")
+        .from("user_notifications")
         .insert(records)
         .select("id");
 

@@ -22,14 +22,8 @@ const paramsSchema = z.object({
     .array(z.number().int().positive())
     .optional()
     .describe("指定消息 ID 列表（不传则根据其他条件筛选）"),
-  types: z
-    .array(z.enum(MESSAGE_TYPES))
-    .optional()
-    .describe("按消息类型筛选"),
-  levels: z
-    .array(z.enum(MESSAGE_LEVELS))
-    .optional()
-    .describe("按消息级别筛选"),
+  types: z.array(z.enum(MESSAGE_TYPES)).optional().describe("按消息类型筛选"),
+  levels: z.array(z.enum(MESSAGE_LEVELS)).optional().describe("按消息级别筛选"),
   olderThanDays: z
     .number()
     .int()
@@ -102,7 +96,7 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
 
       // 获取操作前的未读数
       const { count: previousUnreadCount } = await supabase
-        .from("messages")
+        .from("user_notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", context.userId)
         .eq("status", "unread");
@@ -110,10 +104,10 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
       // 如果指定了 messageIds，直接使用 RPC
       if (messageIds && messageIds.length > 0) {
         const { data: updatedCount, error } = await supabase.rpc(
-          "mark_messages_read",
+          "mark_notifications_read",
           {
             p_user_id: context.userId,
-            p_message_ids: messageIds,
+            p_ids: messageIds.map(String),
           },
         );
 
@@ -137,7 +131,7 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
 
         // 获取操作后的未读数
         const { count: remainingUnreadCount } = await supabase
-          .from("messages")
+          .from("user_notifications")
           .select("id", { count: "exact", head: true })
           .eq("user_id", context.userId)
           .eq("status", "unread");
@@ -159,8 +153,8 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
           success: true,
           data: {
             markedCount,
-            previousUnreadCount: previousUnreadCount ?? 0,
-            remainingUnreadCount: remainingUnreadCount ?? 0,
+            previousUnreadCount: (previousUnreadCount ?? 0) as number,
+            remainingUnreadCount: (remainingUnreadCount ?? 0) as number,
             description: `已标记 ${markedCount} 条指定消息为已读`,
           },
           metadata: {
@@ -173,10 +167,9 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
       // 如果是 markAll，调用 RPC 不传 messageIds
       if (markAll) {
         const { data: updatedCount, error } = await supabase.rpc(
-          "mark_messages_read",
+          "mark_all_notifications_read",
           {
             p_user_id: context.userId,
-            p_message_ids: undefined,
           },
         );
 
@@ -215,7 +208,7 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
           success: true,
           data: {
             markedCount,
-            previousUnreadCount: previousUnreadCount ?? 0,
+            previousUnreadCount: (previousUnreadCount ?? 0) as number,
             remainingUnreadCount: 0,
             description: `已标记所有 ${markedCount} 条消息为已读`,
           },
@@ -228,19 +221,19 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
 
       // 按条件筛选消息 ID，然后调用 RPC
       let query = supabase
-        .from("messages")
+        .from("user_notifications")
         .select("id")
         .eq("user_id", context.userId)
         .eq("status", "unread");
 
-      // 类型筛选
+      // 类型筛选 (type_code 使用新的通知类型编码)
       if (types && types.length > 0) {
-        query = query.in("type", types);
+        query = query.in("type_code", types);
       }
 
-      // 级别筛选
+      // 级别筛选 (priority 替代 level)
       if (levels && levels.length > 0) {
-        query = query.in("level", levels);
+        query = query.in("priority", levels);
       }
 
       // 时间筛选
@@ -286,13 +279,13 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
         };
       }
 
-      const idsToMark = messagesToMark.map((m: { id: number }) => m.id);
+      const idsToMark = messagesToMark.map((m) => m.id);
 
       const { data: updatedCount, error: updateError } = await supabase.rpc(
-        "mark_messages_read",
+        "mark_notifications_read",
         {
           p_user_id: context.userId,
-          p_message_ids: idsToMark,
+          p_ids: idsToMark,
         },
       );
 
@@ -316,7 +309,7 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
 
       // 获取操作后的未读数
       const { count: remainingUnreadCount } = await supabase
-        .from("messages")
+        .from("user_notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", context.userId)
         .eq("status", "unread");
@@ -356,8 +349,8 @@ export const batchMarkReadTool: Tool<BatchMarkReadParams, BatchMarkReadResult> =
         success: true,
         data: {
           markedCount,
-          previousUnreadCount: previousUnreadCount ?? 0,
-          remainingUnreadCount: remainingUnreadCount ?? 0,
+          previousUnreadCount: (previousUnreadCount ?? 0) as number,
+          remainingUnreadCount: (remainingUnreadCount ?? 0) as number,
           description,
         },
         metadata: {

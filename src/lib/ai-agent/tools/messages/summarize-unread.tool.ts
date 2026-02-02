@@ -11,11 +11,7 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type {
-  MessageType,
-  MessageLevel,
-  Message,
-} from "@/lib/messages/types";
+import type { MessageType, MessageLevel, Message } from "@/lib/messages/types";
 
 // ============================================
 // 查询结果类型
@@ -186,8 +182,8 @@ export const summarizeUnreadMessagesTool: Tool<
 
     // 获取所有未读消息
     const { data: messages, error } = await supabase
-      .from("messages")
-      .select("id, type, level, title, content, created_at")
+      .from("user_notifications")
+      .select("id, type_code, priority, title, body, created_at")
       .eq("user_id", context.userId)
       .eq("status", "unread")
       .order("created_at", { ascending: false });
