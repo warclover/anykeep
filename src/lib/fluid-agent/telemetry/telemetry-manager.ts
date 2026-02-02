@@ -11,6 +11,41 @@ class TelemetryManager {
 
   constructor() {
     this.sessionId = this.generateSessionId();
+
+    // 页面卸载时清理定时器并尝试刷新
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        this.destroy();
+      });
+    }
+  }
+
+  /**
+   * 销毁管理器，清理定时器
+   */
+  destroy(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    // 尝试同步刷新剩余数据（使用 sendBeacon）
+    this.flushSync();
+  }
+
+  /**
+   * 同步刷新（用于页面卸载）
+   */
+  private flushSync(): void {
+    if (this.batchQueue.length === 0) return;
+
+    // 使用 sendBeacon 在页面卸载时发送数据
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const data = JSON.stringify({
+        events: this.batchQueue,
+        sessionId: this.sessionId,
+      });
+      navigator.sendBeacon("/api/telemetry/batch", data);
+    }
   }
 
   /**

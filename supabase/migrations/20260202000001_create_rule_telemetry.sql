@@ -43,12 +43,19 @@ CREATE POLICY "Service role can view all telemetry"
   ON rule_telemetry FOR SELECT
   USING (auth.role() = 'service_role');
 
--- 30 天自动清理
-SELECT cron.schedule(
-  'cleanup-old-rule-telemetry',
-  '0 3 * * *',  -- 每天凌晨 3 点
-  $$DELETE FROM rule_telemetry WHERE matched_at < now() - INTERVAL '30 days'$$
-);
+-- 30 天自动清理（如果 pg_cron 扩展可用）
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule(
+      'cleanup-old-rule-telemetry',
+      '0 3 * * *',
+      $$DELETE FROM rule_telemetry WHERE matched_at < now() - INTERVAL '30 days'$$
+    );
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available, skipping scheduled cleanup';
+  END IF;
+END $$;
 
 -- 聚合视图：规则效果统计
 CREATE OR REPLACE VIEW rule_telemetry_stats AS

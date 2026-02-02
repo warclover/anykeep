@@ -113,15 +113,17 @@ export function useBattery() {
       );
 
       return true;
-    } catch {
+    } catch (error) {
+      console.error("[useBattery] Failed to consume quota:", error);
       return false;
     }
   }, [state]);
 
-  // 初始化
+  // 初始化 - 仅在挂载时执行一次
   useEffect(() => {
     fetchState();
-  }, [fetchState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     level: state?.level || "full",

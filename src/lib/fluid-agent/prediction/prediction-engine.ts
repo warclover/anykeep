@@ -73,8 +73,9 @@ class PredictionEngine {
       }
 
       localStorage.setItem(key, JSON.stringify(current));
-    } catch {
-      // localStorage 不可用时静默失败
+    } catch (error) {
+      // localStorage 不可用时记录信息
+      console.info("[PredictionEngine] localStorage unavailable:", error);
     }
   }
 
@@ -85,7 +86,8 @@ class PredictionEngine {
     try {
       const key = `rule_feedback_${ruleId}`;
       return JSON.parse(localStorage.getItem(key) || '{"accept":0,"reject":0}');
-    } catch {
+    } catch (error) {
+      console.info("[PredictionEngine] Failed to read localStorage:", error);
       return { accept: 0, reject: 0 };
     }
   }

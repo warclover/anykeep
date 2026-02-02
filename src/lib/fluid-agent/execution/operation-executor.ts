@@ -5,12 +5,23 @@ import type {
   OperationStep,
 } from "../types";
 import { snapshotManager } from "./snapshot-manager";
+import { createClient } from "@/lib/supabase/client";
 
 type OperationCallback = (context: OperationContext) => void;
+
+// 常量配置
+const OPERATION_CONFIG = {
+  CLEANUP_DELAY: 60000, // 1分钟后清理
+  THINKING_MIN: 300,
+  THINKING_MAX: 500,
+  NOTIFY_THROTTLE: 100, // 通知节流间隔
+} as const;
 
 class OperationExecutor {
   private activeOperations: Map<string, OperationContext> = new Map();
   private subscribers: Map<string, Set<OperationCallback>> = new Map();
+  private userOperationLock: Set<string> = new Set(); // 用户级操作锁
+  private lastNotifyTime: Map<string, number> = new Map(); // 通知节流
 
   /**
    * 执行操作
@@ -20,11 +31,38 @@ class OperationExecutor {
     selection: Bookmark[],
     params?: Record<string, unknown>,
   ): Promise<OperationResult> {
+    // 获取用户 ID
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return {
+        success: false,
+        operationId: "",
+        affectedCount: 0,
+        error: "User not authenticated",
+      };
+    }
+
+    // 检查用户是否有进行中的操作（防止竞态）
+    if (this.userOperationLock.has(user.id)) {
+      return {
+        success: false,
+        operationId: "",
+        affectedCount: 0,
+        error: "Another operation is in progress",
+      };
+    }
+
+    // 加锁
+    this.userOperationLock.add(user.id);
     const operationId = crypto.randomUUID();
 
     const context: OperationContext = {
       operationId,
-      userId: "", // 将在后续步骤中填充
+      userId: user.id,
       action,
       selection,
       steps: this.buildSteps(action),
@@ -33,12 +71,12 @@ class OperationExecutor {
     };
 
     this.activeOperations.set(operationId, context);
-    this.notifySubscribers(operationId);
+    this.notifySubscribersThrottled(operationId);
 
     try {
       // Step 1: 创建快照
       this.updateStepStatus(context, 0, "running");
-      this.notifySubscribers(operationId);
+      this.notifySubscribersThrottled(operationId);
 
       await snapshotManager.createSnapshot(
         operationId,
@@ -46,16 +84,16 @@ class OperationExecutor {
       );
 
       this.updateStepStatus(context, 0, "completed");
-      this.notifySubscribers(operationId);
+      this.notifySubscribersThrottled(operationId);
 
       // Step 2: 模拟 AI 思考延迟
       this.updateStepStatus(context, 1, "running");
-      this.notifySubscribers(operationId);
+      this.notifySubscribersThrottled(operationId);
 
       await this.simulateThinking();
 
       this.updateStepStatus(context, 1, "completed");
-      this.notifySubscribers(operationId);
+      this.notifySubscribersThrottled(operationId);
 
       // Step 3: 执行操作
       this.updateStepStatus(context, 2, "running");
@@ -85,11 +123,11 @@ class OperationExecutor {
         context.steps[2].progress = Math.round(
           ((i + 1) / selection.length) * 100,
         );
-        this.notifySubscribers(operationId);
+        this.notifySubscribersThrottled(operationId);
       }
 
       this.updateStepStatus(context, 2, "completed");
-      this.notifySubscribers(operationId);
+      this.notifySubscribers(operationId); // 最终状态强制通知
 
       return { success: true, operationId, affectedCount };
     } catch (error) {
@@ -105,11 +143,15 @@ class OperationExecutor {
         error: errorMessage,
       };
     } finally {
-      // 清理
+      // 释放用户锁
+      this.userOperationLock.delete(user.id);
+
+      // 延迟清理操作记录
       setTimeout(() => {
         this.activeOperations.delete(operationId);
         this.subscribers.delete(operationId);
-      }, 60000); // 1 分钟后清理
+        this.lastNotifyTime.delete(operationId);
+      }, OPERATION_CONFIG.CLEANUP_DELAY);
     }
   }
 
@@ -186,7 +228,10 @@ class OperationExecutor {
   }
 
   private async simulateThinking(): Promise<void> {
-    const delay = 300 + Math.random() * 200; // 300-500ms
+    const delay =
+      OPERATION_CONFIG.THINKING_MIN +
+      Math.random() *
+        (OPERATION_CONFIG.THINKING_MAX - OPERATION_CONFIG.THINKING_MIN);
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
@@ -198,6 +243,21 @@ class OperationExecutor {
     // TODO: 根据 action 调用对应的 Tool/Skill
     // 这里先用模拟延迟代替
     await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  /**
+   * 带节流的通知（避免频繁重渲染）
+   */
+  private notifySubscribersThrottled(operationId: string): void {
+    const now = Date.now();
+    const lastTime = this.lastNotifyTime.get(operationId) || 0;
+
+    if (now - lastTime < OPERATION_CONFIG.NOTIFY_THROTTLE) {
+      return; // 节流期内跳过
+    }
+
+    this.lastNotifyTime.set(operationId, now);
+    this.notifySubscribers(operationId);
   }
 
   private notifySubscribers(operationId: string): void {

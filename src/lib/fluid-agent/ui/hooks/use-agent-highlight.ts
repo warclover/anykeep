@@ -9,7 +9,7 @@ interface HighlightEntry {
 }
 
 interface HighlightState {
-  highlights: Map<string, HighlightEntry>;
+  highlights: Record<string, HighlightEntry>;
   highlight: (entityId: string, type: HighlightType) => void;
   highlightMany: (entityIds: string[], type: HighlightType) => void;
   clear: (entityId: string) => void;
@@ -19,16 +19,17 @@ interface HighlightState {
 const HIGHLIGHT_DURATION = 1500;
 
 export const useHighlightStore = create<HighlightState>((set, get) => ({
-  highlights: new Map(),
+  highlights: {},
 
   highlight: (entityId, type) => {
     const expiresAt = Date.now() + HIGHLIGHT_DURATION;
 
-    set((state) => {
-      const newHighlights = new Map(state.highlights);
-      newHighlights.set(entityId, { type, expiresAt });
-      return { highlights: newHighlights };
-    });
+    set((state) => ({
+      highlights: {
+        ...state.highlights,
+        [entityId]: { type, expiresAt },
+      },
+    }));
 
     // 自动清理
     setTimeout(() => {
@@ -40,11 +41,16 @@ export const useHighlightStore = create<HighlightState>((set, get) => ({
     const expiresAt = Date.now() + HIGHLIGHT_DURATION;
 
     set((state) => {
-      const newHighlights = new Map(state.highlights);
+      const newEntries: Record<string, HighlightEntry> = {};
       entityIds.forEach((id) => {
-        newHighlights.set(id, { type, expiresAt });
+        newEntries[id] = { type, expiresAt };
       });
-      return { highlights: newHighlights };
+      return {
+        highlights: {
+          ...state.highlights,
+          ...newEntries,
+        },
+      };
     });
 
     setTimeout(() => {
@@ -54,24 +60,21 @@ export const useHighlightStore = create<HighlightState>((set, get) => ({
 
   clear: (entityId) => {
     set((state) => {
-      const newHighlights = new Map(state.highlights);
-      newHighlights.delete(entityId);
-      return { highlights: newHighlights };
+      const { [entityId]: _, ...rest } = state.highlights;
+      return { highlights: rest };
     });
   },
 
   clearAll: () => {
-    set({ highlights: new Map() });
+    set({ highlights: {} });
   },
 }));
 
 // 便捷 Hook
 export function useAgentHighlight(entityId: string) {
-  const highlights = useHighlightStore((state) => state.highlights);
+  const entry = useHighlightStore((state) => state.highlights[entityId]);
   const reduceMotion = useReduceMotion();
 
-  const entry = highlights.get(entityId);
-  // 使用 entry.expiresAt 判断是否过期，避免在渲染中调用 Date.now()
   // 由于 zustand 的 setTimeout 清理机制，过期的 entry 会被自动删除
   const isHighlighted = !!entry;
   const highlightType = isHighlighted ? (entry?.type ?? null) : null;
