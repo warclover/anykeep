@@ -69,7 +69,12 @@ export const MESSAGE_TYPES = [
 /**
  * 消息等级常量数组
  */
-export const MESSAGE_LEVELS = ["silent", "normal", "important"] as const;
+export const MESSAGE_LEVELS = [
+  "silent",
+  "normal",
+  "important",
+  "critical",
+] as const;
 
 // ============================================
 // 消息类型（从常量推断）
@@ -100,7 +105,7 @@ export type DateGroup = "today" | "yesterday" | "this_week" | "earlier";
 // ============================================
 
 export interface Message {
-  id: number;
+  id: string;
   user_id: string;
   type: MessageType;
   level: MessageLevel;
@@ -113,9 +118,9 @@ export interface Message {
   created_at: string;
   read_at: string | null;
   metadata: Record<string, unknown>;
-  related_bookmark_id: number | null;
-  related_folder_id: number | null;
-  related_import_id?: number | null;
+  related_bookmark_id: string | null;
+  related_folder_id: string | null;
+  related_import_id?: string | null;
   expires_at?: string;
 }
 
@@ -156,9 +161,9 @@ export interface CreateMessageParams {
   userId: string;
   type: MessageType;
   data: Record<string, unknown>;
-  relatedBookmarkId?: number;
-  relatedFolderId?: number;
-  relatedImportId?: number;
+  relatedBookmarkId?: string;
+  relatedFolderId?: string;
+  relatedImportId?: string;
 }
 
 // ============================================
@@ -167,7 +172,7 @@ export interface CreateMessageParams {
 
 export interface MessageResult {
   success: boolean;
-  messageId?: number;
+  messageId?: string;
   level: MessageLevel;
   title?: string;
   content?: string;

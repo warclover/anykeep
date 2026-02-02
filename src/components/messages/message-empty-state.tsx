@@ -74,6 +74,7 @@ function getEmptyStateConfig(
           silent: "静默级",
           normal: "普通级",
           important: "重要级",
+          critical: "紧急级",
         };
         filterHint += filterHint.includes("中")
           ? `的${levelLabels[filterLevel]}消息`

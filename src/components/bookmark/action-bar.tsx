@@ -18,9 +18,9 @@ interface ActionBarProps {
   predictions: PredictionResult[];
   onClearSelection: () => void;
   onOperationStart?: (operationId: string) => void;
-  onDelete?: (bookmarkIds: string[]) => void;
-  onMove?: (bookmarkIds: string[]) => void;
-  onTag?: (bookmarkIds: string[]) => void;
+  onDelete?: (bookmarkIds: number[]) => void;
+  onMove?: (bookmarkIds: number[]) => void;
+  onTag?: (bookmarkIds: number[]) => void;
 }
 
 export function ActionBar({

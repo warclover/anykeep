@@ -101,7 +101,7 @@ export class MessageFacade {
 
       return {
         success: true,
-        messageId: parseInt(notification.id, 10) || 0,
+        messageId: notification.id,
         level,
         title,
         content: content ?? undefined,
@@ -198,7 +198,7 @@ export class MessageFacade {
       userId,
       type: isAuto ? "classification_auto" : "classification_suggest",
       data: { folderName, confidence, bookmarkId },
-      relatedBookmarkId: bookmarkId,
+      relatedBookmarkId: String(bookmarkId),
     });
   }
 
@@ -229,7 +229,7 @@ export class MessageFacade {
       userId,
       type: "classification_failed",
       data: { bookmarkId, reason },
-      relatedBookmarkId: bookmarkId,
+      relatedBookmarkId: String(bookmarkId),
     });
   }
 

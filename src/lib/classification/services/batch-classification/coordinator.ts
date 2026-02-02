@@ -636,7 +636,7 @@ export class BatchClassificationCoordinator {
       } else if (request.batchId || request.importSessionId) {
         query = query.eq(
           "import_batch_id",
-          request.batchId || request.importSessionId,
+          (request.batchId || request.importSessionId)!,
         );
       }
 

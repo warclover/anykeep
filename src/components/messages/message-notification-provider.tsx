@@ -25,7 +25,7 @@ export interface MessageNotificationProviderProps {
 
 // 兼容旧 Message 类型的接口
 interface LegacyMessage {
-  id: number;
+  id: string;
   user_id: string;
   type: string;
   level: string;
@@ -60,7 +60,7 @@ export function MessageNotificationProvider({
   // Modal 处理器
   const handleShowModal = useCallback((message: Partial<LegacyMessage>) => {
     const fullMessage: LegacyMessage = {
-      id: message.id ?? 0,
+      id: message.id ?? "",
       user_id: "",
       type: message.type ?? "system.announcement",
       level: message.level ?? "important",

@@ -14,10 +14,10 @@ interface SelectionContextType {
   setSelectedBookmarks: (bookmarks: Bookmark[]) => void;
   clearSelection: () => void;
   toggleSelection: (bookmark: Bookmark) => void;
-  isSelected: (bookmarkId: string) => boolean;
+  isSelected: (bookmarkId: number) => boolean;
   selectRange: (
-    startId: string,
-    endId: string,
+    startId: number,
+    endId: number,
     allBookmarks: Bookmark[],
   ) => void;
   selectAll: (bookmarks: Bookmark[]) => void;
@@ -47,14 +47,14 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
   }, []);
 
   const isSelected = useCallback(
-    (bookmarkId: string) => {
+    (bookmarkId: number) => {
       return selectedBookmarks.some((b) => b.id === bookmarkId);
     },
     [selectedBookmarks],
   );
 
   const selectRange = useCallback(
-    (startId: string, endId: string, allBookmarks: Bookmark[]) => {
+    (startId: number, endId: number, allBookmarks: Bookmark[]) => {
       const startIndex = allBookmarks.findIndex((b) => b.id === startId);
       const endIndex = allBookmarks.findIndex((b) => b.id === endId);
 

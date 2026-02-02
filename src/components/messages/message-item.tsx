@@ -50,9 +50,9 @@ import { getVisualStyle } from "@/lib/messages";
 
 export interface MessageItemProps {
   message: Message;
-  onRead?: (id: number) => void;
-  onDelete?: (id: number) => void;
-  onArchive?: (id: number) => void;
+  onRead?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onArchive?: (id: string) => void;
 }
 
 // ============================================

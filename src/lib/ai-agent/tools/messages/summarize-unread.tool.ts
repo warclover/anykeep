@@ -144,6 +144,7 @@ const MESSAGE_LEVEL_LABELS: Record<MessageLevel, string> = {
   silent: "静默通知",
   normal: "普通通知",
   important: "重要通知",
+  critical: "紧急通知",
 };
 
 // ============================================
@@ -234,6 +235,7 @@ export const summarizeUnreadMessagesTool: Tool<
       silent: 0,
       normal: 0,
       important: 0,
+      critical: 0,
     };
     (messages as NotificationQueryRow[]).forEach((msg) => {
       // priority 映射: silent/normal/important/critical -> level
@@ -251,11 +253,12 @@ export const summarizeUnreadMessagesTool: Tool<
         count,
       }))
       .sort((a, b) => {
-        // 重要 > 普通 > 静默
+        // 紧急 > 重要 > 普通 > 静默
         const order: Record<MessageLevel, number> = {
-          important: 0,
-          normal: 1,
-          silent: 2,
+          critical: 0,
+          important: 1,
+          normal: 2,
+          silent: 3,
         };
         return order[a.level] - order[b.level];
       });

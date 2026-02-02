@@ -27,11 +27,11 @@ export interface MessageListProps {
   /** 加载更多回调 */
   onLoadMore?: () => void;
   /** 标记已读回调 */
-  onRead?: (id: number) => Promise<boolean>;
+  onRead?: (id: string) => Promise<boolean>;
   /** 删除消息回调 */
-  onDelete?: (id: number) => Promise<boolean>;
+  onDelete?: (id: string) => Promise<boolean>;
   /** 归档消息回调 */
-  onArchive?: (id: number) => Promise<boolean>;
+  onArchive?: (id: string) => Promise<boolean>;
 }
 
 // ============================================
@@ -49,7 +49,7 @@ export function MessageList({
 }: MessageListProps) {
   // 处理标记已读
   const handleRead = useCallback(
-    (id: number) => {
+    (id: string) => {
       onRead?.(id);
     },
     [onRead],
@@ -57,7 +57,7 @@ export function MessageList({
 
   // 处理删除
   const handleDelete = useCallback(
-    (id: number) => {
+    (id: string) => {
       onDelete?.(id);
     },
     [onDelete],
@@ -65,7 +65,7 @@ export function MessageList({
 
   // 处理归档
   const handleArchive = useCallback(
-    (id: number) => {
+    (id: string) => {
       onArchive?.(id);
     },
     [onArchive],

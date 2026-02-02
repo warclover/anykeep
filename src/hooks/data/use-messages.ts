@@ -136,7 +136,7 @@ export function useMessages(
       messages: group.notifications.map((n) => ({
         id: n.id,
         user_id: n.userId,
-        type: n.typeCode,
+        type: n.typeCode as BaseMessageType,
         level: n.priority as MessageLevel,
         title: n.title,
         content: n.body ?? null,

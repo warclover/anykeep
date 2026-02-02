@@ -34,7 +34,7 @@ export interface MessageModalProps {
   /** 操作按钮点击回调 */
   onAction?: () => void;
   /** 标记已读回调 */
-  onMarkAsRead?: (messageId: number) => Promise<boolean>;
+  onMarkAsRead?: (messageId: string) => Promise<boolean>;
 }
 
 // ============================================

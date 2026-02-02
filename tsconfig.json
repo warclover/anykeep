@@ -41,6 +41,9 @@
     "backups",
     "已完成",
     "src/lib/classification/_deprecated_v3/**",
-    "src/lib/classification/strategies/classic/**"
+    "src/lib/classification/strategies/classic/**",
+    "src/lib/fluid-agent/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }
