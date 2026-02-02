@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import type { ToggleBookmarkStarredParams } from "@/types/rpc-manual";
 import type { PaginatedResult } from "./base.repository";
 import { BaseRepository } from "./base.repository";
 import { z } from "zod";
@@ -38,6 +39,21 @@ export interface BookmarkForClassification {
   embedding: number[] | null;
   folderId: number | null;
   createdAt: Date;
+}
+
+/**
+ * 分类查询返回的部分字段类型
+ * 用于避免 `as unknown as BookmarkRow` 断言
+ */
+interface BookmarkClassificationRow {
+  id: number;
+  title: string;
+  url: string;
+  ai_summary: string | null;
+  ai_tags: string[] | null;
+  embedding: string | number[] | null;
+  folder_id: number | null;
+  created_at: string | null;
 }
 
 // Type aliases for convenience
@@ -332,11 +348,11 @@ export class BookmarkRepository extends BaseRepository<
     // 尝试使用 RPC 原子操作
     try {
       const { data, error } = await this.supabase.rpc(
-        "toggle_bookmark_starred" as unknown as keyof Database["public"]["Functions"],
+        "toggle_bookmark_starred" as keyof Database["public"]["Functions"],
         {
           p_bookmark_id: id,
           p_user_id: this.userId,
-        },
+        } as ToggleBookmarkStarredParams,
       );
 
       if (error) {
@@ -353,7 +369,7 @@ export class BookmarkRepository extends BaseRepository<
 
       // RPC 返回数组，取第一个元素；如果返回布尔值则使用回退方法
       if (Array.isArray(data)) {
-        return data[0] as unknown as BookmarkRow;
+        return data[0] as BookmarkRow;
       } else if (typeof data === "object" && data !== null) {
         return data as BookmarkRow;
       } else {
@@ -730,7 +746,7 @@ export class BookmarkRepository extends BaseRepository<
     }
 
     return (data || []).map((row) =>
-      this.mapToBookmarkForClassification(row as unknown as BookmarkRow),
+      this.mapToBookmarkForClassification(row as BookmarkClassificationRow),
     );
   }
 
@@ -759,7 +775,7 @@ export class BookmarkRepository extends BaseRepository<
     }
 
     return (data || []).map((row) =>
-      this.mapToBookmarkForClassification(row as unknown as BookmarkRow),
+      this.mapToBookmarkForClassification(row as BookmarkClassificationRow),
     );
   }
 
@@ -832,15 +848,19 @@ export class BookmarkRepository extends BaseRepository<
    * Map database row to BookmarkForClassification
    */
   private mapToBookmarkForClassification(
-    row: BookmarkRow,
+    row: BookmarkClassificationRow,
   ): BookmarkForClassification {
     // 解析 embedding 字符串为数组
     let embeddingArray: number[] | null = null;
     if (row.embedding) {
-      try {
-        embeddingArray = JSON.parse(row.embedding);
-      } catch {
-        embeddingArray = null;
+      if (typeof row.embedding === "string") {
+        try {
+          embeddingArray = JSON.parse(row.embedding);
+        } catch {
+          embeddingArray = null;
+        }
+      } else if (Array.isArray(row.embedding)) {
+        embeddingArray = row.embedding;
       }
     }
 

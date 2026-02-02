@@ -110,9 +110,27 @@ export type InboxDigestOutput = z.infer<typeof InboxDigestOutputSchema>;
 // 内部类型
 // ============================================
 
-/** 消息记录（数据库行） */
+/**
+ * 通知记录（数据库行）
+ * 映射到 user_notifications 表
+ */
 export interface MessageRow {
-  id: number;
+  id: string;
+  type_code: string; // 映射字段: type_code -> type
+  priority: string; // 映射字段: priority -> level
+  title: string;
+  body: string | null; // 映射字段: body -> content
+  status: string | null;
+  created_at: string | null;
+  read_at: string | null;
+  action_url: string | null;
+}
+
+/**
+ * 兼容层：提供与旧 Message 接口一致的访问方式
+ */
+export function mapNotificationToMessage(row: MessageRow): {
+  id: string;
   type: string;
   level: string;
   title: string;
@@ -121,6 +139,18 @@ export interface MessageRow {
   created_at: string;
   read_at: string | null;
   action_url: string | null;
+} {
+  return {
+    id: row.id,
+    type: row.type_code,
+    level: row.priority === "critical" ? "important" : row.priority,
+    title: row.title,
+    content: row.body,
+    status: row.status ?? "unread",
+    created_at: row.created_at ?? new Date().toISOString(),
+    read_at: row.read_at,
+    action_url: row.action_url,
+  };
 }
 
 /** 消息类型标签映射 */

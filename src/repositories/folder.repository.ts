@@ -8,6 +8,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import type {
+  GetFolderDescendantIdsParams,
+  CascadeDeleteFolderParams,
+  CascadeDeleteFolderReturn,
+  FolderWithCountRow,
+} from "@/types/rpc-manual";
 import { BaseRepository } from "./base.repository";
 
 // Type aliases
@@ -86,9 +92,8 @@ export class FolderRepository extends BaseRepository<
    */
   async findAllWithCounts(): Promise<FolderWithCount[]> {
     try {
-      // 尝试使用 RPC 函数（性能更优）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
+      // 使用类型安全的 RPC 调用
+      const { data, error } = await this.supabase.rpc(
         "get_folders_with_counts",
         {
           p_user_id: this.userId,
@@ -96,7 +101,10 @@ export class FolderRepository extends BaseRepository<
       );
 
       if (!error && data) {
-        return data as FolderWithCount[];
+        return (data as FolderWithCountRow[]).map((row) => ({
+          ...row,
+          bookmarkCount: row.bookmarkCount,
+        })) as FolderWithCount[];
       }
 
       // RPC 不可用，回退到手动计算
@@ -285,13 +293,13 @@ export class FolderRepository extends BaseRepository<
    */
   async getAllDescendantIds(folderId: number): Promise<number[]> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
-        "get_folder_descendant_ids",
+      // 使用类型安全的 RPC 调用
+      const { data, error } = await this.supabase.rpc(
+        "get_folder_descendant_ids" as keyof Database["public"]["Functions"],
         {
           p_folder_id: folderId,
           p_user_id: this.userId,
-        },
+        } as GetFolderDescendantIdsParams,
       );
 
       if (error) {
@@ -340,13 +348,13 @@ export class FolderRepository extends BaseRepository<
     id: number,
   ): Promise<{ deletedFolders: number; movedBookmarks: number }> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
-        "cascade_delete_folder",
+      // 使用类型安全的 RPC 调用
+      const { data, error } = await this.supabase.rpc(
+        "cascade_delete_folder" as keyof Database["public"]["Functions"],
         {
           p_folder_id: id,
           p_user_id: this.userId,
-        },
+        } as CascadeDeleteFolderParams,
       );
 
       if (error) {
@@ -358,10 +366,9 @@ export class FolderRepository extends BaseRepository<
         return { deletedFolders: 0, movedBookmarks: 0 };
       }
 
-      const result = (Array.isArray(data) ? data[0] : data) as {
-        deleted_folder_count?: number;
-        moved_bookmark_count?: number;
-      };
+      const result = (
+        Array.isArray(data) ? data[0] : data
+      ) as CascadeDeleteFolderReturn;
       return {
         deletedFolders: result.deleted_folder_count || 0,
         movedBookmarks: result.moved_bookmark_count || 0,

@@ -9,7 +9,11 @@
  */
 
 import { logger } from "@/lib/logger";
-import type { ClassificationContext, ClassifierResult } from "../types";
+import type {
+  ClassificationContext,
+  ClassifierResult,
+  IntentType,
+} from "../types";
 import type { IntentClassifier } from "./classifier-interface";
 
 // ============================================
@@ -72,7 +76,7 @@ export class SemanticClassifier implements IntentClassifier {
       const result = await matcher.match(message, context);
 
       return {
-        intent: result.intent,
+        intent: result.intent as IntentType,
         subType: result.subType,
         confidence: result.confidence,
         entities: [],
@@ -95,15 +99,17 @@ export class SemanticClassifier implements IntentClassifier {
       const semanticModule = await import(
         "@/lib/ai-skills/router/semantic-intent-matcher"
       );
-      if (semanticModule.semanticIntentMatcher) {
+      if (semanticModule.SemanticIntentMatcher) {
+        const matcher = new semanticModule.SemanticIntentMatcher();
         return {
           match: async (message: string, _context: ClassificationContext) => {
-            const result =
-              await semanticModule.semanticIntentMatcher.match(message);
+            const results = await matcher.match(message);
+            // match() 返回 SemanticMatch[] 数组，取第一个最佳匹配
+            const bestMatch = results?.[0];
             return {
-              intent: result?.type ?? "chitchat",
-              subType: result?.subType,
-              confidence: result?.confidence ?? 0.3,
+              intent: bestMatch?.type ?? "chitchat",
+              subType: bestMatch?.subType,
+              confidence: bestMatch?.similarity ?? 0.3,
               matchedSkill: undefined,
             };
           },

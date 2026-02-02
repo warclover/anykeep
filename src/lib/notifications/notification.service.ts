@@ -140,16 +140,16 @@ export const NotificationService = {
         entity_id: payload.entityId,
         action_url: payload.actionUrl,
         action_label: payload.actionLabel,
-        metadata: payload.metadata ?? {},
+        metadata: (payload.metadata ?? {}) as Json,
       })
       .select("*, notification_types(*)")
       .single();
 
     if (error) {
-      logger.error("[NotificationService] send error", {
-        error,
-        typeCode: payload.type,
-      });
+      logger.error(
+        { error, typeCode: payload.type },
+        "[NotificationService] send error",
+      );
       throw wrapDatabaseError(error, "发送通知");
     }
 
@@ -196,7 +196,7 @@ export const NotificationService = {
         entity_id: p.entityId,
         action_url: p.actionUrl,
         action_label: p.actionLabel,
-        metadata: p.metadata ?? {},
+        metadata: (p.metadata ?? {}) as Json,
       };
     });
 
@@ -206,10 +206,10 @@ export const NotificationService = {
       .select("*, notification_types(*)");
 
     if (error) {
-      logger.error("[NotificationService] sendBatch error", {
-        error,
-        count: payloads.length,
-      });
+      logger.error(
+        { error, count: payloads.length },
+        "[NotificationService] sendBatch error",
+      );
       throw wrapDatabaseError(error, "批量发送通知");
     }
 

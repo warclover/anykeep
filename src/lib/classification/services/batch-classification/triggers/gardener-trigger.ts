@@ -72,9 +72,7 @@ export class GardenerTriggerService {
   /**
    * 检查是否应该触发批量分类建议
    */
-  async shouldTriggerBatchClassification(
-    userId: string,
-  ): Promise<{
+  async shouldTriggerBatchClassification(userId: string): Promise<{
     shouldTrigger: boolean;
     reason: string;
     bookmarkCount: number;
@@ -164,11 +162,11 @@ export class GardenerTriggerService {
   async getPendingSuggestions(userId: string): Promise<GardenerSuggestion[]> {
     // 从通知系统获取待处理的批量分类建议
     const { data } = await this.supabase
-      .from("notifications")
+      .from("user_notifications")
       .select("*")
       .eq("user_id", userId)
-      .eq("type", "batch_classification_suggestion")
-      .eq("is_read", false)
+      .eq("type_code", "batch_classification_suggestion")
+      .is("read_at", null)
       .order("created_at", { ascending: false });
 
     if (!data) return [];
@@ -177,7 +175,7 @@ export class GardenerTriggerService {
       id: n.id,
       type: "batch_classification" as const,
       title: n.title || "智能整理建议",
-      description: n.message || "",
+      description: n.body || "",
       bookmarkIds:
         (n.metadata as { bookmarkIds?: number[] })?.bookmarkIds || [],
       confidence: 0.8,
@@ -196,8 +194,8 @@ export class GardenerTriggerService {
   ): Promise<{ transactionId: string }> {
     // 标记建议为已接受
     await this.supabase
-      .from("notifications")
-      .update({ is_read: true })
+      .from("user_notifications")
+      .update({ read_at: new Date().toISOString(), status: "read" })
       .eq("id", suggestionId)
       .eq("user_id", userId);
 
@@ -232,8 +230,8 @@ export class GardenerTriggerService {
    */
   async dismissSuggestion(userId: string, suggestionId: string): Promise<void> {
     await this.supabase
-      .from("notifications")
-      .update({ is_read: true })
+      .from("user_notifications")
+      .update({ read_at: new Date().toISOString(), status: "archived" })
       .eq("id", suggestionId)
       .eq("user_id", userId);
   }
@@ -247,10 +245,10 @@ export class GardenerTriggerService {
     today.setHours(0, 0, 0, 0);
 
     const { count } = await this.supabase
-      .from("notifications")
+      .from("user_notifications")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
-      .eq("type", "batch_classification_suggestion")
+      .eq("type_code", "batch_classification_suggestion")
       .gte("created_at", today.toISOString());
 
     return count || 0;
@@ -271,11 +269,11 @@ export class GardenerTriggerService {
     userId: string,
   ): Promise<boolean> {
     const { count } = await this.supabase
-      .from("notifications")
+      .from("user_notifications")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
-      .eq("type", "batch_classification_suggestion")
-      .eq("is_read", false);
+      .eq("type_code", "batch_classification_suggestion")
+      .is("read_at", null);
 
     return (count || 0) > 0;
   }
@@ -284,18 +282,20 @@ export class GardenerTriggerService {
     userId: string,
     suggestion: GardenerSuggestion,
   ): Promise<void> {
-    await this.supabase.from("notifications").insert({
+    await this.supabase.from("user_notifications").insert({
       id: suggestion.id,
       user_id: userId,
-      type: "batch_classification_suggestion",
+      type_code: "batch_classification_suggestion",
       title: suggestion.title,
-      message: suggestion.description,
+      body: suggestion.description,
       metadata: {
         bookmarkIds: suggestion.bookmarkIds,
         confidence: suggestion.confidence,
         expiresAt: suggestion.expiresAt.toISOString(),
       },
-      is_read: false,
+      status: "unread",
+      priority: "normal",
+      channels: ["in_app"],
     });
   }
 }

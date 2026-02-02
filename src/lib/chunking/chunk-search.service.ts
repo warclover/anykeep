@@ -10,9 +10,11 @@
  * @since 2025-12-28
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { supabaseEnv } from "@/lib/env";
+import type { Database } from "@/types/supabase";
 import type { ChunkType } from "./types";
 
 /**
@@ -26,22 +28,6 @@ interface ChunkSearchRow {
   chunk_index: number;
   parent_content: string | null;
   similarity: number;
-}
-
-/**
- * 数据库返回的切片记录行结构
- */
-interface ChunkRow {
-  id: string;
-  bookmark_id: number;
-  content: string;
-  chunk_type: string;
-  chunk_index: number;
-  content_hash?: string;
-  token_count?: number;
-  start_offset?: number;
-  end_offset?: number;
-  parent_index?: number | null;
 }
 
 /**
@@ -90,12 +76,12 @@ const DEFAULT_SEARCH_OPTIONS: Required<ChunkSearchOptions> = {
  * 需要先执行数据库迁移 20251228000006_add_bookmark_chunks.sql
  */
 export class ChunkSearchService {
-  private supabase: ReturnType<typeof createClient>;
+  private supabase: SupabaseClient<Database>;
 
-  constructor(supabaseClient?: ReturnType<typeof createClient>) {
+  constructor(supabaseClient?: SupabaseClient<Database>) {
     this.supabase =
       supabaseClient ||
-      createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+      createClient<Database>(supabaseEnv.url, supabaseEnv.serviceRoleKey);
   }
 
   /**
@@ -128,11 +114,10 @@ export class ChunkSearchService {
     try {
       // 调用数据库函数
       // C1: 直接传递数组，Supabase 会自动处理 VECTOR 类型转换
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
+      const { data, error } = await this.supabase.rpc(
         "search_bookmark_chunks",
         {
-          query_embedding: queryEmbedding,
+          query_embedding: JSON.stringify(queryEmbedding),
           match_threshold: opts.matchThreshold,
           match_count: opts.matchCount,
           p_user_id: userId,
@@ -193,8 +178,7 @@ export class ChunkSearchService {
     bookmarkId: number,
   ): Promise<ChunkSearchResultWithContext[]> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase as any)
+      const { data, error } = await this.supabase
         .from("bookmark_chunks")
         .select("*")
         .eq("bookmark_id", bookmarkId)
@@ -208,7 +192,7 @@ export class ChunkSearchService {
         throw error;
       }
 
-      return (data || []).map((row: ChunkRow) => ({
+      return (data || []).map((row) => ({
         chunkId: row.id,
         bookmarkId: row.bookmark_id,
         content: row.content,
@@ -266,8 +250,7 @@ export class ChunkSearchService {
           : null,
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
+      const { data, error } = await this.supabase.rpc(
         "save_bookmark_chunks_atomic",
         {
           p_bookmark_id: bookmarkId,
@@ -316,8 +299,7 @@ export class ChunkSearchService {
    */
   async deleteChunks(bookmarkId: number): Promise<void> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (this.supabase as any)
+      const { error } = await this.supabase
         .from("bookmark_chunks")
         .delete()
         .eq("bookmark_id", bookmarkId);
@@ -345,8 +327,7 @@ export class ChunkSearchService {
    */
   async chunkExists(contentHash: string, bookmarkId: number): Promise<boolean> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase as any)
+      const { data, error } = await this.supabase
         .from("bookmark_chunks")
         .select("id")
         .eq("bookmark_id", bookmarkId)
@@ -375,7 +356,7 @@ let chunkSearchInstance: ChunkSearchService | null = null;
  * 获取 ChunkSearchService 单例
  */
 export function getChunkSearchService(
-  supabaseClient?: ReturnType<typeof createClient>,
+  supabaseClient?: SupabaseClient<Database>,
 ): ChunkSearchService {
   if (!chunkSearchInstance) {
     chunkSearchInstance = new ChunkSearchService(supabaseClient);

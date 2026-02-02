@@ -13,6 +13,7 @@ import type {
   ClassificationContext,
   ClassifierResult,
   ExtractedEntity,
+  IntentType,
 } from "../types";
 import type { IntentClassifier } from "./classifier-interface";
 
@@ -104,7 +105,7 @@ export class RuleBasedClassifier implements IntentClassifier {
       const result = await this.analyzer.analyze(message, context);
 
       return {
-        intent: result.intent,
+        intent: result.intent as IntentType,
         subType: result.subType,
         confidence: result.confidence,
         entities: result.entities,

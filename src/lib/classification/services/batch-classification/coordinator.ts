@@ -10,7 +10,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database, Json } from "@/types/supabase";
 import type {
   BookmarkWithEmbedding,
   ClassificationProgress,
@@ -157,16 +157,20 @@ export class BatchClassificationCoordinator {
       if (!transaction?.batch_id) return;
 
       // 删除已创建的聚类成员
-      await this.supabase
-        .from("import_cluster_members")
-        .delete()
-        .in(
-          "cluster_id",
-          this.supabase
-            .from("import_clusters")
-            .select("id")
-            .eq("import_batch_id", transaction.batch_id),
-        );
+      const { data: clusterIds } = await this.supabase
+        .from("import_clusters")
+        .select("id")
+        .eq("import_batch_id", transaction.batch_id);
+
+      if (clusterIds && clusterIds.length > 0) {
+        await this.supabase
+          .from("import_cluster_members")
+          .delete()
+          .in(
+            "cluster_id",
+            clusterIds.map((c) => c.id),
+          );
+      }
 
       // 删除已创建的聚类
       await this.supabase
@@ -197,7 +201,7 @@ export class BatchClassificationCoordinator {
       progress: data.progress || 0,
       estimatedRemainingSeconds: data.estimated_remaining_seconds || 0,
       phaseDetails:
-        data.phase_details as ClassificationProgress["phaseDetails"],
+        data.phase_details as unknown as ClassificationProgress["phaseDetails"],
       error: data.error_message
         ? {
             message: data.error_message,
@@ -593,7 +597,7 @@ export class BatchClassificationCoordinator {
           status: "ready",
           total_bookmarks: bookmarks.length,
           total_clusters: clusteringResult.clusters.length,
-          structure_analysis: structureAnalysis,
+          structure_analysis: structureAnalysis as unknown as Json,
         })
         .eq("id", transactionId);
     } catch (error) {
@@ -773,7 +777,7 @@ export class BatchClassificationCoordinator {
         import_batch_id: transaction.batch_id,
         user_id: userId,
         cluster_index: cluster.index,
-        centroid: cluster.centroid,
+        centroid: JSON.stringify(cluster.centroid),
         cohesion: cluster.cohesion,
         member_count: cluster.memberIds.length,
         suggested_name: nameResult.name,
@@ -866,7 +870,7 @@ export class BatchClassificationCoordinator {
         import_batch_id: transaction?.batch_id,
         user_id: userId,
         cluster_index: cluster.index,
-        centroid: cluster.centroid,
+        centroid: JSON.stringify(cluster.centroid),
         cohesion: cluster.cohesion,
         member_count: cluster.memberIds.length,
         suggested_name: nameResult.name,

@@ -8,12 +8,13 @@
  */
 
 import type {
-  ExecutionMode,
   IntentClassification,
   ComplexityEvaluation,
   ModeSelection,
   ComplexityLevel,
 } from "../types";
+import { SKILL_MAPPINGS_BY_KEY } from "@/lib/ai-skills/config/skill-mappings";
+import type { SkillMapping } from "@/lib/ai-skills/config/types";
 
 // ============================================
 // 配置
@@ -32,24 +33,8 @@ export interface ModeSelectorConfig {
 }
 
 // ============================================
-// Skill 映射
+// Skill 映射注册表
 // ============================================
-
-/**
- * 意图到 Skill 的映射
- */
-export interface SkillMapping {
-  /** Skill ID */
-  skillId: string;
-  /** 映射名称 */
-  name: string;
-  /** 执行模式 */
-  mode: ExecutionMode;
-  /** 最低复杂度要求 */
-  minComplexity?: ComplexityLevel;
-  /** 是否启用 */
-  enabled: boolean;
-}
 
 /**
  * Skill 映射注册表
@@ -89,6 +74,7 @@ export class SkillMappingRegistry {
     const defaults: Record<string, SkillMapping> = {
       // 学习类
       "learn:review": {
+        key: "learn:review",
         skillId: "knowledge_review",
         name: "知识回顾",
         mode: "orchestration",
@@ -96,6 +82,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "learn:active_recall_start": {
+        key: "learn:active_recall_start",
         skillId: "active_recall",
         name: "主动复习",
         mode: "orchestration",
@@ -104,6 +91,7 @@ export class SkillMappingRegistry {
       },
       // 整理类
       "organize:cleanup": {
+        key: "organize:cleanup",
         skillId: "organize_cleanup",
         name: "智能整理",
         mode: "orchestration",
@@ -111,6 +99,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "organize:dedupe": {
+        key: "organize:dedupe",
         skillId: "dedupe",
         name: "去重",
         mode: "orchestration",
@@ -119,6 +108,7 @@ export class SkillMappingRegistry {
       },
       // 分析类
       "analyze:report": {
+        key: "analyze:report",
         skillId: "report_generator",
         name: "报告生成",
         mode: "orchestration",
@@ -126,6 +116,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "analyze:insight": {
+        key: "analyze:insight",
         skillId: "insight_analyzer",
         name: "洞察分析",
         mode: "orchestration",
@@ -134,6 +125,7 @@ export class SkillMappingRegistry {
       },
       // 创建类
       "create:synthesis": {
+        key: "create:synthesis",
         skillId: "synthesis",
         name: "主题合成",
         mode: "orchestration",
@@ -141,6 +133,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "create:digest": {
+        key: "create:digest",
         skillId: "content_digest",
         name: "内容摘要",
         mode: "orchestration",
@@ -148,6 +141,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "create:tts": {
+        key: "create:tts",
         skillId: "tts_reader",
         name: "语音朗读",
         mode: "atomic",
@@ -155,6 +149,7 @@ export class SkillMappingRegistry {
       },
       // 查询类
       "query:search": {
+        key: "query:search",
         skillId: "knowledge_search",
         name: "知识搜索",
         mode: "atomic",
@@ -162,6 +157,7 @@ export class SkillMappingRegistry {
       },
       // 通配符映射
       "analyze:*": {
+        key: "analyze:*",
         skillId: "general_analyzer",
         name: "通用分析",
         mode: "orchestration",
@@ -169,6 +165,7 @@ export class SkillMappingRegistry {
         enabled: true,
       },
       "create:*": {
+        key: "create:*",
         skillId: "general_creator",
         name: "通用创建",
         mode: "orchestration",
@@ -353,14 +350,16 @@ export class ModeSelector {
   ): SkillMapping | null {
     // 精确匹配
     const exactKey = `${intentType}:${subType ?? "general"}`;
-    if (SKILL_MAPPINGS[exactKey]) {
-      return SKILL_MAPPINGS[exactKey];
+    const exactMapping = SKILL_MAPPINGS_BY_KEY.get(exactKey);
+    if (exactMapping) {
+      return exactMapping;
     }
 
     // 通配符匹配
     const wildcardKey = `${intentType}:*`;
-    if (SKILL_MAPPINGS[wildcardKey]) {
-      return SKILL_MAPPINGS[wildcardKey];
+    const wildcardMapping = SKILL_MAPPINGS_BY_KEY.get(wildcardKey);
+    if (wildcardMapping) {
+      return wildcardMapping;
     }
 
     return null;

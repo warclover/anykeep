@@ -11,17 +11,21 @@ import { z } from "zod";
 import type { Tool, ToolContext, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import type { MessageType, MessageLevel, Message } from "@/lib/messages/types";
+import type { MessageType, MessageLevel } from "@/lib/messages/types";
 
 // ============================================
 // 查询结果类型
 // ============================================
 
-/** Supabase 查询返回的消息记录类型 */
-type MessageQueryRow = Pick<
-  Message,
-  "id" | "type" | "level" | "title" | "content" | "created_at"
->;
+/** Supabase 查询返回的通知记录类型（映射到消息系统） */
+interface NotificationQueryRow {
+  id: string;
+  type_code: string;
+  priority: string;
+  title: string;
+  body: string | null;
+  created_at: string | null;
+}
 
 // ============================================
 // 参数定义
@@ -225,16 +229,17 @@ export const summarizeUnreadMessagesTool: Tool<
       };
     }
 
-    // 按级别统计
+    // 按级别统计 (priority 映射到 level)
     const levelCounts: Record<MessageLevel, number> = {
       silent: 0,
       normal: 0,
       important: 0,
     };
-    (messages as MessageQueryRow[]).forEach((msg) => {
-      const level = msg.level;
+    (messages as NotificationQueryRow[]).forEach((msg) => {
+      // priority 映射: silent/normal/important/critical -> level
+      const level = msg.priority === "critical" ? "important" : msg.priority;
       if (level in levelCounts) {
-        levelCounts[level]++;
+        levelCounts[level as MessageLevel]++;
       }
     });
 
@@ -255,13 +260,13 @@ export const summarizeUnreadMessagesTool: Tool<
         return order[a.level] - order[b.level];
       });
 
-    // 按类型统计
+    // 按类型统计 (type_code 映射到 type)
     const typeGroups: Record<
       string,
-      { count: number; latestMsg: MessageQueryRow }
+      { count: number; latestMsg: NotificationQueryRow }
     > = {};
-    (messages as MessageQueryRow[]).forEach((msg) => {
-      const type = msg.type as string;
+    (messages as NotificationQueryRow[]).forEach((msg) => {
+      const type = msg.type_code;
       if (!typeGroups[type]) {
         typeGroups[type] = { count: 0, latestMsg: msg };
       }
@@ -274,19 +279,21 @@ export const summarizeUnreadMessagesTool: Tool<
         typeLabel: MESSAGE_TYPE_LABELS[type] ?? type,
         count,
         latestTitle: latestMsg.title,
-        latestAt: latestMsg.created_at,
+        latestAt: latestMsg.created_at ?? undefined,
       }))
       .sort((a, b) => b.count - a.count);
 
     // 获取重要消息（前 5 条）
-    const importantMessages = (messages as MessageQueryRow[])
-      .filter((msg) => msg.level === "important")
+    const importantMessages = (messages as NotificationQueryRow[])
+      .filter(
+        (msg) => msg.priority === "important" || msg.priority === "critical",
+      )
       .slice(0, 5)
       .map((msg) => ({
-        id: msg.id,
+        id: msg.id as unknown as number,
         title: msg.title,
-        type: msg.type,
-        createdAt: msg.created_at,
+        type: msg.type_code as MessageType,
+        createdAt: msg.created_at ?? "",
       }));
 
     // 生成文字摘要

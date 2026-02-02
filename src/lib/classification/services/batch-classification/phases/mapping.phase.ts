@@ -94,12 +94,12 @@ export class MappingPhase {
    */
   private async getFolderProfiles(userId: string): Promise<FolderProfile[]> {
     const { data, error } = await this.supabase
-      .from("folder_profiles_v5")
+      .from("folder_profiles")
       .select(
         `
         folder_id,
         centroid_vector,
-        cohesion,
+        internal_similarity,
         bookmark_count,
         folders!inner (
           id,
@@ -121,9 +121,9 @@ export class MappingPhase {
       .filter((p) => p.centroid_vector && p.folders)
       .map((p) => ({
         folderId: p.folder_id,
-        folderName: (p.folders as { name: string }).name,
-        centroid: p.centroid_vector as number[],
-        cohesion: p.cohesion || 0,
+        folderName: (p.folders as unknown as { name: string }).name,
+        centroid: p.centroid_vector as unknown as number[],
+        cohesion: p.internal_similarity || 0,
         bookmarkCount: p.bookmark_count || 0,
       }));
   }

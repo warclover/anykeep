@@ -12,7 +12,7 @@
  * @since 2025-12-11
  */
 
-import { MessageService } from "./message-service";
+import { MessageFacade as MessageService } from "./message-facade";
 import type { MessageResult } from "./types";
 import type { TrustMode } from "@/types/trust-mode";
 import type {

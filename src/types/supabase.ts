@@ -724,3 +724,185 @@ export interface RuleTelemetryRow {
   metadata: Json | null;
   created_at: string;
 }
+
+// ============================================
+// 扩展 Database 类型（手动补充缺失的表）
+// ============================================
+
+/**
+ * Messages 表类型定义
+ * @see supabase/migrations/20251208000001_create_messages_table.sql
+ */
+export interface MessagesTable {
+  Row: {
+    id: number;
+    user_id: string;
+    type: string;
+    level: string;
+    title: string;
+    content: string | null;
+    related_bookmark_id: number | null;
+    related_folder_id: number | null;
+    related_import_id: number | null;
+    action_url: string | null;
+    action_label: string | null;
+    metadata: Json | null;
+    status: string;
+    created_at: string;
+    read_at: string | null;
+    priority: number;
+    expires_at: string | null;
+  };
+  Insert: {
+    id?: number;
+    user_id: string;
+    type: string;
+    level?: string;
+    title: string;
+    content?: string | null;
+    related_bookmark_id?: number | null;
+    related_folder_id?: number | null;
+    related_import_id?: number | null;
+    action_url?: string | null;
+    action_label?: string | null;
+    metadata?: Json | null;
+    status?: string;
+    created_at?: string;
+    read_at?: string | null;
+    priority?: number;
+    expires_at?: string | null;
+  };
+  Update: {
+    id?: number;
+    user_id?: string;
+    type?: string;
+    level?: string;
+    title?: string;
+    content?: string | null;
+    related_bookmark_id?: number | null;
+    related_folder_id?: number | null;
+    related_import_id?: number | null;
+    action_url?: string | null;
+    action_label?: string | null;
+    metadata?: Json | null;
+    status?: string;
+    created_at?: string;
+    read_at?: string | null;
+    priority?: number;
+    expires_at?: string | null;
+  };
+  Relationships: [];
+}
+
+/**
+ * Notification Preferences 表类型定义
+ * @see supabase/migrations/20251208000001_create_messages_table.sql
+ */
+export interface NotificationPreferencesTable {
+  Row: {
+    id: number;
+    user_id: string;
+    silent_toast: boolean;
+    normal_toast: boolean;
+    important_toast: boolean;
+    web_push_enabled: boolean;
+    web_push_subscription: Json | null;
+    do_not_disturb: boolean;
+    dnd_start_time: string | null;
+    dnd_end_time: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  Insert: {
+    id?: number;
+    user_id: string;
+    silent_toast?: boolean;
+    normal_toast?: boolean;
+    important_toast?: boolean;
+    web_push_enabled?: boolean;
+    web_push_subscription?: Json | null;
+    do_not_disturb?: boolean;
+    dnd_start_time?: string | null;
+    dnd_end_time?: string | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Update: {
+    id?: number;
+    user_id?: string;
+    silent_toast?: boolean;
+    normal_toast?: boolean;
+    important_toast?: boolean;
+    web_push_enabled?: boolean;
+    web_push_subscription?: Json | null;
+    do_not_disturb?: boolean;
+    dnd_start_time?: string | null;
+    dnd_end_time?: string | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Relationships: [];
+}
+
+/**
+ * Folder Profiles V5 表类型定义
+ */
+export interface FolderProfilesV5Table {
+  Row: {
+    id: number;
+    user_id: string;
+    folder_id: number;
+    centroid_vector: string | null;
+    cohesion: number | null;
+    bookmark_count: number | null;
+    keywords: string[] | null;
+    topics: string[] | null;
+    created_at: string;
+    updated_at: string;
+  };
+  Insert: {
+    id?: number;
+    user_id: string;
+    folder_id: number;
+    centroid_vector?: string | null;
+    cohesion?: number | null;
+    bookmark_count?: number | null;
+    keywords?: string[] | null;
+    topics?: string[] | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Update: {
+    id?: number;
+    user_id?: string;
+    folder_id?: number;
+    centroid_vector?: string | null;
+    cohesion?: number | null;
+    bookmark_count?: number | null;
+    keywords?: string[] | null;
+    topics?: string[] | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Relationships: [];
+}
+
+/**
+ * 扩展的 Database 类型
+ * 包含自动生成类型中缺失的表
+ */
+export interface ExtendedDatabase extends Database {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      messages: MessagesTable;
+      notification_preferences: NotificationPreferencesTable;
+      folder_profiles_v5: FolderProfilesV5Table;
+    };
+  };
+}
+
+/**
+ * 扩展的类型安全 Supabase 客户端
+ * 支持 messages、notification_preferences、folder_profiles_v5 表
+ */
+export type ExtendedSupabaseClient = SupabaseClient<ExtendedDatabase>;

@@ -17,26 +17,24 @@ import {
   type MessageLevel,
   type MessageStatus,
   type DateGroup,
-  type Message,
 } from "@/lib/messages/types";
 
 // ============================================
 // 查询结果类型
 // ============================================
 
-/** Supabase 查询返回的消息记录类型 */
-type MessageQueryRow = Pick<
-  Message,
-  | "id"
-  | "type"
-  | "level"
-  | "title"
-  | "content"
-  | "status"
-  | "created_at"
-  | "read_at"
-  | "action_url"
->;
+/** Supabase 查询返回的通知记录类型（映射到消息系统） */
+interface NotificationQueryRow {
+  id: string;
+  type_code: string;
+  priority: string;
+  title: string;
+  body: string | null;
+  status: string;
+  created_at: string | null;
+  read_at: string | null;
+  action_url: string | null;
+}
 
 // ============================================
 // 参数定义
@@ -198,21 +196,25 @@ export const listMessagesTool: Tool<ListMessagesParams, ListMessagesResult> = {
       .eq("user_id", context.userId)
       .eq("status", "unread");
 
-    // 转换结果
-    const messages: MessageItem[] = ((data || []) as MessageQueryRow[]).map(
-      (item) => ({
-        id: item.id,
-        type: item.type,
-        level: item.level,
-        title: item.title,
-        content: item.content,
-        status: item.status,
-        dateGroup: calculateDateGroup(item.created_at),
-        createdAt: item.created_at,
-        readAt: item.read_at,
-        actionUrl: item.action_url,
-      }),
-    );
+    // 转换结果 (user_notifications 字段映射�� Message 接口)
+    const messages: MessageItem[] = (
+      (data || []) as NotificationQueryRow[]
+    ).map((item) => ({
+      id: item.id as unknown as number,
+      type: item.type_code as MessageType,
+      level: (item.priority === "critical"
+        ? "important"
+        : item.priority) as MessageLevel,
+      title: item.title,
+      content: item.body,
+      status: item.status as MessageStatus,
+      dateGroup: calculateDateGroup(
+        item.created_at ?? new Date().toISOString(),
+      ),
+      createdAt: item.created_at ?? "",
+      readAt: item.read_at ?? null,
+      actionUrl: item.action_url ?? null,
+    }));
 
     const total = count ?? 0;
     const hasMore = offset + messages.length < total;

@@ -15,6 +15,10 @@ import type {
   NotificationStatus,
   NotificationPriority,
 } from "@/lib/notifications";
+import type {
+  DateGroup,
+  MessageType as BaseMessageType,
+} from "@/lib/messages/types";
 
 // ============================================
 // 类型定义（保持向后兼容）
@@ -22,9 +26,10 @@ import type {
 
 export type MessageStatus = NotificationStatus;
 export type MessageLevel = NotificationPriority;
+export type { DateGroup };
 
 export interface MessageGroup {
-  date_group: string;
+  date_group: DateGroup;
   label: string;
   messages: Message[];
 }
@@ -32,7 +37,7 @@ export interface MessageGroup {
 export interface Message {
   id: string;
   user_id: string;
-  type: string;
+  type: BaseMessageType;
   level: MessageLevel;
   title: string;
   content: string | null;

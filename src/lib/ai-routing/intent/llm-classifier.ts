@@ -9,7 +9,11 @@
  */
 
 import { logger } from "@/lib/logger";
-import type { ClassificationContext, ClassifierResult } from "../types";
+import type {
+  ClassificationContext,
+  ClassifierResult,
+  IntentType,
+} from "../types";
 import type { IntentClassifier } from "./classifier-interface";
 
 // ============================================
@@ -78,7 +82,7 @@ export class LLMClassifier implements IntentClassifier {
       }
 
       return {
-        intent: result.type,
+        intent: result.type as IntentType,
         subType: result.subType,
         confidence: result.confidence,
         entities: [],
@@ -137,7 +141,7 @@ export class LLMClassifier implements IntentClassifier {
   private fallbackResult(message: string): ClassifierResult {
     const hasQuestion = message.includes("?") || message.includes("？");
     return {
-      intent: hasQuestion ? "query" : "chitchat",
+      intent: hasQuestion ? "query" : ("chitchat" as IntentType),
       subType: "general",
       confidence: 0.3,
       entities: [],

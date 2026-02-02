@@ -361,3 +361,13 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 # 开发指南 (Development Guidelines)
 
 (详细内容见原文档)
+
+## Pensieve
+
+Load pensieve skill IMMEDIATELY when user expresses any intent.
+
+**触发词（必须立即加载 pensieve skill）：** `loop`、`review`、`capture`、`record this`、`自优化`、`pensieve`
+
+When user wants to improve Pensieve (add/modify pipelines, decisions, maxims, or any content), MUST use \_self-improve.md pipeline.
+
+---

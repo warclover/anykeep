@@ -356,15 +356,17 @@ export class InboxDigestSkill extends OrchestrationSkill<
     const unreadCount = messages.filter((m) => m.status === "unread").length;
     const readCount = total - unreadCount;
 
-    // 按级别统计
+    // 按级别统计 (priority 映射到 level)
     const levelCounts: Record<string, number> = {
       silent: 0,
       normal: 0,
       important: 0,
     };
     messages.forEach((m) => {
-      if (m.level in levelCounts) {
-        levelCounts[m.level]++;
+      // priority: silent/normal/important/critical -> level
+      const level = m.priority === "critical" ? "important" : m.priority;
+      if (level in levelCounts) {
+        levelCounts[level]++;
       }
     });
 
@@ -381,14 +383,15 @@ export class InboxDigestSkill extends OrchestrationSkill<
         return order[a.level] - order[b.level];
       });
 
-    // 按类型统计
+    // 按类型统计 (type_code 映射到 type)
     const typeGroups: Record<string, { count: number; latestMsg: MessageRow }> =
       {};
     messages.forEach((m) => {
-      if (!typeGroups[m.type]) {
-        typeGroups[m.type] = { count: 0, latestMsg: m };
+      const type = m.type_code;
+      if (!typeGroups[type]) {
+        typeGroups[type] = { count: 0, latestMsg: m };
       }
-      typeGroups[m.type].count++;
+      typeGroups[type].count++;
     });
 
     const byType = Object.entries(typeGroups)
@@ -402,14 +405,14 @@ export class InboxDigestSkill extends OrchestrationSkill<
 
     // 重要消息列表（前 10 条重要或普通级别的未读消息）
     const highlights = messages
-      .filter((m) => m.level !== "silent" && m.status === "unread")
+      .filter((m) => m.priority !== "silent" && m.status === "unread")
       .slice(0, 10)
       .map((m) => ({
-        id: m.id,
-        type: m.type,
+        id: parseInt(m.id) || 0,
+        type: m.type_code,
         title: m.title,
-        content: m.content,
-        createdAt: m.created_at,
+        content: m.body,
+        createdAt: m.created_at ?? "",
         actionUrl: m.action_url,
       }));
 
@@ -437,8 +440,10 @@ export class InboxDigestSkill extends OrchestrationSkill<
     // 按天分组统计
     const dailyCounts: Record<string, number> = {};
     messages.forEach((m) => {
-      const day = m.created_at.split("T")[0];
-      dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+      const day = (m.created_at ?? "").split("T")[0];
+      if (day) {
+        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+      }
     });
 
     const days = Object.keys(dailyCounts).sort();
@@ -647,9 +652,10 @@ export class InboxDigestSkill extends OrchestrationSkill<
 
     if (unreadIds.length === 0) return;
 
-    const { error } = await supabase.rpc("mark_messages_read", {
+    // 使用新的 RPC 函数名 mark_notifications_read
+    const { error } = await supabase.rpc("mark_notifications_read", {
       p_user_id: userId,
-      p_message_ids: unreadIds,
+      p_ids: unreadIds,
     });
 
     if (error) {

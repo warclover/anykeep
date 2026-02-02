@@ -103,25 +103,13 @@ export class UserPreferenceLearningService {
 
   /**
    * 获取用户偏好
+   *
+   * 注：user_classification_rules 表不支持 preference 存储，
+   * 当前返回默认偏好。未来可迁移到 user_settings 表。
    */
   async getUserPreference(userId: string): Promise<UserPreference> {
-    const { data } = await this.supabase
-      .from("user_classification_rules")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("rule_type", "preference")
-      .single();
-
-    if (data?.rule_config) {
-      const config = data.rule_config as Partial<UserPreference>;
-      return {
-        userId,
-        ...DEFAULT_USER_PREFERENCE,
-        ...config,
-        updatedAt: new Date(data.updated_at || Date.now()),
-      };
-    }
-
+    // 尝试从 user_settings 或其他存储获取偏好
+    // 当前返回默认偏好
     return {
       userId,
       ...DEFAULT_USER_PREFERENCE,
@@ -305,20 +293,24 @@ export class UserPreferenceLearningService {
     }
   }
 
+  /**
+   * 保存用户偏好
+   *
+   * 注：当前使用 classification_feedback 表存储偏好快照
+   * 未来可迁移到专用的 user_settings 表
+   */
   private async saveUserPreference(preference: UserPreference): Promise<void> {
     const { userId, updatedAt: _updatedAt, ...config } = preference;
 
-    await this.supabase.from("user_classification_rules").upsert(
-      {
-        user_id: userId,
-        rule_type: "preference",
-        rule_config: config,
-        updated_at: new Date().toISOString(),
+    // 存储偏好到 classification_feedback 表作为临时方案
+    await this.supabase.from("classification_feedback").insert({
+      user_id: userId,
+      feedback_type: "preference_update",
+      context: {
+        preference: config,
+        savedAt: new Date().toISOString(),
       },
-      {
-        onConflict: "user_id,rule_type",
-      },
-    );
+    });
   }
 }
 

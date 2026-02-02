@@ -962,6 +962,122 @@ export type Database = {
         };
         Relationships: [];
       };
+      batch_classification_progress: {
+        Row: {
+          completed_at: string | null;
+          current_phase: string | null;
+          error_details: Json | null;
+          error_message: string | null;
+          estimated_remaining_seconds: number | null;
+          id: string;
+          phase_details: Json | null;
+          progress: number | null;
+          started_at: string | null;
+          transaction_id: string | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          completed_at?: string | null;
+          current_phase?: string | null;
+          error_details?: Json | null;
+          error_message?: string | null;
+          estimated_remaining_seconds?: number | null;
+          id?: string;
+          phase_details?: Json | null;
+          progress?: number | null;
+          started_at?: string | null;
+          transaction_id?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          completed_at?: string | null;
+          current_phase?: string | null;
+          error_details?: Json | null;
+          error_message?: string | null;
+          estimated_remaining_seconds?: number | null;
+          id?: string;
+          phase_details?: Json | null;
+          progress?: number | null;
+          started_at?: string | null;
+          transaction_id?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "batch_classification_progress_transaction_id_fkey";
+            columns: ["transaction_id"];
+            isOneToOne: false;
+            referencedRelation: "batch_import_transactions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      batch_import_transactions: {
+        Row: {
+          auto_confirmed_count: number | null;
+          batch_id: string | null;
+          confirmed_at: string | null;
+          created_at: string | null;
+          id: string;
+          imported_at: string | null;
+          manual_confirmed_count: number | null;
+          pre_confirm_snapshot: Json | null;
+          rejected_count: number | null;
+          status: string | null;
+          structure_analysis: Json | null;
+          structure_mode: string | null;
+          total_bookmarks: number | null;
+          total_clusters: number | null;
+          undo_available: boolean | null;
+          undo_deadline: string | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          auto_confirmed_count?: number | null;
+          batch_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string | null;
+          id?: string;
+          imported_at?: string | null;
+          manual_confirmed_count?: number | null;
+          pre_confirm_snapshot?: Json | null;
+          rejected_count?: number | null;
+          status?: string | null;
+          structure_analysis?: Json | null;
+          structure_mode?: string | null;
+          total_bookmarks?: number | null;
+          total_clusters?: number | null;
+          undo_available?: boolean | null;
+          undo_deadline?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          auto_confirmed_count?: number | null;
+          batch_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string | null;
+          id?: string;
+          imported_at?: string | null;
+          manual_confirmed_count?: number | null;
+          pre_confirm_snapshot?: Json | null;
+          rejected_count?: number | null;
+          status?: string | null;
+          structure_analysis?: Json | null;
+          structure_mode?: string | null;
+          total_bookmarks?: number | null;
+          total_clusters?: number | null;
+          undo_available?: boolean | null;
+          undo_deadline?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       bookmark_chunks: {
         Row: {
           bookmark_id: number;
@@ -1298,6 +1414,8 @@ export type Database = {
           last_validation_at: string | null;
           next_review_at: string | null;
           notes: string | null;
+          original_path: string | null;
+          original_path_parts: Json | null;
           pending_cluster: boolean | null;
           pending_since: string | null;
           platform: string;
@@ -1376,6 +1494,8 @@ export type Database = {
           last_validation_at?: string | null;
           next_review_at?: string | null;
           notes?: string | null;
+          original_path?: string | null;
+          original_path_parts?: Json | null;
           pending_cluster?: boolean | null;
           pending_since?: string | null;
           platform: string;
@@ -1454,6 +1574,8 @@ export type Database = {
           last_validation_at?: string | null;
           next_review_at?: string | null;
           notes?: string | null;
+          original_path?: string | null;
+          original_path_parts?: Json | null;
           pending_cluster?: boolean | null;
           pending_since?: string | null;
           platform?: string;
@@ -2696,6 +2818,7 @@ export type Database = {
         Row: {
           bookmark_count: number | null;
           boundary_clarity: number | null;
+          centroid_vector: string | null;
           computed_at: string | null;
           core_count: number | null;
           core_embedding: string | null;
@@ -2732,6 +2855,7 @@ export type Database = {
         Insert: {
           bookmark_count?: number | null;
           boundary_clarity?: number | null;
+          centroid_vector?: string | null;
           computed_at?: string | null;
           core_count?: number | null;
           core_embedding?: string | null;
@@ -2768,6 +2892,7 @@ export type Database = {
         Update: {
           bookmark_count?: number | null;
           boundary_clarity?: number | null;
+          centroid_vector?: string | null;
           computed_at?: string | null;
           core_count?: number | null;
           core_embedding?: string | null;
@@ -3047,6 +3172,116 @@ export type Database = {
           {
             foreignKeyName: "health_check_runs_folder_id_fkey";
             columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      import_cluster_members: {
+        Row: {
+          bookmark_id: number;
+          cluster_id: string;
+          created_at: string | null;
+          distance_to_centroid: number | null;
+          is_representative: boolean | null;
+          representative_type: string | null;
+        };
+        Insert: {
+          bookmark_id: number;
+          cluster_id: string;
+          created_at?: string | null;
+          distance_to_centroid?: number | null;
+          is_representative?: boolean | null;
+          representative_type?: string | null;
+        };
+        Update: {
+          bookmark_id?: number;
+          cluster_id?: string;
+          created_at?: string | null;
+          distance_to_centroid?: number | null;
+          is_representative?: boolean | null;
+          representative_type?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_cluster_members_bookmark_id_fkey";
+            columns: ["bookmark_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmarks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "import_cluster_members_cluster_id_fkey";
+            columns: ["cluster_id"];
+            isOneToOne: false;
+            referencedRelation: "import_clusters";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      import_clusters: {
+        Row: {
+          centroid: string | null;
+          cluster_index: number;
+          cohesion: number | null;
+          conflict_details: Json | null;
+          conflict_type: string | null;
+          created_at: string | null;
+          id: string;
+          import_batch_id: string | null;
+          match_confidence: number | null;
+          match_type: string | null;
+          member_count: number | null;
+          status: string | null;
+          suggested_folder_id: number | null;
+          suggested_name: string | null;
+          suggested_name_confidence: number | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          centroid?: string | null;
+          cluster_index: number;
+          cohesion?: number | null;
+          conflict_details?: Json | null;
+          conflict_type?: string | null;
+          created_at?: string | null;
+          id?: string;
+          import_batch_id?: string | null;
+          match_confidence?: number | null;
+          match_type?: string | null;
+          member_count?: number | null;
+          status?: string | null;
+          suggested_folder_id?: number | null;
+          suggested_name?: string | null;
+          suggested_name_confidence?: number | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          centroid?: string | null;
+          cluster_index?: number;
+          cohesion?: number | null;
+          conflict_details?: Json | null;
+          conflict_type?: string | null;
+          created_at?: string | null;
+          id?: string;
+          import_batch_id?: string | null;
+          match_confidence?: number | null;
+          match_type?: string | null;
+          member_count?: number | null;
+          status?: string | null;
+          suggested_folder_id?: number | null;
+          suggested_name?: string | null;
+          suggested_name_confidence?: number | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_clusters_suggested_folder_id_fkey";
+            columns: ["suggested_folder_id"];
             isOneToOne: false;
             referencedRelation: "folders";
             referencedColumns: ["id"];
@@ -4876,88 +5111,6 @@ export type Database = {
           },
         ];
       };
-      messages: {
-        Row: {
-          action_label: string | null;
-          action_url: string | null;
-          content: string | null;
-          created_at: string | null;
-          expires_at: string | null;
-          id: number;
-          level: string;
-          metadata: Json | null;
-          priority: number | null;
-          read_at: string | null;
-          related_bookmark_id: number | null;
-          related_folder_id: number | null;
-          related_import_id: number | null;
-          status: string;
-          title: string;
-          type: string;
-          user_id: string;
-        };
-        Insert: {
-          action_label?: string | null;
-          action_url?: string | null;
-          content?: string | null;
-          created_at?: string | null;
-          expires_at?: string | null;
-          id?: number;
-          level?: string;
-          metadata?: Json | null;
-          priority?: number | null;
-          read_at?: string | null;
-          related_bookmark_id?: number | null;
-          related_folder_id?: number | null;
-          related_import_id?: number | null;
-          status?: string;
-          title: string;
-          type: string;
-          user_id: string;
-        };
-        Update: {
-          action_label?: string | null;
-          action_url?: string | null;
-          content?: string | null;
-          created_at?: string | null;
-          expires_at?: string | null;
-          id?: number;
-          level?: string;
-          metadata?: Json | null;
-          priority?: number | null;
-          read_at?: string | null;
-          related_bookmark_id?: number | null;
-          related_folder_id?: number | null;
-          related_import_id?: number | null;
-          status?: string;
-          title?: string;
-          type?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "messages_related_bookmark_id_fkey";
-            columns: ["related_bookmark_id"];
-            isOneToOne: false;
-            referencedRelation: "bookmarks";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_folder_id_fkey";
-            columns: ["related_folder_id"];
-            isOneToOne: false;
-            referencedRelation: "folders";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_related_import_id_fkey";
-            columns: ["related_import_id"];
-            isOneToOne: false;
-            referencedRelation: "import_history";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       monitor_check_logs: {
         Row: {
           archived_version_id: number | null;
@@ -5078,45 +5231,60 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string | null;
-          dnd_end_time: string | null;
-          dnd_start_time: string | null;
-          do_not_disturb: boolean | null;
-          id: number;
-          important_toast: boolean | null;
-          normal_toast: boolean | null;
-          silent_toast: boolean | null;
+          id: string;
+          preferences: Json | null;
           updated_at: string | null;
           user_id: string;
-          web_push_enabled: boolean | null;
-          web_push_subscription: Json | null;
         };
         Insert: {
           created_at?: string | null;
-          dnd_end_time?: string | null;
-          dnd_start_time?: string | null;
-          do_not_disturb?: boolean | null;
-          id?: number;
-          important_toast?: boolean | null;
-          normal_toast?: boolean | null;
-          silent_toast?: boolean | null;
+          id?: string;
+          preferences?: Json | null;
           updated_at?: string | null;
           user_id: string;
-          web_push_enabled?: boolean | null;
-          web_push_subscription?: Json | null;
         };
         Update: {
           created_at?: string | null;
-          dnd_end_time?: string | null;
-          dnd_start_time?: string | null;
-          do_not_disturb?: boolean | null;
-          id?: number;
-          important_toast?: boolean | null;
-          normal_toast?: boolean | null;
-          silent_toast?: boolean | null;
+          id?: string;
+          preferences?: Json | null;
           updated_at?: string | null;
           user_id?: string;
-          web_push_enabled?: boolean | null;
-          web_push_subscription?: Json | null;
+        };
+        Relationships: [];
+      };
+      notification_types: {
+        Row: {
+          category: string;
+          code: string;
+          color: string | null;
+          created_at: string | null;
+          default_channels: string[] | null;
+          default_priority: string | null;
+          deprecated: boolean | null;
+          icon: string | null;
+          label: string;
+        };
+        Insert: {
+          category: string;
+          code: string;
+          color?: string | null;
+          created_at?: string | null;
+          default_channels?: string[] | null;
+          default_priority?: string | null;
+          deprecated?: boolean | null;
+          icon?: string | null;
+          label: string;
+        };
+        Update: {
+          category?: string;
+          code?: string;
+          color?: string | null;
+          created_at?: string | null;
+          default_channels?: string[] | null;
+          default_priority?: string | null;
+          deprecated?: boolean | null;
+          icon?: string | null;
+          label?: string;
         };
         Relationships: [];
       };
@@ -7201,6 +7369,71 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_notifications: {
+        Row: {
+          action_label: string | null;
+          action_url: string | null;
+          body: string | null;
+          channels: string[];
+          created_at: string | null;
+          entity_id: string | null;
+          entity_type: string | null;
+          expires_at: string | null;
+          id: string;
+          metadata: Json | null;
+          priority: string;
+          read_at: string | null;
+          status: string | null;
+          title: string;
+          type_code: string;
+          user_id: string;
+        };
+        Insert: {
+          action_label?: string | null;
+          action_url?: string | null;
+          body?: string | null;
+          channels: string[];
+          created_at?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          priority: string;
+          read_at?: string | null;
+          status?: string | null;
+          title: string;
+          type_code: string;
+          user_id: string;
+        };
+        Update: {
+          action_label?: string | null;
+          action_url?: string | null;
+          body?: string | null;
+          channels?: string[];
+          created_at?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          priority?: string;
+          read_at?: string | null;
+          status?: string | null;
+          title?: string;
+          type_code?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_type_code_fkey";
+            columns: ["type_code"];
+            isOneToOne: false;
+            referencedRelation: "notification_types";
+            referencedColumns: ["code"];
+          },
+        ];
+      };
       user_quota_usage: {
         Row: {
           ai_calls_today: number | null;
@@ -7707,6 +7940,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      check_undo_available: {
+        Args: { transaction_id: string };
+        Returns: boolean;
+      };
       claim_jobs_batch: {
         Args: {
           p_job_types?: Database["public"]["Enums"]["job_type"][];
@@ -7789,6 +8026,7 @@ export type Database = {
               job_user_id: string;
             }[];
           };
+      cleanup_completed_progress: { Args: never; Returns: number };
       cleanup_edge_function_rate_limits: { Args: never; Returns: number };
       cleanup_expired_ai_snapshots: { Args: never; Returns: number };
       cleanup_expired_chaos_pool: { Args: never; Returns: number };
@@ -7796,7 +8034,7 @@ export type Database = {
       cleanup_expired_folder_exclusions: { Args: never; Returns: number };
       cleanup_expired_insights: { Args: never; Returns: number };
       cleanup_expired_intent_cache: { Args: never; Returns: number };
-      cleanup_expired_messages: { Args: never; Returns: number };
+      cleanup_expired_notifications: { Args: never; Returns: number };
       cleanup_expired_oauth_codes: { Args: never; Returns: number };
       cleanup_expired_oauth_states: { Args: never; Returns: undefined };
       cleanup_expired_session_memory: { Args: never; Returns: number };
@@ -7858,8 +8096,19 @@ export type Database = {
           };
       compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
       compute_folder_profile:
-        | { Args: { p_folder_id: number }; Returns: undefined }
-        | { Args: { p_folder_id: number; p_user_id: string }; Returns: Json };
+        | {
+            Args: { p_folder_id: number };
+            Returns: {
+              error: true;
+            } & "Could not choose the best candidate function between: public.compute_folder_profile(p_folder_id => int8), public.compute_folder_profile(p_folder_id => int4). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
+          }
+        | { Args: { p_folder_id: number; p_user_id: string }; Returns: Json }
+        | {
+            Args: { p_folder_id: number };
+            Returns: {
+              error: true;
+            } & "Could not choose the best candidate function between: public.compute_folder_profile(p_folder_id => int8), public.compute_folder_profile(p_folder_id => int4). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
+          };
       compute_user_folder_profiles: {
         Args: { p_user_id: string };
         Returns: number;
@@ -7956,6 +8205,7 @@ export type Database = {
       };
       expire_old_suggestions: { Args: never; Returns: number };
       expire_pending_confirmations: { Args: never; Returns: number };
+      expire_undo_windows: { Args: never; Returns: number };
       fail_job: {
         Args: { p_error: string; p_job_id: string; p_retry?: boolean };
         Returns: boolean;
@@ -8235,18 +8485,13 @@ export type Database = {
         };
       };
       get_folder_bookmark_stats: {
-        Args: {
-          p_folder_ids: number[];
-          p_today_start: string;
-          p_user_id: string;
-        };
-        Returns: Database["public"]["CompositeTypes"]["folder_bookmark_stats"][];
-        SetofOptions: {
-          from: "*";
-          to: "folder_bookmark_stats";
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
+        Args: { p_min_count?: number; p_user_id: string };
+        Returns: {
+          bookmark_count: number;
+          folder_id: number;
+          folder_name: string;
+          sample_bookmarks: Json;
+        }[];
       };
       get_folder_path: {
         Args: { p_folder_id: number };
@@ -8354,36 +8599,6 @@ export type Database = {
           updated_at: string;
         }[];
       };
-      get_messages_count: {
-        Args: { p_level?: string; p_status?: string; p_user_id: string };
-        Returns: number;
-      };
-      get_messages_grouped: {
-        Args: {
-          p_level?: string;
-          p_limit?: number;
-          p_offset?: number;
-          p_status?: string;
-          p_user_id: string;
-        };
-        Returns: {
-          action_label: string;
-          action_url: string;
-          content: string;
-          created_at: string;
-          date_group: string;
-          id: number;
-          level: string;
-          metadata: Json;
-          priority: number;
-          read_at: string;
-          related_bookmark_id: number;
-          related_folder_id: number;
-          status: string;
-          title: string;
-          type: string;
-        }[];
-      };
       get_messages_with_count: {
         Args: {
           p_level?: string;
@@ -8417,6 +8632,39 @@ export type Database = {
           count: number;
           percentage: number;
           reason: string;
+        }[];
+      };
+      get_notification_counts: {
+        Args: { p_user_id: string };
+        Returns: {
+          count: number;
+          priority: string;
+        }[];
+      };
+      get_notifications_grouped: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_priority?: string;
+          p_status?: string;
+          p_user_id: string;
+        };
+        Returns: {
+          action_label: string;
+          action_url: string;
+          body: string;
+          channels: string[];
+          created_at: string;
+          date_group: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          metadata: Json;
+          priority: string;
+          read_at: string;
+          status: string;
+          title: string;
+          type_code: string;
         }[];
       };
       get_offline_changes: {
@@ -8662,6 +8910,14 @@ export type Database = {
         Args: { p_locale?: string; p_system_type: string };
         Returns: string;
       };
+      get_tag_bookmark_stats: {
+        Args: { p_limit?: number; p_min_count?: number; p_user_id: string };
+        Returns: {
+          bookmark_count: number;
+          sample_bookmarks: Json;
+          tag: string;
+        }[];
+      };
       get_tag_synonyms: {
         Args: { p_tag: string; p_user_id: string };
         Returns: {
@@ -8719,14 +8975,9 @@ export type Database = {
           total_folder_count: number;
         }[];
       };
-      get_unread_message_counts: {
+      get_unread_notification_count: {
         Args: { p_user_id: string };
-        Returns: {
-          important: number;
-          normal: number;
-          silent: number;
-          total: number;
-        }[];
+        Returns: number;
       };
       get_user_active_sessions: {
         Args: { p_user_id: string };
@@ -8997,6 +9248,10 @@ export type Database = {
           skipped_count: number;
         }[];
       };
+      mark_all_notifications_read: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
       mark_bookmark_pending_cluster: {
         Args: { p_bookmark_id: number; p_user_id: string };
         Returns: boolean;
@@ -9021,8 +9276,8 @@ export type Database = {
         Args: { p_flashcard_id: number; p_user_id: string };
         Returns: Json;
       };
-      mark_messages_read: {
-        Args: { p_message_ids?: number[]; p_user_id: string };
+      mark_notifications_read: {
+        Args: { p_ids: string[]; p_user_id: string };
         Returns: number;
       };
       mark_operation_undone: {
