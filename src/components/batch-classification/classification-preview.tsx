@@ -290,7 +290,7 @@ export function ClassificationPreview({
                 ...cluster,
                 status:
                   decision.action === "reject"
-                    ? "rejected"
+                    ? ("rejected" as const)
                     : ("confirmed" as const),
               }
             : cluster;

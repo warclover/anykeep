@@ -279,7 +279,9 @@ class SubscriptionService {
 
     // 批量降级
     for (const sub of expired) {
-      await entitlementService.downgradeToFree(sub.user_id, "expired");
+      if (sub.user_id) {
+        await entitlementService.downgradeToFree(sub.user_id, "expired");
+      }
     }
 
     // 更新状态

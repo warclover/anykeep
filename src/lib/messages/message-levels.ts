@@ -50,7 +50,7 @@ export const MESSAGE_LEVEL_CONFIG: Record<MessageLevel, LevelConfig> = {
     icon: "Bell",
   },
   important: {
-    priorityRange: [7, 10],
+    priorityRange: [7, 9],
     showToast: true,
     showModal: true,
     color: "text-orange-600 dark:text-orange-400",
@@ -58,6 +58,16 @@ export const MESSAGE_LEVEL_CONFIG: Record<MessageLevel, LevelConfig> = {
     unreadBgColor: "bg-orange-50/50 dark:bg-orange-950/20",
     indicatorColor: "bg-orange-500",
     icon: "AlertTriangle",
+  },
+  critical: {
+    priorityRange: [10, 10],
+    showToast: true,
+    showModal: true,
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-50/30 dark:bg-red-950/20",
+    unreadBgColor: "bg-red-50 dark:bg-red-950/30",
+    indicatorColor: "bg-red-500",
+    icon: "AlertCircle",
   },
 };
 

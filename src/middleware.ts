@@ -138,9 +138,9 @@ export async function middleware(request: NextRequest) {
     // 🔒 安全修复：仅记录非敏感的调试信息，防止 JWT 内容泄露到日志系统
     const safeDebugInfo = jwtDebug
       ? {
-          hasToken: !!jwtDebug.token,
-          tokenLength: jwtDebug.token?.length,
-          isValid: jwtDebug.isValid,
+          hasToken: jwtDebug.hasToken,
+          tokenLength: undefined, // token 属性不存在于类型中
+          isValid: jwtDebug.valid,
           // 不记录完整 token 和 payload
         }
       : undefined;

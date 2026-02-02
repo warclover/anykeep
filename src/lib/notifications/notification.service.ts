@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase";
 import type {
   Notification,
   NotificationPayload,
@@ -253,7 +254,7 @@ export const NotificationService = {
     const { data, error } = await query;
 
     if (error) {
-      logger.error("[NotificationService] list error", { error, userId });
+      logger.error({ error, userId }, "[NotificationService] list error");
       throw wrapDatabaseError(error, "获取通知列表");
     }
 
@@ -275,7 +276,7 @@ export const NotificationService = {
 
     if (error) {
       if (error.code === "PGRST116") return null; // Not found
-      logger.error("[NotificationService] get error", { error, userId, id });
+      logger.error({ error, userId, id }, "[NotificationService] get error");
       throw wrapDatabaseError(error, "获取通知详情");
     }
 
@@ -300,11 +301,10 @@ export const NotificationService = {
     });
 
     if (error) {
-      logger.error("[NotificationService] markAsRead error", {
-        error,
-        userId,
-        ids,
-      });
+      logger.error(
+        { error, userId, ids },
+        "[NotificationService] markAsRead error",
+      );
       throw wrapDatabaseError(error, "标记已读");
     }
 
@@ -322,10 +322,10 @@ export const NotificationService = {
     });
 
     if (error) {
-      logger.error("[NotificationService] markAllAsRead error", {
-        error,
-        userId,
-      });
+      logger.error(
+        { error, userId },
+        "[NotificationService] markAllAsRead error",
+      );
       throw wrapDatabaseError(error, "全部标记已读");
     }
 
@@ -345,11 +345,10 @@ export const NotificationService = {
       .eq("id", id);
 
     if (error) {
-      logger.error("[NotificationService] archive error", {
-        error,
-        userId,
-        id,
-      });
+      logger.error(
+        { error, userId, id },
+        "[NotificationService] archive error",
+      );
       throw wrapDatabaseError(error, "归档通知");
     }
   },
@@ -367,7 +366,7 @@ export const NotificationService = {
       .eq("id", id);
 
     if (error) {
-      logger.error("[NotificationService] delete error", { error, userId, id });
+      logger.error({ error, userId, id }, "[NotificationService] delete error");
       throw wrapDatabaseError(error, "删除通知");
     }
   },
@@ -387,11 +386,10 @@ export const NotificationService = {
       .in("id", ids);
 
     if (error) {
-      logger.error("[NotificationService] deleteBatch error", {
-        error,
-        userId,
-        ids,
-      });
+      logger.error(
+        { error, userId, ids },
+        "[NotificationService] deleteBatch error",
+      );
       throw wrapDatabaseError(error, "批量删除通知");
     }
   },
@@ -411,10 +409,10 @@ export const NotificationService = {
     });
 
     if (error) {
-      logger.error("[NotificationService] getUnreadCounts error", {
-        error,
-        userId,
-      });
+      logger.error(
+        { error, userId },
+        "[NotificationService] getUnreadCounts error",
+      );
       throw wrapDatabaseError(error, "获取未读计数");
     }
 
@@ -451,10 +449,10 @@ export const NotificationService = {
     );
 
     if (error) {
-      logger.error("[NotificationService] getUnreadCount error", {
-        error,
-        userId,
-      });
+      logger.error(
+        { error, userId },
+        "[NotificationService] getUnreadCount error",
+      );
       throw wrapDatabaseError(error, "获取未读总数");
     }
 
@@ -479,7 +477,7 @@ export const NotificationService = {
 
     if (error) {
       if (error.code === "PGRST116") return null; // Not found
-      logger.warn("[NotificationService] getTypeConfig error", { error, code });
+      logger.warn({ error, code }, "[NotificationService] getTypeConfig error");
       return null; // 类型不存在时返回 null，不抛错
     }
 
@@ -500,7 +498,7 @@ export const NotificationService = {
       .order("code", { ascending: true });
 
     if (error) {
-      logger.error("[NotificationService] getAllTypeConfigs error", { error });
+      logger.error({ error }, "[NotificationService] getAllTypeConfigs error");
       throw wrapDatabaseError(error, "获取类型配置列表");
     }
 

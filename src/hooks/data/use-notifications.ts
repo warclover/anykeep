@@ -329,7 +329,7 @@ export function useNotifications(
     mutationFn: async () => {
       // 使用服务端 RPC 函数，内置 user_id 验证，更安全
       const { error } = await supabase.rpc("mark_all_notifications_read", {
-        p_user_id: (await supabase.auth.getUser()).data.user?.id,
+        p_user_id: (await supabase.auth.getUser()).data.user?.id ?? "",
       });
       if (error) throw error;
     },

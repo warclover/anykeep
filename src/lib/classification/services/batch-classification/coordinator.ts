@@ -160,7 +160,7 @@ export class BatchClassificationCoordinator {
       const { data: clusterIds } = await this.supabase
         .from("import_clusters")
         .select("id")
-        .eq("import_batch_id", transaction.batch_id);
+        .eq("import_batch_id", transaction.batch_id ?? "");
 
       if (clusterIds && clusterIds.length > 0) {
         await this.supabase
@@ -176,7 +176,7 @@ export class BatchClassificationCoordinator {
       await this.supabase
         .from("import_clusters")
         .delete()
-        .eq("import_batch_id", transaction.batch_id);
+        .eq("import_batch_id", transaction.batch_id ?? "");
     } catch {
       // 清理失败不抛出异常，只记录
     }
@@ -244,13 +244,13 @@ export class BatchClassificationCoordinator {
         )
       `,
       )
-      .eq("import_batch_id", transaction.batch_id);
+      .eq("import_batch_id", transaction.batch_id ?? "");
 
     // 获取未聚类的书签
     const { data: unclustered } = await this.supabase
       .from("bookmarks")
       .select("id")
-      .eq("import_batch_id", transaction.batch_id)
+      .eq("import_batch_id", transaction.batch_id ?? "")
       .eq("classification_status", "processing");
 
     // 收集所有需要获取详情的书签 ID（代表元）
@@ -657,7 +657,7 @@ export class BatchClassificationCoordinator {
         url: b.url,
         domain: this.extractDomain(b.url),
         meaningfulDomain: this.extractMeaningfulDomain(b.url),
-        embedding: b.embedding as number[],
+        embedding: b.embedding as unknown as number[],
         createdAt: new Date(b.created_at!),
         originalPath: b.original_path,
         originalPathParts: b.original_path_parts as string[] | null,

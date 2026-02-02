@@ -369,9 +369,9 @@ export class BookmarkRepository extends BaseRepository<
 
       // RPC 返回数组，取第一个元素；如果返回布尔值则使用回退方法
       if (Array.isArray(data)) {
-        return data[0] as BookmarkRow;
+        return data[0] as unknown as BookmarkRow;
       } else if (typeof data === "object" && data !== null) {
-        return data as BookmarkRow;
+        return data as unknown as BookmarkRow;
       } else {
         // 返回了布尔值或其他类型，使用回退方法获取最新数据
         return this.toggleStarredFallback(id);

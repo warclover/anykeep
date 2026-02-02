@@ -366,9 +366,9 @@ export class FolderRepository extends BaseRepository<
         return { deletedFolders: 0, movedBookmarks: 0 };
       }
 
-      const result = (
-        Array.isArray(data) ? data[0] : data
-      ) as CascadeDeleteFolderReturn;
+      const result = (Array.isArray(data)
+        ? data[0]
+        : data) as unknown as CascadeDeleteFolderReturn;
       return {
         deletedFolders: result.deleted_folder_count || 0,
         movedBookmarks: result.moved_bookmark_count || 0,

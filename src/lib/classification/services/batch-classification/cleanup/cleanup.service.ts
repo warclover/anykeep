@@ -124,8 +124,8 @@ export class BookmarkCleanupService {
 
         // 计算相似度
         const similarity = cosineSimilarity(
-          current.embedding as number[],
-          other.embedding as number[],
+          current.embedding as unknown as number[],
+          other.embedding as unknown as number[],
         );
 
         if (similarity >= this.config.duplicateSimilarityThreshold) {

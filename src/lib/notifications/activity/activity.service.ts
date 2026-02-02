@@ -374,7 +374,7 @@ class ActivityService {
 
       // 转换 Message 为 ActivityLogItem
       const item: ActivityLogItem = {
-        id: msg.id,
+        id: Number(msg.id),
         user_id: msg.user_id,
         type: (msg.type as ActivityType) || "batch_operation",
         title: msg.title,
@@ -383,10 +383,10 @@ class ActivityService {
         metadata: (msg.metadata as Record<string, unknown>) || {},
         created_at: msg.created_at,
         related_bookmark_ids: msg.related_bookmark_id
-          ? [msg.related_bookmark_id]
+          ? [Number(msg.related_bookmark_id)]
           : null,
         related_folder_ids: msg.related_folder_id
-          ? [msg.related_folder_id]
+          ? [Number(msg.related_folder_id)]
           : null,
       };
 

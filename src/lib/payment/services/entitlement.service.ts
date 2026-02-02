@@ -131,33 +131,30 @@ class EntitlementService {
   ): Promise<void> {
     const supabase = await createClient();
 
-    const updateData: Record<string, unknown> = {
+    // 构建类型安全的更新对象
+    const updateData = {
       user_id: userId,
+      plan_tier: data.planTier,
+      valid_until: data.validUntil?.toISOString(),
+      ai_quota_monthly: data.aiQuotaMonthly,
+      ai_quota_daily_limit: data.aiQuotaDailyLimit,
+      storage_limit_mb: data.storageLimitMb,
+      tts_seconds_monthly: data.ttsSecondsMonthly,
+      is_lifetime: data.isLifetime,
+      trial_started_at: data.trialStartedAt?.toISOString(),
+      trial_ends_at: data.trialEndsAt?.toISOString(),
+      trial_used: data.trialUsed,
+      trial_converted: data.trialConverted,
     };
 
-    if (data.planTier !== undefined) updateData.plan_tier = data.planTier;
-    if (data.validUntil !== undefined)
-      updateData.valid_until = data.validUntil?.toISOString();
-    if (data.aiQuotaMonthly !== undefined)
-      updateData.ai_quota_monthly = data.aiQuotaMonthly;
-    if (data.aiQuotaDailyLimit !== undefined)
-      updateData.ai_quota_daily_limit = data.aiQuotaDailyLimit;
-    if (data.storageLimitMb !== undefined)
-      updateData.storage_limit_mb = data.storageLimitMb;
-    if (data.ttsSecondsMonthly !== undefined)
-      updateData.tts_seconds_monthly = data.ttsSecondsMonthly;
-    if (data.isLifetime !== undefined) updateData.is_lifetime = data.isLifetime;
-    if (data.trialStartedAt !== undefined)
-      updateData.trial_started_at = data.trialStartedAt?.toISOString();
-    if (data.trialEndsAt !== undefined)
-      updateData.trial_ends_at = data.trialEndsAt?.toISOString();
-    if (data.trialUsed !== undefined) updateData.trial_used = data.trialUsed;
-    if (data.trialConverted !== undefined)
-      updateData.trial_converted = data.trialConverted;
+    // 移除 undefined 的字段
+    const cleanData = Object.fromEntries(
+      Object.entries(updateData).filter(([, v]) => v !== undefined),
+    ) as typeof updateData;
 
     await supabase
       .from("user_entitlements")
-      .upsert(updateData, { onConflict: "user_id" });
+      .upsert(cleanData, { onConflict: "user_id" });
   }
 
   /**
@@ -189,6 +186,17 @@ class EntitlementService {
   async downgradeToFree(userId: string, reason?: string): Promise<void> {
     const supabase = await createClient();
 
+    // 如果是退款，先获取当前 refund_count
+    let refundCount: number | undefined;
+    if (reason === "refunded") {
+      const { data } = await supabase
+        .from("user_entitlements")
+        .select("refund_count")
+        .eq("user_id", userId)
+        .single();
+      refundCount = (data?.refund_count ?? 0) + 1;
+    }
+
     await supabase
       .from("user_entitlements")
       .update({
@@ -199,10 +207,7 @@ class EntitlementService {
         storage_limit_mb: QUOTA_CONFIG.free.storageMb,
         tts_seconds_monthly: 0,
         is_lifetime: false,
-        refund_count:
-          reason === "refunded"
-            ? supabase.rpc("increment", { x: 1 })
-            : undefined,
+        refund_count: refundCount,
         last_refunded_at:
           reason === "refunded" ? new Date().toISOString() : undefined,
         refund_reason: reason,

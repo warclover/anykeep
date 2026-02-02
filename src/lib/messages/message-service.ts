@@ -105,7 +105,7 @@ export class MessageService {
 
       return {
         success: true,
-        messageId: message.id,
+        messageId: String(message.id),
         level,
         title,
         content: content ?? undefined,

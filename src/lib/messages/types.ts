@@ -161,9 +161,9 @@ export interface CreateMessageParams {
   userId: string;
   type: MessageType;
   data: Record<string, unknown>;
-  relatedBookmarkId?: string;
-  relatedFolderId?: string;
-  relatedImportId?: string;
+  relatedBookmarkId?: number | string;
+  relatedFolderId?: number | string;
+  relatedImportId?: number | string;
 }
 
 // ============================================

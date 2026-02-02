@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/supabase";
 import type {
   WebhookEvent,
   WebhookProcessResult,
@@ -93,7 +94,7 @@ class WebhookService {
         provider: event.provider,
         event_id: event.id,
         event_type: event.type,
-        payload: event.data,
+        payload: event.data as unknown as Json,
         processed: false,
       },
       { onConflict: "provider,event_id" },
@@ -266,11 +267,19 @@ class WebhookService {
   ): Promise<void> {
     const supabase = await createClient();
 
+    // 先获取当前 retry_count，然后 +1
+    const { data } = await supabase
+      .from("payment_events")
+      .select("retry_count")
+      .eq("provider", provider)
+      .eq("event_id", eventId)
+      .single();
+
     await supabase
       .from("payment_events")
       .update({
         error_message: error instanceof Error ? error.message : String(error),
-        retry_count: supabase.sql`retry_count + 1`,
+        retry_count: (data?.retry_count ?? 0) + 1,
       })
       .eq("provider", provider)
       .eq("event_id", eventId);

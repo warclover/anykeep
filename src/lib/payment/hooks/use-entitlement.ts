@@ -80,20 +80,20 @@ export function useEntitlement(): UseEntitlementResult {
         userId: data.user_id,
         planTier: data.plan_tier as PlanTier,
         validUntil: data.valid_until ? new Date(data.valid_until) : undefined,
-        aiQuotaMonthly: data.ai_quota_monthly,
-        aiQuotaDailyLimit: data.ai_quota_daily_limit,
-        storageLimitMb: data.storage_limit_mb,
-        ttsSecondsMonthly: data.tts_seconds_monthly,
-        isLifetime: data.is_lifetime,
+        aiQuotaMonthly: data.ai_quota_monthly ?? 0,
+        aiQuotaDailyLimit: data.ai_quota_daily_limit ?? 0,
+        storageLimitMb: data.storage_limit_mb ?? 0,
+        ttsSecondsMonthly: data.tts_seconds_monthly ?? 0,
+        isLifetime: data.is_lifetime ?? false,
         trialStartedAt: data.trial_started_at
           ? new Date(data.trial_started_at)
           : undefined,
         trialEndsAt: data.trial_ends_at
           ? new Date(data.trial_ends_at)
           : undefined,
-        trialUsed: data.trial_used,
-        trialConverted: data.trial_converted,
-        refundCount: data.refund_count,
+        trialUsed: data.trial_used ?? false,
+        trialConverted: data.trial_converted ?? false,
+        refundCount: data.refund_count ?? 0,
         lastRefundedAt: data.last_refunded_at
           ? new Date(data.last_refunded_at)
           : undefined,

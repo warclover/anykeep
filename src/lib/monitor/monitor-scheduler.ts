@@ -413,18 +413,20 @@ export class MonitorScheduler {
     };
 
     // 插入到消息表
-    await this.supabase.from("messages").insert({
+    await this.supabase.from("user_notifications").insert({
       user_id: notification.userId,
-      type: "page_change",
+      type_code: "page_content_changed",
       title: `📄 ${notification.bookmarkTitle} 内容已更新`,
-      content: notification.changeSummary,
+      body: notification.changeSummary,
       metadata: {
         monitorId: notification.monitorId,
         bookmarkId: notification.bookmarkId,
         bookmarkUrl: notification.bookmarkUrl,
         similarityScore: notification.similarityScore,
       },
-      is_read: false,
+      status: "unread",
+      channels: ["in_app"],
+      priority: "normal",
       created_at: notification.checkedAt,
     });
   }
