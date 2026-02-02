@@ -13,13 +13,17 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { createClient, type SupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import {
   type Notification,
   type NotificationGroup,
   type NotificationStatus,
   type NotificationPriority,
   type NotificationCounts,
+  type NotificationChannel,
+  type NotificationCategory,
+  type NotificationEntityType,
+  type NotificationTypeConfig,
   DATE_GROUP_LABELS,
 } from "@/lib/notifications";
 import { startOfDay, subDays } from "date-fns";
@@ -27,9 +31,9 @@ import { startOfDay, subDays } from "date-fns";
 // ============================================================================
 // Supabase Client 单例（模块级缓存，避免每次渲染创建）
 // ============================================================================
-let supabaseClientCache: SupabaseClient | null = null;
+let supabaseClientCache: ReturnType<typeof createClient> | null = null;
 
-function getSupabaseClient(): SupabaseClient {
+function getSupabaseClient() {
   if (!supabaseClientCache) {
     supabaseClientCache = createClient();
   }
@@ -96,32 +100,35 @@ function mapRowToNotification(row: Record<string, unknown>): Notification {
     id: row.id as string,
     userId: row.user_id as string,
     typeCode: row.type_code as string,
-    channels: row.channels as string[],
-    priority: row.priority as string,
+    channels: row.channels as string[] as NotificationChannel[],
+    priority: row.priority as NotificationPriority,
     title: row.title as string,
     body: (row.body as string) ?? undefined,
-    entityType: (row.entity_type as string) ?? undefined,
+    entityType: (row.entity_type as NotificationEntityType) ?? undefined,
     entityId: (row.entity_id as string) ?? undefined,
     actionUrl: (row.action_url as string) ?? undefined,
     actionLabel: (row.action_label as string) ?? undefined,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
-    status: row.status as string,
+    status: row.status as NotificationStatus,
     readAt: (row.read_at as string) ?? undefined,
     createdAt: row.created_at as string,
     expiresAt: row.expires_at as string,
     type: isValidTypeObject
-      ? {
+      ? ({
           code: (notificationTypes.code as string) ?? "",
-          category: (notificationTypes.category as string) ?? "system",
+          category:
+            (notificationTypes.category as NotificationCategory) ?? "system",
           label: (notificationTypes.label as string) ?? "",
           icon: (notificationTypes.icon as string) ?? "Bell",
           color: (notificationTypes.color as string) ?? "blue",
-          defaultChannels: (notificationTypes.default_channels as string[]) ?? [
-            "inbox",
-          ],
+          defaultChannels:
+            (notificationTypes.default_channels as NotificationChannel[]) ?? [
+              "inbox",
+            ],
           defaultPriority:
-            (notificationTypes.default_priority as string) ?? "normal",
-        }
+            (notificationTypes.default_priority as NotificationPriority) ??
+            "normal",
+        } as NotificationTypeConfig)
       : undefined,
   };
 }

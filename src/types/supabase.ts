@@ -556,3 +556,171 @@ export type ImportHistoryOptions = {
   preserveFolderStructure?: boolean;
   targetFolderId?: number | null;
 };
+
+// ============================================
+// 消息系统类型定义（手动补充）
+// ============================================
+
+/**
+ * 消息类型枚举
+ */
+export type MessageType =
+  | "batch_move"
+  | "batch_tag"
+  | "batch_delete"
+  | "classification_auto"
+  | "classification_batch"
+  | "classification_suggest"
+  | "classification_failed"
+  | "reclassify_complete"
+  | "import_complete"
+  | "import_partial"
+  | "import_failed"
+  | "folder_created"
+  | "folder_auto_created"
+  | "folder_auto_split"
+  | "folder_auto_merged"
+  | "folder_operation_undone"
+  | "quota_warning"
+  | "quota_critical"
+  | "quota_exceeded"
+  | "cost_daily_exceeded"
+  | "ai_summary_complete"
+  | "ai_tags_complete"
+  | "ai_processing_failed"
+  | "review_reminder"
+  | "review_complete"
+  | "synthesis_complete"
+  | "synthesis_failed"
+  | "system_announcement"
+  | "system_maintenance"
+  | "batch_restore"
+  | "page_monitor_change"
+  | "page_monitor_error"
+  | "page_monitor_quota_reached";
+
+/**
+ * 消息行类型
+ * @deprecated 使用 user_notifications 表替代
+ */
+export interface MessageRow {
+  id: number;
+  user_id: string;
+  type: MessageType;
+  level: "silent" | "normal" | "important" | "critical";
+  title: string;
+  content: string | null;
+  action_url: string | null;
+  action_label: string | null;
+  status: "unread" | "read" | "archived" | "deleted";
+  priority: number;
+  created_at: string;
+  read_at: string | null;
+  expires_at: string | null;
+  metadata: Json | null;
+  related_bookmark_id: number | null;
+  related_folder_id: number | null;
+  related_import_id: string | null;
+}
+
+/**
+ * 消息插入类型
+ */
+export interface MessageInsert {
+  user_id: string;
+  type: MessageType;
+  level?: "silent" | "normal" | "important" | "critical";
+  title: string;
+  content?: string | null;
+  action_url?: string | null;
+  action_label?: string | null;
+  status?: "unread" | "read" | "archived" | "deleted";
+  priority?: number;
+  expires_at?: string | null;
+  metadata?: Json | null;
+  related_bookmark_id?: number | null;
+  related_folder_id?: number | null;
+  related_import_id?: string | null;
+}
+
+/**
+ * 通知偏好设置行类型
+ */
+export interface NotificationPreferenceRow {
+  id: number;
+  user_id: string;
+  type_code: string;
+  channels: string[];
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * 通知偏好设置插入类型
+ */
+export interface NotificationPreferenceInsert {
+  user_id: string;
+  type_code: string;
+  channels?: string[];
+  enabled?: boolean;
+}
+
+/**
+ * 通知偏好设置更新类型
+ */
+export interface NotificationPreferenceUpdate {
+  channels?: string[];
+  enabled?: boolean;
+}
+
+// ============================================
+// 文件夹画像 V5 类型定义
+// ============================================
+
+/**
+ * 文件夹画像 V5 行类型
+ */
+export interface FolderProfileV5Row {
+  id: number;
+  user_id: string;
+  folder_id: number;
+  centroid_vector: number[] | null;
+  cohesion: number;
+  bookmark_count: number;
+  keywords: string[];
+  topics: string[];
+  created_at: string;
+  updated_at: string;
+  folders?: {
+    id: number;
+    name: string;
+  };
+}
+
+// ============================================
+// 规则遥测类型定义
+// ============================================
+
+/**
+ * 规则遥测统计行类型
+ */
+export interface RuleTelemetryStatsRow {
+  rule_id: string;
+  match_count: number;
+  accept_count: number;
+  ignore_count: number;
+  accept_rate: number;
+}
+
+/**
+ * 规则遥测行类型
+ */
+export interface RuleTelemetryRow {
+  id: number;
+  rule_id: string;
+  user_id: string;
+  event_type: string;
+  metadata: Json | null;
+  created_at: string;
+}

@@ -164,7 +164,12 @@ export function useMessages(
   const markAsRead = useCallback(
     async (messageId: number | string): Promise<boolean> => {
       const id = typeof messageId === "number" ? String(messageId) : messageId;
-      return notificationMarkAsRead(id);
+      try {
+        notificationMarkAsRead(id);
+        return true;
+      } catch {
+        return false;
+      }
     },
     [notificationMarkAsRead],
   );
@@ -173,21 +178,36 @@ export function useMessages(
   const deleteMessage = useCallback(
     async (messageId: number | string): Promise<boolean> => {
       const id = typeof messageId === "number" ? String(messageId) : messageId;
-      return deleteNotification(id);
+      try {
+        deleteNotification(id);
+        return true;
+      } catch {
+        return false;
+      }
     },
     [deleteNotification],
   );
 
   // 标记所有已读
   const markAllAsRead = useCallback(async (): Promise<boolean> => {
-    return notificationMarkAllAsRead();
+    try {
+      notificationMarkAllAsRead();
+      return true;
+    } catch {
+      return false;
+    }
   }, [notificationMarkAllAsRead]);
 
   // 归档消息
   const archiveMessage = useCallback(
     async (messageId: number | string): Promise<boolean> => {
       const id = typeof messageId === "number" ? String(messageId) : messageId;
-      return archiveNotification(id);
+      try {
+        archiveNotification(id);
+        return true;
+      } catch {
+        return false;
+      }
     },
     [archiveNotification],
   );

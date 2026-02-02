@@ -9,11 +9,11 @@
 // V5.0 新通知系统（推荐使用）
 // ============================================================================
 
-// 核心服务 - 仅服务端使用，请从 ./notification.service 直接导入
-// export { NotificationService } from "./notification.service";
+// 核心服务 - 仅服务端使用
+export { NotificationService } from "./notification.service";
 
-// 业务快捷方法 - 仅服务端使用，请从 ./notification.helpers 直接导入
-// export { Notify } from "./notification.helpers";
+// 业务快捷方法 - 仅服务端使用
+export { Notify } from "./notification.helpers";
 
 // 类型定义
 export type {
