@@ -220,6 +220,8 @@ export interface ImportResult {
   platformBreakdown: Partial<Record<Platform, number>>;
   /** 扩展统计（Phase 2） */
   extendedStats?: ImportExtendedStats;
+  /** 导入批次 ID，用于跳转到分拣沙盒页面 */
+  importBatchId?: string;
 }
 
 /**

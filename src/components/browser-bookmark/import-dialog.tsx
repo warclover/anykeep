@@ -592,6 +592,7 @@ export function BrowserBookmarkImportDialog({
           totalSelected: bookmarksToImport.length,
           aiClassifyEnabled: options.enableAiClassify,
         },
+        importBatchId: options.enableAiClassify ? importBatchId : undefined,
       };
 
       setResult(importResult);

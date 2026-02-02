@@ -180,8 +180,13 @@ export function ImportResult({
             size="sm"
             className="border-amber-500 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
             onClick={() => {
-              // 跳转到首页并打开重分类
-              window.location.href = "/home?reclassify=true";
+              // 跳转到分拣沙盒页面进行批量分类审核
+              if (result.importBatchId) {
+                window.location.href = `/import/${result.importBatchId}/sandbox`;
+              } else {
+                // 降级���跳转到首页重分类
+                window.location.href = "/home?reclassify=true";
+              }
             }}
           >
             🚀 运行 AI 分类
