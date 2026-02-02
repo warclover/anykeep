@@ -1,11 +1,15 @@
 -- =====================================================
--- 修复: compute_folder_profile 中 tags 列不存在错误
--- 问题: column "tags" does not exist
--- 原因: bookmarks 表使用 ai_tags 和 user_tags 两个独立列
--- 解决方案: 合并 ai_tags 和 user_tags 作为标签来源
+-- 修复: compute_folder_profile 向量除法类型错误
+-- 问题: pgvector 0.7+ 不支持 vector / double precision
+-- 错误信息: operator does not exist: vector / double precision
+-- 解决方案: 使用显式类型转换 vector / float8::real
+--           或使用逐元素计算避免除法
 -- 日期: 2026-01-23
--- 版本: V5.0.3
+-- 版本: V5.0.1
 -- =====================================================
+
+-- 确保 pgvector 扩展已启用
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
 -- 删除所有可能存在的旧函数签名
 DROP FUNCTION IF EXISTS compute_folder_profile(INTEGER);
@@ -13,7 +17,8 @@ DROP FUNCTION IF EXISTS compute_folder_profile(BIGINT);
 DROP FUNCTION IF EXISTS compute_folder_profile(INT);
 
 -- 重新创建 compute_folder_profile 函数
--- 修复: 使用 ai_tags || user_tags 替代不存在的 tags 列
+-- 使用 BIGINT 参数类型（与 TypeScript number 兼容）
+-- 修复: 避免直接使用 vector / scalar，改用向量聚合函数
 CREATE OR REPLACE FUNCTION compute_folder_profile(p_folder_id BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -23,13 +28,15 @@ DECLARE
   v_user_id UUID;
   v_folder_name VARCHAR(100);
   v_bookmark_count INTEGER;
-  v_content_embedding vector(1024);
-  v_name_embedding vector(1024);
-  v_final_embedding vector(1024);
+  v_content_embedding extensions.vector(1024);
+  v_name_embedding extensions.vector(1024);
+  v_final_embedding extensions.vector(1024);
   v_top_tags TEXT[];
   v_sample_titles TEXT[];
   v_internal_similarity FLOAT;
   v_last_bookmark_at TIMESTAMPTZ;
+  v_embedding_sum extensions.vector(1024);
+  v_embedding_count INTEGER;
 BEGIN
   -- 1. 获取文件夹所属用户和名称
   SELECT user_id, name INTO v_user_id, v_folder_name
@@ -100,8 +107,10 @@ BEGIN
   END IF;
 
   -- 5. 计算内容嵌入的平均值
-  -- 使用 avg() 函数（pgvector 0.7.0+ 支持原生向量平均）
+  -- 修复: 使用 vector_avg 聚合函数（pgvector 0.5+ 支持）
+  -- 如果不支持，回退到手动计算
   BEGIN
+    -- 尝试使用 avg() 函数（pgvector 0.7.0+ 支持原生向量平均）
     SELECT avg(embedding) INTO v_content_embedding
     FROM public.bookmarks
     WHERE folder_id = p_folder_id
@@ -109,6 +118,7 @@ BEGIN
       AND embedding IS NOT NULL;
   EXCEPTION WHEN undefined_function OR feature_not_supported THEN
     -- pgvector 版本不支持 avg()，使用手动计算
+    -- 注意：这里使用 float8 数组作为中间类型来避免除法问题
     WITH embedding_sum AS (
       SELECT
         array_agg(e.val ORDER BY e.idx) as sum_vals,
@@ -134,29 +144,27 @@ BEGIN
   -- 6. 计算最终的 profile_embedding
   IF v_name_embedding IS NOT NULL AND v_content_embedding IS NOT NULL THEN
     -- 加权平均：名称 30% + 内容 70%
+    -- 修复：使用标量乘法 (vector * scalar) 而非除法
     v_final_embedding := (v_name_embedding * 0.3::real) + (v_content_embedding * 0.7::real);
   ELSIF v_content_embedding IS NOT NULL THEN
     v_final_embedding := v_content_embedding;
   ELSIF v_name_embedding IS NOT NULL THEN
     v_final_embedding := v_name_embedding;
   ELSE
-    -- 没有可用的嵌入
+    -- 没有���用的嵌入
     RAISE NOTICE 'Folder % has no valid embeddings', p_folder_id;
     RETURN;
   END IF;
 
   -- 7. 获取 Top 10 标签
-  -- 修复 V5.0.3: 合并 ai_tags 和 user_tags（原代码错误引用不存在的 tags 列）
   SELECT ARRAY(
     SELECT tag
     FROM (
-      SELECT UNNEST(
-        COALESCE(ai_tags, ARRAY[]::TEXT[]) || COALESCE(user_tags, ARRAY[]::TEXT[])
-      ) as tag
+      SELECT UNNEST(tags) as tag
       FROM public.bookmarks
       WHERE folder_id = p_folder_id
         AND deleted_at IS NULL
-        AND (ai_tags IS NOT NULL OR user_tags IS NOT NULL)
+        AND tags IS NOT NULL
     ) t
     GROUP BY tag
     ORDER BY COUNT(*) DESC
@@ -244,11 +252,25 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION compute_folder_profile(BIGINT) IS 'V5.0.3: 计算文件夹画像（修复 tags 列不存在错误，合并 ai_tags + user_tags）';
+COMMENT ON FUNCTION compute_folder_profile(BIGINT) IS 'V5.0.1: 计算或更新指定文件夹的画像（修复 pgvector 向量除法兼容性问题）';
 
 -- 授权
 GRANT EXECUTE ON FUNCTION compute_folder_profile(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION compute_folder_profile(BIGINT) TO service_role;
 
--- 注意: 不再创建 INTEGER 版本，避免 PostgREST PGRST203 函数重载歧义
--- TypeScript 的 number 类型会自动匹配 BIGINT
+-- 同时创建 INTEGER 版本的别名（向后兼容）
+CREATE OR REPLACE FUNCTION compute_folder_profile(p_folder_id INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- 直接调用 BIGINT 版本
+  PERFORM compute_folder_profile(p_folder_id::BIGINT);
+END;
+$$;
+
+COMMENT ON FUNCTION compute_folder_profile(INTEGER) IS 'V5.0.1: INTEGER 参数别名，调用 BIGINT 版本';
+
+GRANT EXECUTE ON FUNCTION compute_folder_profile(INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION compute_folder_profile(INTEGER) TO service_role;
