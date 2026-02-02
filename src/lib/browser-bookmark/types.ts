@@ -91,6 +91,23 @@ export const PLATFORM_TO_BROWSER_SOURCE: Partial<
 };
 
 /**
+ * 原始结构处理模式
+ */
+export type StructureMode = "preserve" | "hybrid" | "rebuild" | "auto";
+
+/**
+ * AI 分类选项
+ */
+export interface ClassifyOptions {
+  /** 自动应用高置信度分类 (> 0.8) */
+  autoApplyHighConfidence?: boolean;
+  /** 保留原始文件夹结构 */
+  preserveOriginalStructure?: boolean;
+  /** 自动确认置信度阈值 */
+  autoConfirmThreshold?: number;
+}
+
+/**
  * 导入配置选项
  */
 export interface BrowserBookmarkImportOptions {
@@ -108,6 +125,10 @@ export interface BrowserBookmarkImportOptions {
   overwriteExisting: boolean;
   /** 是否保留原始添加时间（Phase 2） */
   preserveAddDate: boolean;
+  /** 原始结构处理模式 */
+  structureMode?: StructureMode;
+  /** AI 分类详细选项 */
+  classifyOptions?: ClassifyOptions;
 }
 
 /**
@@ -121,6 +142,12 @@ export const DEFAULT_IMPORT_OPTIONS: BrowserBookmarkImportOptions = {
   enableAiClassify: false,
   overwriteExisting: false,
   preserveAddDate: true,
+  structureMode: "auto",
+  classifyOptions: {
+    autoApplyHighConfidence: false,
+    preserveOriginalStructure: true,
+    autoConfirmThreshold: 0.8,
+  },
 };
 
 /**

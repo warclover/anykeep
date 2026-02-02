@@ -22,6 +22,10 @@ import {
   type InboxTriageOutput,
   type TriageSuggestion,
 } from "./types";
+import {
+  GardenerTriggerService,
+  type GardenerSuggestion,
+} from "@/lib/classification/services/batch-classification/triggers/gardener-trigger";
 
 /**
  * 收件箱智能分拣 Skill
@@ -78,6 +82,22 @@ export class InboxTriageSkill extends OrchestrationSkill<
 
     // Step 1: 扫描收件箱
     yield* this.reportProgress("scan", 10, "正在扫描未分类书签...");
+
+    // 检查是否有待处理的批量分类建议
+    const gardenerService = new GardenerTriggerService(supabase);
+    const pendingSuggestions = await gardenerService.getPendingSuggestions(
+      context.userId,
+    );
+
+    if (pendingSuggestions.length > 0) {
+      // 优先处理批量分类建议
+      yield* this.handlePendingBatchClassification(
+        pendingSuggestions,
+        context.userId,
+        gardenerService,
+      );
+      return;
+    }
 
     const { data: unclassified, error } = await supabase
       .from("bookmarks")
@@ -253,6 +273,115 @@ export class InboxTriageSkill extends OrchestrationSkill<
     }
 
     return suggestions.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * 处理待处理的批量分类建议
+   */
+  private async *handlePendingBatchClassification(
+    suggestions: GardenerSuggestion[],
+    _userId: string,
+    _gardenerService: GardenerTriggerService,
+  ): AsyncGenerator<OrchestrationStreamChunk> {
+    const suggestion = suggestions[0]; // 取最新的建议
+
+    yield* this.reportProgress("scan", 50, "发现待处理的智能整理建议...");
+
+    // 创建交付物展示批量分类建议
+    const deliverable = this.createDeliverable(
+      "list",
+      "批量分类建议",
+      {
+        items: [
+          {
+            id: suggestion.id,
+            type: suggestion.type,
+            title: suggestion.title,
+            description: suggestion.description,
+            bookmarkCount: suggestion.bookmarkIds.length,
+            confidence: suggestion.confidence,
+            createdAt: suggestion.createdAt.toISOString(),
+            expiresAt: suggestion.expiresAt.toISOString(),
+            actions: [
+              { label: "立即整理", action: "accept", primary: true },
+              { label: "稍后处理", action: "dismiss" },
+            ],
+          },
+        ],
+      },
+      "json",
+      {
+        metadata: {
+          subType: "batch_classification_suggestion",
+          suggestionId: suggestion.id,
+        },
+      },
+    );
+
+    yield* this.emitDeliverable(deliverable);
+
+    yield* this.emitText(
+      `🌱 **园丁建议**\n\n` +
+        `${suggestion.description}\n\n` +
+        `置信度: ${Math.round(suggestion.confidence * 100)}%\n` +
+        `有效期至: ${suggestion.expiresAt.toLocaleDateString()}\n\n` +
+        `点击「立即整理」开始 AI 智能分类，或选择「稍后处理」跳过此建议。`,
+    );
+
+    yield* this.reportProgress("prepare", 100, "建议已就绪");
+    yield* this.emitDone(true, "发现批量分类建议", true);
+  }
+
+  /**
+   * 触发批量分类检查
+   * 由外部调用，检查是否需要推送批量分类建议
+   */
+  async checkAndTriggerBatchClassification(userId: string): Promise<{
+    triggered: boolean;
+    reason: string;
+    suggestionId?: string;
+  }> {
+    const supabase = await createClient();
+    const gardenerService = new GardenerTriggerService(supabase);
+
+    const checkResult =
+      await gardenerService.shouldTriggerBatchClassification(userId);
+
+    if (!checkResult.shouldTrigger) {
+      return {
+        triggered: false,
+        reason: checkResult.reason,
+      };
+    }
+
+    // 获取待分类书签 ID
+    const { data: bookmarks } = await supabase
+      .from("bookmarks")
+      .select("id")
+      .eq("user_id", userId)
+      .is("folder_id", null)
+      .eq("is_in_trash", false)
+      .limit(200);
+
+    if (!bookmarks || bookmarks.length < 10) {
+      return {
+        triggered: false,
+        reason: "insufficient_bookmarks",
+      };
+    }
+
+    // 创建建议
+    const suggestion =
+      await gardenerService.createBatchClassificationSuggestion(
+        userId,
+        bookmarks.map((b) => b.id),
+      );
+
+    return {
+      triggered: true,
+      reason: "suggestion_created",
+      suggestionId: suggestion.id,
+    };
   }
 }
 

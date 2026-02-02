@@ -374,6 +374,15 @@ export class ImportSessionManager {
         totalSkipped: finalStats.totalSkipped,
         status: "completed",
       });
+
+      // 自动触发批量分类（如果启用）
+      const classificationTransactionId =
+        await this.triggerBatchClassification();
+      if (classificationTransactionId) {
+        console.info(
+          `Batch classification started: ${classificationTransactionId}`,
+        );
+      }
     }
 
     return {
@@ -385,6 +394,56 @@ export class ImportSessionManager {
       platformBreakdown,
       wasResumed,
     };
+  }
+
+  /**
+   * 触发批量分类
+   * 在所有批次导入完成后调用
+   */
+  async triggerBatchClassification(): Promise<string | null> {
+    if (!this.currentSession) {
+      console.info("No current session for batch classification");
+      return null;
+    }
+
+    const session = this.currentSession;
+    const options = session.options as BrowserBookmarkImportOptions;
+
+    // 检查是否启用 AI 分类
+    if (!options.enableAiClassify) {
+      return null;
+    }
+
+    try {
+      const response = await fetch("/api/batch-classification/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          importSessionId: session.id,
+          batchId: session.importBatchId,
+          structureMode: options.structureMode || "auto",
+          classifyOptions: options.classifyOptions || {
+            autoApplyHighConfidence: false,
+            preserveOriginalStructure: true,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Failed to start batch classification:", error);
+        this.onError?.(`批量分类启动失败: ${error.message || "未知错误"}`);
+        return null;
+      }
+
+      const result = await response.json();
+      return result.transactionId || null;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("Batch classification trigger error:", errorMsg);
+      this.onError?.(`批量分类触发异常: ${errorMsg}`);
+      return null;
+    }
   }
 
   /**
