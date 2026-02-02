@@ -43,10 +43,12 @@ export function useBattery() {
       }
 
       // 获取今日使用量
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
       const { data: quota } = await supabase
         .from("user_quota_usage")
         .select("ai_calls_today, last_call_date")
         .eq("user_id", user.id)
+        .eq("month", currentMonth)
         .single();
 
       const today = getLocalDateString();
@@ -91,14 +93,16 @@ export function useBattery() {
       if (!user) return false;
 
       const today = getLocalDateString();
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
       await supabase.from("user_quota_usage").upsert(
         {
           user_id: user.id,
+          month: currentMonth,
           ai_calls_today: state.total - state.remaining + 1,
           last_call_date: today,
         },
-        { onConflict: "user_id" },
+        { onConflict: "user_id,month" },
       );
 
       // 更新本地状态

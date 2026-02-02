@@ -76,7 +76,7 @@ export type EntityType = "bookmark" | "folder" | "tag";
 
 export interface SnapshotEntity {
   type: EntityType;
-  id: string;
+  id: number;
   data: unknown;
 }
 

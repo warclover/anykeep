@@ -9,7 +9,7 @@ export const organizationRules: PredictionRule[] = [
     category: "tag",
     enabled: true,
     condition: (selection) => {
-      return selection.every((b) => !b.tags || b.tags.length === 0);
+      return selection.every((b) => !b.ai_tags || b.ai_tags.length === 0);
     },
     action: "smart_tagging",
   },
@@ -22,7 +22,7 @@ export const organizationRules: PredictionRule[] = [
     enabled: true,
     condition: (selection) => {
       if (selection.length < 2) return false;
-      const tagSets = selection.map((b) => new Set(b.tags || []));
+      const tagSets = selection.map((b) => new Set(b.ai_tags || []));
       if (tagSets.some((s) => s.size === 0)) return false;
 
       // 检查是否有共同标签

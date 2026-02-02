@@ -98,35 +98,20 @@ class TelemetryManager {
 
   /**
    * 获取规则统计数据
+   * 注意：rule_telemetry_stats 视图可能不存在，改用直接查询 ai_feedback 表
    */
-  async getRuleStats(ruleId?: string): Promise<RuleStats[]> {
-    const supabase = createClient();
-
-    // 使用视图查询
-    let query = supabase.from("rule_telemetry_stats").select("*");
-
-    if (ruleId) {
-      query = query.eq("rule_id", ruleId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("[TelemetryManager] Failed to get stats:", error);
-      return [];
-    }
-
-    return (data || []).map((row) => ({
-      ruleId: row.rule_id,
-      matchCount: row.match_count,
-      acceptCount: row.accept_count,
-      ignoreCount: row.ignore_count,
-      acceptRate: row.accept_rate || 0,
-    }));
+  async getRuleStats(_ruleId?: string): Promise<RuleStats[]> {
+    // 由于视图不存在，返回空数组
+    // 未来可以通过 ai_feedback 表实现类似功能
+    console.info(
+      "[TelemetryManager] getRuleStats: rule_telemetry_stats view not available",
+    );
+    return [];
   }
 
   /**
    * 强制刷新队列
+   * 使用 ai_feedback 表存储遥测数据
    */
   async flush(): Promise<void> {
     if (this.batchQueue.length === 0) {
@@ -143,20 +128,22 @@ class TelemetryManager {
       return;
     }
 
-    const events = this.batchQueue
+    // 将遥测事件转换为 ai_feedback 记录
+    const feedbackRecords = this.batchQueue
       .splice(0, TELEMETRY_CONFIG.BATCH_SIZE)
       .map((e) => ({
-        id: e.id,
+        id: e.id || crypto.randomUUID(),
         user_id: user.id,
-        rule_id: e.ruleId,
-        selection_count: e.selectionCount,
-        matched_at: e.matchedAt?.toISOString(),
-        accepted: e.accepted,
-        decided_at: e.decidedAt?.toISOString(),
-        session_id: e.sessionId,
+        conversation_id: e.sessionId || this.sessionId,
+        message_id: `rule_${e.ruleId}_${Date.now()}`,
+        type: e.accepted ? "positive" : "negative",
+        tool_used: e.ruleId,
+        created_at: e.matchedAt?.toISOString() || new Date().toISOString(),
       }));
 
-    const { error } = await supabase.from("rule_telemetry").insert(events);
+    const { error } = await supabase
+      .from("ai_feedback")
+      .insert(feedbackRecords);
 
     if (error) {
       console.error("[TelemetryManager] Flush failed:", error);

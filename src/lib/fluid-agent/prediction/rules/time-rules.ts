@@ -13,6 +13,7 @@ export const timeRules: PredictionRule[] = [
     condition: (selection) => {
       const now = Date.now();
       return selection.every((b) => {
+        if (!b.created_at) return false;
         const created = new Date(b.created_at).getTime();
         return !b.is_read && now - created > SEVEN_DAYS_MS;
       });
@@ -29,6 +30,7 @@ export const timeRules: PredictionRule[] = [
     condition: (selection) => {
       const weekStart = getWeekStart();
       return selection.every((b) => {
+        if (!b.created_at) return false;
         const created = new Date(b.created_at);
         return created >= weekStart;
       });
@@ -45,6 +47,7 @@ export const timeRules: PredictionRule[] = [
     condition: (selection) => {
       const todayStart = getTodayStart();
       return selection.every((b) => {
+        if (!b.created_at) return false;
         const created = new Date(b.created_at);
         return created >= todayStart;
       });

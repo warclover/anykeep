@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SnapshotEntity, RollbackResult, EntityType } from "../types";
+import type { Json } from "@/types/supabase.generated";
 
 class SnapshotManager {
   private readonly EXPIRY_HOURS = 24;
 
   /**
    * 创建操作快照
+   * 适配 operation_snapshots 表结构：action, before_state, after_state, bookmark_ids, folder_ids
    */
   async createSnapshot(
     operationId: string,
@@ -23,18 +25,34 @@ class SnapshotManager {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + this.EXPIRY_HOURS);
 
-    const snapshots = entities.map((entity) => ({
-      operation_id: operationId,
+    // 按实体类型分组
+    const bookmarkIds = entities
+      .filter((e) => e.type === "bookmark")
+      .map((e) => e.id);
+    const folderIds = entities
+      .filter((e) => e.type === "folder")
+      .map((e) => e.id);
+
+    // 合并所有实体的 before_state
+    const beforeState: Record<string, unknown> = {};
+    entities.forEach((entity) => {
+      beforeState[`${entity.type}_${entity.id}`] = entity.data;
+    });
+
+    const snapshot = {
+      id: operationId,
       user_id: user.id,
-      entity_type: entity.type,
-      entity_id: entity.id,
-      before_state: entity.data,
+      action: "batch_operation",
+      before_state: beforeState as Json,
+      after_state: {} as Json,
+      bookmark_ids: bookmarkIds.length > 0 ? bookmarkIds : null,
+      folder_ids: folderIds.length > 0 ? folderIds : null,
       expires_at: expiresAt.toISOString(),
-    }));
+    };
 
     const { error } = await supabase
       .from("operation_snapshots")
-      .insert(snapshots);
+      .insert(snapshot);
 
     if (error) {
       throw new Error(`Failed to create snapshot: ${error.message}`);
@@ -49,33 +67,33 @@ class SnapshotManager {
 
     try {
       // 1. 获取快照
-      const { data: snapshots, error: fetchError } = await supabase
+      const { data: snapshot, error: fetchError } = await supabase
         .from("operation_snapshots")
         .select("*")
-        .eq("operation_id", operationId);
+        .eq("id", operationId)
+        .single();
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      if (!snapshots || snapshots.length === 0) {
+      if (fetchError || !snapshot) {
         return {
           success: false,
           restoredCount: 0,
-          error: "No snapshots found",
+          error: "No snapshot found",
         };
       }
 
-      // 2. 按实体类型分组恢复
+      // 2. 从 before_state 恢复实体
       let restoredCount = 0;
+      const beforeState = snapshot.before_state as Record<string, unknown>;
 
-      for (const snapshot of snapshots) {
-        const tableName = this.getTableName(snapshot.entity_type);
+      for (const [key, data] of Object.entries(beforeState)) {
+        const [entityType] = key.split("_");
+        const tableName = this.getTableName(entityType as EntityType);
 
-        if (tableName) {
+        if (tableName && data && typeof data === "object") {
+          // 使用类型断言处理动态表名
           const { error: upsertError } = await supabase
-            .from(tableName)
-            .upsert(snapshot.before_state);
+            .from(tableName as "bookmarks" | "folders" | "tags")
+            .upsert(data as never);
 
           if (!upsertError) {
             restoredCount++;
@@ -83,18 +101,11 @@ class SnapshotManager {
         }
       }
 
-      // 3. 恢复软删除的实体
-      await supabase
-        .from("bookmarks")
-        .update({ deleted_at: null })
-        .match({ operation_id: operationId })
-        .not("deleted_at", "is", null);
-
-      // 4. 标记快照为已使用（或删除）
+      // 3. 标记快照为已撤销
       await supabase
         .from("operation_snapshots")
-        .delete()
-        .eq("operation_id", operationId);
+        .update({ is_undone: true, undone_at: new Date().toISOString() })
+        .eq("id", operationId);
 
       return { success: true, restoredCount };
     } catch (error) {
@@ -110,13 +121,21 @@ class SnapshotManager {
   async canRollback(operationId: string): Promise<boolean> {
     const supabase = createClient();
 
-    const { count, error } = await supabase
+    const { data, error } = await supabase
       .from("operation_snapshots")
-      .select("id", { count: "exact", head: true })
-      .eq("operation_id", operationId)
-      .gt("expires_at", new Date().toISOString());
+      .select("id, is_undone, expires_at")
+      .eq("id", operationId)
+      .single();
 
-    return !error && (count ?? 0) > 0;
+    if (error || !data) return false;
+
+    // 未撤销且未过期
+    const notUndone = !data.is_undone;
+    const notExpired = data.expires_at
+      ? new Date(data.expires_at) > new Date()
+      : true;
+
+    return notUndone && notExpired;
   }
 
   /**

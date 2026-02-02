@@ -109,6 +109,7 @@
     "ajv-formats": "^3.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "diff": "^8.0.2",
     "expr-eval": "^2.0.2",
@@ -127,6 +128,7 @@
     "p-limit": "^7.2.0",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",
+    "radix-ui": "^1.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.66.1",
@@ -147,7 +149,8 @@
     "uuid": "^13.0.0",
     "vaul": "^1.1.2",
     "yet-another-react-lightbox": "^3.28.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
