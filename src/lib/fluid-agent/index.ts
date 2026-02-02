@@ -3,6 +3,17 @@
 // 类型导出
 export * from "./types";
 
+// 常量和工具函数
+export {
+  QUOTA_CONFIG,
+  TELEMETRY_CONFIG,
+  OPERATION_CONFIG,
+  HIGHLIGHT_CONFIG,
+  COMMAND_MATCH_CONFIG,
+  SANITIZE_CONFIG,
+  sanitizeLabel,
+} from "./constants";
+
 // 规则引擎
 export { ruleRegistry } from "./prediction/rule-registry";
 export { predictionEngine } from "./prediction/prediction-engine";

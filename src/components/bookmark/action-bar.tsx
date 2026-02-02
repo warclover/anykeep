@@ -8,6 +8,7 @@ import {
   DeleteConfirmDialog,
   operationExecutor,
   showUndoToast,
+  sanitizeLabel,
 } from "@/lib/fluid-agent";
 import type { Bookmark } from "@/types/bookmark";
 import type { PredictionResult } from "@/lib/fluid-agent";
@@ -47,7 +48,7 @@ export function ActionBar({
       if (result.success) {
         showUndoToast({
           operationId: result.operationId,
-          message: `已${prediction.label} ${result.affectedCount} 项`,
+          message: `已${sanitizeLabel(prediction.label)} ${result.affectedCount} 项`,
           onUndo: onClearSelection,
         });
         onClearSelection();

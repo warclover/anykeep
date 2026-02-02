@@ -1,5 +1,6 @@
 import type { PresetCommand } from "../types";
 import { presetCommands } from "./preset-commands";
+import { COMMAND_MATCH_CONFIG } from "../constants";
 
 interface MatchResult {
   command: PresetCommand;
@@ -8,8 +9,6 @@ interface MatchResult {
 }
 
 class CommandMatcher {
-  private readonly MIN_MATCH_SCORE = 0.5;
-
   /**
    * 根据输入文本匹配命令
    * @param input 用户输入
@@ -40,7 +39,7 @@ class CommandMatcher {
           keyword.toLowerCase(),
         );
 
-        if (score >= this.MIN_MATCH_SCORE) {
+        if (score >= COMMAND_MATCH_CONFIG.MIN_MATCH_SCORE) {
           results.push({
             command,
             score,
@@ -94,27 +93,27 @@ class CommandMatcher {
   private calculateScore(input: string, keyword: string): number {
     // 完全匹配
     if (input === keyword) {
-      return 1.0;
+      return COMMAND_MATCH_CONFIG.EXACT_MATCH_SCORE;
     }
 
     // 前缀匹配
     if (keyword.startsWith(input)) {
-      return 0.8;
+      return COMMAND_MATCH_CONFIG.PREFIX_MATCH_SCORE;
     }
 
     // 包含匹配
     if (keyword.includes(input)) {
-      return 0.6;
+      return COMMAND_MATCH_CONFIG.CONTAINS_MATCH_SCORE;
     }
 
     // 输入包含关键词
     if (input.includes(keyword)) {
-      return 0.6;
+      return COMMAND_MATCH_CONFIG.CONTAINS_MATCH_SCORE;
     }
 
     // 简单的编辑距离检查（容忍一个字符差异）
     if (this.isCloseMatch(input, keyword)) {
-      return 0.5;
+      return COMMAND_MATCH_CONFIG.FUZZY_MATCH_SCORE;
     }
 
     return 0;
@@ -124,7 +123,9 @@ class CommandMatcher {
    * 检查是否为近似匹配（编辑距离 <= 1）
    */
   private isCloseMatch(a: string, b: string): boolean {
-    if (Math.abs(a.length - b.length) > 1) {
+    if (
+      Math.abs(a.length - b.length) > COMMAND_MATCH_CONFIG.MAX_EDIT_DISTANCE
+    ) {
       return false;
     }
 
@@ -132,15 +133,19 @@ class CommandMatcher {
     const maxLen = Math.max(a.length, b.length);
 
     for (let i = 0; i < maxLen; i++) {
-      if (a[i] !== b[i]) {
+      // 安全访问字符，避免 undefined 比较
+      const charA = i < a.length ? a[i] : "";
+      const charB = i < b.length ? b[i] : "";
+
+      if (charA !== charB) {
         differences++;
-        if (differences > 1) {
+        if (differences > COMMAND_MATCH_CONFIG.MAX_EDIT_DISTANCE) {
           return false;
         }
       }
     }
 
-    return differences <= 1;
+    return differences <= COMMAND_MATCH_CONFIG.MAX_EDIT_DISTANCE;
   }
 }
 
