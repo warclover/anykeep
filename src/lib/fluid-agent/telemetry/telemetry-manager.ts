@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
 import type { TelemetryEvent, RuleStats } from "../types";
+import { TELEMETRY_CONFIG } from "../constants";
 
 class TelemetryManager {
   private sessionId: string;
   private pendingMatches: Map<string, Partial<TelemetryEvent>> = new Map();
   private batchQueue: Partial<TelemetryEvent>[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly FLUSH_INTERVAL = 5000; // 5秒批量刷新
-  private readonly BATCH_SIZE = 50;
 
   constructor() {
     this.sessionId = this.generateSessionId();
@@ -49,19 +48,30 @@ class TelemetryManager {
   }
 
   /**
-   * 记录规则匹配事件
+   * 创建基础事件对象（DRY 原则提取）
    */
-  async recordMatch(ruleId: string, selectionCount: number): Promise<void> {
-    const event: Partial<TelemetryEvent> = {
+  private createBaseEvent(
+    ruleId: string,
+    selectionCount: number,
+    accepted: boolean | null = null,
+    decidedAt: Date | null = null,
+  ): Partial<TelemetryEvent> {
+    return {
       id: crypto.randomUUID(),
       ruleId,
       selectionCount,
       matchedAt: new Date(),
-      accepted: null,
-      decidedAt: null,
+      accepted,
+      decidedAt,
       sessionId: this.sessionId,
     };
+  }
 
+  /**
+   * 记录规则匹配事件
+   */
+  async recordMatch(ruleId: string, selectionCount: number): Promise<void> {
+    const event = this.createBaseEvent(ruleId, selectionCount);
     this.pendingMatches.set(ruleId, event);
     this.scheduleBatchFlush();
   }
@@ -79,15 +89,8 @@ class TelemetryManager {
       this.batchQueue.push(pending);
     } else {
       // 如果没有匹配记录，创建新的决策记录
-      this.batchQueue.push({
-        id: crypto.randomUUID(),
-        ruleId,
-        selectionCount: 0,
-        matchedAt: new Date(),
-        accepted,
-        decidedAt: new Date(),
-        sessionId: this.sessionId,
-      });
+      const event = this.createBaseEvent(ruleId, 0, accepted, new Date());
+      this.batchQueue.push(event);
     }
 
     this.scheduleBatchFlush();
@@ -140,16 +143,18 @@ class TelemetryManager {
       return;
     }
 
-    const events = this.batchQueue.splice(0, this.BATCH_SIZE).map((e) => ({
-      id: e.id,
-      user_id: user.id,
-      rule_id: e.ruleId,
-      selection_count: e.selectionCount,
-      matched_at: e.matchedAt?.toISOString(),
-      accepted: e.accepted,
-      decided_at: e.decidedAt?.toISOString(),
-      session_id: e.sessionId,
-    }));
+    const events = this.batchQueue
+      .splice(0, TELEMETRY_CONFIG.BATCH_SIZE)
+      .map((e) => ({
+        id: e.id,
+        user_id: user.id,
+        rule_id: e.ruleId,
+        selection_count: e.selectionCount,
+        matched_at: e.matchedAt?.toISOString(),
+        accepted: e.accepted,
+        decided_at: e.decidedAt?.toISOString(),
+        session_id: e.sessionId,
+      }));
 
     const { error } = await supabase.from("rule_telemetry").insert(events);
 
@@ -180,7 +185,7 @@ class TelemetryManager {
       if (this.batchQueue.length > 0) {
         this.scheduleBatchFlush();
       }
-    }, this.FLUSH_INTERVAL);
+    }, TELEMETRY_CONFIG.FLUSH_INTERVAL);
   }
 
   private generateSessionId(): string {

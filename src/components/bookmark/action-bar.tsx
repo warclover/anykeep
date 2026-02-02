@@ -73,7 +73,12 @@ export function ActionBar({
             <span className="text-sm text-muted-foreground">
               已选择 {selection.length} 项
             </span>
-            <Button variant="ghost" size="icon" onClick={onClearSelection}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClearSelection}
+              aria-label="取消选择"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
