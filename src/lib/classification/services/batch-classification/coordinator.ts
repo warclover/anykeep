@@ -92,15 +92,90 @@ export class BatchClassificationCoordinator {
     // 1. 创建事务记录
     const transactionId = await this.createTransaction(request, userId);
 
-    // 2. 异步执行分类流程
-    this.executeClassificationAsync(transactionId, request, userId).catch(
-      (error) => {
-        console.error("Classification failed:", error);
-        this.updateProgressError(transactionId, error.message);
+    // 2. 异步执行分类流程（带重试机制）
+    this.executeWithRetry(transactionId, request, userId, 3).catch(
+      async (error) => {
+        // 所有重试都失败后，清理部分创建的数据
+        await this.cleanupFailedTransaction(transactionId);
+        await this.updateProgressError(
+          transactionId,
+          error instanceof Error ? error.message : "Unknown error",
+        );
       },
     );
 
     return transactionId;
+  }
+
+  /**
+   * 带重试的执行包装器
+   */
+  private async executeWithRetry(
+    transactionId: string,
+    request: StartClassificationRequest,
+    userId: string,
+    maxRetries: number,
+  ): Promise<void> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.executeClassificationAsync(transactionId, request, userId);
+        return; // 成功则退出
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // 最后一次重试失败，不再重试
+        if (attempt === maxRetries) {
+          break;
+        }
+
+        // 指数退避等待（1s, 2s, 4s...）
+        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+
+        // 重置进度状态以便重试
+        await this.updateProgress(transactionId, "sedimentation", 0);
+      }
+    }
+
+    throw lastError || new Error("Classification failed after retries");
+  }
+
+  /**
+   * 清理失败事务的部分数据
+   */
+  private async cleanupFailedTransaction(transactionId: string): Promise<void> {
+    try {
+      // 获取事务信息
+      const { data: transaction } = await this.supabase
+        .from("batch_import_transactions")
+        .select("batch_id")
+        .eq("id", transactionId)
+        .single();
+
+      if (!transaction?.batch_id) return;
+
+      // 删除已创建的聚类成员
+      await this.supabase
+        .from("import_cluster_members")
+        .delete()
+        .in(
+          "cluster_id",
+          this.supabase
+            .from("import_clusters")
+            .select("id")
+            .eq("import_batch_id", transaction.batch_id),
+        );
+
+      // 删除已创建的聚类
+      await this.supabase
+        .from("import_clusters")
+        .delete()
+        .eq("import_batch_id", transaction.batch_id);
+    } catch {
+      // 清理失败不抛出异常，只记录
+    }
   }
 
   /**
@@ -147,7 +222,7 @@ export class BatchClassificationCoordinator {
       throw new Error("Transaction not found");
     }
 
-    // 获取聚类结果
+    // 获取聚类结果（包含成员信息）
     const { data: clusters } = await this.supabase
       .from("import_clusters")
       .select(
@@ -158,6 +233,10 @@ export class BatchClassificationCoordinator {
           distance_to_centroid,
           is_representative,
           representative_type
+        ),
+        folders:suggested_folder_id (
+          id,
+          name
         )
       `,
       )
@@ -170,29 +249,108 @@ export class BatchClassificationCoordinator {
       .eq("import_batch_id", transaction.batch_id)
       .eq("classification_status", "processing");
 
+    // 收集所有需要获取详情的书签 ID（代表元）
+    const representativeBookmarkIds: number[] = [];
+    for (const cluster of clusters || []) {
+      const members = cluster.import_cluster_members as Array<{
+        bookmark_id: number;
+        is_representative: boolean;
+        representative_type: string | null;
+      }>;
+      for (const member of members || []) {
+        if (member.is_representative) {
+          representativeBookmarkIds.push(member.bookmark_id);
+        }
+      }
+    }
+
+    // 批量获取代表元书签详情
+    const bookmarkDetailsMap = new Map<
+      number,
+      { id: number; title: string; url: string; domain: string }
+    >();
+    if (representativeBookmarkIds.length > 0) {
+      const { data: bookmarkDetails } = await this.supabase
+        .from("bookmarks")
+        .select("id, title, url")
+        .in("id", representativeBookmarkIds);
+
+      for (const b of bookmarkDetails || []) {
+        bookmarkDetailsMap.set(b.id, {
+          id: b.id,
+          title: b.title || "",
+          url: b.url,
+          domain: this.extractDomain(b.url),
+        });
+      }
+    }
+
     // 转换为结果格式
-    const clusterResults: ClusterResult[] = (clusters || []).map((c) => ({
-      id: c.id,
-      index: c.cluster_index,
-      memberCount: c.member_count || 0,
-      suggestedName: c.suggested_name,
-      suggestedNameConfidence: c.suggested_name_confidence || 0,
-      suggestedFolderId: c.suggested_folder_id,
-      suggestedFolderName: null, // TODO: 关联查询
-      matchConfidence: c.match_confidence || 0,
-      matchType:
-        (c.match_type as "exact" | "fuzzy" | "create_new") || "create_new",
-      conflictType:
-        (c.conflict_type as ClusterResult["conflictType"]) || "none",
-      conflictDetails: c.conflict_details as Record<string, unknown>,
-      status: (c.status as ClusterResult["status"]) || "pending",
-      representatives: { core: [], edge: [] }, // TODO: 填充代表元
-    }));
+    const clusterResults: ClusterResult[] = (clusters || []).map((c) => {
+      const members = c.import_cluster_members as Array<{
+        bookmark_id: number;
+        is_representative: boolean;
+        representative_type: string | null;
+      }>;
+
+      // 填充代表元
+      const coreReps: Array<{
+        id: number;
+        title: string;
+        url: string;
+        domain: string;
+      }> = [];
+      const edgeReps: Array<{
+        id: number;
+        title: string;
+        url: string;
+        domain: string;
+      }> = [];
+
+      for (const member of members || []) {
+        if (member.is_representative) {
+          const details = bookmarkDetailsMap.get(member.bookmark_id);
+          if (details) {
+            if (member.representative_type === "core") {
+              coreReps.push(details);
+            } else if (member.representative_type === "edge") {
+              edgeReps.push(details);
+            }
+          }
+        }
+      }
+
+      // 获取关联的文件夹名称
+      const folder = c.folders as { id: number; name: string } | null;
+
+      return {
+        id: c.id,
+        index: c.cluster_index,
+        memberCount: c.member_count || 0,
+        suggestedName: c.suggested_name,
+        suggestedNameConfidence: c.suggested_name_confidence || 0,
+        suggestedFolderId: c.suggested_folder_id,
+        suggestedFolderName: folder?.name || null,
+        matchConfidence: c.match_confidence || 0,
+        matchType:
+          (c.match_type as "exact" | "fuzzy" | "create_new") || "create_new",
+        conflictType:
+          (c.conflict_type as ClusterResult["conflictType"]) || "none",
+        conflictDetails: c.conflict_details as Record<string, unknown>,
+        status: (c.status as ClusterResult["status"]) || "pending",
+        representatives: { core: coreReps, edge: edgeReps },
+      };
+    });
+
+    // 统计冲突数量
+    const conflictCount = clusterResults.filter(
+      (c) => c.conflictType !== "none",
+    ).length;
 
     return {
       transactionId,
       clusters: clusterResults,
-      conflicts: [], // TODO: 从数据库获取冲突
+      conflicts: [], // 冲突信息已在 clusterResults 中包含
       unclustered: (unclustered || []).map((b) => b.id),
       stats: {
         totalBookmarks: transaction.total_bookmarks || 0,
@@ -202,7 +360,7 @@ export class BatchClassificationCoordinator {
         ),
         unclusteredCount: (unclustered || []).length,
         clusterCount: clusterResults.length,
-        conflictCount: 0,
+        conflictCount,
         estimatedCost: 0,
       },
     };
@@ -276,24 +434,56 @@ export class BatchClassificationCoordinator {
     // 2. 恢复快照
     const snapshot = transaction.pre_confirm_snapshot as {
       bookmarkStates?: Record<string, { folder_id: number | null }>;
+      createdFolderIds?: number[];
     };
 
     let restoredBookmarks = 0;
+    let deletedFolders = 0;
 
     if (snapshot?.bookmarkStates) {
-      for (const [bookmarkId, state] of Object.entries(
-        snapshot.bookmarkStates,
-      )) {
-        await this.supabase
-          .from("bookmarks")
-          .update({ folder_id: state.folder_id })
-          .eq("id", parseInt(bookmarkId));
-        restoredBookmarks++;
+      // 批量更新书签的 folder_id（优化 N+1）
+      const bookmarkUpdates = Object.entries(snapshot.bookmarkStates);
+      const BATCH_SIZE = 100;
+
+      for (let i = 0; i < bookmarkUpdates.length; i += BATCH_SIZE) {
+        const batch = bookmarkUpdates.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(([bookmarkId, state]) =>
+            this.supabase
+              .from("bookmarks")
+              .update({
+                folder_id: state.folder_id,
+                classification_status: "pending",
+              })
+              .eq("id", parseInt(bookmarkId)),
+          ),
+        );
+        restoredBookmarks += batch.length;
       }
     }
 
-    // 3. 删除本次创建的文件夹
-    // TODO: 实现文件夹删除逻辑
+    // 3. 删除本次创建的文件夹（仅删除空文件夹，避免误删用户手动添加的内容）
+    if (snapshot?.createdFolderIds && snapshot.createdFolderIds.length > 0) {
+      for (const folderId of snapshot.createdFolderIds) {
+        // 检查文件夹是否为空（除了本次分类的书签外）
+        const { count } = await this.supabase
+          .from("bookmarks")
+          .select("id", { count: "exact", head: true })
+          .eq("folder_id", folderId)
+          .is("deleted_at", null);
+
+        if (count === 0) {
+          const { error } = await this.supabase
+            .from("folders")
+            .delete()
+            .eq("id", folderId);
+
+          if (!error) {
+            deletedFolders++;
+          }
+        }
+      }
+    }
 
     // 4. 更新事务状态
     await this.supabase
@@ -304,7 +494,7 @@ export class BatchClassificationCoordinator {
       })
       .eq("id", transactionId);
 
-    return { restoredBookmarks, deletedFolders: 0 };
+    return { restoredBookmarks, deletedFolders };
   }
 
   // ============================================
@@ -809,7 +999,7 @@ export class BatchClassificationCoordinator {
 
     await this.supabase
       .from("batch_import_transactions")
-      .update({ status: "processing" })
+      .update({ status: "failed" })
       .eq("id", transactionId);
   }
 

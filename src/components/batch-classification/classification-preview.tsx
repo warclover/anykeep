@@ -65,6 +65,9 @@ export function ClassificationPreview({
   const [confirmationMode, setConfirmationMode] =
     useState<ConfirmationMode>("list");
 
+  // 底部操作栏高度（用于内容区域的 padding-bottom 补偿）
+  const BOTTOM_BAR_HEIGHT = 80;
+
   // 计算统计
   const stats = useMemo(() => {
     const conflictCount = clusters.filter(
@@ -279,7 +282,7 @@ export function ClassificationPreview({
       </div>
 
       {/* 簇列表 */}
-      <div className="space-y-4">
+      <div className="space-y-4" style={{ paddingBottom: BOTTOM_BAR_HEIGHT }}>
         {filteredClusters.map((cluster) => {
           const decision = decisions.get(cluster.id);
           const displayCluster = decision

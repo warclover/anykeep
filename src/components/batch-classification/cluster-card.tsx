@@ -172,20 +172,26 @@ export function ClusterCard({
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CardContent className="pb-3">
           {/* 代表性书签预览 */}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">代表内容：</p>
-            <ul className="space-y-1">
-              {cluster.representatives.core.slice(0, 3).map((bookmark) => (
-                <li
-                  key={bookmark.id}
-                  className="flex items-center gap-2 text-sm truncate"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span className="truncate">{bookmark.title}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {cluster.representatives.core.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">代表内容：</p>
+              <ul className="space-y-1">
+                {cluster.representatives.core.slice(0, 3).map((bookmark) => (
+                  <li
+                    key={bookmark.id}
+                    className="flex items-center gap-2 text-sm truncate"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="truncate">{bookmark.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground italic">
+              包含 {cluster.memberCount} 个书签
+            </div>
+          )}
 
           {/* 展开详情 */}
           <CollapsibleContent className="mt-4 space-y-4">

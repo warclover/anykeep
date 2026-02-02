@@ -4,56 +4,69 @@
  * POST /api/batch-classification/[batchId]/confirm
  *
  * @module api/batch-classification/[batchId]/confirm
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-01
+ * @updated 2026-02-02 - 安全修复：使用 Zod 进行请求验证
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
-import type { UserDecision } from "@/lib/classification/services/batch-classification";
+import { logger } from "@/lib/logger";
 
 // ============================================
-// 请求验证
+// 常量
 // ============================================
 
-interface RequestBody {
-  decisions: UserDecision[];
-}
+/** UUID 正则表达式 */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 单次请求允许的最大决策数量 */
+const MAX_DECISIONS = 500;
+
+// ============================================
+// Zod Schema 验证
+// ============================================
+
+const UserDecisionSchema = z
+  .object({
+    clusterId: z.string().regex(UUID_REGEX, "Invalid clusterId format"),
+    action: z.enum(["accept", "reject", "modify"]),
+    targetFolderId: z.number().int().positive().optional(),
+    customName: z.string().min(1).max(100).optional(),
+  })
+  .refine(
+    (data) => {
+      // modify 操作需要提供 targetFolderId 或 customName
+      if (data.action === "modify") {
+        return (
+          data.targetFolderId !== undefined || data.customName !== undefined
+        );
+      }
+      return true;
+    },
+    { message: "Modify action requires targetFolderId or customName" },
+  );
+
+const ConfirmRequestSchema = z.object({
+  decisions: z
+    .array(UserDecisionSchema)
+    .min(1, "At least one decision is required")
+    .max(MAX_DECISIONS, `Maximum ${MAX_DECISIONS} decisions allowed`),
+});
+
+type RequestBody = z.infer<typeof ConfirmRequestSchema>;
 
 function validateRequest(body: unknown): RequestBody {
-  if (!body || typeof body !== "object") {
-    throw new Error("Invalid request body");
+  const result = ConfirmRequestSchema.safeParse(body);
+  if (!result.success) {
+    const firstError = result.error.errors[0];
+    throw new Error(firstError?.message || "Invalid request body");
   }
-
-  const { decisions } = body as RequestBody;
-
-  if (!Array.isArray(decisions)) {
-    throw new Error("decisions must be an array");
-  }
-
-  for (const decision of decisions) {
-    if (!decision.clusterId || typeof decision.clusterId !== "string") {
-      throw new Error("Each decision must have a valid clusterId");
-    }
-
-    if (!["accept", "reject", "modify"].includes(decision.action)) {
-      throw new Error(
-        "Each decision must have a valid action (accept, reject, modify)",
-      );
-    }
-
-    if (
-      decision.action === "modify" &&
-      !decision.targetFolderId &&
-      !decision.customName
-    ) {
-      throw new Error("Modify action requires targetFolderId or customName");
-    }
-  }
-
-  return { decisions };
+  return result.data;
 }
 
 // ============================================
@@ -101,7 +114,10 @@ export async function POST(
       rejectedCount: decisions.filter((d) => d.action === "reject").length,
     });
   } catch (error) {
-    console.error("Failed to confirm classification:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to confirm batch classification",
+    );
 
     if (error instanceof Error && error.message === "Transaction not found") {
       return NextResponse.json(

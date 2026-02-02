@@ -12,6 +12,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // API Handler
@@ -51,7 +52,10 @@ export async function POST(
       ...result,
     });
   } catch (error) {
-    console.error("Failed to undo classification:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to undo batch classification",
+    );
 
     const errorMessage =
       error instanceof Error ? error.message : "Internal server error";

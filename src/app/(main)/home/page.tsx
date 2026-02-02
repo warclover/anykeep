@@ -24,6 +24,10 @@ import type { Bookmark, Platform } from "@/types/supabase";
 // 动态渲染（用户特定数据）
 export const dynamic = "force-dynamic";
 
+/** UUID 正则表达式 */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
 };
@@ -51,7 +55,8 @@ const getInitialBookmarks = cache(
 
       const _headerTime = performance.now() - startTime;
 
-      if (!isVerified || !userId) {
+      // 验证 userId 是否为有效的 UUID 格式（防止 header 注入攻击）
+      if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
         return { bookmarks: [], error: "请先登录" };
       }
 

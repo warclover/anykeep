@@ -12,6 +12,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // API Handler
@@ -50,7 +51,10 @@ export async function GET(
       ...results,
     });
   } catch (error) {
-    console.error("Failed to get results:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to get batch classification results",
+    );
 
     if (error instanceof Error && error.message === "Transaction not found") {
       return NextResponse.json(

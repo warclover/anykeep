@@ -15,6 +15,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
 import type { StartClassificationRequest } from "@/lib/classification/services/batch-classification";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 常量
@@ -131,7 +132,10 @@ export async function POST(request: NextRequest) {
       message: "Classification started",
     });
   } catch (error) {
-    console.error("Failed to start classification:", error);
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to start batch classification",
+    );
 
     // 区分验证错误和服务器错误
     const isValidationError =
