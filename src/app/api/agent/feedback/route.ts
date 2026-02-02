@@ -190,13 +190,9 @@ export async function GET(request: NextRequest) {
 
     if (action === "stats") {
       // 获取统计数据
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)("get_ai_feedback_stats", {
+      const { data, error } = await supabase.rpc("get_ai_feedback_stats", {
         p_user_id: user.id,
-      }) as {
-        data: { total_count: number; positive_count: number; negative_count: number; satisfaction_rate: number }[] | null;
-        error: { message: string } | null;
-      };
+      });
 
       if (error) {
         logger.error({ error }, "Agent Feedback: Failed to get stats");
@@ -226,14 +222,10 @@ export async function GET(request: NextRequest) {
 
     if (action === "reasons") {
       // 获取负反馈原因分布
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await supabase.rpc(
         "get_negative_feedback_reasons",
         { p_limit: 100 },
-      ) as {
-        data: { reason: string; count: number; percentage: number }[] | null;
-        error: { message: string } | null;
-      };
+      );
 
       if (error) {
         logger.error({ error }, "Agent Feedback: Failed to get reasons");

@@ -1,0 +1,5 @@
+{
+  "plugins": [
+    { "source": { "type": "url", "url": "https://github.com/kingkongshot/Pensieve" } }
+  ]
+}

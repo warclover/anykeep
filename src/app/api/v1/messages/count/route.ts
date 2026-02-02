@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { messageRpc } from "@/types/supabase-rpc-extensions";
 
 interface UnreadCounts {
   total: number;
@@ -25,12 +26,8 @@ interface UnreadCounts {
 export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const supabase = await createClient();
 
-  // 使用 RPC 函数获取未读数量
-  // 类型断言: 手动维护类型文件时需要此断言
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)("get_unread_message_counts", {
-    p_user_id: userId,
-  });
+  // 使用类型安全的 RPC 包装函数
+  const { data, error } = await messageRpc.getUnreadCounts(supabase, userId);
 
   if (error) {
     logger.error(

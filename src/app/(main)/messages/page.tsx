@@ -53,8 +53,8 @@ export default function MessagesPage() {
 
   // 处理标记已读
   const handleRead = useCallback(
-    async (id: number) => {
-      const success = await markAsRead(id);
+    async (id: string) => {
+      const success = await markAsRead(Number(id));
       if (!success) {
         toast.error("操作失败");
       }
@@ -65,8 +65,8 @@ export default function MessagesPage() {
 
   // 处理删除
   const handleDelete = useCallback(
-    async (id: number) => {
-      const success = await deleteMessage(id);
+    async (id: string) => {
+      const success = await deleteMessage(Number(id));
       if (success) {
         toast.success("消息已删除");
       } else {
@@ -79,8 +79,8 @@ export default function MessagesPage() {
 
   // 处理归档
   const handleArchive = useCallback(
-    async (id: number) => {
-      const success = await archiveMessage(id);
+    async (id: string) => {
+      const success = await archiveMessage(Number(id));
       if (success) {
         toast.success("消息已归档");
       } else {

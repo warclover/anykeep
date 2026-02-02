@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/dual-mode-agent/requirements.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2026-02-02T01:43:12.453Z",
+      "trigger": "initial",
+      "approvalId": "approval_1769996592443_fqb6xha54",
+      "approvalTitle": "双模式智能体系统 - 需求文档"
+    }
+  ]
+}

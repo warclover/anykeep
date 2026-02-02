@@ -177,6 +177,7 @@ export async function PUT(
     // 类型断言: 手动维护类型文件时需要此断言
     type ExistingFolderType = {
       id: number;
+      name: string;
       user_id: string;
       parent_id: number | null;
       is_system: boolean;
@@ -184,7 +185,7 @@ export async function PUT(
     };
     const { data: existingFolder, error: checkError } = (await supabase
       .from("folders")
-      .select("id, user_id, parent_id, is_system, system_type")
+      .select("id, name, user_id, parent_id, is_system, system_type")
       .eq("id", folderId)
       .is("deleted_at", null)
       .single()) as unknown as {
