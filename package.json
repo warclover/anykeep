@@ -113,6 +113,7 @@
     "diff": "^8.0.2",
     "expr-eval": "^2.0.2",
     "framer-motion": "^12.23.26",
+    "franc-min": "^6.2.0",
     "idb": "^7.1.1",
     "isomorphic-dompurify": "^2.34.0",
     "jose": "^6.1.3",
