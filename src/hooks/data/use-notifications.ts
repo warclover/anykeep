@@ -14,6 +14,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+// 直接从 types 文件导入，避免触发服务端代码（index.ts 导出了 NotificationService）
 import {
   type Notification,
   type NotificationGroup,
@@ -23,9 +24,9 @@ import {
   type NotificationChannel,
   type NotificationCategory,
   type NotificationEntityType,
-  type NotificationTypeConfig,
+  type NotificationType as NotificationTypeConfig,
   DATE_GROUP_LABELS,
-} from "@/lib/notifications";
+} from "@/lib/notifications/notification.types";
 import { startOfDay, subDays } from "date-fns";
 
 // ============================================================================
