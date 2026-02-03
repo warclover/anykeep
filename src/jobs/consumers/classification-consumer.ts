@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { BaseConsumer } from "./base-consumer";
+import { fromClassificationSuggestions } from "@/lib/supabase/typed-queries";
 import type { JobContext, JobResult, AutoClassifyPayload } from "../types";
 
 // 本地类型定义
@@ -66,22 +67,24 @@ export class ClassificationConsumer extends BaseConsumer {
 
     try {
       // 获取书签和用户文件夹
-       
+      // 注意：bookmarks 和 folders 表已在 Database 类型中定义，但查询仍需类型断言
       const [bookmarkResult, foldersResult] = await Promise.all([
-        (context.supabase.from("bookmarks") as any)
+        context.supabase
+          .from("bookmarks")
           .select(
             "id, title, description, ai_summary, url, platform, user_tags, ai_tags",
           )
           .eq("id", bookmarkId)
-          .single() as Promise<{
+          .single() as unknown as Promise<{
           data: BookmarkClassifyRow | null;
           error: Error | null;
         }>,
-        (context.supabase.from("folders") as any)
+        context.supabase
+          .from("folders")
           .select("id, name")
           .eq("user_id", context.userId)
           .is("deleted_at", null)
-          .order("name") as Promise<{
+          .order("name") as unknown as Promise<{
           data: FolderRow[] | null;
           error: Error | null;
         }>,
@@ -109,9 +112,8 @@ export class ClassificationConsumer extends BaseConsumer {
       const batchId = `auto-classify-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       // 保存分类建议（使用 insert 而非 upsert）
-       
-      const { error: suggestionError } = await (
-        context.supabase.from("classification_suggestions") as any
+      const { error: suggestionError } = await fromClassificationSuggestions(
+        context.supabase,
       ).insert({
         batch_id: batchId,
         bookmark_id: bookmarkId,
@@ -141,15 +143,13 @@ export class ClassificationConsumer extends BaseConsumer {
       }
 
       // 更新书签状态
-       
-      const { error: updateError } = await (
-        context.supabase.from("bookmarks") as any
-      )
+      const { error: updateError } = await context.supabase
+        .from("bookmarks")
         .update({
           status: "COMPLETED",
           ai_tags: classification.suggestedTags,
           updated_at: new Date().toISOString(),
-        })
+        } as never)
         .eq("id", bookmarkId);
 
       if (updateError) {
@@ -209,8 +209,9 @@ export class ClassificationConsumer extends BaseConsumer {
       .join("\n");
 
     // 获取用户历史分类偏好
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentClassifications } = (await (supabase.from("bookmarks") as any)
+    const { data: recentClassifications } = (await (
+      supabase.from("bookmarks") as unknown as ReturnType<typeof supabase.from>
+    )
       .select("folder_id, user_tags, platform")
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -361,8 +362,10 @@ export class ClassificationConsumer extends BaseConsumer {
     }
 
     if (Object.keys(updates).length > 1) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("bookmarks") as any).update(updates).eq("id", bookmarkId);
+      await supabase
+        .from("bookmarks")
+        .update(updates as never)
+        .eq("id", bookmarkId);
     }
   }
 }
