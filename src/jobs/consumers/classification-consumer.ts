@@ -142,18 +142,20 @@ export class ClassificationConsumer extends BaseConsumer {
         );
       }
 
-      // 更新书签状态
+      // 更新书签 AI 标签（移除无���的 status 字段）
       const { error: updateError } = await context.supabase
         .from("bookmarks")
         .update({
-          status: "COMPLETED",
           ai_tags: classification.suggestedTags,
           updated_at: new Date().toISOString(),
-        } as never)
+        })
         .eq("id", bookmarkId);
 
       if (updateError) {
-        this.logger.warn({ updateError }, "Failed to update bookmark status");
+        this.logger.warn(
+          { updateError, bookmarkId },
+          "Failed to update bookmark ai_tags",
+        );
       }
 
       this.logger.info(

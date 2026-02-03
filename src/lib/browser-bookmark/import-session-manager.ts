@@ -401,6 +401,7 @@ export class ImportSessionManager {
   /**
    * 触发批量分类
    * 在所有批次导入完成后调用
+   * 包含重试机制确保分类任务被正确启动
    */
   async triggerBatchClassification(): Promise<string | null> {
     if (!this.currentSession) {
@@ -419,39 +420,89 @@ export class ImportSessionManager {
       return null;
     }
 
-    try {
-      const response = await fetch("/api/batch-classification/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          importSessionId: session.id,
-          batchId: session.importBatchId,
-          structureMode: options.structureMode || "auto",
-          classifyOptions: options.classifyOptions || {
-            autoApplyHighConfidence: false,
-            preserveOriginalStructure: true,
-          },
-        }),
-      });
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 1000;
 
-      if (!response.ok) {
-        const error = await response.json();
-        clientLogger.error({ error }, "Failed to start batch classification");
-        this.onError?.(`批量分类启动失败: ${error.message || "未知错误"}`);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await fetch("/api/batch-classification/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            importSessionId: session.id,
+            batchId: session.importBatchId,
+            structureMode: options.structureMode || "auto",
+            classifyOptions: options.classifyOptions || {
+              autoApplyHighConfidence: false,
+              preserveOriginalStructure: true,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          const errorMsg = error.message || "未知错误";
+
+          // 4xx 错误不重试（客户端错误）
+          if (response.status >= 400 && response.status < 500) {
+            clientLogger.error(
+              { error, status: response.status },
+              "Batch classification failed with client error",
+            );
+            this.onError?.(`批量分类启动失败: ${errorMsg}`);
+            return null;
+          }
+
+          // 5xx 错误重试
+          if (attempt < MAX_RETRIES) {
+            clientLogger.warn(
+              { attempt, maxRetries: MAX_RETRIES, status: response.status },
+              "Batch classification failed, retrying...",
+            );
+            await this.delay(RETRY_DELAY_MS * attempt);
+            continue;
+          }
+
+          clientLogger.error(
+            { error, attempts: attempt },
+            "Batch classification failed after all retries",
+          );
+          this.onError?.(
+            `批量分类启动失败（已重试${MAX_RETRIES}次）: ${errorMsg}`,
+          );
+          return null;
+        }
+
+        const result = await response.json();
+        clientLogger.info(
+          { transactionId: result.transactionId, attempt },
+          "Batch classification started successfully",
+        );
+        return result.transactionId || null;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+
+        if (attempt < MAX_RETRIES) {
+          clientLogger.warn(
+            { error: errorMsg, attempt, maxRetries: MAX_RETRIES },
+            "Batch classification request failed, retrying...",
+          );
+          await this.delay(RETRY_DELAY_MS * attempt);
+          continue;
+        }
+
+        clientLogger.error(
+          { error: errorMsg, attempts: attempt },
+          "Batch classification trigger failed after all retries",
+        );
+        this.onError?.(
+          `批量分类触发异常（已重试${MAX_RETRIES}次）: ${errorMsg}`,
+        );
         return null;
       }
-
-      const result = await response.json();
-      return result.transactionId || null;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      clientLogger.error(
-        { error: errorMsg },
-        "Batch classification trigger error",
-      );
-      this.onError?.(`批量分类触发异常: ${errorMsg}`);
-      return null;
     }
+
+    return null;
   }
 
   /**

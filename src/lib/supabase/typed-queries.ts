@@ -270,11 +270,25 @@ type TypedSupabaseClient = SupabaseClient<Database>;
  * 通用查询构建器类型
  *
  * @description
- * 使用 `unknown` 作为中间类型，避免复杂的泛型推断问题。
- * 调用方需要在使用时进行适当的类型断言或类型守卫。
+ * 使用 PostgrestQueryBuilder 提供基础类型安全。
+ * 虽然泛型参数使用 unknown，但至少保留了 Supabase 查询方法的类型提示。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyQueryBuilder = any;
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+
+type TypedQueryBuilder<TRow = unknown> = PostgrestFilterBuilder<
+  Database["public"],
+  Record<string, unknown>,
+  TRow[],
+  string,
+  unknown
+>;
+
+/**
+ * 通用查询构建器类型（无泛型约束）
+ * 用于暂时无法定义精确类型的表
+ */
+
+type AnyQueryBuilder = ReturnType<TypedSupabaseClient["from"]>;
 
 /**
  * 创建类型安全的表查询
@@ -295,152 +309,170 @@ type AnyQueryBuilder = any;
 // ----- MD Collections -----
 export function fromMdCollections(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
-  return supabase.from("md_collections" as keyof Database["public"]["Tables"]);
+): TypedQueryBuilder<MdCollectionRow> {
+  return supabase.from(
+    "md_collections" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<MdCollectionRow>;
 }
 
 // ----- Synthesis Reports -----
 export function fromSynthesisReports(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<SynthesisReportRow> {
   return supabase.from(
     "synthesis_reports" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<SynthesisReportRow>;
 }
 
 // ----- Synthesis Highlights -----
 export function fromSynthesisHighlights(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<SynthesisHighlightRow> {
   return supabase.from(
     "synthesis_highlights" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<SynthesisHighlightRow>;
 }
 
 // ----- Page Monitors -----
 export function fromPageMonitors(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
-  return supabase.from("page_monitors" as keyof Database["public"]["Tables"]);
+): TypedQueryBuilder<PageMonitorRow> {
+  return supabase.from(
+    "page_monitors" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<PageMonitorRow>;
 }
 
 // ----- Monitor Check Logs -----
 export function fromMonitorCheckLogs(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<MonitorCheckLogRow> {
   return supabase.from(
     "monitor_check_logs" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<MonitorCheckLogRow>;
 }
 
 // ----- Classification Confirmations -----
 export function fromClassificationConfirmations(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<ClassificationConfirmationRow> {
   return supabase.from(
     "classification_confirmations" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<ClassificationConfirmationRow>;
 }
 
 // ----- Classification Suggestions -----
 export function fromClassificationSuggestions(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder {
   return supabase.from(
     "classification_suggestions" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder;
 }
 
 // ----- Smart Lists -----
-export function fromSmartLists(supabase: TypedSupabaseClient): AnyQueryBuilder {
-  return supabase.from("smart_lists" as keyof Database["public"]["Tables"]);
+export function fromSmartLists(
+  supabase: TypedSupabaseClient,
+): TypedQueryBuilder<SmartListRow> {
+  return supabase.from(
+    "smart_lists" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<SmartListRow>;
 }
 
 // ----- System Jobs -----
-export function fromSystemJobs(supabase: TypedSupabaseClient): AnyQueryBuilder {
-  return supabase.from("system_jobs" as keyof Database["public"]["Tables"]);
+export function fromSystemJobs(
+  supabase: TypedSupabaseClient,
+): TypedQueryBuilder<SystemJobRow> {
+  return supabase.from(
+    "system_jobs" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<SystemJobRow>;
 }
 
 // ----- Distribution Targets -----
 export function fromDistributionTargets(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<DistributionTargetRow> {
   return supabase.from(
     "distribution_targets" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<DistributionTargetRow>;
 }
 
 // ----- Distribution Records -----
 export function fromDistributionRecords(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<DistributionRecordRow> {
   return supabase.from(
     "distribution_records" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<DistributionRecordRow>;
 }
 
 // ----- OAuth States -----
 export function fromOAuthStates(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
-  return supabase.from("oauth_states" as keyof Database["public"]["Tables"]);
+): TypedQueryBuilder<OAuthStateRow> {
+  return supabase.from(
+    "oauth_states" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<OAuthStateRow>;
 }
 
 // ----- Distribution OAuth Tokens -----
 export function fromDistributionOAuthTokens(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<DistributionOAuthTokenRow> {
   return supabase.from(
     "distribution_oauth_tokens" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<DistributionOAuthTokenRow>;
 }
 
 // ----- Plugin Auth Codes -----
 export function fromPluginAuthCodes(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder<PluginAuthCodeRow> {
   return supabase.from(
     "plugin_auth_codes" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder<PluginAuthCodeRow>;
 }
 
 // ----- Plugin Tokens -----
 export function fromPluginTokens(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
-  return supabase.from("plugin_tokens" as keyof Database["public"]["Tables"]);
+): TypedQueryBuilder<PluginTokenRow> {
+  return supabase.from(
+    "plugin_tokens" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder<PluginTokenRow>;
 }
 
 // ----- AI Operation Snapshots -----
 export function fromAiOperationSnapshots(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder {
   return supabase.from(
     "ai_operation_snapshots" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder;
 }
 
 // ----- AI Notes -----
-export function fromAiNotes(supabase: TypedSupabaseClient): AnyQueryBuilder {
-  return supabase.from("ai_notes" as keyof Database["public"]["Tables"]);
+export function fromAiNotes(supabase: TypedSupabaseClient): TypedQueryBuilder {
+  return supabase.from(
+    "ai_notes" as keyof Database["public"]["Tables"],
+  ) as unknown as TypedQueryBuilder;
 }
 
 // ----- Intent Corrections -----
 export function fromIntentCorrections(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder {
   return supabase.from(
     "intent_corrections" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder;
 }
 
 // ----- Bookmark Snapshots -----
 export function fromBookmarkSnapshots(
   supabase: TypedSupabaseClient,
-): AnyQueryBuilder {
+): TypedQueryBuilder {
   return supabase.from(
     "bookmark_snapshots" as keyof Database["public"]["Tables"],
-  );
+  ) as unknown as TypedQueryBuilder;
 }
 
 // ----- Bookmark Chunks -----
@@ -549,6 +581,46 @@ export function fromFolderProfiles(
   supabase: TypedSupabaseClient,
 ): AnyQueryBuilder {
   return supabase.from("folder_profiles" as keyof Database["public"]["Tables"]);
+}
+
+// ----- Bookmarks -----
+export function fromBookmarks(supabase: TypedSupabaseClient): AnyQueryBuilder {
+  return supabase.from("bookmarks" as keyof Database["public"]["Tables"]);
+}
+
+// ----- Folders -----
+export function fromFolders(supabase: TypedSupabaseClient): AnyQueryBuilder {
+  return supabase.from("folders" as keyof Database["public"]["Tables"]);
+}
+
+// ----- Profiles -----
+export function fromProfiles(supabase: TypedSupabaseClient): AnyQueryBuilder {
+  return supabase.from("profiles" as keyof Database["public"]["Tables"]);
+}
+
+// ----- Import History -----
+export function fromImportHistory(
+  supabase: TypedSupabaseClient,
+): AnyQueryBuilder {
+  return supabase.from("import_history" as keyof Database["public"]["Tables"]);
+}
+
+// ----- Browser Bookmarks -----
+export function fromBrowserBookmarks(
+  supabase: TypedSupabaseClient,
+): AnyQueryBuilder {
+  return supabase.from(
+    "browser_bookmarks" as keyof Database["public"]["Tables"],
+  );
+}
+
+// ----- Browser Bookmark Folders -----
+export function fromBrowserBookmarkFolders(
+  supabase: TypedSupabaseClient,
+): AnyQueryBuilder {
+  return supabase.from(
+    "browser_bookmark_folders" as keyof Database["public"]["Tables"],
+  );
 }
 
 // ============================================

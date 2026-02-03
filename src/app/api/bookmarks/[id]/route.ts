@@ -24,6 +24,7 @@ import type { BookmarkUpdate } from "@/types/supabase";
 import { BOOKMARK, AUTH } from "@/lib/constants/messages";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 import { BOOKMARK_DETAIL_FIELDS } from "@/lib/constants/query-fields";
+// NOTE: 公共类型已提取到 @/types/api-helpers，后续重构时使用
 
 /**
  * V4.2.1: HTTP 缓存配置（详情页）

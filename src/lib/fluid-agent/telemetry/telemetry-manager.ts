@@ -39,12 +39,14 @@ class TelemetryManager {
     if (this.batchQueue.length === 0) return;
 
     // 使用 sendBeacon 在页面卸载时发送数据
+    // 必须使用 Blob 指定正确的 MIME 类型
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       const data = JSON.stringify({
         events: this.batchQueue,
         sessionId: this.sessionId,
       });
-      navigator.sendBeacon("/api/telemetry/batch", data);
+      const blob = new Blob([data], { type: "application/json" });
+      navigator.sendBeacon("/api/telemetry/batch", blob);
     }
   }
 
