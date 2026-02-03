@@ -19,6 +19,13 @@ import {
   createServiceClient,
 } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import {
+  fromBookmarkSnapshots,
+  rpcGetUserSnapshotQuota,
+  rpcCanCreateSnapshot,
+  rpcAtomicCreateSnapshot,
+  rpcAtomicBatchCreateSnapshots,
+} from "@/lib/supabase/typed-queries";
 import type {
   SnapshotType,
   SnapshotStatus,
@@ -30,9 +37,10 @@ import type {
 
 // 临时类型辅助：在迁移执行并重新生成类型前使用
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+
+// 使用 typed-queries 中的 fromBookmarkSnapshots 替代本地 getSnapshotsTable
 const getSnapshotsTable = (supabase: SupabaseClient) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (supabase as any).from("bookmark_snapshots");
+  fromBookmarkSnapshots(supabase);
 
 // 本地查询结果类型定义
 interface SnapshotListRow {
@@ -118,13 +126,9 @@ export class SnapshotService {
   async getUserQuota(userId: string): Promise<SnapshotQuota> {
     const supabase = await this.getSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "get_user_snapshot_quota",
-      {
-        p_user_id: userId,
-      },
-    );
+    const { data, error } = await rpcGetUserSnapshotQuota(supabase, {
+      p_user_id: userId,
+    });
 
     if (error) {
       logger.error(
@@ -180,8 +184,7 @@ export class SnapshotService {
   ): Promise<boolean> {
     const supabase = await this.getSupabase();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("can_create_snapshot", {
+    const { data, error } = await rpcCanCreateSnapshot(supabase, {
       p_user_id: userId,
       p_estimated_size: estimatedSize,
     });
@@ -230,20 +233,16 @@ export class SnapshotService {
     const priorityValue = priority === "high" ? 1 : priority === "low" ? -1 : 0;
 
     // V4.2.16: 使用原子化函数，在单个事务中完成配额检查和记录创建
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "atomic_create_snapshot",
-      {
-        p_user_id: userId,
-        p_bookmark_id: bookmarkId,
-        p_snapshot_type: snapshotType,
-        p_estimated_size: 102400, // 预估 100KB
-        p_trigger_source: options.source || "manual",
-        p_trigger_tag:
-          options.source === "auto-tag" ? options.triggerTag : null,
-        p_priority: priorityValue,
-      },
-    );
+    const { data, error } = await rpcAtomicCreateSnapshot(supabase, {
+      p_user_id: userId,
+      p_bookmark_id: bookmarkId,
+      p_snapshot_type: snapshotType,
+      p_estimated_size: 102400, // 预估 100KB
+      p_trigger_source: options.source || "manual",
+      p_trigger_tag:
+        options.source === "auto-tag" ? (options.triggerTag ?? null) : null,
+      p_priority: priorityValue,
+    });
 
     if (error) {
       logger.error(
@@ -301,17 +300,13 @@ export class SnapshotService {
     const snapshotType = options.snapshotType || "basic";
 
     // V4.2.16: 使用原子化批量函数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)(
-      "atomic_batch_create_snapshots",
-      {
-        p_user_id: userId,
-        p_bookmark_ids: bookmarkIds,
-        p_snapshot_type: snapshotType,
-        p_trigger_source: options.source || "batch",
-        p_max_batch_size: 50,
-      },
-    );
+    const { data, error } = await rpcAtomicBatchCreateSnapshots(supabase, {
+      p_user_id: userId,
+      p_bookmark_ids: bookmarkIds,
+      p_snapshot_type: snapshotType,
+      p_trigger_source: options.source || "batch",
+      p_max_batch_size: 50,
+    });
 
     if (error) {
       logger.error(

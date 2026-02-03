@@ -16,6 +16,10 @@ import type {
   JobRecord,
   ConsumerConfig,
 } from "../types";
+import {
+  rpcClaimJobsBatch,
+  rpcCompleteJob,
+} from "@/lib/supabase/typed-queries";
 
 /**
  * 任务消费者基类
@@ -160,8 +164,7 @@ export abstract class BaseConsumer {
    * 获取任务
    */
   private async claimJobs(limit: number): Promise<JobRecord[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.rpc as any)("claim_jobs_batch", {
+    const { data, error } = await rpcClaimJobsBatch(this.supabase, {
       p_worker_id: this.workerId,
       p_job_types: this.config.jobTypes,
       p_limit: limit,
@@ -265,8 +268,7 @@ export abstract class BaseConsumer {
     error?: string,
     result?: unknown,
   ): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: rpcError } = await (this.supabase.rpc as any)("complete_job", {
+    const { error: rpcError } = await rpcCompleteJob(this.supabase, {
       p_job_id: jobId,
       p_success: success,
       p_error: error ?? null,
