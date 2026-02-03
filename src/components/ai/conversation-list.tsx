@@ -8,15 +8,16 @@
  * - 选择/切换会话
  * - 删除会话
  *
- * @version 1.0.0
+ * @version 1.1.0 - 添加 react-virtuoso 虚拟化支持
  * @since 2026-01-13
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { Virtuoso } from "react-virtuoso";
 import {
   MessageSquare,
   Plus,
@@ -26,7 +27,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -78,6 +78,12 @@ const UI_TEXT = {
   deleteConfirm: "确定删除此会话？",
 } as const;
 
+// 虚拟化配置
+const VIRTUOSO_CONFIG = {
+  overscan: 100, // 预渲染区域（像素）
+  itemHeight: 72, // 预估单项高度
+} as const;
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -120,17 +126,17 @@ export function ConversationList({
   );
 
   /**
-   * 处理加载更多
+   * 处理加载更多（虚拟列表触底时调用）
    */
-  const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || !onLoadMore) return;
+  const handleEndReached = useCallback(async () => {
+    if (isLoadingMore || !onLoadMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
       await onLoadMore();
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, onLoadMore]);
+  }, [isLoadingMore, onLoadMore, hasMore]);
 
   /**
    * 格式化时间
@@ -145,6 +151,51 @@ export function ConversationList({
       return "";
     }
   }, []);
+
+  /**
+   * 渲染单个会话项
+   */
+  const renderItem = useCallback(
+    (index: number) => {
+      const conv = conversations[index];
+      return (
+        <ConversationItem
+          key={conv.id}
+          conversation={conv}
+          isSelected={currentId === conv.id}
+          isDeleting={deletingId === conv.id}
+          onSelect={() => onSelect(conv.id)}
+          onDelete={(e) => handleDelete(e, conv.id)}
+          formatTime={formatTime}
+        />
+      );
+    },
+    [conversations, currentId, deletingId, onSelect, handleDelete, formatTime],
+  );
+
+  /**
+   * 渲染列表底部（加载更多状态）
+   */
+  const renderFooter = useCallback(() => {
+    if (!hasMore) return null;
+
+    return (
+      <div className="pt-2 pb-1 px-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs"
+          onClick={handleEndReached}
+          disabled={isLoadingMore}
+        >
+          {isLoadingMore ? (
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          ) : null}
+          {UI_TEXT.loadMore}
+        </Button>
+      </div>
+    );
+  }, [hasMore, isLoadingMore, handleEndReached]);
 
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
@@ -179,66 +230,41 @@ export function ConversationList({
         </Button>
       </div>
 
-      {/* Conversation List */}
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {isLoading && conversations.length === 0 ? (
-            // 初始加载状态
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mb-2" />
-              <span className="text-sm">{UI_TEXT.loading}</span>
-            </div>
-          ) : conversations.length === 0 ? (
-            // 空状态
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
-              <span className="text-sm">{UI_TEXT.empty}</span>
-              <span className="text-xs mt-1 opacity-70">
-                {UI_TEXT.emptyHint}
-              </span>
-            </div>
-          ) : (
-            // 会话列表
-            <>
-              {conversations.map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conversation={conv}
-                  isSelected={currentId === conv.id}
-                  isDeleting={deletingId === conv.id}
-                  onSelect={() => onSelect(conv.id)}
-                  onDelete={(e) => handleDelete(e, conv.id)}
-                  formatTime={formatTime}
-                />
-              ))}
-
-              {/* 加载更多 */}
-              {hasMore && (
-                <div className="pt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={handleLoadMore}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : null}
-                    {UI_TEXT.loadMore}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </ScrollArea>
+      {/* Conversation List - Virtualized */}
+      <div className="flex-1 overflow-hidden">
+        {isLoading && conversations.length === 0 ? (
+          // 初始加载状态
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin mb-2" />
+            <span className="text-sm">{UI_TEXT.loading}</span>
+          </div>
+        ) : conversations.length === 0 ? (
+          // 空状态
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
+            <span className="text-sm">{UI_TEXT.empty}</span>
+            <span className="text-xs mt-1 opacity-70">{UI_TEXT.emptyHint}</span>
+          </div>
+        ) : (
+          // 虚拟化会话列表
+          <Virtuoso
+            data={conversations}
+            overscan={VIRTUOSO_CONFIG.overscan}
+            itemContent={(index) => renderItem(index)}
+            endReached={handleEndReached}
+            components={{
+              Footer: renderFooter,
+            }}
+            className="p-2"
+          />
+        )}
+      </div>
     </div>
   );
 }
 
 // =============================================================================
-// Sub-component: ConversationItem
+// Sub-component: ConversationItem (Memoized)
 // =============================================================================
 
 interface ConversationItemProps {
@@ -250,7 +276,7 @@ interface ConversationItemProps {
   formatTime: (dateString: string) => string;
 }
 
-function ConversationItem({
+const ConversationItem = memo(function ConversationItem({
   conversation,
   isSelected,
   isDeleting,
@@ -262,7 +288,7 @@ function ConversationItem({
     <div
       onClick={onSelect}
       className={cn(
-        "group flex items-start gap-2 p-2 rounded-md cursor-pointer",
+        "group flex items-start gap-2 p-2 rounded-md cursor-pointer mb-1",
         "hover:bg-accent transition-colors",
         isSelected && "bg-accent",
         isDeleting && "opacity-50 pointer-events-none",
@@ -325,7 +351,7 @@ function ConversationItem({
       </TooltipProvider>
     </div>
   );
-}
+});
 
 // =============================================================================
 // Compact variant for sidebar integration
@@ -370,10 +396,6 @@ export function ConversationListCompact({
 
   // 展开状态：显示完整列表
   return (
-    <ConversationList
-      {...props}
-      onClose={onToggle}
-      className="w-64 border-r"
-    />
+    <ConversationList {...props} onClose={onToggle} className="w-64 border-r" />
   );
 }

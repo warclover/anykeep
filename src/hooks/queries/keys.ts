@@ -113,3 +113,150 @@ export const smartListKeys = {
   bookmarks: (id: string, filters?: BookmarkFilters) =>
     [...smartListKeys.all, id, "bookmarks", filters] as const,
 };
+
+/**
+ * Folder Bookmarks Query Keys (用于文件夹/分组的书签无限滚动)
+ */
+export const folderBookmarkKeys = {
+  all: ["folderBookmarks"] as const,
+  /** 按文件夹 ID 列表查询 */
+  byFolderIds: (folderIds: number[]) =>
+    [
+      ...folderBookmarkKeys.all,
+      "infinite",
+      folderIds.sort().join(","),
+    ] as const,
+};
+
+/**
+ * Init Data Query Keys (首页聚合数据)
+ */
+export interface InitDataFilters {
+  platform?: string;
+  sort?: string;
+  folder?: string;
+}
+
+export const initDataKeys = {
+  all: ["initData"] as const,
+  /** 带筛选条件的初始化数据 */
+  filtered: (filters: InitDataFilters) =>
+    [...initDataKeys.all, filters] as const,
+};
+
+/**
+ * Inbox Query Keys
+ */
+export const inboxKeys = {
+  all: ["inbox"] as const,
+  counts: () => [...inboxKeys.all, "counts"] as const,
+};
+
+/**
+ * Custom Usage Tags Query Keys
+ */
+export const customTagKeys = {
+  all: ["customUsageTags"] as const,
+  list: () => [...customTagKeys.all, "list"] as const,
+};
+
+/**
+ * Smart List Bookmarks Query Keys
+ */
+export const smartListBookmarkKeys = {
+  all: ["smartListBookmarks"] as const,
+  byId: (id: number) => [...smartListBookmarkKeys.all, id] as const,
+};
+
+/**
+ * Monitor Query Keys
+ */
+export const monitorKeys = {
+  all: ["monitors"] as const,
+  list: (status?: string) => [...monitorKeys.all, "list", status] as const,
+  detail: (id: number) => [...monitorKeys.all, "detail", id] as const,
+};
+
+/**
+ * Quota Query Keys
+ */
+export const quotaKeys = {
+  all: ["quota"] as const,
+  knowledgeStudio: () => [...quotaKeys.all, "knowledgeStudio"] as const,
+};
+
+/**
+ * Persona Query Keys
+ */
+export const personaKeys = {
+  all: ["persona"] as const,
+  current: () => [...personaKeys.all, "current"] as const,
+};
+
+/**
+ * Profile Query Keys
+ */
+export const profileKeys = {
+  all: ["profile"] as const,
+  byUserId: (userId: string) => [...profileKeys.all, userId] as const,
+};
+
+/**
+ * Inbox Organization Query Keys
+ */
+export const inboxOrganizationKeys = {
+  all: ["inboxOrganization"] as const,
+  analysis: () => [...inboxOrganizationKeys.all, "analysis"] as const,
+};
+
+/**
+ * Operation History Query Keys
+ */
+export const operationHistoryKeys = {
+  all: ["operationHistory"] as const,
+  list: (params: string) =>
+    [...operationHistoryKeys.all, "list", params] as const,
+};
+
+/**
+ * Health Check Query Keys
+ */
+export const healthKeys = {
+  all: ["health"] as const,
+  overview: () => [...healthKeys.all, "overview"] as const,
+  brokenLinks: (page: number, pageSize: number) =>
+    [...healthKeys.all, "brokenLinks", page, pageSize] as const,
+  duplicates: (page: number, pageSize: number) =>
+    [...healthKeys.all, "duplicates", page, pageSize] as const,
+  staleContent: (days: number, page: number, pageSize: number) =>
+    [...healthKeys.all, "stale", days, page, pageSize] as const,
+};
+
+/**
+ * Highlights Query Keys
+ */
+export const highlightKeys = {
+  all: ["highlights"] as const,
+  byCollection: (collectionId: number) =>
+    [...highlightKeys.all, "collection", collectionId] as const,
+};
+
+/**
+ * Wechat Article Query Keys
+ */
+export const wechatArticleKeys = {
+  all: ["wechatArticle"] as const,
+  detail: (snapshotId: number) =>
+    [...wechatArticleKeys.all, "detail", snapshotId] as const,
+};
+
+/**
+ * Knowledge Link Query Keys
+ */
+export const knowledgeLinkKeys = {
+  all: ["knowledgeLink"] as const,
+  related: (
+    bookmarkId: number,
+    params: { limit: number; minStrength: number; types?: string[] },
+  ) => [...knowledgeLinkKeys.all, "related", bookmarkId, params] as const,
+};

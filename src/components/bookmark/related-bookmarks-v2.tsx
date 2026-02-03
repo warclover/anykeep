@@ -4,7 +4,7 @@
  * 使用知识关联 API 展示相关书签
  * 支持多种关联类型：语义相似、实体匹配、标签匹配
  *
- * @version 2.0.0
+ * @version 2.1.0 - 迁移至 TanStack Query
  * @since 2025-12-15
  */
 
@@ -12,7 +12,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import {
   ExternalLink,
   Folder,
@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { knowledgeLinkKeys } from "@/hooks/queries/keys";
 import type { LinkType, RelatedBookmark } from "@/lib/knowledge-link";
 
 // ============================================================================
@@ -95,18 +96,37 @@ const LINK_TYPE_CONFIG: Record<
 };
 
 // ============================================================================
-// Component
+// Fetcher
 // ============================================================================
 
-// V4.2.23: SWR fetcher 函数
-const relatedBookmarksFetcher = async (url: string): Promise<ApiResponse> => {
-  const response = await fetch(url);
+const fetchRelatedBookmarks = async (
+  bookmarkId: number,
+  limit: number,
+  minStrength: number,
+  types?: LinkType[],
+): Promise<ApiResponse> => {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("minStrength", String(minStrength));
+  if (types && types.length > 0) {
+    params.set("types", types.join(","));
+  }
+
+  const response = await fetch(
+    `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`,
+  );
   const data: ApiResponse = await response.json();
+
   if (!response.ok) {
     throw new Error(data.error || "获取相关书签失败");
   }
+
   return data;
 };
+
+// ============================================================================
+// Component
+// ============================================================================
 
 export function RelatedBookmarksV2({
   bookmarkId,
@@ -119,36 +139,37 @@ export function RelatedBookmarksV2({
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // V4.2.23: 构建 SWR key（仅在展开时请求）
-  const swrKey = useMemo(() => {
-    if (!isExpanded) return null;
+  // 构建查询参数（用于缓存 key）
+  const queryParams = useMemo(
+    () => ({
+      limit,
+      minStrength,
+      types,
+    }),
+    [limit, minStrength, types],
+  );
 
-    const params = new URLSearchParams();
-    params.set("limit", String(limit));
-    params.set("minStrength", String(minStrength));
-    if (types && types.length > 0) {
-      params.set("types", types.join(","));
-    }
-    return `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`;
-  }, [bookmarkId, limit, minStrength, types, isExpanded]);
-
-  // V4.2.23: 使用 SWR 缓存，减少重复请求
+  // 使用 TanStack Query
   const {
     data,
-    error: swrError,
+    error: queryError,
     isLoading,
-  } = useSWR<ApiResponse>(swrKey, relatedBookmarksFetcher, {
-    revalidateOnFocus: false, // 切换标签页不重新请求
-    revalidateOnReconnect: false, // 网络恢复不重新请求
-    dedupingInterval: 60000, // 60秒内相同请求去重
-    errorRetryCount: 2, // 错误重试次数
+  } = useQuery({
+    queryKey: knowledgeLinkKeys.related(bookmarkId, queryParams),
+    queryFn: () => fetchRelatedBookmarks(bookmarkId, limit, minStrength, types),
+    enabled: isExpanded, // 仅在展开时请求
+    staleTime: 60 * 1000, // 60秒内认为数据新鲜
+    gcTime: 5 * 60 * 1000, // 5分钟后垃圾回收
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
   });
 
   // 提取数据和错误
   const related = data?.success ? data.data?.related || [] : [];
-  const error = swrError
-    ? swrError instanceof Error
-      ? swrError.message
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
       : "未知错误"
     : null;
 

@@ -20,26 +20,39 @@
  * V3.4 修复：
  * - 根据 classification_status 区分"自动归类"vs"仅建议"
  * - classified (≥80%置信度): 显示"已自动归类到"
- * - suggested (60-79%置信度): 显示"AI 推荐归类到"（需用户确认）
+ * - suggested (60-79%置信度): 显示"AI 推荐归类到"��需用户确认）
  * - inbox (<60%置信度): 显示"已放入待整理"
+ *
+ * V3.6 性能优化：
+ * - 动态轮询间隔：前5次快速(500ms)→正常(2000ms)→长任务降速(5000ms)
+ * - 预计减少 60-70% 轮询请求
  */
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { API_PATHS } from "@/lib/constants/api-paths";
 import { clientLogger } from "@/lib/client-logger";
 import type { ClassificationResultData } from "@/types/supabase";
 
-// 轮询间隔（毫秒）
-// V3.5: 从 2000ms 缩短至 500ms，提升响应速度
-const POLLING_INTERVAL = 500;
+// V3.6: 动态轮询间隔配置
+const POLLING_INTERVALS = {
+  FAST: 500, // 前 5 次快速轮询
+  NORMAL: 2000, // 正常速度
+  SLOW: 5000, // 长时间任务降速
+} as const;
+
+// 轮询阶段阈值
+const POLL_THRESHOLDS = {
+  FAST_TO_NORMAL: 5, // 第 5 次后切换到正常速度
+  NORMAL_TO_SLOW: 20, // 第 20 次后降速
+} as const;
 
 // 最大轮询次数（防止无限轮询）
-// V3.5: 调整为 120 次，保持最多 60 秒
-const MAX_POLL_COUNT = 120;
+// V3.6: 调整为 60 次（约 2.5 分钟：5*0.5s + 15*2s + 40*5s = 232.5s）
+const MAX_POLL_COUNT = 60;
 
 interface PendingBookmark {
   id: number;
@@ -70,6 +83,24 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
 
   // V3.2: 追踪已通知的书签 ID，防止重复通知
   const notifiedIds = useRef<Set<number>>(new Set());
+
+  // V3.6: 计算当前轮询间隔（基于最大 pollCount）
+  const currentInterval = useMemo(() => {
+    if (pendingBookmarks.length === 0) return POLLING_INTERVALS.NORMAL;
+
+    const maxPollCount = Math.max(
+      ...pendingBookmarks.map((b) => b.pollCount),
+      0,
+    );
+
+    if (maxPollCount < POLL_THRESHOLDS.FAST_TO_NORMAL) {
+      return POLLING_INTERVALS.FAST;
+    }
+    if (maxPollCount < POLL_THRESHOLDS.NORMAL_TO_SLOW) {
+      return POLLING_INTERVALS.NORMAL;
+    }
+    return POLLING_INTERVALS.SLOW;
+  }, [pendingBookmarks]);
 
   /**
    * 追踪待分类的书签
@@ -252,6 +283,7 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
 
   /**
    * 管理轮询定时器
+   * V3.6: 使用动态轮询间隔
    */
   useEffect(() => {
     // 清除旧定时器
@@ -262,7 +294,7 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
 
     // 如果有待分类书签，启动轮询
     if (pendingBookmarks.length > 0) {
-      pollingRef.current = setInterval(pollStatus, POLLING_INTERVAL);
+      pollingRef.current = setInterval(pollStatus, currentInterval);
     } else {
       setIsPolling(false);
     }
@@ -274,7 +306,7 @@ export function useClassificationPolling(): UseClassificationPollingReturn {
         pollingRef.current = null;
       }
     };
-  }, [pendingBookmarks.length, pollStatus]);
+  }, [pendingBookmarks.length, pollStatus, currentInterval]);
 
   /**
    * V3.5: 立即触发一次轮询

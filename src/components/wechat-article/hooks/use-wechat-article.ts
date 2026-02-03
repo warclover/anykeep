@@ -2,18 +2,22 @@
  * 微信文章数据获取 Hook
  *
  * @module wechat-article/hooks
+ * @version 2.0.0 - 迁移至 TanStack Query
  */
 
 "use client";
 
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
+import { wechatArticleKeys } from "@/hooks/queries/keys";
 import type { WechatArticleContent } from "@/lib/wechat-article/wechat-article.types";
 
 /**
  * API 数据获取器
  */
-const fetcher = async (url: string): Promise<WechatArticleContent> => {
-  const res = await fetch(url);
+const fetchWechatArticle = async (
+  snapshotId: number,
+): Promise<WechatArticleContent> => {
+  const res = await fetch(`/api/wechat-article/${snapshotId}`);
 
   if (!res.ok) {
     const error = await res
@@ -32,11 +36,11 @@ const fetcher = async (url: string): Promise<WechatArticleContent> => {
  * 获取微信文章内容
  *
  * @param snapshotId - 快照 ID
- * @returns SWR 返回值
+ * @returns TanStack Query 返回值
  *
  * @example
  * ```tsx
- * const { data, isLoading, error, mutate } = useWechatArticle(123);
+ * const { data, isLoading, error, refetch } = useWechatArticle(123);
  *
  * if (isLoading) return <Loading />;
  * if (error) return <Error message={error.message} />;
@@ -45,27 +49,25 @@ const fetcher = async (url: string): Promise<WechatArticleContent> => {
  * ```
  */
 export function useWechatArticle(snapshotId: number | null) {
-  const { data, error, isLoading, mutate } = useSWR<WechatArticleContent>(
-    snapshotId ? `/api/wechat-article/${snapshotId}` : null,
-    fetcher,
-    {
-      // 缓存配置
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60000, // 1分钟内不重复请求
-
-      // 错误重试
-      shouldRetryOnError: true,
-      errorRetryCount: 2,
-      errorRetryInterval: 3000,
-    },
-  );
+  const query = useQuery({
+    queryKey: snapshotId ? wechatArticleKeys.detail(snapshotId) : ["disabled"],
+    queryFn: () => fetchWechatArticle(snapshotId!),
+    enabled: snapshotId !== null,
+    // 缓存配置
+    staleTime: 60 * 1000, // 1分钟内认为数据新鲜
+    gcTime: 5 * 60 * 1000, // 5分钟后垃圾回收
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // 错误重试
+    retry: 2,
+    retryDelay: 3000,
+  });
 
   return {
-    data: data ?? null,
-    isLoading,
-    error: error ?? null,
-    mutate,
+    data: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error ?? null,
+    mutate: query.refetch,
   };
 }
 
