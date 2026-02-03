@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { TelemetryEvent, RuleStats } from "../types";
 import { TELEMETRY_CONFIG } from "../constants";
+import { clientLogger } from "@/lib/client-logger";
 
 class TelemetryManager {
   private sessionId: string;
@@ -103,8 +104,9 @@ class TelemetryManager {
   async getRuleStats(_ruleId?: string): Promise<RuleStats[]> {
     // 由于视图不存在，返回空数组
     // 未来可以通过 ai_feedback 表实现类似功能
-    console.info(
-      "[TelemetryManager] getRuleStats: rule_telemetry_stats view not available",
+    clientLogger.info(
+      { context: "TelemetryManager" },
+      "getRuleStats: rule_telemetry_stats view not available",
     );
     return [];
   }
@@ -124,7 +126,10 @@ class TelemetryManager {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.info("[TelemetryManager] No user, skipping flush");
+      clientLogger.info(
+        { context: "TelemetryManager" },
+        "No user, skipping flush",
+      );
       return;
     }
 
@@ -146,7 +151,10 @@ class TelemetryManager {
       .insert(feedbackRecords);
 
     if (error) {
-      console.error("[TelemetryManager] Flush failed:", error);
+      clientLogger.error(
+        { error, context: "TelemetryManager" },
+        "Flush failed",
+      );
       // 失败的事件重新入队（最多重试一次）
     }
   }

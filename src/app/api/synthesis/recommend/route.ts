@@ -12,13 +12,15 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { type SynthesisSourceType, SynthesisErrorCode } from "@/lib/synthesis";
+import { type SynthesisSourceType } from "@/lib/synthesis";
 import { MIN_BOOKMARKS_COUNT } from "@/lib/synthesis/constants";
 import type { SynthesisRecommendPreferences } from "@/lib/synthesis/types/recommend";
-
-// 内存缓存（5分钟有效期）
-const cache = new Map<string, { data: RecommendResponse; expiry: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+import {
+  unauthorizedError,
+  successResponse,
+  internalError,
+} from "@/lib/utils/api-response";
+import { createRpcCaller } from "@/lib/supabase/typed-queries";
 
 interface RecommendedTopic {
   id: string;
@@ -72,22 +74,14 @@ export async function GET(_request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
+      return unauthorizedError();
     }
 
-    // P2: 检查缓存
-    const cacheKey = `synthesis:recommend:${user.id}`;
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiry > Date.now()) {
-      return NextResponse.json(cached.data);
-    }
+    // 使用 createRpcCaller 替代 `as any`
+    const rpcCaller = createRpcCaller(supabase);
 
     // 获取用户偏好
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: prefsData } = await (supabase.rpc as any)(
+    const { data: prefsData } = await rpcCaller(
       "get_synthesis_recommend_preferences",
       { p_user_id: user.id },
     );
@@ -125,8 +119,7 @@ export async function GET(_request: NextRequest) {
     const recommendations: RecommendedTopic[] = [];
 
     // 1. 基于文件夹推荐 - 使用 RPC 聚合查询（替代 N+1 循环）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folderStats } = (await (supabase.rpc as any)(
+    const { data: folderStats } = (await rpcCaller(
       "get_folder_bookmark_stats",
       { p_user_id: user.id, p_min_count: MIN_BOOKMARKS_COUNT },
     )) as { data: FolderStatRow[] | null };
@@ -156,11 +149,11 @@ export async function GET(_request: NextRequest) {
     }
 
     // 2. 基于标签推荐 - 使用 RPC 聚合查询（替代内存遍历）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: tagStats } = (await (supabase.rpc as any)(
-      "get_tag_bookmark_stats",
-      { p_user_id: user.id, p_min_count: MIN_BOOKMARKS_COUNT, p_limit: 5 },
-    )) as { data: TagStatRow[] | null };
+    const { data: tagStats } = (await rpcCaller("get_tag_bookmark_stats", {
+      p_user_id: user.id,
+      p_min_count: MIN_BOOKMARKS_COUNT,
+      p_limit: 5,
+    })) as { data: TagStatRow[] | null };
 
     if (tagStats) {
       for (const tagStat of tagStats) {
@@ -191,16 +184,13 @@ export async function GET(_request: NextRequest) {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    type RecentBookmarkRow = { id: number; title: string | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentBookmarks, count: recentCount } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: recentBookmarks, count: recentCount } = await supabase
+      .from("bookmarks")
       .select("id, title", { count: "exact" })
       .eq("user_id", user.id)
       .gte("created_at", oneWeekAgo.toISOString())
       .order("created_at", { ascending: false })
-      .limit(3)) as { data: RecentBookmarkRow[] | null; count: number | null };
+      .limit(3);
 
     if (recentCount && recentCount >= MIN_BOOKMARKS_COUNT) {
       const topicId = "recent-week";
@@ -241,9 +231,6 @@ export async function GET(_request: NextRequest) {
       },
     };
 
-    // P2: 写入缓存
-    cache.set(cacheKey, { data: response, expiry: Date.now() + CACHE_TTL });
-
     logger.info(
       {
         userId: user.id,
@@ -253,15 +240,12 @@ export async function GET(_request: NextRequest) {
       "Synthesis recommendations generated",
     );
 
-    return NextResponse.json(response);
+    return successResponse(response.data);
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },
       "Synthesis recommend API error",
     );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return internalError("获取推荐失败");
   }
 }

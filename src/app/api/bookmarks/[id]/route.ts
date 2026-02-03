@@ -199,13 +199,21 @@ export async function PUT(
       updateData.is_marked_for_deletion = isMarkedForDeletion;
 
     // 5. 更新收藏
-    const { data: updatedBookmark, error: updateError } = (await (
-      supabase.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    // 使用类型断言替代 `as any`，保持类型安全的同时处理关联查询
+    type BookmarkWithFolder = {
+      id: number;
+      title: string;
+      folder_id: number | null;
+      folders: { name: string } | null;
+      [key: string]: unknown;
+    };
+
+    const { data: updatedBookmark, error: updateError } = await supabase
+      .from("bookmarks")
       .update(updateData)
       .eq("id", bookmarkId)
       .select("*, folders!bookmarks_folder_id_fkey(name)")
-      .single()) as { data: unknown; error: { message: string } | null };
+      .single<BookmarkWithFolder>();
 
     if (updateError) {
       return databaseError(BOOKMARK.UPDATE_ERROR, updateError);
@@ -321,13 +329,21 @@ export async function PATCH(
       updateData.starred_at = isStarred ? now : null;
     }
 
-    const { data: updatedBookmark, error: updateError } = (await (
-      supabase.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    // 使用类型断言替代 `as any`
+    type BookmarkWithFolderPatch = {
+      id: number;
+      is_read: boolean;
+      is_starred: boolean;
+      folders: { name: string } | null;
+      [key: string]: unknown;
+    };
+
+    const { data: updatedBookmark, error: updateError } = await supabase
+      .from("bookmarks")
       .update(updateData)
       .eq("id", bookmarkId)
       .select("*, folders!bookmarks_folder_id_fkey(name)")
-      .single()) as { data: unknown; error: { message: string } | null };
+      .single<BookmarkWithFolderPatch>();
 
     if (updateError) {
       return databaseError(BOOKMARK.UPDATE_ERROR, updateError);
@@ -453,15 +469,16 @@ export async function DELETE(
     }
 
     // 3. 移入垃圾箱（而非永久删除）
+    // 使用 Service Client 绕过 RLS，但已验证用户所有权
     const serviceClient = await createServiceClient();
-    const { error: moveToTrashError } = (await (
-      serviceClient.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { error: moveToTrashError } = await serviceClient
+      .from("bookmarks")
       .update({
         is_in_trash: true,
         trashed_at: new Date().toISOString(),
       })
-      .eq("id", bookmarkId)) as { error: { message: string } | null };
+      .eq("id", bookmarkId)
+      .eq("user_id", user.id); // 双重保险：即使用 Service Client 也验证所有权
 
     logger.debug(
       {

@@ -24,6 +24,7 @@ import type {
   Platform,
 } from "./types";
 import { BATCH_SIZE } from "./constants";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -379,8 +380,9 @@ export class ImportSessionManager {
       const classificationTransactionId =
         await this.triggerBatchClassification();
       if (classificationTransactionId) {
-        console.info(
-          `Batch classification started: ${classificationTransactionId}`,
+        clientLogger.info(
+          { transactionId: classificationTransactionId },
+          "Batch classification started",
         );
       }
     }
@@ -402,7 +404,10 @@ export class ImportSessionManager {
    */
   async triggerBatchClassification(): Promise<string | null> {
     if (!this.currentSession) {
-      console.info("No current session for batch classification");
+      clientLogger.info(
+        { context: "ImportSessionManager" },
+        "No current session for batch classification",
+      );
       return null;
     }
 
@@ -431,7 +436,7 @@ export class ImportSessionManager {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error("Failed to start batch classification:", error);
+        clientLogger.error({ error }, "Failed to start batch classification");
         this.onError?.(`批量分类启动失败: ${error.message || "未知错误"}`);
         return null;
       }
@@ -440,7 +445,10 @@ export class ImportSessionManager {
       return result.transactionId || null;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error("Batch classification trigger error:", errorMsg);
+      clientLogger.error(
+        { error: errorMsg },
+        "Batch classification trigger error",
+      );
       this.onError?.(`批量分类触发异常: ${errorMsg}`);
       return null;
     }
