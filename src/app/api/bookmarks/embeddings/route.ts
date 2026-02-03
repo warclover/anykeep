@@ -59,9 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 查询需要生成向量的书签
     // 类型断言: 手动维护类型文件时需要此断言
-     
-    let query = (supabase
-      .from("bookmarks") as any)
+    let query = (supabase.from("bookmarks") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("id, title, ai_summary, ai_tags")
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -80,7 +78,7 @@ export async function POST(request: NextRequest) {
       ai_summary: string | null;
       ai_tags: string[] | null;
     };
-    const { data: bookmarks, error: queryError } = await query as {
+    const { data: bookmarks, error: queryError } = (await query) as {
       data: BookmarkEmbedding[] | null;
       error: { message: string } | null;
     };
@@ -142,15 +140,15 @@ export async function POST(request: NextRequest) {
 
           // 更新数据库（pgvector 接受 number[] 格式，TypeScript 类型为 string）
           // V4.2.7: 同时保存 embedding_version 用于版本追踪
-           
-          const { error: updateError } = await (supabase
-            .from("bookmarks") as any)
+          const { error: updateError } = (await (
+            supabase.from("bookmarks") as any
+          ) // eslint-disable-line @typescript-eslint/no-explicit-any
             .update({
               embedding: embedding as unknown as string,
               embedding_version: getCurrentEmbeddingVersion(),
             })
             .eq("id", bookmark.id)
-            .eq("user_id", user.id) as { error: { message: string } | null };
+            .eq("user_id", user.id)) as { error: { message: string } | null };
 
           if (updateError) {
             throw new Error(updateError.message);
@@ -238,11 +236,11 @@ export async function GET(_request: NextRequest) {
 
     // 2. 查询统计数据
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: stats, error: statsError } = await supabase
+    const { data: stats, error: statsError } = (await supabase
       .from("bookmarks")
       .select("id, embedding")
       .eq("user_id", user.id)
-      .is("deleted_at", null) as unknown as {
+      .is("deleted_at", null)) as unknown as {
       data: { id: number; embedding: unknown }[] | null;
       error: { message: string } | null;
     };

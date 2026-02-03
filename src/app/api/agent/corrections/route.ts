@@ -145,9 +145,9 @@ export async function POST(request: NextRequest) {
 
     // 4. 插入纠正记录到数据库
     // 类型断言: 手动维护类型文件时需要此断言
-     
-    const { data: correction, error: insertError } = await (supabase
-      .from("user_corrections") as any)
+    const { data: correction, error: insertError } = (await (
+      supabase.from("user_corrections") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: user.id,
         original_action: originalActionData as unknown as Json,
@@ -156,7 +156,10 @@ export async function POST(request: NextRequest) {
         rule_extracted: false,
       })
       .select("id")
-      .single() as { data: { id: string } | null; error: { message: string } | null };
+      .single()) as {
+      data: { id: string } | null;
+      error: { message: string } | null;
+    };
 
     if (insertError) {
       logger.error(
@@ -168,12 +171,12 @@ export async function POST(request: NextRequest) {
 
     // 5. 检查是否需要触发规则提取
     // 获取未处理的纠正记录数量
-     
-    const { count: unprocessedCount } = await (supabase
-      .from("user_corrections") as any)
+    const { count: unprocessedCount } = (await (
+      supabase.from("user_corrections") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .eq("rule_extracted", false) as { count: number | null };
+      .eq("rule_extracted", false)) as { count: number | null };
 
     let ruleExtractionTriggered = false;
 
@@ -304,7 +307,11 @@ export async function GET(request: NextRequest) {
       extracted_rule_id: string | null;
       created_at: string;
     };
-    const { data: corrections, count, error: queryError } = await query as {
+    const {
+      data: corrections,
+      count,
+      error: queryError,
+    } = (await query) as {
       data: CorrectionRow[] | null;
       count: number | null;
       error: { message: string } | null;

@@ -8,7 +8,8 @@
  * @since 2026-02-01
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
 import type { StartClassificationRequest } from "@/lib/classification/services/batch-classification";
@@ -33,15 +34,23 @@ function validateRequest(body: unknown): RequestBody {
     throw new Error("Invalid request body");
   }
 
-  const { importSessionId, batchId, bookmarkIds, structureMode, options } = body as RequestBody;
+  const { importSessionId, batchId, bookmarkIds, structureMode, options } =
+    body as RequestBody;
 
   // 至少需要一个标识
-  if (!importSessionId && !batchId && (!bookmarkIds || bookmarkIds.length === 0)) {
+  if (
+    !importSessionId &&
+    !batchId &&
+    (!bookmarkIds || bookmarkIds.length === 0)
+  ) {
     throw new Error("Must provide importSessionId, batchId, or bookmarkIds");
   }
 
   // 验证 structureMode
-  if (structureMode && !["preserve", "hybrid", "rebuild", "auto"].includes(structureMode)) {
+  if (
+    structureMode &&
+    !["preserve", "hybrid", "rebuild", "auto"].includes(structureMode)
+  ) {
     throw new Error("Invalid structureMode");
   }
 
@@ -56,13 +65,13 @@ export async function POST(request: NextRequest) {
   try {
     // 1. 验证用户身份
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. 解析请求体
@@ -82,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     const transactionId = await coordinator.startClassification(
       classificationRequest,
-      user.id
+      user.id,
     );
 
     // 4. 返回事务 ID
@@ -98,7 +107,7 @@ export async function POST(request: NextRequest) {
       {
         error: error instanceof Error ? error.message : "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

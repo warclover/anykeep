@@ -63,12 +63,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       is_system: boolean;
       user_id: string;
     };
-    const { data: folder, error: folderError } = await supabase
+    const { data: folder, error: folderError } = (await supabase
       .from("folders")
       .select("id, name, is_system, user_id")
       .eq("id", folderId)
       .eq("user_id", user.id)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: FolderType | null;
       error: { message: string } | null;
     };
@@ -92,21 +92,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Note: folder_profiles 是 V4.2 新增表
     // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
     // 替代原来的 update + insert 两步操作
-     
-    const { error: upsertError } = await (supabase
-      .from("folder_profiles") as any)
-      .upsert(
-        {
-          folder_id: folderId,
-          user_id: user.id,
-          is_system_locked: locked,
-          // 如果锁定，同时禁止 AI 重命名
-          is_ai_renamable: !locked,
-        },
-        {
-          onConflict: "folder_id,user_id",
-        },
-      ) as { error: { message: string } | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: upsertError } = (await (
+      supabase.from("folder_profiles") as any
+    ).upsert(
+      {
+        folder_id: folderId,
+        user_id: user.id,
+        is_system_locked: locked,
+        // 如果锁定，同时禁止 AI 重命名
+        is_ai_renamable: !locked,
+      },
+      {
+        onConflict: "folder_id,user_id",
+      },
+    )) as { error: { message: string } | null };
 
     if (upsertError) {
       logger.error(

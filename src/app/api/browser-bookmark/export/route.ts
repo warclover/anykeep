@@ -53,9 +53,7 @@ export async function GET(request: NextRequest) {
 
     // 3. 构建查询
     // 类型断言: 手动维护类型文件时需要此断言
-     
-    let query = (supabase
-      .from("bookmarks") as any)
+    let query = (supabase.from("bookmarks") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select(
         `
         id,
@@ -100,7 +98,7 @@ export async function GET(request: NextRequest) {
       folder_id: number | null;
       folders: { id: number; name: string; parent_id: number | null } | null;
     };
-    const { data: bookmarks, error: queryError } = await query as {
+    const { data: bookmarks, error: queryError } = (await query) as {
       data: ExportedBookmark[] | null;
       error: { message: string } | null;
     };
@@ -119,11 +117,11 @@ export async function GET(request: NextRequest) {
 
     // 5. 获取所有文件夹用于构建路径
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: allFolders } = await supabase
+    const { data: allFolders } = (await supabase
       .from("folders")
       .select("id, name, parent_id")
       .eq("user_id", user.id)
-      .is("deleted_at", null) as unknown as {
+      .is("deleted_at", null)) as unknown as {
       data: { id: number; name: string; parent_id: number | null }[] | null;
       error: unknown;
     };

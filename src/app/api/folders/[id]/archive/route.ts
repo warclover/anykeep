@@ -64,12 +64,12 @@ export async function PATCH(
       is_system: boolean;
       is_archived: boolean;
     };
-    const { data: folder, error: checkError } = await supabase
+    const { data: folder, error: checkError } = (await supabase
       .from("folders")
       .select("id, user_id, name, is_system, is_archived")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: ArchiveFolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -105,11 +105,10 @@ export async function PATCH(
     }
 
     // 6. 更新停用状态
-     
-    const { error: updateError } = await (supabase
-      .from("folders") as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = (await (supabase.from("folders") as any)
       .update({ is_archived: archived })
-      .eq("id", folderId) as { error: { message: string } | null };
+      .eq("id", folderId)) as { error: { message: string } | null };
 
     if (updateError) {
       return databaseError(FOLDER.UPDATE_ERROR, updateError);

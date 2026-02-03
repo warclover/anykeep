@@ -121,9 +121,10 @@ export async function POST(request: NextRequest) {
 
     // Note: feedbackType 包含 V4.0 新增类型 (reject, confirm)
     // 数据库迁移会添加这些枚举值，这里使用类型断言确保编译通过
-     
-    const { data: feedback, error: createError } = await (supabase
-      .from("classification_feedback") as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: feedback, error: createError } = (await (
+      supabase.from("classification_feedback") as any
+    )
       .insert({
         user_id: user.id,
         feedback_type: feedbackType as
@@ -144,7 +145,10 @@ export async function POST(request: NextRequest) {
         folder_id: suggestedCorrectFolderId || originalFolderId || null,
       })
       .select("id")
-      .single() as { data: { id: number } | null; error: { message: string } | null };
+      .single()) as {
+      data: { id: number } | null;
+      error: { message: string } | null;
+    };
 
     if (createError) {
       logger.error(
@@ -260,10 +264,10 @@ export async function GET() {
     // 2. 获取反馈统计
     // 类型断言: 手动维护类型文件时需要此断言
     type FeedbackRow = { feedback_type: string };
-    const { data: feedbacks, error: fetchError } = await supabase
+    const { data: feedbacks, error: fetchError } = (await supabase
       .from("classification_feedback")
       .select("feedback_type")
-      .eq("user_id", user.id) as unknown as {
+      .eq("user_id", user.id)) as unknown as {
       data: FeedbackRow[] | null;
       error: { message: string } | null;
     };

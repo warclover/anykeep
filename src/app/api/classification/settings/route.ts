@@ -85,11 +85,11 @@ export async function GET() {
     // 2. 获取用户 profile 中的分类设置
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileSettingsType = { settings: Record<string, unknown> | null };
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = (await supabase
       .from("profiles")
       .select("settings")
       .eq("id", user.id)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: ProfileSettingsType | null;
       error: { code?: string; message: string } | null;
     };
@@ -158,11 +158,14 @@ export async function PUT(request: NextRequest) {
     // 3. 获取现有 profile 设置
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileSettingsType = { settings: Record<string, unknown> | null };
-    const { data: profile } = await supabase
+    const { data: profile } = (await supabase
       .from("profiles")
       .select("settings")
       .eq("id", user.id)
-      .single() as unknown as { data: ProfileSettingsType | null; error: unknown };
+      .single()) as unknown as {
+      data: ProfileSettingsType | null;
+      error: unknown;
+    };
 
     const currentSettings =
       (profile?.settings as Record<string, unknown>) || {};
@@ -174,11 +177,10 @@ export async function PUT(request: NextRequest) {
       classification_updated_at: new Date().toISOString(),
     };
 
-     
-    const { error: updateError } = await (supabase
-      .from("profiles") as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = (await (supabase.from("profiles") as any)
       .update({ settings: updatedSettings })
-      .eq("id", user.id) as { error: { message: string } | null };
+      .eq("id", user.id)) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(

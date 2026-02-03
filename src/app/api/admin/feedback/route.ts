@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 // 使用 Service Role Key 创建 Admin Client 以绕过 RLS
 // 注意：实际项目中必须配合严格的权限检查，防止普通用户调用此接口
@@ -21,9 +22,17 @@ export async function GET(request: Request) {
     return Response.json({ success: false, error: "未登录" }, { status: 401 });
   }
 
-  // 2. 权限检查 (TODO: 替换为真实的 Admin 检查逻辑)
-  // const isAdmin = await checkAdminRole(user.id);
-  // if (!isAdmin) return Response.json({ error: "无权限" }, { status: 403 });
+  // 2. 权限检查 - 验证是否为管理员
+  if (!isAdminUser(user.email)) {
+    logger.warn(
+      { userId: user.id, email: user.email },
+      "[AdminFeedback] 非管理员访问尝试",
+    );
+    return Response.json(
+      { success: false, error: "无权限访问" },
+      { status: 403 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page") || "1");

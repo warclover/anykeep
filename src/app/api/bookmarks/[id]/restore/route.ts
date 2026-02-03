@@ -56,13 +56,18 @@ export async function POST(
 
     // 2. 检查收藏是否存在于垃圾箱中
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: existingBookmark, error: checkError } = await supabase
+    const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
       .select("id, user_id, is_in_trash, trashed_at")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single() as unknown as {
-      data: { id: number; user_id: string; is_in_trash: boolean; trashed_at: string | null } | null;
+      .single()) as unknown as {
+      data: {
+        id: number;
+        user_id: string;
+        is_in_trash: boolean;
+        trashed_at: string | null;
+      } | null;
       error: { code?: string; message: string } | null;
     };
 
@@ -97,16 +102,16 @@ export async function POST(
 
     // 4. 从垃圾箱恢复
     const serviceClient = await createServiceClient();
-     
-    const { data: restoredBookmark, error: restoreError } = await (serviceClient
-      .from("bookmarks") as any)
+    const { data: restoredBookmark, error: restoreError } = (await (
+      serviceClient.from("bookmarks") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update({
         is_in_trash: false,
         trashed_at: null,
       })
       .eq("id", bookmarkId)
       .select()
-      .single() as { data: unknown; error: { message: string } | null };
+      .single()) as { data: unknown; error: { message: string } | null };
 
     logger.debug(
       {

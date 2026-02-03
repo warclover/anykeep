@@ -33,6 +33,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import type { ConversationListItem } from "@/hooks/domain/ai/use-conversation-history";
 
@@ -102,28 +112,37 @@ export function ConversationList({
 }: ConversationListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   /**
-   * 处理删除
+   * 打开删除确认对话框
    */
-  const handleDelete = useCallback(
-    async (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
+  const handleDeleteClick = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setDeleteConfirmId(id);
+  }, []);
 
-      // 简单确认
-      if (!window.confirm(UI_TEXT.deleteConfirm)) {
-        return;
-      }
+  /**
+   * 确认删除
+   */
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteConfirmId) return;
 
-      setDeletingId(id);
-      try {
-        await onDelete(id);
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [onDelete],
-  );
+    setDeletingId(deleteConfirmId);
+    setDeleteConfirmId(null);
+    try {
+      await onDelete(deleteConfirmId);
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteConfirmId, onDelete]);
+
+  /**
+   * 取消删除
+   */
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteConfirmId(null);
+  }, []);
 
   /**
    * 处理加载更多（虚拟列表触底时调用）
@@ -165,12 +184,19 @@ export function ConversationList({
           isSelected={currentId === conv.id}
           isDeleting={deletingId === conv.id}
           onSelect={() => onSelect(conv.id)}
-          onDelete={(e) => handleDelete(e, conv.id)}
+          onDelete={(e) => handleDeleteClick(e, conv.id)}
           formatTime={formatTime}
         />
       );
     },
-    [conversations, currentId, deletingId, onSelect, handleDelete, formatTime],
+    [
+      conversations,
+      currentId,
+      deletingId,
+      onSelect,
+      handleDeleteClick,
+      formatTime,
+    ],
   );
 
   /**
@@ -259,6 +285,29 @@ export function ConversationList({
           />
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => !open && handleDeleteCancel()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{UI_TEXT.delete}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {UI_TEXT.deleteConfirm}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

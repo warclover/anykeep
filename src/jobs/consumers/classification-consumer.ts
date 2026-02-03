@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { BaseConsumer } from "./base-consumer";
-import { fromClassificationSuggestions } from "@/lib/supabase/typed-queries";
+import { typedFrom } from "@/lib/supabase/typed-queries";
 import type { JobContext, JobResult, AutoClassifyPayload } from "../types";
 
 // 本地类型定义
@@ -112,8 +112,9 @@ export class ClassificationConsumer extends BaseConsumer {
       const batchId = `auto-classify-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       // 保存分类建议（使用 insert 而非 upsert）
-      const { error: suggestionError } = await fromClassificationSuggestions(
+      const { error: suggestionError } = await typedFrom(
         context.supabase,
+        "classification_suggestions",
       ).insert({
         batch_id: batchId,
         bookmark_id: bookmarkId,

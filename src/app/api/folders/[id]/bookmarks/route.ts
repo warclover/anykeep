@@ -50,12 +50,12 @@ export async function DELETE(
       user_id: string;
       name: string;
     };
-    const { data: folder, error: folderError } = await supabase
+    const { data: folder, error: folderError } = (await supabase
       .from("folders")
       .select("id, user_id, name")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: FolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -91,13 +91,14 @@ export async function DELETE(
     // 安全说明：已验证用户身份、文件夹所有权
     if (bookmarkCount && bookmarkCount > 0) {
       const serviceClient = await createServiceClient();
-       
-      const { error: deleteError } = await (serviceClient
-        .from("bookmarks") as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: deleteError } = (await (
+        serviceClient.from("bookmarks") as any
+      )
         .update({ deleted_at: new Date().toISOString() })
         .eq("folder_id", folderId)
         .eq("user_id", user.id)
-        .is("deleted_at", null) as { error: { message: string } | null };
+        .is("deleted_at", null)) as { error: { message: string } | null };
 
       if (deleteError) {
         return databaseError("删除书签失败", deleteError);

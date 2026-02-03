@@ -9,7 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { createLogger } from "@/lib/logger";
-import { fromSystemJobs } from "@/lib/supabase/typed-queries";
+import { typedFrom } from "@/lib/supabase/typed-queries";
 import type { TaskDefinition, JobType, JobRecord } from "../types";
 
 const logger = createLogger("TaskProducer");
@@ -48,7 +48,7 @@ export class TaskProducer {
    * 生产单个任务
    */
   async produce(task: TaskDefinition, userId: string): Promise<string> {
-    const { data, error } = await fromSystemJobs(this.supabase)
+    const { data, error } = await typedFrom(this.supabase, "system_jobs")
       .insert({
         type: task.type,
         payload: task.payload,
@@ -97,7 +97,7 @@ export class TaskProducer {
         dependsOnId = typeToJobId.get(task.dependsOn);
       }
 
-      const { data, error } = await fromSystemJobs(this.supabase)
+      const { data, error } = await typedFrom(this.supabase, "system_jobs")
         .insert({
           type: task.type,
           payload: task.payload,
@@ -188,7 +188,7 @@ export class TaskProducer {
    * 获取用户的待处理任务数
    */
   async getPendingCount(userId: string): Promise<number> {
-    const { count, error } = await fromSystemJobs(this.supabase)
+    const { count, error } = await typedFrom(this.supabase, "system_jobs")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "PENDING");
@@ -208,7 +208,7 @@ export class TaskProducer {
     bookmarkId: number,
     userId: string,
   ): Promise<JobRecord[]> {
-    const { data, error } = await fromSystemJobs(this.supabase)
+    const { data, error } = await typedFrom(this.supabase, "system_jobs")
       .select("*")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", userId)

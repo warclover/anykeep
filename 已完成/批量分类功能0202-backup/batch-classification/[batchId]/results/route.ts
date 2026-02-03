@@ -8,7 +8,8 @@
  * @since 2026-02-01
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
 
@@ -18,28 +19,25 @@ import { BatchClassificationCoordinator } from "@/lib/classification/services/ba
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ batchId: string }> }
+  { params }: { params: Promise<{ batchId: string }> },
 ) {
   try {
     const { batchId } = await params;
 
     // 1. 验证用户身份
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. 验证 batchId
     if (!batchId) {
-      return NextResponse.json(
-        { error: "Missing batchId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing batchId" }, { status: 400 });
     }
 
     // 3. 获取结果
@@ -57,7 +55,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Transaction not found") {
       return NextResponse.json(
         { error: "Transaction not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -65,7 +63,7 @@ export async function GET(
       {
         error: error instanceof Error ? error.message : "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

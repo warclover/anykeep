@@ -98,13 +98,13 @@ export async function POST(request: NextRequest) {
       bookmark_id: number | null;
       metadata: unknown;
     };
-    const { data: suggestion, error: fetchError } = await supabase
+    const { data: suggestion, error: fetchError } = (await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single() as unknown as {
+      .single()) as unknown as {
       data: SuggestionType | null;
       error: { message: string } | null;
     };
@@ -126,9 +126,9 @@ export async function POST(request: NextRequest) {
       return internalError("建议中没有有效的文件夹名称");
     }
 
-     
-    const { data: newFolder, error: createError } = await (supabase
-      .from("folders") as any)
+    const { data: newFolder, error: createError } = (await (
+      supabase.from("folders") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: user.id,
         name: folderName,
@@ -137,7 +137,10 @@ export async function POST(request: NextRequest) {
         ai_reason: suggestion.reason,
       })
       .select("id, name")
-      .single() as { data: { id: number; name: string } | null; error: { message: string } | null };
+      .single()) as {
+      data: { id: number; name: string } | null;
+      error: { message: string } | null;
+    };
 
     if (createError || !newFolder) {
       logger.error(
@@ -162,9 +165,9 @@ export async function POST(request: NextRequest) {
 
     // 7. 移动书签到新文件夹并清除聚类状态
     // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-     
-    const { error: moveError } = await (supabase
-      .from("bookmarks") as any)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: moveError } = (await (supabase.from("bookmarks") as any)
       .update({
         folder_id: newFolder.id,
         pending_cluster: false,
@@ -173,7 +176,7 @@ export async function POST(request: NextRequest) {
         cluster_confidence: null,
       })
       .in("id", bookmarkIds)
-      .eq("user_id", user.id) as { error: { message: string } | null };
+      .eq("user_id", user.id)) as { error: { message: string } | null };
 
     if (moveError) {
       logger.error(
@@ -184,9 +187,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. 更新建议状态
-     
-    await (supabase
-      .from("classification_suggestions") as any)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("classification_suggestions") as any)
       .update({
         status: "accepted",
         processed_at: new Date().toISOString(),
@@ -279,13 +282,13 @@ export async function DELETE(request: NextRequest) {
       bookmark_id: number | null;
       metadata: unknown;
     };
-    const { data: suggestion, error: fetchError } = await supabase
+    const { data: suggestion, error: fetchError } = (await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single() as unknown as {
+      .single()) as unknown as {
       data: DeleteSuggestionType | null;
       error: { message: string } | null;
     };
@@ -295,9 +298,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 4. 更新建议状态为拒绝
-     
-    await (supabase
-      .from("classification_suggestions") as any)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("classification_suggestions") as any)
       .update({
         status: "rejected",
         processed_at: new Date().toISOString(),
@@ -318,9 +321,8 @@ export async function DELETE(request: NextRequest) {
           ? [suggestion.bookmark_id]
           : [];
     if (bookmarkIds.length > 0) {
-       
-      await (supabase
-        .from("bookmarks") as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("bookmarks") as any)
         .update({
           cluster_id: null,
           cluster_confidence: null,

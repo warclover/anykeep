@@ -20,7 +20,7 @@ import {
 } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import {
-  fromBookmarkSnapshots,
+  typedFrom,
   rpcGetUserSnapshotQuota,
   rpcCanCreateSnapshot,
   rpcAtomicCreateSnapshot,
@@ -38,9 +38,9 @@ import type {
 // 临时类型辅助：在迁移执行并重新生成类型前使用
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
-// 使用 typed-queries 中的 fromBookmarkSnapshots 替代本地 getSnapshotsTable
+// 使用 typedFrom 获取类型安全的 bookmark_snapshots 查询
 const getSnapshotsTable = (supabase: SupabaseClient) =>
-  fromBookmarkSnapshots(supabase);
+  typedFrom(supabase, "bookmark_snapshots");
 
 // 本地查询结果类型定义
 interface SnapshotListRow {

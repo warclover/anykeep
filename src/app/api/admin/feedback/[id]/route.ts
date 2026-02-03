@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +23,17 @@ export async function PATCH(
     return Response.json({ success: false, error: "未登录" }, { status: 401 });
   }
 
-  // TODO: Admin permission check
+  // 权限检查 - 验证是否为管理员
+  if (!isAdminUser(user.email)) {
+    logger.warn(
+      { userId: user.id, email: user.email, feedbackId: id },
+      "[AdminFeedback] 非管理员更新尝试",
+    );
+    return Response.json(
+      { success: false, error: "无权限访问" },
+      { status: 403 },
+    );
+  }
 
   try {
     const body = await request.json();
@@ -83,6 +94,18 @@ export async function GET(
 
   if (authError || !user) {
     return Response.json({ success: false, error: "未登录" }, { status: 401 });
+  }
+
+  // 权限检查 - 验证是否为管理员
+  if (!isAdminUser(user.email)) {
+    logger.warn(
+      { userId: user.id, email: user.email, feedbackId: id },
+      "[AdminFeedback] 非管理员查看尝试",
+    );
+    return Response.json(
+      { success: false, error: "无权限访问" },
+      { status: 403 },
+    );
   }
 
   try {

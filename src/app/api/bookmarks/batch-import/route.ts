@@ -69,12 +69,15 @@ export async function POST(request: NextRequest) {
 
     // 3. 检查存储配额
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = (await supabase
       .from("profiles")
       .select("storage_quota, storage_used")
       .eq("id", user.id)
-      .single() as unknown as {
-      data: { storage_quota: number | null; storage_used: number | null } | null;
+      .single()) as unknown as {
+      data: {
+        storage_quota: number | null;
+        storage_used: number | null;
+      } | null;
       error: { message: string } | null;
     };
 
@@ -106,12 +109,12 @@ export async function POST(request: NextRequest) {
 
     // ✅ 性能优化：批量查询所有 URL 是否已存在（避免 N+1 查询）
     const urls = bookmarks.map((b) => b.url).filter(Boolean);
-    const { data: existingBookmarks } = await supabase
+    const { data: existingBookmarks } = (await supabase
       .from("bookmarks")
       .select("url")
       .eq("user_id", user.id)
       .in("url", urls)
-      .is("deleted_at", null) as unknown as {
+      .is("deleted_at", null)) as unknown as {
       data: { url: string }[] | null;
       error: unknown;
     };
@@ -200,11 +203,14 @@ export async function POST(request: NextRequest) {
 
     // 5. 批量插入数据库
     if (bookmarkInserts.length > 0) {
-       
-      const { data: inserted, error: insertError } = await (supabase
-        .from("bookmarks") as any)
+      const { data: inserted, error: insertError } = (await (
+        supabase.from("bookmarks") as any
+      ) // eslint-disable-line @typescript-eslint/no-explicit-any
         .insert(bookmarkInserts)
-        .select() as { data: unknown[] | null; error: { message?: string; code?: string } | null };
+        .select()) as {
+        data: unknown[] | null;
+        error: { message?: string; code?: string } | null;
+      };
 
       if (insertError) {
         // 提取详细错误信息
