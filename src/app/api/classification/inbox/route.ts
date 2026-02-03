@@ -179,9 +179,11 @@ async function handleAnalyze() {
     // 输出性能报告
     const perfReport = monitor.getReport();
     // 类型断言: clusterStatus 可能是字符串（pending状态）或对象
-    const pendingClusterCount = typeof clusterStatus === "object" && clusterStatus !== null
-      ? (clusterStatus as { pendingClusterCount?: number }).pendingClusterCount ?? 0
-      : 0;
+    const pendingClusterCount =
+      typeof clusterStatus === "object" && clusterStatus !== null
+        ? ((clusterStatus as { pendingClusterCount?: number })
+            .pendingClusterCount ?? 0)
+        : 0;
     logger.info(
       {
         userId: user.id,
@@ -265,7 +267,7 @@ async function handleSuggestions() {
       metadata: unknown;
       created_at: string;
     };
-    const { data: suggestions, error: fetchError } = await supabase
+    const { data: suggestions, error: fetchError } = (await supabase
       .from("classification_suggestions")
       .select(
         `
@@ -283,7 +285,7 @@ async function handleSuggestions() {
       .eq("user_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
-      .limit(20) as unknown as {
+      .limit(20)) as unknown as {
       data: SuggestionRow[] | null;
       error: { message: string } | null;
     };
@@ -309,10 +311,10 @@ async function handleSuggestions() {
     let bookmarkTitles: Record<number, string> = {};
     if (allBookmarkIds.length > 0) {
       type BookmarkIdTitle = { id: number; title: string | null };
-      const { data: bookmarks } = await supabase
+      const { data: bookmarks } = (await supabase
         .from("bookmarks")
         .select("id, title")
-        .in("id", allBookmarkIds) as unknown as {
+        .in("id", allBookmarkIds)) as unknown as {
         data: BookmarkIdTitle[] | null;
         error: unknown;
       };
@@ -430,7 +432,7 @@ async function handleStats() {
     }
 
     // 使用 RPC 获取聚类统计
-     
+
     type ClusterStats = {
       total_pending: number;
       clustered_count: number;
@@ -438,9 +440,13 @@ async function handleStats() {
       cluster_count: number;
       oldest_pending: string | null;
     };
-    const { data, error } = await (supabase.rpc as any)("get_user_cluster_stats", {
-      p_user_id: user.id,
-    }) as { data: ClusterStats[] | null; error: { message: string } | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = (await (supabase.rpc as any)(
+      "get_user_cluster_stats",
+      {
+        p_user_id: user.id,
+      },
+    )) as { data: ClusterStats[] | null; error: { message: string } | null };
 
     if (error) {
       logger.warn({ error }, "cluster-stats RPC error, using fallback");

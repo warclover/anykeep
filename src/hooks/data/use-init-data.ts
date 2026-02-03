@@ -1,18 +1,25 @@
 /**
  * 首页初始化数据 Hook
  * @description 使用聚合 API 一次获取所有首页数据，减少请求数量
- * @version 1.0.0
+ * @version 2.0.0 - 迁移到 TanStack Query，消除 SWR 双缓存问题
  *
  * 性能优化：
  * - 7+ 个请求合并为 1 个
  * - 单次认证替代 7+ 次重复认证
  * - 服务端并行获取数据
+ * - 统一使用 TanStack Query 缓存
+ *
+ * 变更历史：
+ * - v1.0.0: SWR 版本
+ * - v2.0.0: 迁移到 TanStack Query
  */
 
 "use client";
 
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { authFetcher } from "@/lib/api/fetch-with-auth";
+import { initDataKeys, type InitDataFilters } from "@/hooks/queries/keys";
 import type { SmartListClient } from "@/types/smart-list";
 import type { Bookmark, Folder } from "@/types/supabase";
 
@@ -106,37 +113,34 @@ const DEFAULT_UNREAD_COUNT: UnreadCounts = {
   important: 0,
 };
 
+/** 缓存时间：5 分钟 */
+const STALE_TIME = 5 * 60 * 1000;
+
 // ============================================
 // Fetcher
 // ============================================
 
-async function fetcher(url: string): Promise<InitData> {
+async function fetchInitData(filters: InitDataFilters): Promise<InitData> {
+  const params = new URLSearchParams();
+
+  if (filters.platform) {
+    params.set("platform", filters.platform);
+  }
+  if (filters.sort) {
+    params.set("sort", filters.sort);
+  }
+  if (filters.folder) {
+    params.set("folder", filters.folder);
+  }
+
+  const queryString = params.toString();
+  const url = queryString ? `/api/init?${queryString}` : "/api/init";
+
   const result = await authFetcher<InitApiResponse>(url);
   if (!result.success) {
     throw new Error(result.error?.message || "获取初始数据失败");
   }
   return result.data;
-}
-
-// ============================================
-// 构建 URL
-// ============================================
-
-function buildInitUrl(options: UseInitDataOptions): string {
-  const params = new URLSearchParams();
-
-  if (options.platform) {
-    params.set("platform", options.platform);
-  }
-  if (options.sort) {
-    params.set("sort", options.sort);
-  }
-  if (options.folder) {
-    params.set("folder", options.folder);
-  }
-
-  const queryString = params.toString();
-  return queryString ? `/api/init?${queryString}` : "/api/init";
 }
 
 // ============================================
@@ -147,58 +151,62 @@ export function useInitData(
   options: UseInitDataOptions = {},
 ): UseInitDataResult {
   const { enabled = true, refreshInterval = 0, ...queryOptions } = options;
+  const queryClient = useQueryClient();
 
-  // 构建请求 URL
-  const url = enabled ? buildInitUrl(queryOptions) : null;
+  // 构建筛选条件
+  const filters: InitDataFilters = {
+    platform: queryOptions.platform,
+    sort: queryOptions.sort,
+    folder: queryOptions.folder,
+  };
 
-  // SWR 获取数据
-  const { data, error, isLoading, mutate } = useSWR<InitData>(url, fetcher, {
-    refreshInterval: refreshInterval > 0 ? refreshInterval : undefined,
-    // 性能优化配置
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    // 5 分钟内去重
-    dedupingInterval: 300_000,
-    // 保留旧数据
-    keepPreviousData: true,
+  const queryKey = initDataKeys.filtered(filters);
+
+  // TanStack Query 获取数据
+  const { data, error, isLoading, refetch } = useQuery<InitData>({
+    queryKey,
+    queryFn: () => fetchInitData(filters),
+    enabled,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: refreshInterval > 0 ? refreshInterval : undefined,
+    retry: 2,
+    retryDelay: 3000,
   });
 
   // 刷新数据
-  const refresh = async () => {
-    await mutate();
-  };
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   // 乐观更新书签
-  const updateBookmarks = async (
-    updater: (bookmarks: Bookmark[]) => Bookmark[],
-  ) => {
-    await mutate(
-      (prev) => {
+  const updateBookmarks = useCallback(
+    async (updater: (bookmarks: Bookmark[]) => Bookmark[]) => {
+      queryClient.setQueryData<InitData>(queryKey, (prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           bookmarks: updater(prev.bookmarks),
         };
-      },
-      { revalidate: false },
-    );
-  };
+      });
+    },
+    [queryClient, queryKey],
+  );
 
   // 乐观更新智能列表
-  const updateSmartLists = async (
-    updater: (lists: SmartListClient[]) => SmartListClient[],
-  ) => {
-    await mutate(
-      (prev) => {
+  const updateSmartLists = useCallback(
+    async (updater: (lists: SmartListClient[]) => SmartListClient[]) => {
+      queryClient.setQueryData<InitData>(queryKey, (prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           smartLists: updater(prev.smartLists),
         };
-      },
-      { revalidate: false },
-    );
-  };
+      });
+    },
+    [queryClient, queryKey],
+  );
 
   return {
     bookmarks: data?.bookmarks ?? [],

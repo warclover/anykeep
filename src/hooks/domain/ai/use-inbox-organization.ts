@@ -2,23 +2,16 @@
  * 待整理文件夹智能整理 Hook
  * 管理待整理文件夹的分析和建议处理
  *
- * 注意：此 hook 与 AI 聊天无关，主要用于文件夹聚类分析和整理建议。
- * 历史原因放置在 domain/ai/ 目录下，未来版本考虑迁移到 domain/folder/ 或 domain/analytics/。
- *
- * @version V4.2.24 - 性能优化：
- * - 添加 enabled 选项支持延迟加载
- * - 添加 SWR 缓存和去重
- * - 添加 requestIdleCallback 空闲时加载
- * - 改善超时错误处理
- *
+ * @version 2.0.0 - 迁移到 TanStack Query
  * @module hooks/domain/ai/use-inbox-organization
  */
 
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { inboxOrganizationKeys } from "@/hooks/queries/keys";
 import type {
   OrganizationAnalysis,
   ClusterProcessingStatus,
@@ -66,8 +59,8 @@ interface UseInboxOrganizationResult {
 /** API 请求超时时间（毫秒） */
 const REQUEST_TIMEOUT = 8000;
 
-/** SWR 缓存 Key */
-const SWR_KEY = API_CLASSIFICATION.inbox;
+/** 缓存时间：5 分钟 */
+const STALE_TIME = 5 * 60 * 1000;
 
 // ============================================
 // Fetcher 函数
@@ -76,12 +69,12 @@ const SWR_KEY = API_CLASSIFICATION.inbox;
 /**
  * 带超时的 Inbox 分析 Fetcher
  */
-async function inboxFetcher(url: string): Promise<OrganizationAnalysis> {
+async function inboxFetcher(): Promise<OrganizationAnalysis> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(API_CLASSIFICATION.inbox, {
       signal: controller.signal,
     });
 
@@ -116,7 +109,9 @@ export function useInboxOrganization(
     loadDelay = 500, // 默认延迟 500ms
   } = options;
 
-  // V4.2.24: 延迟加载控制
+  const queryClient = useQueryClient();
+
+  // 延迟加载控制
   const [shouldFetch, setShouldFetch] = useState(loadDelay === 0 && enabled);
   const hasInitialized = useRef(false);
 
@@ -132,7 +127,7 @@ export function useInboxOrganization(
       typeof window !== "undefined" &&
       "requestIdleCallback" in window
     ) {
-      // 使用 requestIdleCallback 在浏览器空闲时加载
+      // 使用 requestIdleCallback 在浏览器空��时加载
       const idleId = window.requestIdleCallback(
         () => setShouldFetch(true),
         { timeout: loadDelay + 2000 }, // 最大等待时间
@@ -147,39 +142,30 @@ export function useInboxOrganization(
     return cleanup;
   }, [enabled, loadDelay, useIdleCallback, shouldFetch]);
 
-  // V4.2.24: 使用 SWR 进行数据获取和缓存
+  // 使用 TanStack Query 进行数据获取和缓存
   const {
     data: analysis,
-    error: swrError,
+    error: queryError,
     isLoading,
-    mutate,
-  } = useSWR<OrganizationAnalysis>(
-    shouldFetch ? SWR_KEY : null, // 条件获取
-    inboxFetcher,
-    {
-      // 5 分钟内不重复请求（与服务端缓存 TTL 一致）
-      dedupingInterval: 300000,
-      // 不在聚焦时自动刷新（手动控制）
-      revalidateOnFocus: false,
-      // 网络恢复时不自动刷新
-      revalidateOnReconnect: false,
-      // 保持之前的数据（避免闪烁）
-      keepPreviousData: true,
-      // 错误重试配置
-      errorRetryCount: 2,
-      errorRetryInterval: 3000,
-      // 失败时静默处理（不自动 toast）
-      shouldRetryOnError: true,
-    },
-  );
+    refetch,
+  } = useQuery<OrganizationAnalysis>({
+    queryKey: inboxOrganizationKeys.analysis(),
+    queryFn: inboxFetcher,
+    enabled: shouldFetch,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
+    retryDelay: 3000,
+  });
 
   // 处理状态
   const [isProcessing, setIsProcessing] = useState(false);
 
   // 错误信息
-  const error = swrError
-    ? swrError instanceof Error
-      ? swrError.message
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
       : "获取整理建议失败"
     : null;
 
@@ -187,8 +173,8 @@ export function useInboxOrganization(
    * 刷新分析
    */
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    await refetch();
+  }, [refetch]);
 
   /**
    * 应用建议
@@ -210,7 +196,8 @@ export function useInboxOrganization(
         }
 
         // 乐观更新：从列表中移除已应用的建议
-        await mutate(
+        queryClient.setQueryData<OrganizationAnalysis>(
+          inboxOrganizationKeys.analysis(),
           (prev) =>
             prev
               ? {
@@ -220,7 +207,6 @@ export function useInboxOrganization(
                   ),
                 }
               : prev,
-          { revalidate: false },
         );
 
         toast.success("建议已应用");
@@ -233,7 +219,7 @@ export function useInboxOrganization(
         setIsProcessing(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   /**
@@ -256,7 +242,8 @@ export function useInboxOrganization(
         }
 
         // 乐观更新：从列表中移除已拒绝的建议
-        await mutate(
+        queryClient.setQueryData<OrganizationAnalysis>(
+          inboxOrganizationKeys.analysis(),
           (prev) =>
             prev
               ? {
@@ -266,7 +253,6 @@ export function useInboxOrganization(
                   ),
                 }
               : prev,
-          { revalidate: false },
         );
 
         toast.success("已忽略该建议");
@@ -279,7 +265,7 @@ export function useInboxOrganization(
         setIsProcessing(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   // 计算待处理建议数量

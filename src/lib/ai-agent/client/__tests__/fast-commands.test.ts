@@ -404,13 +404,13 @@ describe("fast-commands", () => {
         "refine",
       ];
 
-      for (const [cmd, config] of Object.entries(FAST_COMMANDS)) {
+      for (const [_cmd, config] of Object.entries(FAST_COMMANDS)) {
         expect(validIntents).toContain(config.intent);
       }
     });
 
     it("should have non-empty subType", () => {
-      for (const [cmd, config] of Object.entries(FAST_COMMANDS)) {
+      for (const [_cmd, config] of Object.entries(FAST_COMMANDS)) {
         expect(config.subType).toBeDefined();
         expect(config.subType.length).toBeGreaterThan(0);
       }

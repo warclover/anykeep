@@ -6,14 +6,17 @@
  * - 加载/创建/更新/删除高亮（Supabase）
  * - 监听文字选择事件
  * - 乐观更新 + 回滚
- * - SWR 模式缓存
+ * - TanStack Query 模式缓存
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query
  */
 
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { highlightKeys } from "@/hooks/queries/keys";
 import {
   getRangeOffset,
   clearSelection as clearSelectionUtil,
@@ -159,22 +162,20 @@ export function useHighlights(
   options: UseHighlightsOptions,
 ): UseHighlightsResult {
   const { collectionId, contentRef } = options;
+  const queryClient = useQueryClient();
 
-  // SWR 缓存 Key
-  const swrKey = `${SWR_KEY_PREFIX}:${collectionId}`;
-
-  // 使用 SWR 获取高亮数据
-  const {
-    data: highlights = [],
-    isLoading,
-    mutate,
-  } = useSWR<TextHighlight[]>(collectionId ? swrKey : null, highlightsFetcher, {
-    dedupingInterval: DEDUPING_INTERVAL,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    keepPreviousData: true,
-    errorRetryCount: 2,
-    errorRetryInterval: 3000,
+  // V2.0.0: 使用 TanStack Query 获取高亮数据
+  const { data: highlights = [], isLoading } = useQuery<TextHighlight[]>({
+    queryKey: highlightKeys.byCollection(collectionId),
+    queryFn: () => highlightsFetcher(`${SWR_KEY_PREFIX}:${collectionId}`),
+    enabled: !!collectionId,
+    staleTime: DEDUPING_INTERVAL,
+    gcTime: 300_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (prev) => prev,
+    retry: 2,
+    retryDelay: 3000,
   });
 
   // 选区状态
@@ -328,11 +329,11 @@ export function useHighlights(
       };
 
       // 乐观更新 UI
-      await mutate(
+      queryClient.setQueryData<TextHighlight[]>(
+        highlightKeys.byCollection(collectionId),
         [...highlights, tempHighlight].sort(
           (a, b) => a.start_offset - b.start_offset,
         ),
-        false, // 不重新验证
       );
 
       try {
@@ -376,11 +377,11 @@ export function useHighlights(
           color: data.color as HighlightColor,
         };
 
-        await mutate(
+        queryClient.setQueryData<TextHighlight[]>(
+          highlightKeys.byCollection(collectionId),
           [...highlights.filter((h) => h.id !== tempId), newHighlight].sort(
             (a, b) => a.start_offset - b.start_offset,
           ),
-          false,
         );
 
         // 清除选区
@@ -388,14 +389,17 @@ export function useHighlights(
       } catch (err) {
         // 回滚到快照
         if (snapshotRef.current) {
-          await mutate(snapshotRef.current, false);
+          queryClient.setQueryData<TextHighlight[]>(
+            highlightKeys.byCollection(collectionId),
+            snapshotRef.current,
+          );
         }
         throw err;
       } finally {
         snapshotRef.current = null;
       }
     },
-    [collectionId, contentRef, highlights, mutate, clearSelection],
+    [collectionId, contentRef, highlights, queryClient, clearSelection],
   );
 
   /**
@@ -410,7 +414,10 @@ export function useHighlights(
       const updatedHighlights = highlights.map((h) =>
         h.id === id ? { ...h, color, updated_at: new Date().toISOString() } : h,
       );
-      await mutate(updatedHighlights, false);
+      queryClient.setQueryData<TextHighlight[]>(
+        highlightKeys.byCollection(collectionId),
+        updatedHighlights,
+      );
 
       try {
         // 使用类型断言绕过 Supabase 类型检查
@@ -438,14 +445,17 @@ export function useHighlights(
       } catch (err) {
         // 回滚
         if (snapshotRef.current) {
-          await mutate(snapshotRef.current, false);
+          queryClient.setQueryData<TextHighlight[]>(
+            highlightKeys.byCollection(collectionId),
+            snapshotRef.current,
+          );
         }
         throw err;
       } finally {
         snapshotRef.current = null;
       }
     },
-    [highlights, mutate],
+    [collectionId, highlights, queryClient],
   );
 
   /**
@@ -457,9 +467,9 @@ export function useHighlights(
       snapshotRef.current = [...highlights];
 
       // 乐观更新
-      await mutate(
+      queryClient.setQueryData<TextHighlight[]>(
+        highlightKeys.byCollection(collectionId),
         highlights.filter((h) => h.id !== id),
-        false,
       );
 
       try {
@@ -488,14 +498,17 @@ export function useHighlights(
       } catch (err) {
         // 回滚
         if (snapshotRef.current) {
-          await mutate(snapshotRef.current, false);
+          queryClient.setQueryData<TextHighlight[]>(
+            highlightKeys.byCollection(collectionId),
+            snapshotRef.current,
+          );
         }
         throw err;
       } finally {
         snapshotRef.current = null;
       }
     },
-    [highlights, mutate],
+    [collectionId, highlights, queryClient],
   );
 
   // ============================================

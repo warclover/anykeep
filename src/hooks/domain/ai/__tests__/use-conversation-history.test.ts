@@ -9,7 +9,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useConversationHistory } from "../use-conversation-history";
 import { conversationStorage } from "@/lib/storage/conversation-storage";
-import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 // Mock dependencies
 jest.mock("@/lib/storage/conversation-storage", () => ({
@@ -214,7 +213,9 @@ describe("useConversationHistory", () => {
 
       expect(detail).toEqual(mockConversationDetail);
       expect(result.current.state.currentId).toBe("conv_1");
-      expect(result.current.state.currentDetail).toEqual(mockConversationDetail);
+      expect(result.current.state.currentDetail).toEqual(
+        mockConversationDetail,
+      );
       expect(conversationStorage.updateConversationId).toHaveBeenCalledWith(
         "conv_1",
       );

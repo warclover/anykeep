@@ -570,11 +570,11 @@ export interface RpcResult<T> {
  * 封装 supabase.rpc() 调用，避免在业务代码中使用 `as any`。
  * 内部使用 any 但将其集中在此处便于维护。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type AnyRpcCaller = (
   name: string,
   params?: Record<string, unknown>,
-) => Promise<RpcResult<any>>;
+) => Promise<RpcResult<unknown>>;
 
 /**
  * 创建类型安全的 RPC 调用器

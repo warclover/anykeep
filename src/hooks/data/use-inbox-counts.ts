@@ -2,13 +2,19 @@
  * 收件箱各 Tab 计数 Hook
  *
  * 并行查询各筛选条件的书签数量，支持：
- * - SWR 缓存和自动刷新
+ * - TanStack Query 缓存和自动刷新
  * - 乐观更新
  * - 错误处理
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query
  */
 
-import useSWR from "swr";
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { inboxKeys } from "@/hooks/queries/keys";
 import type { InboxTabId } from "@/lib/constants/inbox-tabs";
 
 // ==================== 类型定义 ====================
@@ -18,8 +24,8 @@ export type InboxCounts = Record<InboxTabId, number>;
 interface UseInboxCountsReturn {
   counts: InboxCounts;
   isLoading: boolean;
-  error: Error | undefined;
-  refresh: () => Promise<InboxCounts | undefined>;
+  error: Error | null;
+  refresh: () => Promise<void>;
 }
 
 // ==================== 数据获取 ====================
@@ -83,22 +89,33 @@ const EMPTY_COUNTS: InboxCounts = {
   recent: 0,
 };
 
+/** 缓存时间：30 秒（实时性数据） */
+const STALE_TIME = 30 * 1000;
+
+/** 刷新间隔：30 秒 */
+const REFETCH_INTERVAL = 30 * 1000;
+
 export function useInboxCounts(): UseInboxCountsReturn {
-  const { data, error, isLoading, mutate } = useSWR<InboxCounts, Error>(
-    "inbox-counts",
-    fetchInboxCounts,
-    {
-      refreshInterval: 30000, // 30秒自动刷新
-      revalidateOnFocus: true,
-      dedupingInterval: 5000, // 5秒内去重
-      errorRetryCount: 2,
-    },
-  );
+  const _queryClient = useQueryClient();
+
+  const { data, error, isLoading, refetch } = useQuery<InboxCounts, Error>({
+    queryKey: inboxKeys.counts(),
+    queryFn: fetchInboxCounts,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
+    refetchOnWindowFocus: true,
+    retry: 2,
+    retryDelay: 3000,
+  });
+
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return {
     counts: data ?? EMPTY_COUNTS,
     isLoading,
-    error,
-    refresh: mutate,
+    error: error ?? null,
+    refresh,
   };
 }

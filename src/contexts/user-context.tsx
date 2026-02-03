@@ -1,11 +1,12 @@
 /**
- * 用户上下文 Provider (v2 性能优化版)
+ * 用户上下文 Provider (v3 TanStack Query 版)
  *
  * 优化点：
  * 1. 使用 getSession() 替代 getUser()，避免网络请求（~1ms vs ~1000ms）
- * 2. Profile 使用 SWR 异步加载，不阻塞首屏渲染
+ * 2. Profile 使用 TanStack Query 异步加载，不阻塞首屏渲染
  * 3. 添加安全保障：401 错误检测、定期 token 检查
  *
+ * @version 3.0.0 - 迁移到 TanStack Query
  * @see https://supabase.com/docs/reference/javascript/auth-getsession
  */
 
@@ -20,11 +21,12 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
+import { profileKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
 // Types
@@ -160,24 +162,25 @@ export function UserProvider({ children }: UserProviderProps) {
   }, []);
 
   // -------------------------------------------------------------------------
-  // 2. Profile 异步加载（SWR，不阻塞渲染）
+  // 2. Profile 异步加载（TanStack Query，不阻塞渲染）
   // -------------------------------------------------------------------------
+  const _queryClient = useQueryClient();
+
   const {
     data: profile,
     error: profileError,
     isLoading: profileLoading,
-    mutate: mutateProfile,
-  } = useSWR(
-    // 仅在 user 存在时请求
-    user ? ["profile", user.id] : null,
-    profileFetcher,
-    {
-      revalidateOnFocus: false, // 切换标签页不重新请求
-      revalidateOnReconnect: false, // 网络恢复不重新请求
-      dedupingInterval: 60000, // 60秒内重复请求去重
-      errorRetryCount: 2, // 错误重试次数
-    },
-  );
+    refetch: refetchProfile,
+  } = useQuery({
+    queryKey: profileKeys.byUserId(user?.id ?? ""),
+    queryFn: () => profileFetcher(["profile", user!.id]),
+    enabled: !!user, // 仅在 user 存在时请求
+    staleTime: 60000, // 60秒内不重新请求
+    gcTime: 300000, // 5分钟缓存
+    refetchOnWindowFocus: false, // 切换标签页不重新请求
+    refetchOnReconnect: false, // 网络恢复不重新请求
+    retry: 2, // 错误重试次数
+  });
 
   // -------------------------------------------------------------------------
   // 3. 安全保障：定期 Token 检查
@@ -246,8 +249,8 @@ export function UserProvider({ children }: UserProviderProps) {
   // 5. 手动刷新 Profile
   // -------------------------------------------------------------------------
   const refetch = useCallback(async () => {
-    await mutateProfile();
-  }, [mutateProfile]);
+    await refetchProfile();
+  }, [refetchProfile]);
 
   // -------------------------------------------------------------------------
   // 6. 计算最终错误状态（避免 effect 中同步 setState）

@@ -1,16 +1,17 @@
 /**
  * 智能列表书签数据 Hook
  * @description 根据智能列表 ID 获取筛选后的书签列表
- * @version 10.0.0
+ * @version 11.0.0 - 迁移到 TanStack Query
  */
 
 "use client";
 
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import type { SmartListClient, SmartListFilters } from "@/types/smart-list";
 import type { Bookmark } from "@/types/supabase";
 import { API_PATHS } from "@/lib/constants/api-paths";
+import { smartListBookmarkKeys } from "@/hooks/queries/keys";
 
 // ============================================
 // 类型定义
@@ -216,20 +217,16 @@ export function useSmartListBookmarks(
   options: UseSmartListBookmarksOptions,
 ): UseSmartListBookmarksResult {
   const { smartListId, enabled = true } = options;
+  const queryClient = useQueryClient();
 
-  // SWR 缓存键
-  const cacheKey =
-    smartListId && enabled ? `smart-list-bookmarks:${smartListId}` : null;
-
-  // SWR 获取数据
-  const { data, error, isLoading, mutate } = useSWR<SmartListBookmarksData>(
-    cacheKey,
-    () => fetcher(smartListId as number),
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
-    },
-  );
+  // V11.0.0: 使用 TanStack Query 获取数据
+  const { data, error, isLoading, refetch } = useQuery<SmartListBookmarksData>({
+    queryKey: smartListBookmarkKeys.byId(smartListId as number),
+    queryFn: () => fetcher(smartListId as number),
+    enabled: !!smartListId && enabled,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
+  });
 
   // 智能列表数据 - 使用 useMemo 稳定引用，避免不必要的重渲染
   const smartList = useMemo(() => data?.smartList ?? null, [data?.smartList]);
@@ -239,8 +236,8 @@ export function useSmartListBookmarks(
 
   // 刷新数据
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    await refetch();
+  }, [refetch]);
 
   // 加载更多 - 直接使用 data 避免 bookmarks 依赖导致的频繁重建
   const loadMore = useCallback(async () => {
@@ -262,8 +259,9 @@ export function useSmartListBookmarks(
     }
     const result = await res.json();
 
-    // 合并数据
-    await mutate(
+    // 合并数据到缓存
+    queryClient.setQueryData<SmartListBookmarksData>(
+      smartListBookmarkKeys.byId(smartListId as number),
       (prev) =>
         prev
           ? {
@@ -272,9 +270,8 @@ export function useSmartListBookmarks(
               hasMore: result.data.pagination.hasMore,
             }
           : prev,
-      { revalidate: false },
     );
-  }, [data, mutate]);
+  }, [data, queryClient, smartListId]);
 
   return {
     smartList,

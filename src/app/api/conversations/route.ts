@@ -12,7 +12,6 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  badRequestError,
   unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";

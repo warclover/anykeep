@@ -1,8 +1,14 @@
 /**
  * 健康检测 Hooks
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query
  */
 
-import useSWR from "swr";
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { healthKeys } from "@/hooks/queries/keys";
 import type {
   HealthOverview,
   BrokenLinkIssue,
@@ -11,10 +17,17 @@ import type {
 } from "@/lib/ai-skills/skills/health-check/types";
 
 // ============================================
+// 常量
+// ============================================
+
+/** 缓存时间：30 秒 */
+const STALE_TIME = 30 * 1000;
+
+// ============================================
 // Fetcher
 // ============================================
 
-const fetcher = async (url: string) => {
+const fetcher = async <T>(url: string): Promise<T> => {
   const res = await fetch(url, { credentials: "include" });
   const data = await res.json();
   if (!data.success) {
@@ -28,20 +41,18 @@ const fetcher = async (url: string) => {
 // ============================================
 
 export function useHealthOverview() {
-  const { data, error, isLoading, mutate } = useSWR<HealthOverview>(
-    "/api/content-health",
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<HealthOverview>({
+    queryKey: healthKeys.overview(),
+    queryFn: () => fetcher<HealthOverview>("/api/content-health"),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     overview: data,
     isLoading,
     error: error?.message,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -57,20 +68,22 @@ interface BrokenLinksData {
 }
 
 export function useBrokenLinks(page: number = 1, pageSize: number = 20) {
-  const { data, error, isLoading, mutate } = useSWR<BrokenLinksData>(
-    `/api/health/broken-links?page=${page}&pageSize=${pageSize}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<BrokenLinksData>({
+    queryKey: healthKeys.brokenLinks(page, pageSize),
+    queryFn: () =>
+      fetcher<BrokenLinksData>(
+        `/api/health/broken-links?page=${page}&pageSize=${pageSize}`,
+      ),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     brokenLinks: data?.items || [],
     total: data?.total || 0,
     isLoading,
     error: error?.message,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -85,13 +98,15 @@ interface DuplicatesData {
 }
 
 export function useDuplicates(page: number = 1, pageSize: number = 20) {
-  const { data, error, isLoading, mutate } = useSWR<DuplicatesData>(
-    `/api/health/duplicates?page=${page}&pageSize=${pageSize}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<DuplicatesData>({
+    queryKey: healthKeys.duplicates(page, pageSize),
+    queryFn: () =>
+      fetcher<DuplicatesData>(
+        `/api/health/duplicates?page=${page}&pageSize=${pageSize}`,
+      ),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     groups: data?.groups || [],
@@ -99,7 +114,7 @@ export function useDuplicates(page: number = 1, pageSize: number = 20) {
     totalDuplicates: data?.totalDuplicates || 0,
     isLoading,
     error: error?.message,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -122,13 +137,15 @@ export function useStaleContent(
   page: number = 1,
   pageSize: number = 20,
 ) {
-  const { data, error, isLoading, mutate } = useSWR<StaleContentData>(
-    `/api/health/stale?days=${days}&page=${page}&pageSize=${pageSize}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<StaleContentData>({
+    queryKey: healthKeys.staleContent(days, page, pageSize),
+    queryFn: () =>
+      fetcher<StaleContentData>(
+        `/api/health/stale?days=${days}&page=${page}&pageSize=${pageSize}`,
+      ),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     staleContent: data?.items || [],
@@ -136,7 +153,7 @@ export function useStaleContent(
     thresholds: data?.thresholds,
     isLoading,
     error: error?.message,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -145,6 +162,12 @@ export function useStaleContent(
 // ============================================
 
 export function useHealthFix() {
+  const queryClient = useQueryClient();
+
+  const invalidateHealth = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: healthKeys.all });
+  }, [queryClient]);
+
   const executeFix = async (
     endpoint: string,
     action: string,
@@ -161,6 +184,10 @@ export function useHealthFix() {
     if (!data.success) {
       throw new Error(data.error || "操作失败");
     }
+
+    // 刷新健康检查数据
+    await invalidateHealth();
+
     return data.data;
   };
 
@@ -195,6 +222,10 @@ export function useHealthFix() {
       if (!data.success) {
         throw new Error(data.error || "一键修复失败");
       }
+
+      // 刷新健康检查数据
+      await invalidateHealth();
+
       return data.data;
     },
   };

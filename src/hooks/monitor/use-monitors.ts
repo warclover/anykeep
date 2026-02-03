@@ -1,15 +1,16 @@
 /**
  * 监控数据获取 Hooks
  *
- * @version 1.0.0
+ * @version 2.0.0 - 迁移到 TanStack Query
  * @since 2025-12-28
  */
 
 "use client";
 
-import useSWR, { useSWRConfig } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { monitorKeys } from "@/hooks/queries/keys";
 import type {
   MonitorResponse,
   MonitorDetailResponse,
@@ -17,6 +18,9 @@ import type {
 } from "@/app/api/monitors/validation";
 
 const API_BASE = "/api/monitors";
+
+/** 缓存时间：1 分钟 */
+const STALE_TIME = 60 * 1000;
 
 /**
  * 通用 fetcher
@@ -50,14 +54,12 @@ interface MonitorListData {
 export function useMonitors(
   status: "all" | "active" | "paused" | "failed" = "all",
 ) {
-  const { data, error, isLoading, mutate } = useSWR<MonitorListData>(
-    `${API_BASE}?status=${status}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 5000,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<MonitorListData>({
+    queryKey: monitorKeys.list(status),
+    queryFn: () => fetcher<MonitorListData>(`${API_BASE}?status=${status}`),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     monitors: data?.monitors ?? [],
@@ -65,7 +67,7 @@ export function useMonitors(
     pagination: data?.pagination ?? null,
     isLoading,
     error,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -73,19 +75,19 @@ export function useMonitors(
  * 获取单个监控详情 Hook
  */
 export function useMonitor(monitorId: number | null) {
-  const { data, error, isLoading, mutate } = useSWR<MonitorDetailResponse>(
-    monitorId ? `${API_BASE}/${monitorId}` : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-    },
-  );
+  const { data, error, isLoading, refetch } = useQuery<MonitorDetailResponse>({
+    queryKey: monitorKeys.detail(monitorId ?? 0),
+    queryFn: () => fetcher<MonitorDetailResponse>(`${API_BASE}/${monitorId}`),
+    enabled: monitorId !== null,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
 
   return {
     monitor: data ?? null,
     isLoading,
     error,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
@@ -93,8 +95,12 @@ export function useMonitor(monitorId: number | null) {
  * 监控操作 Hook
  */
 export function useMonitorActions() {
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+
+  const invalidateMonitors = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: monitorKeys.all });
+  }, [queryClient]);
 
   /**
    * 创建监控
@@ -121,8 +127,7 @@ export function useMonitorActions() {
         }
 
         toast.success("监控创建成功");
-        // 刷新列表
-        mutate((key) => typeof key === "string" && key.startsWith(API_BASE));
+        await invalidateMonitors();
         return json.data;
       } catch (error) {
         const message = error instanceof Error ? error.message : "创建失败";
@@ -132,7 +137,7 @@ export function useMonitorActions() {
         setIsLoading(false);
       }
     },
-    [mutate],
+    [invalidateMonitors],
   );
 
   /**
@@ -162,7 +167,7 @@ export function useMonitorActions() {
         }
 
         toast.success("监控设置已更新");
-        mutate((key) => typeof key === "string" && key.startsWith(API_BASE));
+        await invalidateMonitors();
         return json.data;
       } catch (error) {
         const message = error instanceof Error ? error.message : "更新失败";
@@ -172,7 +177,7 @@ export function useMonitorActions() {
         setIsLoading(false);
       }
     },
-    [mutate],
+    [invalidateMonitors],
   );
 
   /**
@@ -193,7 +198,7 @@ export function useMonitorActions() {
         }
 
         toast.success("监控已删除");
-        mutate((key) => typeof key === "string" && key.startsWith(API_BASE));
+        await invalidateMonitors();
         return json.data;
       } catch (error) {
         const message = error instanceof Error ? error.message : "删除失败";
@@ -203,7 +208,7 @@ export function useMonitorActions() {
         setIsLoading(false);
       }
     },
-    [mutate],
+    [invalidateMonitors],
   );
 
   /**
@@ -224,7 +229,7 @@ export function useMonitorActions() {
         }
 
         toast.success("监控已暂停");
-        mutate((key) => typeof key === "string" && key.startsWith(API_BASE));
+        await invalidateMonitors();
         return json.data;
       } catch (error) {
         const message = error instanceof Error ? error.message : "暂停失败";
@@ -234,7 +239,7 @@ export function useMonitorActions() {
         setIsLoading(false);
       }
     },
-    [mutate],
+    [invalidateMonitors],
   );
 
   /**
@@ -254,8 +259,8 @@ export function useMonitorActions() {
           throw new Error(json.message || "恢复失败");
         }
 
-        toast.success("监控已恢复");
-        mutate((key) => typeof key === "string" && key.startsWith(API_BASE));
+        toast.success("监控���恢复");
+        await invalidateMonitors();
         return json.data;
       } catch (error) {
         const message = error instanceof Error ? error.message : "恢复失败";
@@ -265,7 +270,7 @@ export function useMonitorActions() {
         setIsLoading(false);
       }
     },
-    [mutate],
+    [invalidateMonitors],
   );
 
   return {

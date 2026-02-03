@@ -7,6 +7,7 @@
 
 import { useState, memo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   MoreVertical,
   Edit,
@@ -187,6 +188,7 @@ export const BookmarkCard = memo(function BookmarkCard({
   customUsageTags = [],
 }: BookmarkCardProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
   // V4.2.27: 图片加载失败状态（用于 CDN 防盗链等场景的兜底处理）
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -387,10 +389,10 @@ export const BookmarkCard = memo(function BookmarkCard({
     prefetchTimerRef.current = setTimeout(() => {
       // 1. 预加载详情页 JS 和路由
       router.prefetch(`/bookmark/${bookmark.id}`);
-      // 2. 预加载自定义标签数据（SWR 会自动去重）
-      prefetchCustomUsageTags();
+      // 2. 预加载自定义标签数据（TanStack Query 会自动去重）
+      prefetchCustomUsageTags(queryClient);
     }, 150);
-  }, [bookmark.id, router]);
+  }, [bookmark.id, router, queryClient]);
 
   // 鼠标离开时取消预加载
   const handlePrefetchCancel = useCallback(() => {

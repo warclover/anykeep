@@ -4,10 +4,13 @@
  * Knowledge Studio - 配额管理 Hook
  * @module hooks/domain/knowledge-studio
  * @description 管理用户配额查询和消耗追踪
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query
  */
 
 import { useCallback, useMemo } from "react";
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { quotaKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
 // 类型定义
@@ -35,7 +38,7 @@ export interface QuotaUsage {
   totalPending: number;
   /** 已退还 */
   totalRefunded: number;
-  /** 操作次数 */
+  /** 操作次��� */
   operationCount: number;
 }
 
@@ -81,11 +84,18 @@ export interface UseQuotaReturn {
 }
 
 // ============================================================================
+// 常量
+// ============================================================================
+
+/** 缓存时间：30 秒 */
+const STALE_TIME = 30 * 1000;
+
+// ============================================================================
 // Fetcher
 // ============================================================================
 
-async function quotaFetcher(url: string): Promise<QuotaData> {
-  const response = await fetch(url);
+async function quotaFetcher(): Promise<QuotaData> {
+  const response = await fetch("/api/knowledge-studio/quota");
 
   if (!response.ok) {
     const error = await response.json();
@@ -119,19 +129,23 @@ async function quotaFetcher(url: string): Promise<QuotaData> {
 // ============================================================================
 
 export function useQuota(): UseQuotaReturn {
+  const _queryClient = useQueryClient();
+
   const {
     data,
-    error: swrError,
+    error: queryError,
     isLoading,
-    mutate,
-  } = useSWR<QuotaData, Error>("/api/knowledge-studio/quota", quotaFetcher, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-    dedupingInterval: 30000, // 30 秒内不重复请求
+    refetch,
+  } = useQuery<QuotaData, Error>({
+    queryKey: quotaKeys.knowledgeStudio(),
+    queryFn: quotaFetcher,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
-  // 直接从 SWR 错误派生，避免 useEffect 中 setState
-  const error = useMemo(() => swrError?.message ?? null, [swrError]);
+  // 直接从 Query 错误派生
+  const error = useMemo(() => queryError?.message ?? null, [queryError]);
 
   // 检查是否有足够配额执行特定操作
   const hasEnoughQuota = useCallback(
@@ -157,8 +171,8 @@ export function useQuota(): UseQuotaReturn {
 
   // 刷新配额
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    await refetch();
+  }, [refetch]);
 
   // 计算使用百分比
   const usagePercent = data

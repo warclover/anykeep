@@ -32,6 +32,13 @@ const eslintConfig = defineConfig([
     "extension/dist/**",  // 浏览器扩展编译输出
     "extension/scripts/**",  // 扩展构建脚本（CommonJS）
     "extension/*.config.js",  // 扩展配置文件
+    // 新增忽略（Phase 1 清理）:
+    "playwright-report/**",  // Playwright 测试报告（自动生成）
+    "backups/**",  // 代码备份目录
+    "已完成/**",  // 归档功能备份
+    "workspace/**",  // PPT 工具脚本（独立项目）
+    ".claude/**",  // Claude 技能文件
+    "analyze_*.js",  // 临时分析脚本
   ]),
   // Custom rules for code quality
   {

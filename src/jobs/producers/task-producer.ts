@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { createLogger } from "@/lib/logger";
+import { fromSystemJobs } from "@/lib/supabase/typed-queries";
 import type { TaskDefinition, JobType, JobRecord } from "../types";
 
 const logger = createLogger("TaskProducer");
@@ -47,8 +48,7 @@ export class TaskProducer {
    * 生产单个任务
    */
   async produce(task: TaskDefinition, userId: string): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.from("system_jobs") as any)
+    const { data, error } = await fromSystemJobs(this.supabase)
       .insert({
         type: task.type,
         payload: task.payload,
@@ -97,8 +97,7 @@ export class TaskProducer {
         dependsOnId = typeToJobId.get(task.dependsOn);
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.from("system_jobs") as any)
+      const { data, error } = await fromSystemJobs(this.supabase)
         .insert({
           type: task.type,
           payload: task.payload,
@@ -189,8 +188,7 @@ export class TaskProducer {
    * 获取用户的待处理任务数
    */
   async getPendingCount(userId: string): Promise<number> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (this.supabase.from("system_jobs") as any)
+    const { count, error } = await fromSystemJobs(this.supabase)
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "PENDING");
@@ -210,8 +208,7 @@ export class TaskProducer {
     bookmarkId: number,
     userId: string,
   ): Promise<JobRecord[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase.from("system_jobs") as any)
+    const { data, error } = await fromSystemJobs(this.supabase)
       .select("*")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", userId)
@@ -232,6 +229,7 @@ export class TaskProducer {
    * 取消任务
    */
   async cancelTask(jobId: string, userId: string): Promise<boolean> {
+    // cancel_job RPC 未在生成类型中定义，使用类型断言
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (this.supabase.rpc as any)("cancel_job", {
       p_job_id: jobId,

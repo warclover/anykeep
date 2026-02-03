@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * useOperationHistory Hook (V4.2)
+ * useOperationHistory Hook (V5.0)
  * 管理 AI 文件夹操作历史
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query
  */
 
 import { useState, useCallback } from "react";
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { operationHistoryKeys } from "@/hooks/queries/keys";
 import type {
   OperationDetail,
   OperationSnapshotAction,
@@ -65,6 +68,9 @@ interface UseOperationHistoryReturn {
   isUndoing: boolean;
 }
 
+/** 缓存时间：1 分钟 */
+const STALE_TIME = 60 * 1000;
+
 /**
  * Fetcher 函数
  */
@@ -114,6 +120,7 @@ export function useOperationHistory(
     refreshInterval = 30000, // 30 秒
   } = options;
 
+  const _queryClient = useQueryClient();
   const [isUndoing, setIsUndoing] = useState(false);
 
   // 构建请求 URL
@@ -124,15 +131,15 @@ export function useOperationHistory(
     actionFilter,
   });
 
-  // 使用 SWR 获取数据
-  const { data, error, mutate } = useSWR<OperationHistoryResponse>(
-    url,
-    fetcher,
-    {
-      revalidateOnFocus: true,
-      refreshInterval: autoRefresh ? refreshInterval : 0,
-    },
-  );
+  // 使用 TanStack Query 获取数据
+  const { data, error, isLoading, refetch } =
+    useQuery<OperationHistoryResponse>({
+      queryKey: operationHistoryKeys.list(url),
+      queryFn: () => fetcher(url),
+      staleTime: STALE_TIME,
+      refetchOnWindowFocus: true,
+      refetchInterval: autoRefresh ? refreshInterval : undefined,
+    });
 
   // 提取数据
   const operations = data?.data?.operations || [];
@@ -161,7 +168,7 @@ export function useOperationHistory(
         toast.success(result.data?.message || "操作已撤销");
 
         // 刷新列表
-        await mutate();
+        await refetch();
 
         return true;
       } catch (err) {
@@ -172,19 +179,19 @@ export function useOperationHistory(
         setIsUndoing(false);
       }
     },
-    [mutate],
+    [refetch],
   );
 
   /**
    * 手动刷新
    */
   const refresh = useCallback(() => {
-    mutate();
-  }, [mutate]);
+    refetch();
+  }, [refetch]);
 
   return {
     operations,
-    isLoading: !data && !error,
+    isLoading,
     error: error || (data?.success === false ? new Error(data.error) : null),
     undoableCount,
     undoOperation,

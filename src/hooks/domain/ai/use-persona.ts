@@ -3,14 +3,15 @@
  *
  * 提供画像推断和设置管理功能
  *
- * @version 1.0.0
+ * @version 2.0.0 - 迁移到 TanStack Query
  * @since 2025-12-28
  */
 
 "use client";
 
 import { useState, useCallback } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { personaKeys } from "@/hooks/queries/keys";
 import type {
   PersonaType,
   PersonaGroup,
@@ -120,7 +121,9 @@ export interface UsePersonaModeResult {
 // =============================================================================
 
 const API_URL = "/api/user/persona";
-const SWR_KEY = "persona";
+
+/** 缓存时间：5 分钟 */
+const STALE_TIME = 5 * 60 * 1000;
 
 // =============================================================================
 // Fetcher
@@ -145,19 +148,19 @@ async function personaFetcher(): Promise<PersonaApiResponse> {
  * 获取 AI 推断的用户画像和存储的设置
  */
 export function usePersonaInference(): UsePersonaInferenceResult {
-  const { data, error, isLoading, mutate } = useSWR<PersonaApiResponse>(
-    SWR_KEY,
-    personaFetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 5 * 60 * 1000, // 5 minutes
-    },
-  );
+  const _queryClient = useQueryClient();
+
+  const { data, error, isLoading, refetch } = useQuery<PersonaApiResponse>({
+    queryKey: personaKeys.current(),
+    queryFn: personaFetcher,
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    await refetch();
+  }, [refetch]);
 
   return {
     inferredPersona: data?.inferred ?? null,
@@ -178,7 +181,7 @@ export function usePersonaInference(): UsePersonaInferenceResult {
  * 管理用户画像设置的保存和重置
  */
 export function usePersonaSettings(): UsePersonaSettingsResult {
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -205,7 +208,7 @@ export function usePersonaSettings(): UsePersonaSettingsResult {
         }
 
         // 刷新缓存
-        await mutate(SWR_KEY);
+        await queryClient.invalidateQueries({ queryKey: personaKeys.all });
         return true;
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));
@@ -214,7 +217,7 @@ export function usePersonaSettings(): UsePersonaSettingsResult {
         setIsSaving(false);
       }
     },
-    [mutate, storedSettings],
+    [queryClient, storedSettings],
   );
 
   const resetToInferred = useCallback(async (): Promise<boolean> => {
@@ -231,7 +234,7 @@ export function usePersonaSettings(): UsePersonaSettingsResult {
       }
 
       // 刷新缓存
-      await mutate(SWR_KEY);
+      await queryClient.invalidateQueries({ queryKey: personaKeys.all });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -239,7 +242,7 @@ export function usePersonaSettings(): UsePersonaSettingsResult {
     } finally {
       setIsSaving(false);
     }
-  }, [mutate]);
+  }, [queryClient]);
 
   return {
     settings: storedSettings,

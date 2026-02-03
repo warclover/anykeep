@@ -341,7 +341,9 @@ export async function getAIResponse(page: Page): Promise<string | null> {
   const loading = page.locator(AI_SELECTORS.loading);
   try {
     // 先等待加载指示器出现（可能已经出现）
-    await loading.waitFor({ state: "attached", timeout: 3000 }).catch(() => {});
+    await loading.waitFor({ state: "attached", timeout: 3000 }).catch(() => {
+      /* 忽略：加载指示器可能不存在 */
+    });
     // 然后等待它消失
     await loading.waitFor({ state: "hidden", timeout: TIMEOUTS.aiResponse });
   } catch {

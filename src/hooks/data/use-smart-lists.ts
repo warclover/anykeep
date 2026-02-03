@@ -1,12 +1,13 @@
 /**
  * 智能列表 Hook
  * @description 提供智能列表的 CRUD 操作、预览和排序功能
+ * @version 11.0.0 - 迁移到 TanStack Query
  * @version 10.1.0 - 2025-12-21 性能优化：添加 localStorage 缓存支持
  */
 
 "use client";
 
-import useSWR from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, useEffect, useRef } from "react";
 import { authFetcher, fetchWithAuth } from "@/lib/api/fetch-with-auth";
 import {
@@ -14,6 +15,7 @@ import {
   setSmartListCache,
   isCacheFresh,
 } from "@/lib/smart-list/cache";
+import { smartListKeys } from "@/hooks/queries/keys";
 import type {
   SmartListClient,
   SmartListFilters,
@@ -198,6 +200,7 @@ export function useSmartLists(
     enabled = true,
   } = options;
 
+  const queryClient = useQueryClient();
   const [isMutating, setIsMutating] = useState(false);
 
   // V10.1.0: localStorage 缓存支持
@@ -211,30 +214,30 @@ export function useSmartLists(
   }
 
   // 构建 API URL
-  const url = enabled ? `${API_BASE}?includePresets=${includePresets}` : null;
+  const url = `${API_BASE}?includePresets=${includePresets}`;
 
   // 检查缓存是否新鲜（60秒内）
   const cacheFresh = isCacheFresh();
 
-  // SWR 获取数据（优化配置）
-  const { data, error, isLoading, mutate } = useSWR<SmartListClient[]>(
-    url,
-    fetcher,
-    {
-      // V10.1.0: 使用 localStorage 缓存作为 fallbackData
-      fallbackData: initialCacheRef.current ?? undefined,
-      refreshInterval: refreshInterval > 0 ? refreshInterval : undefined,
-      // 性能优化：减少不必要的重新验证
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      // 5 分钟内去重，减少重复请求
-      dedupingInterval: 300_000,
-      // 使用过期数据先展示，后台刷新
-      keepPreviousData: true,
-      // V10.1.0: 如果缓存新鲜，跳过首次加载时的 revalidate
-      revalidateOnMount: !cacheFresh,
-    },
-  );
+  // V11.0.0: 使用 TanStack Query 获取数据
+  const { data, error, isLoading, refetch } = useQuery<SmartListClient[]>({
+    queryKey: smartListKeys.lists(),
+    queryFn: () => fetcher(url),
+    enabled,
+    // V10.1.0: 使用 localStorage 缓存作为 initialData
+    initialData: initialCacheRef.current ?? undefined,
+    // 如果缓存新鲜，延长 staleTime
+    staleTime: cacheFresh ? 60_000 : 0,
+    // 5 分钟缓存时间
+    gcTime: 300_000,
+    // 性能优化：减少不必要的重新验证
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // 轮询间隔
+    refetchInterval: refreshInterval > 0 ? refreshInterval : undefined,
+    // 使用过期数据先展示
+    placeholderData: (prev) => prev,
+  });
 
   // V10.1.0: 数据更新后同步到 localStorage
   useEffect(() => {
@@ -255,8 +258,8 @@ export function useSmartLists(
 
   // 刷新
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    await refetch();
+  }, [refetch]);
 
   // 创建
   const create = useCallback(
@@ -264,15 +267,17 @@ export function useSmartLists(
       setIsMutating(true);
       try {
         const newList = await createSmartList(createData);
-        await mutate((prev) => [...(prev ?? []), newList], {
-          revalidate: false,
-        });
+        // 乐观更新缓存
+        queryClient.setQueryData<SmartListClient[]>(
+          smartListKeys.lists(),
+          (prev) => [...(prev ?? []), newList],
+        );
         return newList;
       } finally {
         setIsMutating(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   // 更新
@@ -284,16 +289,17 @@ export function useSmartLists(
       setIsMutating(true);
       try {
         const updatedList = await updateSmartList(id, updateData);
-        await mutate(
+        // 乐观更新缓存
+        queryClient.setQueryData<SmartListClient[]>(
+          smartListKeys.lists(),
           (prev) => prev?.map((list) => (list.id === id ? updatedList : list)),
-          { revalidate: false },
         );
         return updatedList;
       } finally {
         setIsMutating(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   // 删除
@@ -302,14 +308,16 @@ export function useSmartLists(
       setIsMutating(true);
       try {
         await deleteSmartList(id);
-        await mutate((prev) => prev?.filter((list) => list.id !== id), {
-          revalidate: false,
-        });
+        // 乐观更新缓存
+        queryClient.setQueryData<SmartListClient[]>(
+          smartListKeys.lists(),
+          (prev) => prev?.filter((list) => list.id !== id),
+        );
       } finally {
         setIsMutating(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   // 预览
@@ -327,7 +335,8 @@ export function useSmartLists(
       try {
         await reorderSmartLists(ids);
         // 乐观更新本地顺序
-        await mutate(
+        queryClient.setQueryData<SmartListClient[]>(
+          smartListKeys.lists(),
           (prev) => {
             if (!prev) return prev;
             const orderedList = ids
@@ -340,13 +349,12 @@ export function useSmartLists(
             const notInOrder = prev.filter((l) => !ids.includes(l.id));
             return [...orderedList, ...notInOrder];
           },
-          { revalidate: false },
         );
       } finally {
         setIsMutating(false);
       }
     },
-    [mutate],
+    [queryClient],
   );
 
   // 初始化预设
@@ -354,12 +362,12 @@ export function useSmartLists(
     setIsMutating(true);
     try {
       const count = await initSmartListPresets();
-      await mutate(); // 重新获取数据
+      await refetch(); // 重新获取数据
       return count;
     } finally {
       setIsMutating(false);
     }
-  }, [mutate]);
+  }, [refetch]);
 
   // 切换置顶
   const togglePin = useCallback(

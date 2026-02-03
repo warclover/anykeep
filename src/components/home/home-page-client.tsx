@@ -20,6 +20,7 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -139,6 +140,7 @@ export function HomePageClient({
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   // Phase 3.4: 使用 HomePageContext 获取筛选状态（替代 Event 监听）
   const homeContext = useHomePageContext();
@@ -181,8 +183,8 @@ export function HomePageClient({
 
   // V10.1: 预加载自定义用途标签（详情页需要，提前加载消除延迟）
   useEffect(() => {
-    prefetchCustomUsageTags();
-  }, []);
+    prefetchCustomUsageTags(queryClient);
+  }, [queryClient]);
 
   // V10.0: 智能列表 ID（客户端导航时从 URL 读取，SSR 时从 props 读取）
   const urlSmartListParam = searchParams?.get("smartList");
