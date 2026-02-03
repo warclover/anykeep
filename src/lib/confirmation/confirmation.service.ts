@@ -650,8 +650,54 @@ class ConfirmationService {
       createdAt: record.created_at,
     };
 
-    // TODO: 加载关联的书签/文件夹信息
-    // 这里需要与书签/文件夹服务集成
+    // 加载关联的书签信息（分类确认时）
+    if (record.bookmark_id) {
+      try {
+        const supabase = await createServerSupabaseClient();
+        const { data: bookmark } = await supabase
+          .from("bookmarks")
+          .select("id, title, url")
+          .eq("id", record.bookmark_id)
+          .single();
+
+        if (bookmark) {
+          base.bookmark = {
+            id: bookmark.id,
+            title: bookmark.title || "",
+            url: bookmark.url || "",
+          };
+        }
+      } catch (error) {
+        logger.warn(
+          { bookmarkId: record.bookmark_id, error },
+          "[ConfirmationService] Failed to load bookmark info",
+        );
+      }
+    }
+
+    // 加载关联的文件夹信息���文件夹操作时）
+    if (record.folder_id) {
+      try {
+        const supabase = await createServerSupabaseClient();
+        const { data: folder } = await supabase
+          .from("folders")
+          .select("id, name")
+          .eq("id", record.folder_id)
+          .single();
+
+        if (folder) {
+          base.folder = {
+            id: folder.id,
+            name: folder.name || "",
+          };
+        }
+      } catch (error) {
+        logger.warn(
+          { folderId: record.folder_id, error },
+          "[ConfirmationService] Failed to load folder info",
+        );
+      }
+    }
 
     return base;
   }

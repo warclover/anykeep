@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { webhookService } from "@/lib/payment/services/webhook.service";
 import type { WebhookEvent } from "@/lib/payment/types";
 import { PAYMENT_CONFIG } from "@/lib/payment/config";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // 验证签名
     if (!verifySignature(params)) {
-      console.error("[YunGouOS Webhook] Invalid signature");
+      logger.error("[YunGouOS Webhook] Invalid signature");
       return new NextResponse("FAIL", { status: 401 });
     }
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     try {
       attachData = JSON.parse(params.attach || "{}");
     } catch {
-      console.error("[YunGouOS Webhook] Invalid attach data");
+      logger.error("[YunGouOS Webhook] Invalid attach data");
     }
 
     // 构造统一事件格式
@@ -60,14 +61,17 @@ export async function POST(request: NextRequest) {
     const result = await webhookService.handleWebhook(event);
 
     if (!result.success) {
-      console.error("[YunGouOS Webhook] Processing failed:", result.error);
+      logger.error(
+        { error: result.error },
+        "[YunGouOS Webhook] Processing failed",
+      );
       return new NextResponse("FAIL", { status: 500 });
     }
 
     // YunGouOS 要求返回 SUCCESS
     return new NextResponse("SUCCESS");
   } catch (error) {
-    console.error("[YunGouOS Webhook] Error:", error);
+    logger.error({ error }, "[YunGouOS Webhook] Error");
     return new NextResponse("FAIL", { status: 500 });
   }
 }
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
 function verifySignature(params: Record<string, string>): boolean {
   const secret = PAYMENT_CONFIG.yungouos.webhookSecret;
   if (!secret) {
-    console.info("[YunGouOS Webhook] No webhook secret configured");
+    logger.info("[YunGouOS Webhook] No webhook secret configured");
     return true; // 开发环境跳过验证
   }
 

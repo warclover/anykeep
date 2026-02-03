@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { webhookService } from "@/lib/payment/services/webhook.service";
 import type { WebhookEvent, WebhookEventType } from "@/lib/payment/types";
 import { PAYMENT_CONFIG } from "@/lib/payment/config";
+import { logger } from "@/lib/logger";
 
 // Lemon Squeezy 事件类型映射
 const LS_EVENT_MAP: Record<string, WebhookEventType> = {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // 验证签名
     if (!verifySignature(rawBody, signature)) {
-      console.error("[LS Webhook] Invalid signature");
+      logger.error("[LS Webhook] Invalid signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     // 映射事件类型
     const eventType = LS_EVENT_MAP[eventName];
     if (!eventType) {
-      console.info("[LS Webhook] Unknown event:", eventName);
+      logger.info({ eventName }, "[LS Webhook] Unknown event");
       return NextResponse.json({ received: true, skipped: true });
     }
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     const result = await webhookService.handleWebhook(event);
 
     if (!result.success) {
-      console.error("[LS Webhook] Processing failed:", result.error);
+      logger.error({ error: result.error }, "[LS Webhook] Processing failed");
       // 返回 500 让 LS 重试
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       action: result.action,
     });
   } catch (error) {
-    console.error("[LS Webhook] Error:", error);
+    logger.error({ error }, "[LS Webhook] Error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -88,7 +89,7 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
 
   const secret = PAYMENT_CONFIG.lemonsqueezy.webhookSecret;
   if (!secret) {
-    console.info("[LS Webhook] No webhook secret configured");
+    logger.info("[LS Webhook] No webhook secret configured");
     return true; // 开发环境跳过验证
   }
 

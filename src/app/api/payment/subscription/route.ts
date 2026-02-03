@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { subscriptionService } from "@/lib/payment/services/subscription.service";
 import { entitlementService } from "@/lib/payment/services/entitlement.service";
+import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取当前用户订阅状态
@@ -60,7 +61,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[Subscription GET] Error:", error);
+    logger.error({ error }, "[Subscription GET] Error");
     return NextResponse.json(
       { error: { code: "FETCH_FAILED", message: "获取订阅信息失败" } },
       { status: 500 },
@@ -109,7 +110,7 @@ export async function DELETE(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Subscription DELETE] Error:", error);
+    logger.error({ error }, "[Subscription DELETE] Error");
     return NextResponse.json(
       { error: { code: "CANCEL_FAILED", message: "取消订阅失败" } },
       { status: 500 },
@@ -150,7 +151,7 @@ export async function PATCH() {
       },
     });
   } catch (error) {
-    console.error("[Subscription PATCH] Error:", error);
+    logger.error({ error }, "[Subscription PATCH] Error");
     return NextResponse.json(
       { error: { code: "RESUME_FAILED", message: "恢复订阅失败" } },
       { status: 500 },

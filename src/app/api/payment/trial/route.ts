@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { trialService } from "@/lib/payment/services/trial.service";
+import { logger } from "@/lib/logger";
 
 /**
  * POST - 开启 7 天免费试用
@@ -47,7 +48,7 @@ export async function POST() {
       },
     });
   } catch (error) {
-    console.error("[Trial POST] Error:", error);
+    logger.error({ error }, "[Trial POST] Error");
     return NextResponse.json(
       { error: { code: "TRIAL_FAILED", message: "开启试用失败" } },
       { status: 500 },
@@ -87,7 +88,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[Trial GET] Error:", error);
+    logger.error({ error }, "[Trial GET] Error");
     return NextResponse.json(
       { error: { code: "FETCH_FAILED", message: "获取试用状态失败" } },
       { status: 500 },

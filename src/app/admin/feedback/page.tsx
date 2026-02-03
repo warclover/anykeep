@@ -7,6 +7,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminFeedbackListClient } from "@/components/admin/admin-feedback-list-client";
+import { isAdminUser } from "@/lib/auth/admin-check";
+import { logger } from "@/lib/logger";
 import type { UserFeedback } from "@/types/user-feedback";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +25,14 @@ async function getAdminFeedbacks(): Promise<UserFeedback[]> {
       redirect("/login");
     }
 
-    // TODO: 添加管理员权限检查
-    // const isAdmin = await checkAdminRole(user.id);
-    // if (!isAdmin) redirect("/");
+    // 权限检查 - 验证是否为管理员
+    if (!isAdminUser(user.email)) {
+      logger.warn(
+        { userId: user.id, email: user.email },
+        "[AdminFeedbackPage] 非管理员访问尝试",
+      );
+      redirect("/");
+    }
 
     const { data, error } = await supabase
       .from("user_feedbacks")
@@ -34,13 +41,13 @@ async function getAdminFeedbacks(): Promise<UserFeedback[]> {
       .limit(50);
 
     if (error) {
-      console.error("Failed to fetch admin feedbacks:", error);
+      logger.error({ error }, "[AdminFeedbackPage] Failed to fetch feedbacks");
       return [];
     }
 
     return (data as UserFeedback[]) || [];
   } catch (error) {
-    console.error("Failed to fetch admin feedbacks:", error);
+    logger.error({ error }, "[AdminFeedbackPage] Failed to fetch feedbacks");
     return [];
   }
 }

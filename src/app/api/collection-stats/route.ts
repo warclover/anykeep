@@ -61,9 +61,36 @@ export async function GET() {
       throw uncategorizedError;
     }
 
-    // 4. 获取重复数量（暂时简化处理，后续可添加 RPC 函数）
-    // TODO: 实现 count_duplicate_urls RPC 函数用于准确检测重复
-    const duplicates = 0;
+    // 4. 获取重复 URL 数量
+    // 查询所有 URL，客户端计算重复数量
+    const { data: urlData, error: urlError } = await supabase
+      .from("bookmarks")
+      .select("url")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .not("url", "is", null);
+
+    if (urlError) {
+      logger.error(
+        { error: urlError },
+        "Failed to fetch URLs for duplicate check",
+      );
+      throw urlError;
+    }
+
+    // 计算重复的 URL 数量（出现次数 > 1 的 URL 对应的额外书签数）
+    const urlCounts = new Map<string, number>();
+    for (const item of urlData || []) {
+      if (item.url) {
+        urlCounts.set(item.url, (urlCounts.get(item.url) || 0) + 1);
+      }
+    }
+    let duplicates = 0;
+    for (const count of urlCounts.values()) {
+      if (count > 1) {
+        duplicates += count - 1; // 每个重复 URL 多出的副本数
+      }
+    }
 
     // 5. 获取无标签数量（user_tags 和 ai_tags 都为空）
     // 注意：Supabase 的空数组检查使用 {} 语法
