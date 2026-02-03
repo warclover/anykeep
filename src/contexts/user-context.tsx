@@ -68,12 +68,32 @@ const AUTH_ERROR_EVENT = "anykeep:auth-error";
 const UserContext = createContext<UserContextValue | null>(null);
 
 // ============================================================================
+// Utilities
+// ============================================================================
+
+/**
+ * 判断是否为 AbortError（请求被取消）
+ * V4.2.32: 静默处理 AbortError，这是正常的取消行为
+ */
+function isAbortError(err: unknown): boolean {
+  if (err instanceof Error) {
+    return (
+      err.name === "AbortError" ||
+      err.message.includes("abort") ||
+      err.message.includes("signal is aborted")
+    );
+  }
+  return false;
+}
+
+// ============================================================================
 // SWR Fetcher
 // ============================================================================
 
 /**
  * Profile SWR Fetcher
  * 仅在有 userId 时才执行
+ * V4.2.32: 添加 AbortError 静默处理
  */
 async function profileFetcher([, userId]: [
   string,
@@ -88,6 +108,10 @@ async function profileFetcher([, userId]: [
 
   if (error && error.code !== "PGRST116") {
     // PGRST116 = no rows returned
+    // V4.2.32: 静默处理 AbortError
+    if (isAbortError(error)) {
+      return null;
+    }
     clientLogger.error({ error }, "[UserProvider] Failed to fetch profile");
     throw error;
   }

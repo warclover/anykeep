@@ -66,6 +66,8 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const isCheckingRef = useRef(false);
   const lastRefreshTimestampRef = useRef<number>(0);
+  /** V4.2.32: AbortController 用于取消进行中的请求 */
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * 广播会话状态变更到其他 Tab
@@ -79,11 +81,31 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
   }, []);
 
   /**
+   * 判断是否为 AbortError（请求被取消）
+   * V4.2.32: 静默处理 AbortError，这是正常的取消行为
+   */
+  const isAbortError = useCallback((err: unknown): boolean => {
+    if (err instanceof Error) {
+      return (
+        err.name === "AbortError" ||
+        err.message.includes("abort") ||
+        err.message.includes("signal is aborted")
+      );
+    }
+    return false;
+  }, []);
+
+  /**
    * 触发会话刷新（使用 Supabase 内置机制）
+   * V4.2.32: 添加 AbortController 支持，防止组件卸载时的内存泄漏
    */
   const triggerSessionRefresh = useCallback(async () => {
     if (isCheckingRef.current) return;
     isCheckingRef.current = true;
+
+    // 取消之前进行中的请求
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
 
     try {
       const supabase = supabaseRef.current;
@@ -94,6 +116,11 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
         error,
       } = await supabase.auth.getUser();
 
+      // V4.2.32: 静默处理 AbortError
+      if (error && isAbortError(error)) {
+        return; // 请求被取消，静默返回
+      }
+
       if (error || !user) {
         clientLogger.warn(
           { error: error?.message },
@@ -102,6 +129,10 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
         // 不立即触发 expired，让 onAuthStateChange 处理
       }
     } catch (err) {
+      // V4.2.32: 静默处理 AbortError
+      if (isAbortError(err)) {
+        return;
+      }
       clientLogger.error(
         { error: err instanceof Error ? err.message : String(err) },
         "[SessionHeartbeat] 触发刷新时发生错误",
@@ -109,7 +140,7 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
     } finally {
       isCheckingRef.current = false;
     }
-  }, []);
+  }, [isAbortError]);
 
   /**
    * 处理页面可见性变化 - 立即刷新（行业标准）
@@ -254,6 +285,8 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("online", handleOnline);
+      // V4.2.32: 清理进行中的请求
+      abortControllerRef.current?.abort();
     };
   }, [
     enabled,
