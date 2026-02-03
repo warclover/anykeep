@@ -270,8 +270,8 @@ export class SnapshotService {
     );
 
     return {
-      snapshotId: result.snapshot_id,
-      jobId: result.job_id,
+      snapshotId: result.snapshot_id ?? 0,
+      jobId: result.job_id ?? "",
       status: "pending",
       estimatedWaitTime,
     };
