@@ -552,7 +552,7 @@ export class ShareBundleSkill extends OrchestrationSkill<
     :root { --bg: #fff; --text: #333; --border: #eee; --accent: #0066cc; }
     .dark { --bg: #1a1a1a; --text: #eee; --border: #333; --accent: #66b3ff; }
     @media (prefers-color-scheme: dark) { :root:not(.light) { --bg: #1a1a1a; --text: #eee; --border: #333; --accent: #66b3ff; } }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); max-width: 800px; margin: 0 auto; padding: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); max-width: 800px; margin: 0 auto; padding: 20px; }
     h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
     .desc { color: #666; margin-bottom: 1.5rem; }
     .stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--border); border-radius: 8px; }

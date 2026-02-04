@@ -152,6 +152,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* 中���字体栈：优先使用系统中文优化字体 */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+                 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue',
+                 'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
   }
 }
 

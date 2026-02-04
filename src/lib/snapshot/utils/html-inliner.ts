@@ -498,7 +498,7 @@ function addBaseStyles(document: Document): void {
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
       font-size: 16px;
       line-height: 1.6;
       color: #333;

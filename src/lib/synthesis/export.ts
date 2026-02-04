@@ -285,7 +285,7 @@ function exportToHtml(
   lines.push(`  <title>${escapeHtml(report.title)}</title>`);
   lines.push("  <style>");
   lines.push(`
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
     h1 { color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
     h2 { color: #374151; margin-top: 30px; }
     h3 { color: #4b5563; }

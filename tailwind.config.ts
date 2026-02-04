@@ -122,6 +122,21 @@ export default {
         // Drawer 组件专用缓动（更平滑的弹出效果）
         drawer: "cubic-bezier(0.32, 0.72, 0, 1)",
       },
+      // 中文字体栈 - 确保 Tailwind 组件使用正确的中文优化字体
+      fontFamily: {
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'Segoe UI'",
+          "'PingFang SC'",
+          "'Hiragino Sans GB'",
+          "'Microsoft YaHei'",
+          "'Helvetica Neue'",
+          "'Noto Sans CJK SC'",
+          "'Source Han Sans SC'",
+          "sans-serif",
+        ],
+      },
     },
   },
   plugins: [tailwindcssAnimate],

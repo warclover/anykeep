@@ -160,7 +160,7 @@ function convertToHtml(content: string, blueprintName: string): string {
   <title>${blueprintName}</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
       max-width: 800px;
       margin: 40px auto;
       padding: 20px;

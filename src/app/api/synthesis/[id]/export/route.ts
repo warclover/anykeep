@@ -143,7 +143,8 @@ function generateHTML(report: SynthesisReport): string {
   <title>${report.title}</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+                   'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
       max-width: 800px;
       margin: 0 auto;
       padding: 2rem;
@@ -214,11 +215,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       [key: string]: unknown;
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("synthesis_reports") as any)
+    const { data, error } = (await (supabase.from("synthesis_reports") as any)
       .select("*")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single() as { data: SynthesisReportSelectRow | null; error: { message: string } | null };
+      .single()) as {
+      data: SynthesisReportSelectRow | null;
+      error: { message: string } | null;
+    };
 
     if (error || !data) {
       return NextResponse.json(

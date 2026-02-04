@@ -30,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
+        <meta charSet="utf-8" />
         <script dangerouslySetInnerHTML={{ __html: COLOR_THEME_INIT_SCRIPT }} />
       </head>
       <body className="font-sans antialiased">
