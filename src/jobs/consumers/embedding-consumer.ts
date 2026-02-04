@@ -54,13 +54,15 @@ export class EmbeddingConsumer extends BaseConsumer {
 
     try {
       // 获取书签内容（不含 content 列，因为表中没有该字段）
-       
       const { data: bookmark, error: fetchError } = (await (
         context.supabase.from("bookmarks") as any
-      )
+      ) // eslint-disable-line @typescript-eslint/no-explicit-any
         .select("id, title, description, ai_summary, user_tags, ai_tags")
         .eq("id", bookmarkId)
-        .single()) as { data: BookmarkEmbeddingRow | null; error: Error | null };
+        .single()) as {
+        data: BookmarkEmbeddingRow | null;
+        error: Error | null;
+      };
 
       if (fetchError || !bookmark) {
         return {
@@ -98,10 +100,9 @@ export class EmbeddingConsumer extends BaseConsumer {
       const embeddingStr = `[${embedding.join(",")}]`;
 
       // 更新书签
-       
       const { error: updateError } = await (
         context.supabase.from("bookmarks") as any
-      )
+      ) // eslint-disable-line @typescript-eslint/no-explicit-any
         .update({
           embedding: embeddingStr,
           status: "EMBEDDING_DONE",

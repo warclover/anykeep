@@ -8,13 +8,20 @@
  * - 提供用户确认或拒绝选项
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { AlertCircle, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { AlertCircle, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * T1 纠正通知属性
@@ -85,7 +92,7 @@ export function T1Notification({
       }
       setIsDismissed(true);
     } catch (error) {
-      console.error('Failed to accept T1 correction:', error);
+      clientLogger.error({ error }, "Failed to accept T1 correction:");
     } finally {
       setIsProcessing(false);
     }
@@ -102,7 +109,7 @@ export function T1Notification({
       }
       setIsDismissed(true);
     } catch (error) {
-      console.error('Failed to reject T1 correction:', error);
+      clientLogger.error({ error }, "Failed to reject T1 correction:");
     } finally {
       setIsProcessing(false);
     }
@@ -136,9 +143,7 @@ export function T1Notification({
           </Button>
         </div>
         <CardDescription>
-          {hasChange
-            ? 'AI 分析后建议调整分类结果'
-            : 'AI 确认了初始分类结果'}
+          {hasChange ? "AI 分析后建议调整分类结果" : "AI 确认了初始分类结果"}
         </CardDescription>
       </CardHeader>
 
@@ -164,11 +169,11 @@ export function T1Notification({
           {/* T1 结果 */}
           <div className="flex-1 space-y-1">
             <div className="text-xs text-muted-foreground">
-              {hasChange ? 'AI 建议 (T1)' : 'AI 确认 (T1)'}
+              {hasChange ? "AI 建议 (T1)" : "AI 确认 (T1)"}
             </div>
             <Badge
-              variant={hasChange ? 'default' : 'outline'}
-              className={hasChange ? 'bg-blue-600' : 'font-normal'}
+              variant={hasChange ? "default" : "outline"}
+              className={hasChange ? "bg-blue-600" : "font-normal"}
             >
               {t1FolderName}
             </Badge>

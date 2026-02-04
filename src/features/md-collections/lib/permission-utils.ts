@@ -51,10 +51,9 @@ export async function verifyCollectionOwnership(
   try {
     const supabase = await createClient();
 
-     
     const { data: collection, error } = (await (
       supabase.from("md_collections") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)

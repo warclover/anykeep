@@ -17,6 +17,7 @@ import type {
   BriefingApiResponse,
 } from "@/lib/ai-agent/proactive-briefing";
 import { requestDeduplicator } from "@/lib/utils/request-deduplicator";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -221,7 +222,7 @@ export function useBriefing(
         };
       });
     } catch (error) {
-      console.error("Mark read failed:", error);
+      clientLogger.error({ error }, "Mark read failed:");
       throw error;
     }
   }, []);
@@ -263,7 +264,7 @@ export function useBriefing(
         };
       });
     } catch (error) {
-      console.error("Mark all read failed:", error);
+      clientLogger.error({ error }, "Mark all read failed:");
       throw error;
     }
   }, []);
@@ -307,7 +308,7 @@ export function useBriefing(
         };
       });
     } catch (error) {
-      console.error("Dismiss failed:", error);
+      clientLogger.error({ error }, "Dismiss failed:");
       throw error;
     }
   }, []);

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { SynthesisReport } from "@/lib/synthesis";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SynthesisShareDialogProps {
   open: boolean;
@@ -58,7 +59,7 @@ export function SynthesisShareDialog({
       setCopied("link");
       setTimeout(() => setCopied(null), 2000);
     } catch (error) {
-      console.error("Copy failed:", error);
+      clientLogger.error({ error }, "Copy failed:");
     }
   }, [shareUrl]);
 
@@ -69,7 +70,7 @@ export function SynthesisShareDialog({
       setCopied("text");
       setTimeout(() => setCopied(null), 2000);
     } catch (error) {
-      console.error("Copy failed:", error);
+      clientLogger.error({ error }, "Copy failed:");
     }
   }, [shareText]);
 

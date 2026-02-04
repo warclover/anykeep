@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Database, AlertCircle } from "lucide-react";
+import { clientLogger } from "@/lib/client-logger";
 
 interface NotionDatabase {
   id: string;
@@ -58,7 +59,7 @@ export function DatabaseSelector({
       const data = await response.json();
       setDatabases(data.databases || []);
     } catch (err) {
-      console.error("Failed to fetch databases:", err);
+      clientLogger.error({ err }, "Failed to fetch databases:");
       setError(err instanceof Error ? err.message : "获取 Database 列表失败");
     } finally {
       setLoading(false);

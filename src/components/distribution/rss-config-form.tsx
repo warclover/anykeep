@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { RssTargetConfig } from "@/lib/distribution/types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 表单验证 Schema
@@ -159,7 +160,7 @@ export function RssConfigForm({
       await onSave(config);
       toast.success("配置已保存");
     } catch (error) {
-      console.error("Failed to save config:", error);
+      clientLogger.error({ error }, "Failed to save config:");
       toast.error("保存失败");
     } finally {
       setSaving(false);

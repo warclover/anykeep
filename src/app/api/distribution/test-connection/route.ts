@@ -16,6 +16,7 @@ import {
   RssFeedAdapter,
 } from "@/lib/distribution/adapters";
 import type { IDistributionAdapter } from "@/lib/distribution/interfaces";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Test connection error:", error);
+    logger.error({ error }, "Test connection error:");
     return NextResponse.json(
       {
         success: false,

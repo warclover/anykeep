@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 const NOTION_CLIENT_ID = process.env.NOTION_CLIENT_ID || "";
 const NOTION_REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/distribution/notion/callback`;
@@ -36,15 +37,17 @@ export async function GET(_request: NextRequest) {
 
   // 存储 state 到数据库（5 分钟有效）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: stateError } = await (supabase.from("oauth_states") as any).insert({
+  const { error: stateError } = (await (
+    supabase.from("oauth_states") as any
+  ).insert({
     state,
     user_id: user.id,
     provider: "notion",
     expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-  }) as { error: { message: string } | null };
+  })) as { error: { message: string } | null };
 
   if (stateError) {
-    console.error("Failed to save OAuth state:", stateError);
+    logger.error({ stateError }, "Failed to save OAuth state:");
     return NextResponse.json({ error: "授权初始化失败" }, { status: 500 });
   }
 

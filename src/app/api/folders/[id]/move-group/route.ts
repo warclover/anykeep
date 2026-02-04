@@ -72,12 +72,12 @@ export async function PATCH(
       user_id: string;
       is_system: boolean;
     };
-    const { data: existingFolder, error: checkError } = await supabase
+    const { data: existingFolder, error: checkError } = (await supabase
       .from("folders")
       .select("id, user_id, is_system")
       .eq("id", folderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: ExistingFolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -104,9 +104,7 @@ export async function PATCH(
     // 4. 更新文件夹分组
     // 注意：移动到新类别后，sort_order 设为 0（移到新类别的顶部）
     // 已在上方验证所有权和系统文件夹状态，这里仅需基本条件
-     
-    const { error: updateError } = await (supabase
-      .from("folders") as any)
+    const { error: updateError } = (await (supabase.from("folders") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update({
         folder_group: body.folder_group,
         sort_order: 0,
@@ -114,7 +112,7 @@ export async function PATCH(
       })
       .eq("id", folderId)
       .eq("user_id", user.id)
-      .is("deleted_at", null) as { error: { message: string } | null };
+      .is("deleted_at", null)) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(

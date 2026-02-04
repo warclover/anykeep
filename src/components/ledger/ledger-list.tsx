@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Database } from "@/types/supabase";
+import { clientLogger } from "@/lib/client-logger";
 
 type LedgerReport = Database["public"]["Tables"]["ledgers"]["Row"];
 
@@ -26,13 +27,13 @@ export function LedgerList() {
           .order("created_at", { ascending: false });
 
         if (error) {
-          console.error("Error fetching ledger reports:", error);
+          clientLogger.error({ error }, "Error fetching ledger reports:");
           return;
         }
 
         setReports(data || []);
       } catch (err) {
-        console.error("Failed to fetch reports:", err);
+        clientLogger.error({ err }, "Failed to fetch reports:");
       } finally {
         setIsLoading(false);
       }

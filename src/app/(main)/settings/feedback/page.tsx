@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FeedbackListClient } from "@/components/settings/feedback-list-client";
 import type { UserFeedback } from "@/types/user-feedback";
+import { clientLogger } from "@/lib/client-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +32,13 @@ async function getFeedbacks(): Promise<UserFeedback[]> {
       .limit(20);
 
     if (error) {
-      console.error("Failed to fetch feedbacks:", error);
+      clientLogger.error({ error }, "Failed to fetch feedbacks:");
       return [];
     }
 
     return (data as UserFeedback[]) || [];
   } catch (error) {
-    console.error("Failed to fetch feedbacks:", error);
+    clientLogger.error({ error }, "Failed to fetch feedbacks:");
     return [];
   }
 }

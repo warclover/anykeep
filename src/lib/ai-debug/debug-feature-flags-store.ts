@@ -13,6 +13,7 @@
 
 import type { AIDebugConfig, AIDebugFeatureFlags } from "./types";
 import { DEFAULT_AI_DEBUG_CONFIG, FASTEST_MODE_PRESET } from "./types";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 常量
@@ -60,7 +61,7 @@ export function getAIDebugConfig(): AIDebugConfig {
       },
     };
   } catch (error) {
-    console.error("[AIDebugStore] Failed to parse config:", error);
+    logger.error({ error }, "[AIDebugStore] Failed to parse config:");
     return DEFAULT_AI_DEBUG_CONFIG;
   }
 }
@@ -95,7 +96,7 @@ export function setAIDebugConfig(
     syncToCookie(newConfig);
     broadcastChange(newConfig);
   } catch (error) {
-    console.error("[AIDebugStore] Failed to save config:", error);
+    logger.error({ error }, "[AIDebugStore] Failed to save config:");
   }
 }
 
@@ -128,7 +129,7 @@ export function resetAIDebugConfig(): void {
     clearCookie();
     broadcastChange(DEFAULT_AI_DEBUG_CONFIG);
   } catch (error) {
-    console.error("[AIDebugStore] Failed to reset config:", error);
+    logger.error({ error }, "[AIDebugStore] Failed to reset config:");
   }
 }
 
@@ -292,7 +293,7 @@ export function importConfigFromJson(json: string): boolean {
     setAIDebugConfig(parsed);
     return true;
   } catch (error) {
-    console.error("[AIDebugStore] Failed to import config:", error);
+    logger.error({ error }, "[AIDebugStore] Failed to import config:");
     return false;
   }
 }

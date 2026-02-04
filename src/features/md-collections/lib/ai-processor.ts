@@ -71,10 +71,9 @@ export async function processMdCollectionAI(
   try {
     // 1. 获取 MD 收藏内容
     const supabase = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: collection, error: fetchError } = (await (
       supabase.from("md_collections") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("id, title, raw_content, processing_status")
       .eq("id", collectionId)
       .eq("user_id", userId)
@@ -186,10 +185,9 @@ export async function processMdCollectionAI(
       updateData.embedding_version = result.embeddingVersion;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (
       supabase.from("md_collections") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update(updateData)
       .eq("id", collectionId);
 

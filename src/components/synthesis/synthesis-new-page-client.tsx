@@ -62,6 +62,7 @@ import {
   ContentQualityCard,
   calculateQualityAssessment,
 } from "./content-quality-card";
+import { clientLogger } from "@/lib/client-logger";
 
 // 来源类型配置
 const SOURCE_TYPES = [
@@ -289,7 +290,7 @@ export function SynthesisNewPageClient() {
       const { data } = await response.json();
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
-      console.error("Create synthesis error:", error);
+      clientLogger.error({ error }, "Create synthesis error:");
     } finally {
       setIsCreating(false);
     }

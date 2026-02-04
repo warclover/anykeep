@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { TagPickerProps, SourceSelection, ContentStats } from "./types";
+import { clientLogger } from "@/lib/client-logger";
 
 interface TagItem {
   name: string;
@@ -56,7 +57,7 @@ export function TagPicker({
           setTags([]);
         }
       } catch (error) {
-        console.error("Failed to load tags:", error);
+        clientLogger.error({ error }, "Failed to load tags:");
       } finally {
         setIsLoading(false);
       }
@@ -82,7 +83,7 @@ export function TagPicker({
         const result = await response.json();
         setPreviewStats(result.contentStats);
       } catch (error) {
-        console.error("Failed to load preview:", error);
+        clientLogger.error({ error }, "Failed to load preview:");
       } finally {
         setIsLoadingPreview(false);
       }

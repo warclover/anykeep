@@ -27,6 +27,7 @@ import type {
   SourceSelection,
   PreviewBookmark,
 } from "./types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 手动书签选择器
@@ -80,7 +81,7 @@ export function ManualSelector({
           setHasMore(result.pagination?.hasMore ?? false);
         }
       } catch (error) {
-        console.error("Failed to load bookmarks:", error);
+        clientLogger.error({ error }, "Failed to load bookmarks:");
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);

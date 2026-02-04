@@ -11,6 +11,7 @@ import type {
   UseReadingPositionOptions,
   UseReadingPositionResult,
 } from "../../types/reader";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * localStorage 键前缀
@@ -175,7 +176,10 @@ export function useReadingPosition({
       setSavedPosition(position);
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("[use-reading-position] savePosition failed:", error);
+        clientLogger.error(
+          { error },
+          "[use-reading-position] savePosition failed:",
+        );
       }
     }
   }, [storageKey, calculateProgress, scrollContainerRef]);
@@ -213,7 +217,10 @@ export function useReadingPosition({
     } catch (error) {
       // localStorage 不可用
       if (process.env.NODE_ENV === "development") {
-        console.error("[use-reading-position] clearPosition failed:", error);
+        clientLogger.error(
+          { error },
+          "[use-reading-position] clearPosition failed:",
+        );
       }
     }
   }, [storageKey]);
@@ -247,7 +254,7 @@ export function useReadingPosition({
     } catch (error) {
       // localStorage 不可用或数据无效
       if (process.env.NODE_ENV === "development") {
-        console.error("[use-reading-position] init failed:", error);
+        clientLogger.error({ error }, "[use-reading-position] init failed:");
       }
     }
   }, [storageKey]);

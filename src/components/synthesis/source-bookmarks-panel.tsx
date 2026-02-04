@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { SynthesisSourceType } from "@/lib/synthesis";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SourceBookmark {
   id: number;
@@ -117,7 +118,7 @@ export function SourceBookmarksPanel({
         setBookmarks(result.bookmarks || []);
       }
     } catch (error) {
-      console.error("Failed to load source bookmarks:", error);
+      clientLogger.error({ error }, "Failed to load source bookmarks:");
     } finally {
       setIsLoading(false);
       setIsLoaded(true);

@@ -9,6 +9,7 @@
  */
 
 import type { TextEncoder } from "util";
+import { logger } from "@/lib/logger";
 
 /**
  * 创建 SSE 事件发送函数
@@ -69,7 +70,7 @@ export function createSSESenderWithError<T>(
       if (onError) {
         onError(err);
       } else {
-        console.error("SSE send error:", err);
+        logger.error({ err }, "SSE send error:");
       }
     }
   };

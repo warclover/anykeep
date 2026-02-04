@@ -35,6 +35,7 @@ import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
 import { BATCH_TEXT } from "./constants";
 import type { BatchTagsResult } from "@/lib/batch/validation";
 import type { BookmarkWithFolder } from "@/lib/export/types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 平台选项
@@ -173,7 +174,7 @@ export function BatchPageClient() {
       // 跳转到生成页面
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
-      console.error("Create synthesis error:", error);
+      clientLogger.error({ error }, "Create synthesis error:");
       // 使用 toastService 显示错误提示
       const { toastService } = await import(
         "@/lib/notifications/toast/toast.service"

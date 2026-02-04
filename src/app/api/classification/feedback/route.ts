@@ -121,10 +121,9 @@ export async function POST(request: NextRequest) {
 
     // Note: feedbackType 包含 V4.0 新增类型 (reject, confirm)
     // 数据库迁移会添加这些枚举值，这里使用类型断言确保编译通过
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: feedback, error: createError } = (await (
       supabase.from("classification_feedback") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: user.id,
         feedback_type: feedbackType as

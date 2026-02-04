@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { SnapshotEntity, RollbackResult, EntityType } from "../types";
 import type { Json } from "@/types/supabase.generated";
+import { logger } from "@/lib/logger";
 
 class SnapshotManager {
   private readonly EXPIRY_HOURS = 24;
@@ -110,7 +111,7 @@ class SnapshotManager {
       return { success: true, restoredCount };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.error("[SnapshotManager] Rollback failed:", error);
+      logger.error({ error }, "[SnapshotManager] Rollback failed:");
       return { success: false, restoredCount: 0, error: message };
     }
   }
@@ -151,7 +152,7 @@ class SnapshotManager {
       .select("id");
 
     if (error) {
-      console.error("[SnapshotManager] Cleanup failed:", error);
+      logger.error({ error }, "[SnapshotManager] Cleanup failed:");
       return 0;
     }
 

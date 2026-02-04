@@ -2,6 +2,7 @@ import type { Bookmark } from "@/types/bookmark";
 import type { PredictionResult } from "../types";
 import { ruleRegistry } from "./rule-registry";
 import { telemetryManager } from "../telemetry/telemetry-manager";
+import { logger } from "@/lib/logger";
 
 class PredictionEngine {
   /**
@@ -45,7 +46,7 @@ class PredictionEngine {
         }
       } catch (error) {
         // 单条规则执行失败不影响其他规则
-        console.error(`[PredictionEngine] Rule ${rule.id} failed:`, error);
+        logger.error({ error }, `[PredictionEngine] Rule ${rule.id} failed:`);
       }
     }
 

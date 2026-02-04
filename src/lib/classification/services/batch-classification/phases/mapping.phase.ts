@@ -19,6 +19,7 @@ import type {
 } from "../types";
 import { vacuumDetector } from "../conflict/vacuum-detector";
 import { cosineSimilarity } from "../../smart-sorting/clustering/similarity";
+import { logger } from "@/lib/logger";
 
 // ============================================
 // 映射配置
@@ -113,7 +114,7 @@ export class MappingPhase {
       .gt("bookmark_count", 0);
 
     if (error) {
-      console.error("Failed to fetch folder profiles:", error);
+      logger.error({ error }, "Failed to fetch folder profiles:");
       return [];
     }
 

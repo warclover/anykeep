@@ -35,6 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { SynthesisDepthMode, SynthesisOutputStyle } from "@/lib/synthesis";
 import { AdvancedSettingsPanel } from "./advanced-settings-panel";
+import { clientLogger } from "@/lib/client-logger";
 
 // 书签类型
 interface BookmarkItem {
@@ -144,7 +145,7 @@ export function SynthesisQuickPageClient() {
           setHasMore(result.data?.pagination?.hasMore ?? false);
         }
       } catch (error) {
-        console.error("Failed to load bookmarks:", error);
+        clientLogger.error({ error }, "Failed to load bookmarks:");
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -217,7 +218,7 @@ export function SynthesisQuickPageClient() {
       const { data } = await response.json();
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
-      console.error("Create synthesis error:", error);
+      clientLogger.error({ error }, "Create synthesis error:");
     } finally {
       setIsCreating(false);
     }

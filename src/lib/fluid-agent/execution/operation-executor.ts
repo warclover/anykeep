@@ -6,6 +6,7 @@ import type {
 } from "../types";
 import { snapshotManager } from "./snapshot-manager";
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/logger";
 
 type OperationCallback = (context: OperationContext) => void;
 
@@ -268,7 +269,10 @@ class OperationExecutor {
       try {
         callback({ ...context });
       } catch (error) {
-        console.error("[OperationExecutor] Subscriber callback failed:", error);
+        logger.error(
+          { error },
+          "[OperationExecutor] Subscriber callback failed:",
+        );
       }
     });
   }

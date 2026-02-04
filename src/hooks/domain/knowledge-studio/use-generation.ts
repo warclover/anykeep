@@ -291,9 +291,9 @@ export function useGeneration(
 
                   // 检查 reportId 是否存在
                   if (!reportId) {
-                    console.error(
+                    clientLogger.error(
+                      { data: chunk.data },
                       "Done event received but reportId is missing:",
-                      chunk.data,
                     );
                     const errorResult: GenerationResult = {
                       success: false,

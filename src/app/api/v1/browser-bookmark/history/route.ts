@@ -154,10 +154,9 @@ export const POST = withAuthMiddleware(
     // 插入数据库
     // 类型断言: 手动维护类型文件时需要此断言
     type ImportHistoryRow = { id: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: created, error } = (await (
       supabase.from("import_history") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: userId,
         import_source: data.import_source,

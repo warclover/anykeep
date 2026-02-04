@@ -17,6 +17,7 @@ import { MonitoringService } from "@/lib/classification/infrastructure/rollout/m
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
+import { logger } from "@/lib/logger";
 
 /**
  * 请求验证 Schema
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("手动回滚失败:", error);
+    logger.error({ error }, "手动回滚失败:");
     return NextResponse.json(
       {
         error: "手动回滚失败",

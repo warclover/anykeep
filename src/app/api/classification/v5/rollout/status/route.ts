@@ -12,6 +12,7 @@ import { MonitoringService } from "@/lib/classification/infrastructure/rollout/m
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
+import { logger } from "@/lib/logger";
 
 export async function GET(_request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取发布状态失败:", error);
+    logger.error({ error }, "获取发布状态失败:");
     return NextResponse.json(
       {
         error: "获取发布状态失败",

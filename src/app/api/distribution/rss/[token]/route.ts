@@ -13,6 +13,7 @@ import type {
   DistributionTarget,
 } from "@/lib/distribution/types";
 import type { BookmarkRow } from "@/types/domain";
+import { logger } from "@/lib/logger";
 
 /**
  * 分发目标数据库行类型
@@ -122,7 +123,7 @@ export async function GET(
   const { data: bookmarks, error: bookmarksError } = await query;
 
   if (bookmarksError) {
-    console.error("Failed to fetch bookmarks for RSS:", bookmarksError);
+    logger.error({ bookmarksError }, "Failed to fetch bookmarks for RSS:");
     return NextResponse.json({ error: "获取书签失败" }, { status: 500 });
   }
 

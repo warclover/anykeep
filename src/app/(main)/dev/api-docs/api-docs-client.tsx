@@ -11,6 +11,7 @@ import Script from "next/script";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/client-logger";
 
 // Swagger UI CDN URLs
 const SWAGGER_UI_CSS =
@@ -39,7 +40,7 @@ export default function ApiDocsClient() {
 
     const initSwagger = () => {
       if (typeof window.SwaggerUIBundle === "undefined") {
-        console.error("SwaggerUIBundle not loaded");
+        clientLogger.error("SwaggerUIBundle not loaded");
         return;
       }
 

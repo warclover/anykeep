@@ -79,13 +79,16 @@ export async function GET(request: NextRequest) {
 
     // 4. Get recommendations from database
     // Note: RPC function types will be available after migration is applied
-     
     const { data: dbRecommendations, error: dbError } = await (
       supabase.rpc as any
-    )("get_blueprint_recommendations", {
-      p_user_id: user.id,
-      p_limit: limit,
-    });
+    )(
+      // eslint-disable-line @typescript-eslint/no-explicit-any
+      "get_blueprint_recommendations",
+      {
+        p_user_id: user.id,
+        p_limit: limit,
+      },
+    );
 
     if (dbError) {
       logger.warn(

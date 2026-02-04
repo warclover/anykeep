@@ -14,6 +14,7 @@ import {
   type DistributionTargetRow,
   type DistributionTargetInsert,
 } from "@/lib/distribution/db-types";
+import { logger } from "@/lib/logger";
 
 /**
  * 创建目标请求验证 Schema
@@ -57,7 +58,7 @@ export async function GET() {
     };
 
     if (error) {
-      console.error("Query distribution targets error:", error);
+      logger.error({ error }, "Query distribution targets error:");
       return NextResponse.json(
         { success: false, error: "查询失败" },
         { status: 500 },
@@ -86,7 +87,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, targets: formattedTargets });
   } catch (error) {
-    console.error("Get distribution targets error:", error);
+    logger.error({ error }, "Get distribution targets error:");
     return NextResponse.json(
       { success: false, error: "获取分发目标失败" },
       { status: 500 },
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
       .single()) as { data: DistributionTargetRow | null; error: Error | null };
 
     if (error) {
-      console.error("Create distribution target error:", error);
+      logger.error({ error }, "Create distribution target error:");
       return NextResponse.json(
         { success: false, error: "创建失败" },
         { status: 500 },
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Create distribution target error:", error);
+    logger.error({ error }, "Create distribution target error:");
     return NextResponse.json(
       { success: false, error: "创建分发目标失败" },
       { status: 500 },

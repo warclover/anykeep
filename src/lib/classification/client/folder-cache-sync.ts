@@ -12,6 +12,7 @@
  */
 
 import type { CachedFolder } from "./tag-pre-matcher";
+import { logger } from "@/lib/logger";
 
 /**
  * 缓存元数据
@@ -417,7 +418,7 @@ export class FolderCacheSyncService {
       try {
         listener(userId, folders);
       } catch (error) {
-        console.error("[FolderCacheSync] 监听器执行失败:", error);
+        logger.error({ error }, "[FolderCacheSync] 监听器执行失败:");
       }
     }
   }

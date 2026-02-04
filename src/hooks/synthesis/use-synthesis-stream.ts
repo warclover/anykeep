@@ -18,6 +18,7 @@ import type {
   DivergencePoint,
   BlindSpot,
 } from "@/lib/synthesis";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SynthesisStreamState {
   /** 当前状态 */
@@ -144,7 +145,7 @@ export function useSynthesisStream(): UseSynthesisStreamResult {
                 const event: SynthesisSSEEvent = JSON.parse(line.slice(6));
                 handleEvent(event);
               } catch (e) {
-                console.error("Failed to parse SSE event:", e);
+                clientLogger.error({ e }, "Failed to parse SSE event:");
               }
             }
           }
@@ -256,7 +257,7 @@ export function useSynthesisStream(): UseSynthesisStreamResult {
       });
 
       if (!response.ok) {
-        console.error("Failed to cancel synthesis on server");
+        clientLogger.error("Failed to cancel synthesis on server");
       }
 
       setState((prev) => ({
@@ -264,7 +265,7 @@ export function useSynthesisStream(): UseSynthesisStreamResult {
         status: "cancelled",
       }));
     } catch (error) {
-      console.error("Cancel synthesis error:", error);
+      clientLogger.error({ error }, "Cancel synthesis error:");
       setState((prev) => ({
         ...prev,
         status: "error",

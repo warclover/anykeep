@@ -9,6 +9,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { MaterialQuality } from "@/lib/knowledge-studio";
 import { getQualityLevel } from "@/lib/knowledge-studio/client";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -107,9 +108,9 @@ export function useMaterialHealth(): UseMaterialHealthReturn {
               errorData.error?.message || errorData.message || errorMessage;
             // 如果是 400 错误，记录详细信息
             if (response.status === 400 && errorData.error?.details) {
-              console.error(
+              clientLogger.error(
+                { details: errorData.error.details },
                 "Request validation errors:",
-                errorData.error.details,
               );
             }
           } catch {
@@ -242,7 +243,7 @@ export function useMaterialHealth(): UseMaterialHealthReturn {
             const errorMessage =
               err instanceof Error ? err.message : "分析失败";
             setError(errorMessage);
-            console.error("Material health analysis error:", err);
+            clientLogger.error({ err }, "Material health analysis error:");
           } finally {
             // 清除正在请求的标记
             idsToAnalyze.forEach((id) => pendingRequestsRef.current.delete(id));

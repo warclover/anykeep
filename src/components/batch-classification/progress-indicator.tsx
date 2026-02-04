@@ -19,6 +19,7 @@ import type {
   ClassificationProgress,
   ClassificationPhase,
 } from "@/lib/classification/services/batch-classification";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 常量
@@ -89,7 +90,7 @@ export function ProgressIndicator({
           onError?.(data.error?.message || "Unknown error");
         }
       } catch (error) {
-        console.error("Failed to poll progress:", error);
+        clientLogger.error({ error }, "Failed to poll progress:");
       }
     };
 

@@ -14,6 +14,7 @@ import {
 import { FeedbackService } from "@/lib/feedback/feedback.service";
 import { toast } from "sonner";
 import Image from "next/image";
+import { clientLogger } from "@/lib/client-logger";
 
 interface FeedbackAttachmentUploaderProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,7 +63,7 @@ export function FeedbackAttachmentUploader({
             field.onChange([...attachments, ...newUrls]);
           } catch (error) {
             toast.error("图片上传失败");
-            console.error(error);
+            clientLogger.error({ error }, "Error occurred");
           } finally {
             setIsUploading(false);
             // 清空 input 以允许重复选择同一文件

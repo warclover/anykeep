@@ -77,6 +77,7 @@ import type {
   WebhookTargetConfig,
   RssTargetConfig,
 } from "@/lib/distribution/types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 目标类型配置
@@ -202,7 +203,7 @@ export function DistributionPageClient({
       setTargets(data.targets || []);
     } catch (error) {
       toast.error("加载分发目标失败");
-      console.error("Load targets error:", error);
+      clientLogger.error({ error }, "Load targets error:");
     } finally {
       setIsLoading(false);
     }
@@ -236,7 +237,7 @@ export function DistributionPageClient({
       }
     } catch (error) {
       toast.error("同步请求失败");
-      console.error("Sync error:", error);
+      clientLogger.error({ error }, "Sync error:");
     } finally {
       setSyncingTargets((prev) => {
         const next = new Set(prev);
@@ -269,7 +270,7 @@ export function DistributionPageClient({
       setDeleteTarget(null);
     } catch (error) {
       toast.error("删除失败");
-      console.error("Delete error:", error);
+      clientLogger.error({ error }, "Delete error:");
     }
   };
 

@@ -48,6 +48,7 @@ import {
 import { toast } from "sonner";
 import { DatabaseSelector } from "./database-selector";
 import type { NotionTargetConfig } from "@/lib/distribution/types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 表单验证 Schema
@@ -195,7 +196,7 @@ export function NotionConfigForm({
       // 自动映射常用属性
       autoMapProperties(data.properties);
     } catch (error) {
-      console.error("Failed to fetch properties:", error);
+      clientLogger.error({ error }, "Failed to fetch properties:");
       toast.error("获取 Database 属性失败");
     } finally {
       setLoadingProperties(false);
@@ -292,7 +293,7 @@ export function NotionConfigForm({
       await onSave(config);
       toast.success("配置已保存");
     } catch (error) {
-      console.error("Failed to save config:", error);
+      clientLogger.error({ error }, "Failed to save config:");
       toast.error("保存失败");
     } finally {
       setSaving(false);

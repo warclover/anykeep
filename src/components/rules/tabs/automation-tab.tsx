@@ -44,6 +44,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -266,7 +267,7 @@ export function AutomationTab() {
       // 临时模拟数据
       setWorkflows([]);
     } catch (error) {
-      console.error("Failed to load workflows:", error);
+      clientLogger.error({ error }, "Failed to load workflows:");
     } finally {
       setLoading(false);
     }

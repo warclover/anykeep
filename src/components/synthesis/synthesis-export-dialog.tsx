@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { EXPORT_FORMATS, exportSynthesis } from "@/lib/synthesis/export";
 import type { SynthesisReport, SynthesisExportFormat } from "@/lib/synthesis";
+import { clientLogger } from "@/lib/client-logger";
 
 interface SynthesisExportDialogProps {
   open: boolean;
@@ -70,7 +71,7 @@ export function SynthesisExportDialog({
 
       onOpenChange(false);
     } catch (error) {
-      console.error("Export error:", error);
+      clientLogger.error({ error }, "Export error:");
     } finally {
       setIsExporting(false);
     }

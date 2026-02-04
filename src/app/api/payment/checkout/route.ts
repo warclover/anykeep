@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, PlanTier, PaymentProvider } from "@/lib/payment/types";
 import { PRICING, ORDER_CONFIG } from "@/lib/payment/config";
+import { logger } from "@/lib/logger";
 
 interface CheckoutRequest {
   planTier: PlanTier;
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Checkout] Error:", error);
+    logger.error({ error }, "[Checkout] Error:");
     return NextResponse.json(
       { error: { code: "CHECKOUT_FAILED", message: "创建订单失败" } },
       { status: 500 },

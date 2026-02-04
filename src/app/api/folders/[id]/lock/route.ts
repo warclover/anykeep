@@ -92,21 +92,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Note: folder_profiles 是 V4.2 新增表
     // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
     // 替代原来的 update + insert 两步操作
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: upsertError } = (await (
       supabase.from("folder_profiles") as any
-    ).upsert(
-      {
-        folder_id: folderId,
-        user_id: user.id,
-        is_system_locked: locked,
-        // 如果锁定，同时禁止 AI 重命名
-        is_ai_renamable: !locked,
-      },
-      {
-        onConflict: "folder_id,user_id",
-      },
-    )) as { error: { message: string } | null };
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+      .upsert(
+        {
+          folder_id: folderId,
+          user_id: user.id,
+          is_system_locked: locked,
+          // 如果锁定，同时禁止 AI 重命名
+          is_ai_renamable: !locked,
+        },
+        {
+          onConflict: "folder_id,user_id",
+        },
+      )) as { error: { message: string } | null };
 
     if (upsertError) {
       logger.error(

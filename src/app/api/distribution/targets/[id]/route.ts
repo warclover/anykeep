@@ -15,6 +15,7 @@ import {
   type DistributionTargetRow,
   type DistributionTargetUpdate,
 } from "@/lib/distribution/db-types";
+import { logger } from "@/lib/logger";
 
 /**
  * 更新目标请求验证 Schema
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("Get distribution target error:", error);
+    logger.error({ error }, "Get distribution target error:");
     return NextResponse.json(
       { success: false, error: "获取分发目标失败" },
       { status: 500 },
@@ -152,7 +153,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .single()) as { data: DistributionTargetRow | null; error: Error | null };
 
     if (error) {
-      console.error("Update distribution target error:", error);
+      logger.error({ error }, "Update distribution target error:");
       return NextResponse.json(
         { success: false, error: "更新失败" },
         { status: 500 },
@@ -187,7 +188,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("Update distribution target error:", error);
+    logger.error({ error }, "Update distribution target error:");
     return NextResponse.json(
       { success: false, error: "更新分发目标失败" },
       { status: 500 },
@@ -220,7 +221,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .eq("user_id", user.id)) as { error: Error | null };
 
     if (error) {
-      console.error("Delete distribution target error:", error);
+      logger.error({ error }, "Delete distribution target error:");
       return NextResponse.json(
         { success: false, error: "删除失败" },
         { status: 500 },
@@ -229,7 +230,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete distribution target error:", error);
+    logger.error({ error }, "Delete distribution target error:");
     return NextResponse.json(
       { success: false, error: "删除分发目标失败" },
       { status: 500 },

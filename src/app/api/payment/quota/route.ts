@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { quotaService } from "@/lib/payment/services/quota.service";
+import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取当前用户配额使用情况
@@ -67,7 +68,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[Quota GET] Error:", error);
+    logger.error({ error }, "[Quota GET] Error:");
     return NextResponse.json(
       { error: { code: "FETCH_FAILED", message: "获取配额信息失败" } },
       { status: 500 },

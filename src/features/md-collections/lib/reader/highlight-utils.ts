@@ -1,3 +1,5 @@
+import { clientLogger } from "@/lib/client-logger";
+
 /**
  * MD 阅读器高亮工具函数
  * Spec: md-reader-upgrade / REQ-10
@@ -79,7 +81,7 @@ function getTextOffset(
   } catch (error) {
     // Range 设置失败（如偏移超出范围）
     if (process.env.NODE_ENV === "development") {
-      console.error("[highlight-utils] getTextOffset failed:", error);
+      clientLogger.error({ error }, "[highlight-utils] getTextOffset failed:");
     }
     return -1;
   }
@@ -168,7 +170,10 @@ export function getSelectionOffset(container: Element): SelectionOffset | null {
   } catch (error) {
     // 偏移计算失败（如节点偏移超出范围）
     if (process.env.NODE_ENV === "development") {
-      console.error("[highlight-utils] getSelectionOffset failed:", error);
+      clientLogger.error(
+        { error },
+        "[highlight-utils] getSelectionOffset failed:",
+      );
     }
     return null;
   }
@@ -216,7 +221,7 @@ export function getRangeOffset(
   } catch (error) {
     // 偏移计算失败（如节点偏移超出范围）
     if (process.env.NODE_ENV === "development") {
-      console.error("[highlight-utils] getRangeOffset failed:", error);
+      clientLogger.error({ error }, "[highlight-utils] getRangeOffset failed:");
     }
     return null;
   }
@@ -261,7 +266,7 @@ export function restoreRange(
   } catch (error) {
     // Range 设置失败（如偏移超出范围）
     if (process.env.NODE_ENV === "development") {
-      console.error("[highlight-utils] restoreRange failed:", error);
+      clientLogger.error({ error }, "[highlight-utils] restoreRange failed:");
     }
     return null;
   }

@@ -38,6 +38,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
 // 类型定义
@@ -139,7 +140,7 @@ export function SynthesisQAPanel({
 
         setMessages((prev) => [...prev, assistantMessage]);
       } catch (error) {
-        console.error("QA error:", error);
+        clientLogger.error({ error }, "QA error:");
         const errorMessage: QAMessage = {
           id: `assistant-${Date.now()}`,
           role: "assistant",

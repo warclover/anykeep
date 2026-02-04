@@ -8,6 +8,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decryptToken } from "@/lib/distribution/utils/token-crypto";
+import { logger } from "@/lib/logger";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
@@ -31,12 +32,12 @@ export async function GET(
   // 获取加密的 Token
   // 类型断言: 手动维护类型文件时需要此断言
   type TokenRecordType = { access_token: string };
-  const { data: tokenRecord, error: tokenError } = await supabase
+  const { data: tokenRecord, error: tokenError } = (await supabase
     .from("distribution_oauth_tokens")
     .select("access_token")
     .eq("user_id", user.id)
     .eq("provider", "notion")
-    .single() as unknown as {
+    .single()) as unknown as {
     data: TokenRecordType | null;
     error: { message: string } | null;
   };
@@ -88,7 +89,7 @@ export async function GET(
 
     return NextResponse.json({ database: info, properties });
   } catch (error) {
-    console.error("Failed to fetch database properties:", error);
+    logger.error({ error }, "Failed to fetch database properties:");
     return NextResponse.json(
       { error: "获取 Database 属性失败" },
       { status: 500 },

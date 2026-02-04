@@ -22,6 +22,7 @@ import type {
   ClassificationResult,
   UserDecision,
 } from "@/lib/classification/services/batch-classification";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 页面状态
@@ -75,7 +76,7 @@ export default function SandboxPage() {
           setPageState("processing");
         }
       } catch (err) {
-        console.error("Failed to check status:", err);
+        clientLogger.error({ err }, "Failed to check status:");
         setPageState("processing"); // 假设正在处理
       }
     };
@@ -98,7 +99,7 @@ export default function SandboxPage() {
       setResults(data);
       setPageState("ready");
     } catch (err) {
-      console.error("Failed to load results:", err);
+      clientLogger.error({ err }, "Failed to load results:");
       setError("加载结果失败");
       setPageState("error");
     }
@@ -138,7 +139,7 @@ export default function SandboxPage() {
       setUndoDeadline(new Date(now.getTime() + 24 * 60 * 60 * 1000));
       setPageState("confirmed");
     } catch (err) {
-      console.error("Failed to confirm:", err);
+      clientLogger.error({ err }, "Failed to confirm:");
       setError("确认失败，请重试");
       setPageState("ready");
     }

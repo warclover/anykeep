@@ -13,6 +13,7 @@
 import { Component, type ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { clientLogger } from "@/lib/client-logger";
 
 interface LazyErrorBoundaryProps {
   children: ReactNode;
@@ -60,10 +61,15 @@ export class LazyErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // 记录错误日志（可接入监控系统）
-    console.error("[LazyErrorBoundary] Component loading failed:", {
-      error: error.message,
-      componentStack: errorInfo.componentStack,
-    });
+    clientLogger.error(
+      {
+        ...{
+          error: error.message,
+          componentStack: errorInfo.componentStack,
+        },
+      },
+      "[LazyErrorBoundary] Component loading failed:",
+    );
   }
 
   handleRetry = () => {

@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { ClassificationRulesTab } from "./tabs/classification-rules-tab";
 import { AutomationTab } from "./tabs/automation-tab";
 import { ConfigHistoryTab } from "./tabs/config-history-tab";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -138,7 +139,7 @@ export function RulesPageClient() {
       // TODO: 加载工作流统计
       // const workflowResponse = await fetch("/api/rules/workflows/stats");
     } catch (error) {
-      console.error("Failed to load stats:", error);
+      clientLogger.error({ error }, "Failed to load stats:");
       toast.error("加载统计数据失败");
     } finally {
       setLoading(false);

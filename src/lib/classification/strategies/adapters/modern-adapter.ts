@@ -7,6 +7,7 @@ import { CONFIDENCE_THRESHOLDS } from "../../core";
 import type { ClassificationPipelineService } from "../../strategies/modern/classification-pipeline.service";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { V5ClassificationResult } from "@/lib/classification/types/classification";
+import { logger } from "@/lib/logger";
 
 /**
  * Modern Strategy Adapter
@@ -42,7 +43,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
         }
       } catch (error) {
         // 查询失败时保持 folderName 为 null
-        console.error("Failed to fetch folder name:", error);
+        logger.error({ error }, "Failed to fetch folder name:");
       }
     }
 
@@ -89,7 +90,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
           }
         }
       } catch (error) {
-        console.error("Failed to batch fetch folder names:", error);
+        logger.error({ error }, "Failed to batch fetch folder names:");
       }
     }
 
@@ -146,7 +147,7 @@ export class ModernStrategyAdapter implements IClassificationStrategy {
           folderName = data.name as string;
         }
       } catch (error) {
-        console.error("Failed to fetch folder name:", error);
+        logger.error({ error }, "Failed to fetch folder name:");
       }
     }
 

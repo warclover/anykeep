@@ -30,6 +30,7 @@ import type {
   UseHighlightsResult,
   HighlightToolbarPosition,
 } from "../../types/reader";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 常量配置
@@ -296,15 +297,18 @@ export function useHighlights(
       if (!offset) {
         // 提供更详细的调试信息
         if (process.env.NODE_ENV === "development") {
-          console.error("[useHighlights] Failed to calculate offset:", {
-            rangeText: range.toString(),
-            startContainer: range.startContainer,
-            startOffset: range.startOffset,
-            endContainer: range.endContainer,
-            endOffset: range.endOffset,
-            containerContainsStart: container.contains(range.startContainer),
-            containerContainsEnd: container.contains(range.endContainer),
-          });
+          clientLogger.error(
+            {
+              rangeText: range.toString(),
+              startContainer: range.startContainer,
+              startOffset: range.startOffset,
+              endContainer: range.endContainer,
+              endOffset: range.endOffset,
+              containerContainsStart: container.contains(range.startContainer),
+              containerContainsEnd: container.contains(range.endContainer),
+            },
+            "[useHighlights] Failed to calculate offset:",
+          );
         }
         // 尝试清除选区并提示用户重新选择
         clearSelection();

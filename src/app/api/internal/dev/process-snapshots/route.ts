@@ -53,19 +53,22 @@ export async function GET() {
     };
     for (let i = 0; i < 10; i++) {
       // Claim next snapshot job
-       
       const { data: claimedJobs, error: claimError } = (await (
         getSupabaseAdmin().rpc as any
-      )("claim_next_job", {
-        p_worker_id: WORKER_ID,
-        p_job_types: [
-          "create_snapshot_basic",
-          "create_snapshot_standard",
-          "create_snapshot_full",
-          "retry_failed_snapshot",
-        ],
-        p_lock_duration: "5 minutes",
-      })) as {
+      )(
+        // eslint-disable-line @typescript-eslint/no-explicit-any
+        "claim_next_job",
+        {
+          p_worker_id: WORKER_ID,
+          p_job_types: [
+            "create_snapshot_basic",
+            "create_snapshot_standard",
+            "create_snapshot_full",
+            "retry_failed_snapshot",
+          ],
+          p_lock_duration: "5 minutes",
+        },
+      )) as {
         data: ClaimedJobType[] | null;
         error: { message: string } | null;
       };

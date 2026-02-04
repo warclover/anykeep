@@ -32,14 +32,14 @@ export async function POST(_request: NextRequest) {
     // 2. 尝试获取现有的待整理文件夹
     // 类型断言: 手动维护类型文件时需要此断言
     type FolderType = { id: number; name: string };
-    const { data: existing } = await supabase
+    const { data: existing } = (await supabase
       .from("folders")
       .select("id, name")
       .eq("user_id", user.id)
       .eq("is_system", true)
       .eq("system_type", "INBOX")
       .is("deleted_at", null)
-      .single() as unknown as { data: FolderType | null; error: unknown };
+      .single()) as unknown as { data: FolderType | null; error: unknown };
 
     if (existing) {
       return successResponse({
@@ -50,9 +50,9 @@ export async function POST(_request: NextRequest) {
     }
 
     // 3. 如果不存在，创建新的待整理文件夹
-     
-    const { data: newFolder, error: createError } = await (supabase
-      .from("folders") as any)
+    const { data: newFolder, error: createError } = (await (
+      supabase.from("folders") as any
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: user.id,
         name: "待整理",
@@ -61,7 +61,10 @@ export async function POST(_request: NextRequest) {
         sort_order: -1, // 排在最前面
       })
       .select("id, name")
-      .single() as { data: FolderType | null; error: { message: string } | null };
+      .single()) as {
+      data: FolderType | null;
+      error: { message: string } | null;
+    };
 
     if (createError) {
       logger.error(

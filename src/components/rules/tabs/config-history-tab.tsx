@@ -51,6 +51,7 @@ import {
   CLASSIFICATION_THRESHOLDS,
   MATCHER_STRATEGY_CONFIG,
 } from "@/lib/classification/constants/limits";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -258,7 +259,7 @@ export function ConfigHistoryTab() {
         setClassificationHistory(data.data.items);
       }
     } catch (error) {
-      console.error("Failed to load classification history:", error);
+      clientLogger.error({ error }, "Failed to load classification history:");
     } finally {
       setHistoryLoading(false);
     }

@@ -20,6 +20,7 @@ import {
   type DistributionTargetRow,
 } from "@/lib/distribution/db-types";
 import type { IDistributionAdapter } from "@/lib/distribution/interfaces";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
       errors: result.errors,
     });
   } catch (error) {
-    console.error("Sync error:", error);
+    logger.error({ error }, "Sync error:");
 
     return NextResponse.json(
       {

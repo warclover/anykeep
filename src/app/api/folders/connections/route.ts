@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       );
 
       // V4.2 RPC
-       
+
       type MatrixRow = {
         folder1_id: number;
         folder1_name: string;
@@ -103,13 +103,16 @@ export async function GET(request: NextRequest) {
         max_similarity: number;
         connection_count: number;
       };
-      const { data: matrixData, error: matrixError } = await (supabase.rpc as any)(
+      const { data: matrixData, error: matrixError } = (await (
+        supabase.rpc as any
+      )(
+        // eslint-disable-line @typescript-eslint/no-explicit-any
         "get_folder_similarity_matrix",
         {
           p_user_id: user.id,
           p_min_bookmarks: minBookmarks,
         },
-      ) as { data: MatrixRow[] | null; error: { message: string } | null };
+      )) as { data: MatrixRow[] | null; error: { message: string } | null };
 
       if (matrixError) {
         logger.error(
@@ -120,23 +123,21 @@ export async function GET(request: NextRequest) {
       }
 
       // 格式化响应
-      const matrix: FolderSimilarityItem[] = (matrixData || []).map(
-        (item) => ({
-          folder1: {
-            id: item.folder1_id,
-            name: item.folder1_name,
-            bookmarkCount: item.folder1_count,
-          },
-          folder2: {
-            id: item.folder2_id,
-            name: item.folder2_name,
-            bookmarkCount: item.folder2_count,
-          },
-          avgSimilarity: Math.round(item.avg_similarity * 100) / 100,
-          maxSimilarity: Math.round(item.max_similarity * 100) / 100,
-          connectionCount: item.connection_count,
-        }),
-      );
+      const matrix: FolderSimilarityItem[] = (matrixData || []).map((item) => ({
+        folder1: {
+          id: item.folder1_id,
+          name: item.folder1_name,
+          bookmarkCount: item.folder1_count,
+        },
+        folder2: {
+          id: item.folder2_id,
+          name: item.folder2_name,
+          bookmarkCount: item.folder2_count,
+        },
+        avgSimilarity: Math.round(item.avg_similarity * 100) / 100,
+        maxSimilarity: Math.round(item.max_similarity * 100) / 100,
+        connectionCount: item.connection_count,
+      }));
 
       // 生成合并建议
       const mergeSuggestions = matrix
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // 3b. 获取跨文件夹连接 - V4.2 RPC
-       
+
       type ConnectionRow = {
         source_bookmark_id: number;
         source_title: string;
@@ -180,13 +181,18 @@ export async function GET(request: NextRequest) {
         target_folder_name: string | null;
         similarity: number;
       };
-      const { data: connectionsData, error: connectionsError } =
-        await (supabase.rpc as any)("find_cross_folder_connections", {
-          p_user_id: user.id,
-          p_folder_id: folderId ?? undefined,
-          p_min_similarity: minSimilarity,
-          p_limit: limit,
-        }) as { data: ConnectionRow[] | null; error: { message: string } | null };
+      const { data: connectionsData, error: connectionsError } = (await (
+        supabase.rpc as any
+      )("find_cross_folder_connections", {
+        // eslint-disable-line @typescript-eslint/no-explicit-any
+        p_user_id: user.id,
+        p_folder_id: folderId ?? undefined,
+        p_min_similarity: minSimilarity,
+        p_limit: limit,
+      })) as {
+        data: ConnectionRow[] | null;
+        error: { message: string } | null;
+      };
 
       if (connectionsError) {
         logger.error(

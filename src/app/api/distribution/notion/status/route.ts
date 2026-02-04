@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const supabase = await createClient();
@@ -29,12 +30,12 @@ export async function GET() {
     workspace_icon: string | null;
     updated_at: string;
   };
-  const { data: tokenRecord, error: tokenError } = await supabase
+  const { data: tokenRecord, error: tokenError } = (await supabase
     .from("distribution_oauth_tokens")
     .select("workspace_id, workspace_name, workspace_icon, updated_at")
     .eq("user_id", user.id)
     .eq("provider", "notion")
-    .single() as unknown as {
+    .single()) as unknown as {
     data: TokenRecordType | null;
     error: { message: string } | null;
   };
@@ -78,7 +79,7 @@ export async function DELETE() {
     .eq("provider", "notion");
 
   if (deleteError) {
-    console.error("Failed to delete Notion token:", deleteError);
+    logger.error({ deleteError }, "Failed to delete Notion token:");
     return NextResponse.json({ error: "断开连接失败" }, { status: 500 });
   }
 

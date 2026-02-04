@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { FolderPickerProps, SourceSelection, ContentStats } from "./types";
+import { clientLogger } from "@/lib/client-logger";
 
 interface FolderNode {
   id: number;
@@ -52,7 +53,7 @@ export function FolderPicker({
           setFolders(result.data || []);
         }
       } catch (error) {
-        console.error("Failed to load folders:", error);
+        clientLogger.error({ error }, "Failed to load folders:");
       } finally {
         setIsLoading(false);
       }
@@ -76,7 +77,7 @@ export function FolderPicker({
         const result = await response.json();
         setPreviewStats(result.contentStats);
       } catch (error) {
-        console.error("Failed to load preview:", error);
+        clientLogger.error({ error }, "Failed to load preview:");
       } finally {
         setIsLoadingPreview(false);
       }

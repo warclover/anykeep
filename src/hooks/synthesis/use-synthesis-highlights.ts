@@ -18,6 +18,7 @@ import type {
   HighlightColor,
   HighlightPosition,
 } from "@/lib/synthesis/types/highlight";
+import { clientLogger } from "@/lib/client-logger";
 
 interface UseSynthesisHighlightsOptions {
   /** 报告 ID */
@@ -80,7 +81,10 @@ export function useSynthesisHighlights({
 
       if (!response.ok) {
         const data = await response.json();
-        console.error("[useSynthesisHighlights] API error details:", data);
+        clientLogger.error(
+          { data },
+          "[useSynthesisHighlights] API error details:",
+        );
         throw new Error(data.details || data.error || "查询失败");
       }
 
@@ -89,7 +93,7 @@ export function useSynthesisHighlights({
     } catch (err) {
       const message = err instanceof Error ? err.message : "加载失败";
       setError(message);
-      console.error("[useSynthesisHighlights] Load error:", err);
+      clientLogger.error({ err }, "[useSynthesisHighlights] Load error:");
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +136,7 @@ export function useSynthesisHighlights({
 
         return data;
       } catch (err) {
-        console.error("[useSynthesisHighlights] Create error:", err);
+        clientLogger.error({ err }, "[useSynthesisHighlights] Create error:");
         return null;
       }
     },
@@ -173,7 +177,7 @@ export function useSynthesisHighlights({
 
         return data;
       } catch (err) {
-        console.error("[useSynthesisHighlights] Update error:", err);
+        clientLogger.error({ err }, "[useSynthesisHighlights] Update error:");
         return null;
       }
     },
@@ -203,7 +207,7 @@ export function useSynthesisHighlights({
 
         return true;
       } catch (err) {
-        console.error("[useSynthesisHighlights] Delete error:", err);
+        clientLogger.error({ err }, "[useSynthesisHighlights] Delete error:");
         return false;
       }
     },

@@ -11,6 +11,7 @@ import {
   encryptToken,
   isEncryptionConfigured,
 } from "@/lib/distribution/utils/token-crypto";
+import { logger } from "@/lib/logger";
 
 const NOTION_CLIENT_ID = process.env.NOTION_CLIENT_ID || "";
 const NOTION_CLIENT_SECRET = process.env.NOTION_CLIENT_SECRET || "";
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!isEncryptionConfigured()) {
-    console.error("TOKEN_ENCRYPTION_KEY not configured");
+    logger.error("TOKEN_ENCRYPTION_KEY not configured");
     return NextResponse.redirect(
       `${APP_URL}/distribution?error=${encodeURIComponent("服务器配置错误")}`,
     );
@@ -74,13 +75,13 @@ export async function GET(request: NextRequest) {
   // 验证 state（防止 CSRF）
   // 类型断言: 手动维护类型文件时需要此断言
   type StateRecordType = { state: string; user_id: string; provider: string };
-  const { data: stateRecord, error: stateError } = await supabase
+  const { data: stateRecord, error: stateError } = (await supabase
     .from("oauth_states")
     .select("*")
     .eq("state", state)
     .eq("provider", "notion")
     .gt("expires_at", new Date().toISOString())
-    .single() as unknown as {
+    .single()) as unknown as {
     data: StateRecordType | null;
     error: { message: string } | null;
   };
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
 
   if (!tokenResponse.ok) {
     const errorData = await tokenResponse.text();
-    console.error("Notion token exchange failed:", errorData);
+    logger.error({ errorData }, "Notion token exchange failed:");
     return NextResponse.redirect(
       `${APP_URL}/distribution?error=${encodeURIComponent("获取 Token 失败")}`,
     );
@@ -121,28 +122,29 @@ export async function GET(request: NextRequest) {
   const encryptedToken = await encryptToken(tokenData.access_token);
 
   // 存储/更新 Token
-   
-  const { error: upsertError } = await (supabase
-    .from("distribution_oauth_tokens") as any)
-    .upsert(
-      {
-        user_id: stateRecord.user_id,
-        provider: "notion",
-        access_token: encryptedToken,
-        workspace_id: tokenData.workspace_id,
-        workspace_name: tokenData.workspace_name,
-        workspace_icon: tokenData.workspace_icon,
-        bot_id: tokenData.bot_id,
-        expires_at: null, // Notion Token 不过期
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id,provider",
-      },
-    ) as { error: { message: string } | null };
+  const { error: upsertError } = (await (
+    supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 表 distribution_oauth_tokens 未在生成类型中
+      .from("distribution_oauth_tokens") as any
+  ).upsert(
+    {
+      user_id: stateRecord.user_id,
+      provider: "notion",
+      access_token: encryptedToken,
+      workspace_id: tokenData.workspace_id,
+      workspace_name: tokenData.workspace_name,
+      workspace_icon: tokenData.workspace_icon,
+      bot_id: tokenData.bot_id,
+      expires_at: null, // Notion Token 不过期
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id,provider",
+    },
+  )) as { error: { message: string } | null };
 
   if (upsertError) {
-    console.error("Failed to save Notion token:", upsertError);
+    logger.error({ upsertError }, "Failed to save Notion token:");
     return NextResponse.redirect(
       `${APP_URL}/distribution?error=${encodeURIComponent("保存 Token 失败")}`,
     );

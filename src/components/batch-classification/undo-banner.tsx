@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Clock, Undo2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // Props
@@ -92,7 +93,7 @@ export function UndoBanner({
       await onUndo();
       setUndoSuccess(true);
     } catch (error) {
-      console.error("Undo failed:", error);
+      clientLogger.error({ error }, "Undo failed:");
     } finally {
       setIsUndoing(false);
     }

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
         // 类型断言: 手动维护类型文件时需要此断言
         type ExistingFolderType = { id: number };
-        const { data: existing } = await query.single() as unknown as {
+        const { data: existing } = (await query.single()) as unknown as {
           data: ExistingFolderType | null;
           error: unknown;
         };
@@ -129,16 +129,16 @@ export async function POST(request: NextRequest) {
         }
 
         // 创建新文件夹
-         
-        const { data: created, error: createError } = await (supabase
-          .from("folders") as any)
+        const { data: created, error: createError } = (await (
+          supabase.from("folders") as any
+        ) // eslint-disable-line @typescript-eslint/no-explicit-any
           .insert({
             user_id: user.id,
             name: folder.name,
             parent_id: actualParentId,
           })
           .select("id, name")
-          .single() as {
+          .single()) as {
           data: { id: number; name: string } | null;
           error: { message: string } | null;
         };

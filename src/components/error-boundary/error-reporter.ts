@@ -12,6 +12,7 @@
 
 import type { ErrorInfo } from "react";
 import type { ErrorReportData } from "./types";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 上报错误
@@ -43,11 +44,16 @@ export function reportError(
 
   // 开发环境控制台输出
   if (process.env.NODE_ENV === "development") {
-    console.error("🚨 Error Boundary Caught Error:", {
-      error,
-      componentStack: errorInfo?.componentStack,
-      context,
-    });
+    clientLogger.error(
+      {
+        ...{
+          error,
+          componentStack: errorInfo?.componentStack,
+          context,
+        },
+      },
+      "🚨 Error Boundary Caught Error:",
+    );
   }
 
   // 本地存储最近错误（用于调试）

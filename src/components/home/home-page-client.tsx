@@ -604,7 +604,7 @@ export function HomePageClient({
       // 跳转到生成页面
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
-      console.error("Create synthesis error:", error);
+      clientLogger.error({ error }, "Create synthesis error:");
       toast.error("创建综述失败");
     } finally {
       setIsCreatingSynthesis(false);

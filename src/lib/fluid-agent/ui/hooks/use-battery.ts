@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { BatteryState, BatteryLevel } from "../../types";
+import { logger } from "@/lib/logger";
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -118,7 +119,7 @@ export function useBattery() {
 
       return true;
     } catch (error) {
-      console.error("[useBattery] Failed to consume quota:", error);
+      logger.error({ error }, "[useBattery] Failed to consume quota:");
       return false;
     }
   }, [state]);

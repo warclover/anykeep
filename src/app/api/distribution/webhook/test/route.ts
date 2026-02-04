@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   // 验证用户登录
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
       throw fetchError;
     }
   } catch (error) {
-    console.error("Webhook test error:", error);
+    logger.error({ error }, "Webhook test error:");
     return NextResponse.json({ error: "测试请求失败" }, { status: 500 });
   }
 }

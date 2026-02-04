@@ -64,6 +64,7 @@ import type {
   SynthesisDepthMode,
   SynthesisStatus,
 } from "@/lib/synthesis";
+import { clientLogger } from "@/lib/client-logger";
 
 // 深度模式配置
 const DEPTH_MODE_LABELS: Record<
@@ -316,7 +317,7 @@ export function SynthesisListPageClient() {
       toast.success("删除成功");
       refetch();
     } catch (error) {
-      console.error("Delete synthesis error:", error);
+      clientLogger.error({ error }, "Delete synthesis error:");
       toast.error("删除失败，请重试");
     } finally {
       setIsDeleting(false);
@@ -344,7 +345,7 @@ export function SynthesisListPageClient() {
         toast.success("已开始重新生成");
         router.push(`/synthesis/${reportId}?generate=true`);
       } catch (error) {
-        console.error("Retry synthesis error:", error);
+        clientLogger.error({ error }, "Retry synthesis error:");
         toast.error("重新生成失败，请重试");
       }
     },

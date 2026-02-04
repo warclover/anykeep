@@ -224,10 +224,9 @@ export async function POST(request: NextRequest) {
       title: string;
       ai_summary: string | null;
     };
-     
     const { data: bookmark, error: bookmarkError } = (await (
       supabase.from("bookmarks") as any
-    )
+    ) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("id, title, ai_summary")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)

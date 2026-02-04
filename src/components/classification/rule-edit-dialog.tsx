@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import type { UserClassificationRule } from "@/lib/classification/v5/chat-to-rule/types";
+import { clientLogger } from "@/lib/client-logger";
 
 interface RuleEditDialogProps {
   rule: UserClassificationRule | null;
@@ -65,7 +66,7 @@ export const RuleEditDialog = memo(function RuleEditDialog({
       });
       onOpenChange(false);
     } catch (error) {
-      console.error("保存规则失败:", error);
+      clientLogger.error({ error }, "保存规则失败:");
     } finally {
       setIsSaving(false);
     }

@@ -62,6 +62,7 @@ import {
   CLASSIFICATION_THRESHOLDS,
   MATCHER_STRATEGY_CONFIG,
 } from "@/lib/classification/constants/limits";
+import { clientLogger } from "@/lib/client-logger";
 
 // ============================================
 // 类型定义
@@ -351,7 +352,7 @@ export function ClassificationManagerClient() {
         });
       }
     } catch (error) {
-      console.error("Failed to load stats:", error);
+      clientLogger.error({ error }, "Failed to load stats:");
       toast.error("加载统计数据失败");
     } finally {
       setLoading(false);
@@ -373,7 +374,7 @@ export function ClassificationManagerClient() {
         setHistory(data.data.items);
       }
     } catch (error) {
-      console.error("Failed to load history:", error);
+      clientLogger.error({ error }, "Failed to load history:");
     } finally {
       setHistoryLoading(false);
     }

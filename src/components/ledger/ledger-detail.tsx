@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Database } from "@/types/supabase";
 import type { LedgerItem } from "@/lib/ledger/types/ledger.types";
+import { clientLogger } from "@/lib/client-logger";
 
 type LedgerReport = Database["public"]["Tables"]["ledgers"]["Row"];
 
@@ -50,13 +51,13 @@ export function LedgerDetail({ reportId }: LedgerDetailProps) {
           .single();
 
         if (error) {
-          console.error("Error fetching report:", error);
+          clientLogger.error({ error }, "Error fetching report:");
           return;
         }
 
         setReport(data);
       } catch (err) {
-        console.error("Failed to fetch report:", err);
+        clientLogger.error({ err }, "Failed to fetch report:");
       } finally {
         setIsLoading(false);
       }

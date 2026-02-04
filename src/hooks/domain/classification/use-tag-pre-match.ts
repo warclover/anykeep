@@ -22,6 +22,7 @@ import {
   FolderCacheSyncService,
   type SyncResult,
 } from "@/lib/classification/client/folder-cache-sync";
+import { clientLogger } from "@/lib/client-logger";
 
 /**
  * Hook 配置
@@ -126,7 +127,7 @@ export function useTagPreMatch(
       .eq("user_id", userId);
 
     if (error) {
-      console.error("[useTagPreMatch] 获取文件夹失败:", error);
+      clientLogger.error({ error }, "[useTagPreMatch] 获取文件夹失败:");
       return [];
     }
 

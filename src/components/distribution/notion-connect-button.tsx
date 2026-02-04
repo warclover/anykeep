@@ -35,6 +35,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
+import { clientLogger } from "@/lib/client-logger";
 
 interface NotionStatus {
   connected: boolean;
@@ -88,7 +89,7 @@ export function NotionConnectButton({
       const data = await response.json();
       setStatus(data);
     } catch (error) {
-      console.error("Failed to check Notion status:", error);
+      clientLogger.error({ error }, "Failed to check Notion status:");
       setStatus({ connected: false });
     } finally {
       setLoading(false);
@@ -137,7 +138,7 @@ export function NotionConnectButton({
       toast.success("已断开 Notion 连接");
       onDisconnected?.();
     } catch (error) {
-      console.error("Failed to disconnect Notion:", error);
+      clientLogger.error({ error }, "Failed to disconnect Notion:");
       toast.error("断开连接失败");
     } finally {
       setDisconnecting(false);

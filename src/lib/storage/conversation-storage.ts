@@ -8,6 +8,7 @@
  */
 
 import type { ChatMessage } from "@/hooks/domain/ai/use-ai-chat";
+import { logger } from "@/lib/logger";
 
 // =============================================================================
 // Constants
@@ -82,7 +83,10 @@ export const conversationStorage = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
       // localStorage 满了，清理旧数据
-      console.error("[ConversationStorage] Storage full, clearing old data", e);
+      logger.error(
+        { e },
+        "[ConversationStorage] Storage full, clearing old data",
+      );
       localStorage.removeItem(STORAGE_KEY);
     }
   },
@@ -114,14 +118,14 @@ export const conversationStorage = {
 
       // 验证数据完整性
       if (!session.conversationId || !Array.isArray(session.messages)) {
-        console.error("[ConversationStorage] Invalid session data, clearing");
+        logger.error("[ConversationStorage] Invalid session data, clearing");
         localStorage.removeItem(STORAGE_KEY);
         return null;
       }
 
       return session;
     } catch {
-      console.error("[ConversationStorage] Failed to parse session, clearing");
+      logger.error("[ConversationStorage] Failed to parse session, clearing");
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }

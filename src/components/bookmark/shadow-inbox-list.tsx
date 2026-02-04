@@ -12,6 +12,7 @@ import { Loader2, Inbox } from "lucide-react";
 import { ShadowBookmarkCard } from "./shadow-bookmark-card";
 import { ShadowBatchToolbar } from "./shadow-batch-toolbar";
 import { useToast } from "@/hooks/use-toast";
+import { clientLogger } from "@/lib/client-logger";
 
 interface ShadowBookmark {
   id: number;
@@ -64,7 +65,7 @@ export function ShadowInboxList({
         throw new Error(result.error || "Unknown error");
       }
     } catch (error) {
-      console.error("Failed to load shadow inbox:", error);
+      clientLogger.error({ error }, "Failed to load shadow inbox:");
       toast({
         title: "加载失败",
         description: error instanceof Error ? error.message : "未知错误",
@@ -131,7 +132,7 @@ export function ShadowInboxList({
           throw new Error(result.error || "Unknown error");
         }
       } catch (error) {
-        console.error("Failed to confirm:", error);
+        clientLogger.error({ error }, "Failed to confirm:");
         toast({
           title: "确认失败",
           description: error instanceof Error ? error.message : "未知错误",
@@ -172,7 +173,7 @@ export function ShadowInboxList({
           throw new Error(result.error || "Unknown error");
         }
       } catch (error) {
-        console.error("Failed to reject:", error);
+        clientLogger.error({ error }, "Failed to reject:");
         toast({
           title: "拒绝失败",
           description: error instanceof Error ? error.message : "未知错误",
@@ -220,7 +221,7 @@ export function ShadowInboxList({
         throw new Error(result.error || "Unknown error");
       }
     } catch (error) {
-      console.error("Failed to batch confirm:", error);
+      clientLogger.error({ error }, "Failed to batch confirm:");
       toast({
         title: "批量确认失败",
         description: error instanceof Error ? error.message : "未知错误",
@@ -266,7 +267,7 @@ export function ShadowInboxList({
         throw new Error(result.error || "Unknown error");
       }
     } catch (error) {
-      console.error("Failed to batch reject:", error);
+      clientLogger.error({ error }, "Failed to batch reject:");
       toast({
         title: "批量拒绝失败",
         description: error instanceof Error ? error.message : "未知错误",

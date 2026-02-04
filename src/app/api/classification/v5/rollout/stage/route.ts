@@ -14,6 +14,7 @@ import {
 } from "@/lib/classification/infrastructure/rollout/feature-flag";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/auth/admin-check";
+import { logger } from "@/lib/logger";
 
 /**
  * 请求验证 Schema
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("更新发布阶段失败:", error);
+    logger.error({ error }, "更新发布阶段失败:");
     return NextResponse.json(
       {
         error: "更新发布阶段失败",

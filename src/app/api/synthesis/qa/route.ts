@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import type { Database } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 类型定义
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ answer });
   } catch (error) {
-    console.error("Synthesis QA error:", error);
+    logger.error({ error }, "Synthesis QA error:");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
