@@ -44,7 +44,6 @@ import {
   Gauge,
   Zap,
   Volume2,
-  Workflow,
   BookMarked,
   Stethoscope,
 } from "lucide-react";
@@ -100,10 +99,9 @@ const contentCenterItems: NavItem[] = [
 const organizeToolsItems: NavItem[] = [
   { name: "整理中心", href: "/organize", icon: Sparkles },
   { name: "收件箱", href: "/inbox", icon: Inbox },
-  { name: "数据中��", href: "/data", icon: Database },
+  { name: "数据中心", href: "/data", icon: Database },
   { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
   { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
-  { name: "工作流", href: "/workflows", icon: Workflow },
   { name: "健康检测", href: "/health", icon: Stethoscope },
 ];
 
