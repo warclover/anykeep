@@ -80,12 +80,11 @@ const PendingConfirmationsSection = lazy(() =>
   ),
 );
 
+// 使用 @/components/ai/briefing 版本（自动获取数据，不需要 briefing prop）
 const ProactiveBriefingCard = lazy(() =>
-  import("@/components/ai/proactive-briefing/proactive-briefing-card").then(
-    (mod) => ({
-      default: mod.ProactiveBriefingCard,
-    }),
-  ),
+  import("@/components/ai/briefing/proactive-briefing-card").then((mod) => ({
+    default: mod.ProactiveBriefingCard,
+  })),
 );
 
 // ============================================================================

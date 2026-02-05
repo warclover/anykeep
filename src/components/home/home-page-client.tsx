@@ -70,12 +70,11 @@ const PendingConfirmationsSection = lazy(() =>
 );
 
 // 懒加载 ProactiveBriefingCard（AI Secretary Evolution Phase 0）
+// 使用 @/components/ai/briefing 版本（自动获取数据，不需要 briefing prop）
 const ProactiveBriefingCard = lazy(() =>
-  import("@/components/ai/proactive-briefing/proactive-briefing-card").then(
-    (mod) => ({
-      default: mod.ProactiveBriefingCard,
-    }),
-  ),
+  import("@/components/ai/briefing/proactive-briefing-card").then((mod) => ({
+    default: mod.ProactiveBriefingCard,
+  })),
 );
 
 // 懒加载虚拟列表组件（性能优化：根据 viewMode/platform 按需加载）
