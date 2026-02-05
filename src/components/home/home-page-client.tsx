@@ -1,4 +1,12 @@
 /**
+ * ═══════════════════════════════════════════════════════════════════════
+ * 【备份文件】已迁移至 HomePageClientLayered（分层架构）
+ * 迁移日期：2026-02-05
+ * 原因：Phase 3 首页组件重构 - 分层架构
+ *
+ * 此文件保留作为参考，新功能请修改 HomePageClientLayered
+ * ═══════════════════════════════════════════════════════════════════════
+ *
  * 首页客户端组件
  * 实现平台筛选、加载更多、编辑删除等交互功能
  *
@@ -54,16 +62,20 @@ const InboxOrganizationBanner = lazy(() =>
 
 // 懒加载 PendingConfirmationsSection（V4.2 待确认消息 - 重构版）
 const PendingConfirmationsSection = lazy(() =>
-  import("@/components/classification/pending-confirmations").then((mod) => ({
-    default: mod.PendingConfirmationsSection,
-  })),
+  import("@/components/classification/pending-confirmations-section").then(
+    (mod) => ({
+      default: mod.PendingConfirmationsSection,
+    }),
+  ),
 );
 
 // 懒加载 ProactiveBriefingCard（AI Secretary Evolution Phase 0）
 const ProactiveBriefingCard = lazy(() =>
-  import("@/components/ai/briefing").then((mod) => ({
-    default: mod.ProactiveBriefingCard,
-  })),
+  import("@/components/ai/proactive-briefing/proactive-briefing-card").then(
+    (mod) => ({
+      default: mod.ProactiveBriefingCard,
+    }),
+  ),
 );
 
 // 懒加载虚拟列表组件（性能优化：根据 viewMode/platform 按需加载）

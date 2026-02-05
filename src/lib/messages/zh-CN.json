@@ -323,7 +323,9 @@
       "inApp": "应用内通知",
       "inAppDesc": "在应用内显示通知提示",
       "weeklyDigest": "每周摘要",
-      "weeklyDigestDesc": "每周一封收藏统计和推荐邮件"
+      "weeklyDigestDesc": "每周一封收藏统计和推荐邮件",
+      "showWelcomeMessage": "欢迎消息",
+      "showWelcomeMessageDesc": "首页顶部显示欢迎回来和离线变化统计"
     },
     "privacy": {
       "title": "数据安全",

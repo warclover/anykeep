@@ -73,15 +73,19 @@ const InboxOrganizationBanner = lazy(() =>
 );
 
 const PendingConfirmationsSection = lazy(() =>
-  import("@/components/classification/pending-confirmations").then((mod) => ({
-    default: mod.PendingConfirmationsSection,
-  })),
+  import("@/components/classification/pending-confirmations-section").then(
+    (mod) => ({
+      default: mod.PendingConfirmationsSection,
+    }),
+  ),
 );
 
 const ProactiveBriefingCard = lazy(() =>
-  import("@/components/ai/briefing").then((mod) => ({
-    default: mod.ProactiveBriefingCard,
-  })),
+  import("@/components/ai/proactive-briefing/proactive-briefing-card").then(
+    (mod) => ({
+      default: mod.ProactiveBriefingCard,
+    }),
+  ),
 );
 
 // ============================================================================

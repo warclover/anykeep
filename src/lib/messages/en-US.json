@@ -323,7 +323,9 @@
       "inApp": "In-App Notifications",
       "inAppDesc": "Show notification prompts within the app",
       "weeklyDigest": "Weekly Digest",
-      "weeklyDigestDesc": "Weekly email with bookmark statistics and recommendations"
+      "weeklyDigestDesc": "Weekly email with bookmark statistics and recommendations",
+      "showWelcomeMessage": "Welcome Message",
+      "showWelcomeMessageDesc": "Show welcome back and offline changes summary at top of home page"
     },
     "privacy": {
       "title": "Data Security",

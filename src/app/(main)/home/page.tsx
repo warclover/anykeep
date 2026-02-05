@@ -14,7 +14,7 @@
 
 import { Suspense, cache } from "react";
 import { headers } from "next/headers";
-import { HomePageClient } from "@/components/home/home-page-client";
+import { HomePageClientLayered } from "@/components/home/home-page-client-layered";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
@@ -190,7 +190,7 @@ async function HomePageWithData({
   const userSettings = await getUserSettings();
 
   return (
-    <HomePageClient
+    <HomePageClientLayered
       initialBookmarks={bookmarks}
       error={error}
       userSettings={userSettings}
@@ -210,7 +210,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     const userSettings = await getUserSettings();
     return (
       <ErrorBoundary>
-        <HomePageClient smartListId={smartListId} userSettings={userSettings} />
+        <HomePageClientLayered
+          smartListId={smartListId}
+          userSettings={userSettings}
+        />
       </ErrorBoundary>
     );
   }
