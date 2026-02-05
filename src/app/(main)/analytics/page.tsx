@@ -10,8 +10,8 @@ export const revalidate = 0;
  * @see src/contexts/navigation-context.tsx - analytics 已从 PAGE_IDS 移除
  */
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUserId } from "@/lib/server/auth";
 import { AnalyticsPageClient } from "@/components/analytics/analytics-page-client";
 import { getAnalyticsData } from "@/lib/analytics";
 
@@ -56,21 +56,13 @@ async function fetchAnalyticsData(
 }
 
 export default async function AnalyticsPage() {
+  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
+  const userId = await getAuthenticatedUserId();
   const supabase = await createClient();
-
-  // 获取当前用户
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   const { data: analyticsData, error } = await fetchAnalyticsData(
     supabase,
-    user.id,
+    userId,
   );
 
   return (

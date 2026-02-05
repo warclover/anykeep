@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
  * 展示所有标签及其使用统计
  */
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUserId } from "@/lib/server/auth";
 import { TagsPageClient } from "@/components/tags/tags-page-client";
 
 export interface TagWithCount {
@@ -17,25 +17,17 @@ export interface TagWithCount {
 }
 
 export default async function TagsPage() {
+  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
+  const userId = await getAuthenticatedUserId();
   const supabase = await createClient();
-
-  // 获取当前用户
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   // 获取所有收藏的标签
   // 类型断言: 手动维护类型文件时需要此断言
-  const { data: bookmarks, error } = await supabase
+  const { data: bookmarks, error } = (await supabase
     .from("bookmarks")
     .select("ai_tags, user_tags")
-    .eq("user_id", user.id)
-    .is("deleted_at", null) as unknown as {
+    .eq("user_id", userId)
+    .is("deleted_at", null)) as unknown as {
     data: { ai_tags: string[] | null; user_tags: string[] | null }[] | null;
     error: unknown;
   };

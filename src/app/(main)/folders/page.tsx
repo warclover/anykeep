@@ -6,31 +6,23 @@ export const dynamic = "force-dynamic";
  * 展示所有文件夹和最近添加的收藏
  */
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUserId } from "@/lib/server/auth";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
 import type { FolderWithStats } from "@/types/domain";
 
 export default async function FoldersPage() {
+  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
+  const userId = await getAuthenticatedUserId();
   const supabase = await createClient();
-
-  // 获取当前用户
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   // 获取用户的所有文件夹
   const { data: folders, error: foldersError } = (await supabase
     .from("folders")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })) as unknown as {
     data: Folder[] | null;
@@ -54,7 +46,7 @@ export default async function FoldersPage() {
       // 类型断言: 手动维护类型文件时需要此断言
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.rpc as any)("get_folder_bookmark_stats", {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_folder_ids: folderIds,
         p_today_start: today.toISOString(),
       }) as Promise<{
@@ -67,7 +59,7 @@ export default async function FoldersPage() {
       supabase
         .from("folder_profiles")
         .select("folder_id, is_system_locked")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .in("folder_id", folderIds) as unknown as Promise<{
         data: { folder_id: number; is_system_locked: boolean | null }[] | null;
         error: unknown;
@@ -130,7 +122,7 @@ export default async function FoldersPage() {
   const { data: recentBookmarks, error: bookmarksError } = await supabase
     .from("bookmarks")
     .select("*, folders!bookmarks_folder_id_fkey(name)")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(QUERY_LIMITS.RECENT_BOOKMARKS_COUNT);

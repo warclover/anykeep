@@ -8,6 +8,7 @@
 import { InboxPageClient } from "@/components/inbox/inbox-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUserId } from "@/lib/server/auth";
 import type { Bookmark } from "@/types/supabase";
 
 // 确保每次请求都获取最新数据
@@ -29,27 +30,15 @@ async function getInboxData(): Promise<{
   error?: string;
 }> {
   try {
+    const userId = await getAuthenticatedUserId();
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return {
-        bookmarks: [],
-        folders: [],
-        inboxFolderId: null,
-        error: "请先登录",
-      };
-    }
 
     // 获取待整理文件夹
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: inboxFolder } = (await supabase
       .from("folders")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("system_type", "INBOX")
       .single()) as unknown as { data: { id: number } | null };
 
@@ -59,7 +48,7 @@ async function getInboxData(): Promise<{
     let bookmarksQuery = supabase
       .from("bookmarks")
       .select("*, folders!bookmarks_folder_id_fkey(name)")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .eq("is_in_trash", false);
 
@@ -88,7 +77,7 @@ async function getInboxData(): Promise<{
     const { data: folders, error: foldersError } = await supabase
       .from("folders")
       .select("id, name")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("system_type", "INBOX")
       .is("deleted_at", null)
       .order("name");

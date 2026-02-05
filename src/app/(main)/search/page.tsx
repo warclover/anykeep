@@ -4,8 +4,8 @@
  */
 
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUserId } from "@/lib/server/auth";
 import { SearchPageClient } from "@/components/search/search-page-client";
 import { HotTagsSection } from "@/components/search/hot-tags-section";
 import { HotTagsSkeleton } from "@/components/search/hot-tags-skeleton";
@@ -30,17 +30,9 @@ interface SearchPageProps {
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
+  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
+  const userId = await getAuthenticatedUserId();
   const supabase = await createClient();
-
-  // 获取当前用户
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   // 如果有搜索关键词，验证并执行搜索
   let searchResults: SearchResult[] = [];
@@ -61,7 +53,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           // AI 语义搜索（混合搜索：关键词 + 向量相似度）
           const { data, error } = await searchBookmarksHybrid(
             supabase,
-            user.id,
+            userId,
             validatedQuery,
             {
               threshold: 0.5,
@@ -76,7 +68,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           // PostgreSQL 全文搜索（使用 ts_vector + GIN 索引）
           const { data, error } = await searchBookmarksFulltext(
             supabase,
-            user.id,
+            userId,
             validatedQuery,
             QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE,
           );
@@ -94,7 +86,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   // 热门标签使用 Suspense 流式渲染，不阻塞主页面
   const hotTagsSlot = (
     <Suspense fallback={<HotTagsSkeleton />}>
-      <HotTagsSection userId={user.id} />
+      <HotTagsSection userId={userId} />
     </Suspense>
   );
 
