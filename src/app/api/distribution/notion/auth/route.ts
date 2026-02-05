@@ -36,9 +36,10 @@ export async function GET(_request: NextRequest) {
   const state = crypto.randomUUID();
 
   // 存储 state 到数据库（5 分钟有效）
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: stateError } = (await (
-    supabase.from("oauth_states") as any
+    supabase.from(
+      "oauth_states",
+    ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
   ).insert({
     state,
     user_id: user.id,

@@ -152,11 +152,8 @@ export const POST = withAuthMiddleware(
     const data = validation.data;
 
     // 插入数据库
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ImportHistoryRow = { id: number };
-    const { data: created, error } = (await (
-      supabase.from("import_history") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const insertResult = await supabase
+      .from("import_history")
       .insert({
         user_id: userId,
         import_source: data.import_source,
@@ -171,10 +168,10 @@ export const POST = withAuthMiddleware(
         options: (data.options || null) as Json,
       })
       .select()
-      .single()) as {
-      data: ImportHistoryRow | null;
-      error: { message: string } | null;
-    };
+      .single();
+
+    const created = insertResult.data as { id: number } | null;
+    const error = insertResult.error as { message: string } | null;
 
     if (error || !created) {
       logger.error(

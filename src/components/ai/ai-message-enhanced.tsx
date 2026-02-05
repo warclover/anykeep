@@ -304,8 +304,18 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
           <div className="mt-3 w-full max-w-sm">
             <ZeroTakeoverConfirmCard
               confirmation={message.zeroTakeoverConfirm}
-              onConfirm={onZeroTakeoverConfirm ?? (() => {})}
-              onCancel={onZeroTakeoverCancel ?? (() => {})}
+              onConfirm={
+                onZeroTakeoverConfirm ??
+                (() => {
+                  /* no-op fallback */
+                })
+              }
+              onCancel={
+                onZeroTakeoverCancel ??
+                (() => {
+                  /* no-op fallback */
+                })
+              }
               isLoading={isZeroTakeoverLoading}
             />
           </div>

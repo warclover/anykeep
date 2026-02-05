@@ -70,6 +70,8 @@ export interface ExecuteOptions {
   useReact?: boolean;
   /** ReAct 决策理由 [P2-9 新增] */
   reactReason?: string;
+  /** 是否为回退执行（P0-4 新增：防止重复执行） */
+  isFallback?: boolean;
 }
 
 /** ExecutionCoordinator 配置 */
@@ -235,6 +237,7 @@ export class ExecutionCoordinator {
       agentOptions,
       useReact,
       reactReason,
+      isFallback = false,
     } = options;
 
     // 检查是否已取消
@@ -260,12 +263,14 @@ export class ExecutionCoordinator {
     if (mode === "atomic") {
       aiMetrics.recordAtomicMode();
       // P2-9: 传递 ReAct 决策到原子模式执行器
+      // P0-4: 传递 isFallback 标志以防止重复执行
       yield* this.executeAtomicMode(
         input,
         context,
         agentOptions,
         useReact,
         reactReason,
+        isFallback,
       );
     } else if (skillId) {
       aiMetrics.recordOrchestrationMode();
@@ -289,6 +294,7 @@ export class ExecutionCoordinator {
         agentOptions,
         useReact,
         reactReason,
+        true, // 明确标记为回退
       );
     }
   }
@@ -357,12 +363,14 @@ export class ExecutionCoordinator {
    * 执行原子模式（带降级）
    *
    * [P2-9 更新]: 使用路由决策的 useReact 标志，而非直接检查 Feature Flag
+   * [P0-4 更新]: 添加 isFallback 参数防止重复执行
    *
    * @param input - 用户输入
    * @param context - 执行上下文
    * @param agentOptions - Agent 执行选项
    * @param useReact - 是否使用 ReAct 循环（由 ModeSelector 决定）
    * @param reactReason - ReAct 决策理由
+   * @param isFallback - 是否为回退执行（防止重复工具调用）
    */
   private async *executeAtomicMode(
     input: string,
@@ -370,6 +378,7 @@ export class ExecutionCoordinator {
     agentOptions?: AgentExecutionOptions,
     useReact?: boolean,
     reactReason?: string,
+    isFallback = false,
   ): AsyncGenerator<UnifiedStreamChunk> {
     if (!this.atomicExecutor) {
       yield this.outputAdapter.createErrorChunk(
@@ -380,7 +389,15 @@ export class ExecutionCoordinator {
       return;
     }
 
-    const agentContext = this.buildAgentContext(context);
+    // P0-4: 回退模式下记录日志，避免重复执行
+    if (isFallback) {
+      logger.info(
+        { executedToolIds: Array.from(context.executedToolIds ?? []) },
+        "ExecutionCoordinator: Running in fallback mode, skip executed tools",
+      );
+    }
+
+    const agentContext = this.buildAgentContext(context, isFallback);
 
     // P2-9: 判断是否使用 ReAct 循环
     // 优先使用路由决策的 useReact，若未提供则回退到 Feature Flag 检查
@@ -409,13 +426,20 @@ export class ExecutionCoordinator {
     ): Promise<UnifiedStreamChunk[]> => {
       const chunks: UnifiedStreamChunk[] = [];
 
+      // 验证 atomicExecutor 已初始化
+      if (!this.atomicExecutor) {
+        throw new Error(
+          "AtomicExecutor not initialized. Call registerAtomicExecutor first.",
+        );
+      }
+
       try {
         // P2-9: 根据路由决策使用 ReAct 循环模式
         if (shouldUseReact && this.reactExecutor) {
           for await (const chunk of this.reactExecutor.executeWithReact(
             execInput,
             execContext,
-            this.atomicExecutor!,
+            this.atomicExecutor,
           )) {
             // 检查取消
             if (this.isCancelled(context)) {
@@ -425,7 +449,7 @@ export class ExecutionCoordinator {
           }
         } else {
           // 标准原子模式
-          for await (const chunk of this.atomicExecutor!(
+          for await (const chunk of this.atomicExecutor(
             execInput,
             execContext,
             agentOptions,
@@ -580,9 +604,36 @@ export class ExecutionCoordinator {
   }
 
   /** 构建 Agent 上下文 */
-  private buildAgentContext(context: EngineContext): AgentContext {
+  private buildAgentContext(
+    context: EngineContext,
+    isFallback = false,
+  ): AgentContext {
     // 构建 System Prompt（包含附件上下文和情景记忆）
     let systemPrompt = context.attachmentContext || "";
+
+    // P0-4: 回退模式下添加指令，避免重复执行已执行的工具
+    if (
+      isFallback &&
+      context.executedToolIds &&
+      context.executedToolIds.size > 0
+    ) {
+      const skipToolsPrompt = `
+【重要：回退执行模式】
+之前的编排执行失败，现在切换到原子模式继续完成用户请求。
+已执行的工具（请勿重复调用）：${Array.from(context.executedToolIds).join(", ")}
+请专注于完成用户的核心请求，避免重复调用上述工具。
+`;
+      systemPrompt = systemPrompt
+        ? `${skipToolsPrompt}\n\n${systemPrompt}`
+        : skipToolsPrompt;
+
+      logger.debug(
+        {
+          executedToolIds: Array.from(context.executedToolIds),
+        },
+        "ExecutionCoordinator: Added skip tools instruction for fallback mode",
+      );
+    }
 
     // 注入情景记忆
     if (

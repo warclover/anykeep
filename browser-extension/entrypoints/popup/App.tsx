@@ -325,6 +325,7 @@ export default function App() {
               {/* 封面图预览 */}
               {pageInfo.coverUrl && (
                 <div className="mb-3 rounded-md overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={pageInfo.coverUrl}
                     alt=""

@@ -130,7 +130,7 @@ export function QuickActionGrid({ onAction, disabled }: QuickActionGridProps) {
         {otherActions.map((action) => (
           <Card
             key={action.id}
-            role="listitem"
+            role="button"
             tabIndex={disabled ? -1 : 0}
             aria-label={`${action.title}: ${action.description}`}
             aria-disabled={disabled}

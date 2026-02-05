@@ -18,19 +18,6 @@ import type { BookmarkInsert, Platform } from "@/types/supabase";
 import type { ImportError } from "@/lib/browser-bookmark/types";
 import { BOOKMARK } from "@/lib/constants/messages";
 
-interface ImportBookmark {
-  url: string;
-  title: string;
-  description?: string;
-  folderId?: number;
-  userTags?: string[];
-  notes?: string;
-  platform?: string; // 可选：显式指定平台（如 BROWSER_CHROME）
-  originalAddDate?: string; // 可选：原始添加时间（ISO 格式）
-  importSource?: string; // 可选：导入来源（如 browser_chrome）
-  importBatchId?: string; // 可选：导入批次 ID
-}
-
 interface BatchImportResult {
   success: number;
   failed: number;
@@ -56,8 +43,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 解析请求体
-    const body = await request.json();
-    const bookmarks: ImportBookmark[] = body.bookmarks;
+    let body: { bookmarks: unknown };
+    try {
+      body = await request.json();
+    } catch (error) {
+      logger.error({ error }, "Failed to parse request body");
+      return badRequestError("无效的 JSON 格式");
+    }
+
+    const bookmarks = body.bookmarks;
 
     if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
       return badRequestError("bookmarks 必须是非空数组");
@@ -204,8 +198,10 @@ export async function POST(request: NextRequest) {
     // 5. 批量插入数据库
     if (bookmarkInserts.length > 0) {
       const { data: inserted, error: insertError } = (await (
-        supabase.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+        supabase.from(
+          "bookmarks",
+        ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+      )
         .insert(bookmarkInserts)
         .select()) as {
         data: unknown[] | null;

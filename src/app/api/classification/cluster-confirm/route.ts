@@ -127,8 +127,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: newFolder, error: createError } = (await (
-      supabase.from("folders") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+      supabase.from(
+        "folders",
+      ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+    )
       .insert({
         user_id: user.id,
         name: folderName,

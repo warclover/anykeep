@@ -84,10 +84,12 @@ export function AIInput({
           />
         </div>
 
-        {/* 发送按钮 - 糖果色风格 */}
+        {/* 发送��钮 - 糖果色风格 */}
         <button
           onClick={handleSubmit}
           disabled={disabled || !value.trim()}
+          aria-label="发送消息"
+          aria-disabled={disabled || !value.trim()}
           className={cn(
             "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200",
             "bg-gradient-to-r from-pink-400 to-rose-400 text-white",

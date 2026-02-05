@@ -52,16 +52,25 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 解析请求体
-    const body = await request.json();
-    const foldersToCreate: FolderCreateRequest[] = body.folders;
+    let body: { folders: unknown };
+    try {
+      body = await request.json();
+    } catch (error) {
+      logger.error({ error }, "Failed to parse request body");
+      return badRequestError("无效的 JSON 格式");
+    }
 
-    if (!Array.isArray(foldersToCreate) || foldersToCreate.length === 0) {
+    const folders = body.folders;
+
+    if (!Array.isArray(folders) || folders.length === 0) {
       return badRequestError("folders 必须是非空数组");
     }
 
-    if (foldersToCreate.length > 50) {
+    if (folders.length > 50) {
       return badRequestError("单次最多创建 50 个文件夹");
     }
+
+    const foldersToCreate: FolderCreateRequest[] = folders;
 
     // 3. 按层级顺序创建文件夹（浅层优先）
     // 确保父文件夹先创建
@@ -130,8 +139,10 @@ export async function POST(request: NextRequest) {
 
         // 创建新文件夹
         const { data: created, error: createError } = (await (
-          supabase.from("folders") as any
-        ) // eslint-disable-line @typescript-eslint/no-explicit-any
+          supabase.from(
+            "folders",
+          ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+        )
           .insert({
             user_id: user.id,
             name: folder.name,

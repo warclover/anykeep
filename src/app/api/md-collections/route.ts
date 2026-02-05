@@ -79,9 +79,8 @@ export async function GET(request: NextRequest) {
     } = validation.data;
 
     // 3. 构建查询
-    // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from("md_collections") as any)
+    let query = supabase
+      .from("md_collections")
       .select("*")
       .eq("user_id", user.id)
       .is("deleted_at", null);
@@ -197,17 +196,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 检查用户会员类型和功能权限
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileRow = { membership_type: string | null };
-    const { data: profile, error: profileError } = (await (
-      supabase.from("profiles") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const profileResult = await supabase
+      .from("profiles")
       .select("membership_type")
       .eq("id", user.id)
-      .single()) as {
-      data: ProfileRow | null;
-      error: { message: string } | null;
-    };
+      .single();
+
+    const profile = profileResult.data as {
+      membership_type: string | null;
+    } | null;
+    const profileError = profileResult.error as { message: string } | null;
 
     if (profileError) {
       logger.warn({ error: profileError }, "Failed to get user profile");
@@ -217,21 +215,17 @@ export async function POST(request: NextRequest) {
     const membershipType = profile?.membership_type || "FREE";
 
     // 3. 获取当前 MD 收藏数量并检查权限
-    const { count: currentCount, error: countError } = (await (
-      supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { count, error: countError } = await supabase
+      .from("md_collections")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .is("deleted_at", null)) as {
-      count: number | null;
-      error: { message: string } | null;
-    };
+      .is("deleted_at", null);
 
     if (countError) {
       return databaseError(MD_COLLECTION.LOAD_ERROR, countError);
     }
 
-    const gateResult = canCreateMdCollection(membershipType, currentCount || 0);
+    const gateResult = canCreateMdCollection(membershipType, count || 0);
     if (!gateResult.allowed) {
       return forbiddenError(
         gateResult.reason || MD_COLLECTION.FEATURE_DISABLED,
@@ -271,19 +265,19 @@ export async function POST(request: NextRequest) {
     const contentHash = computeContentHash(sanitizedContent);
 
     // 8. 检查重复
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ExistingCollectionRow = { id: string; title: string };
-    const { data: existingCollection, error: dupError } = (await (
-      supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const dupResult = await supabase
+      .from("md_collections")
       .select("id, title")
       .eq("user_id", user.id)
       .eq("content_hash", contentHash)
       .is("deleted_at", null)
-      .maybeSingle()) as {
-      data: ExistingCollectionRow | null;
-      error: { message: string } | null;
-    };
+      .maybeSingle();
+
+    const existingCollection = dupResult.data as {
+      id: string;
+      title: string;
+    } | null;
+    const dupError = dupResult.error as { message: string } | null;
 
     if (dupError) {
       logger.warn({ error: dupError }, "Failed to check duplicate");
@@ -321,11 +315,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 11. 创建记录
-    // 类型断言: 手动维护类型文件时需要此断言
-    type NewCollectionRow = { id: number; [key: string]: unknown };
-    const { data: newCollection, error: createError } = (await (
-      supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const createResult = await supabase
+      .from("md_collections")
       .insert({
         user_id: user.id,
         title: finalTitle,
@@ -342,10 +333,10 @@ export async function POST(request: NextRequest) {
         processing_status: "pending",
       })
       .select()
-      .single()) as {
-      data: NewCollectionRow | null;
-      error: { message: string } | null;
-    };
+      .single();
+
+    const newCollection = createResult.data as { id: number } | null;
+    const createError = createResult.error as { message: string } | null;
 
     if (createError || !newCollection) {
       return databaseError(MD_COLLECTION.CREATE_ERROR, createError);

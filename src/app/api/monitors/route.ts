@@ -25,7 +25,6 @@ import {
 import { logger } from "@/lib/logger";
 import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
 import { isUrlMonitorable } from "@/lib/monitor/page-fetcher";
-import type { BookmarkRow } from "@/types/domain";
 
 /**
  * GET /api/monitors
@@ -252,19 +251,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 验证书签所有权
-    // 类型断言: 手动维护类型文件时需要此断言
-    type MonitorBookmarkRow = Pick<BookmarkRow, "id" | "url" | "title">;
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { data: bookmark, error: bookmarkError } = await supabase
+      .from("bookmarks")
       .select("id, url, title")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single()) as {
-      data: MonitorBookmarkRow | null;
-      error: { message: string } | null;
-    };
+      .single()
+      .then<{
+        data: { id: number; url: string; title: string } | null;
+        error: { message: string } | null;
+      }>((result) => ({
+        data: result.data as { id: number; url: string; title: string } | null,
+        error: result.error as { message: string } | null,
+      }));
 
     if (bookmarkError || !bookmark) {
       return badRequestError("书签不存在或无权操作");

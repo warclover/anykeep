@@ -78,11 +78,7 @@ export async function GET(request: NextRequest) {
           : "free";
 
     // 4. Get recommendations from database
-    // Note: RPC function types will be available after migration is applied
-    const { data: dbRecommendations, error: dbError } = await (
-      supabase.rpc as any
-    )(
-      // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { data: dbRecommendations, error: dbError } = await supabase.rpc(
       "get_blueprint_recommendations",
       {
         p_user_id: user.id,
@@ -114,7 +110,10 @@ export async function GET(request: NextRequest) {
             icon: metadata.icon,
             description: metadata.description,
             recommendationType: rec.recommendation_type as "recent" | "popular",
-            score: parseFloat(rec.score) || 0,
+            score:
+              typeof rec.score === "number"
+                ? rec.score
+                : parseFloat(rec.score || "0") || 0,
             useCount: rec.use_count,
             lastUsedAt: rec.last_used_at,
           });

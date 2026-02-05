@@ -102,31 +102,59 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 解析请求参数（可选：限制检测范围）
-    const body = await request.json().catch(() => ({}));
+    let body: { bookmarkIds?: unknown; limit?: number };
+    try {
+      body = await request.json();
+    } catch (error) {
+      logger.error({ error }, "Failed to parse request body");
+      return badRequestError("无效的 JSON 格式");
+    }
+
     const { bookmarkIds, limit = 100 } = body;
+
+    // 验证参数
+    if (bookmarkIds !== undefined && !Array.isArray(bookmarkIds)) {
+      return badRequestError("bookmarkIds 必须是数组");
+    }
+
+    const validatedLimit =
+      typeof limit === "number" && limit > 0 && limit <= 1000 ? limit : 100;
 
     logger.debug(
       {
-        bookmarkIds: bookmarkIds?.length,
-        limit,
+        bookmarkIds: Array.isArray(bookmarkIds) ? bookmarkIds.length : 0,
+        limit: validatedLimit,
         action: "parse_params",
       },
       "POST: Parse validation parameters",
     );
 
     // 3. 获取要检测的收藏
-    // 类型断言: 手动维护类型文件时需要此断言
-    let query = (supabase.from("bookmarks") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+    let query = supabase
+      .from("bookmarks")
       .select("id, url, platform")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .eq("is_in_trash", false); // 不检测垃圾箱中的收藏
 
-    if (bookmarkIds && Array.isArray(bookmarkIds)) {
-      query = query.in("id", bookmarkIds);
+    if (bookmarkIds && Array.isArray(bookmarkIds) && bookmarkIds.length > 0) {
+      // 过滤确保只传递有效的数字 ID
+      const validIds = bookmarkIds
+        .map((id) =>
+          typeof id === "string"
+            ? Number.parseInt(id, 10)
+            : typeof id === "number"
+              ? id
+              : NaN,
+        )
+        .filter((id) => !Number.isNaN(id) && id > 0);
+
+      if (validIds.length > 0) {
+        query = query.in("id", validIds);
+      }
     }
 
-    query = query.limit(limit);
+    query = query.limit(validatedLimit);
 
     type BookmarkToValidate = {
       id: number;
@@ -243,8 +271,10 @@ export async function POST(request: NextRequest) {
       const invalidIds = invalidBookmarks.map((b) => b.bookmarkId);
 
       const { error: updateError } = (await (
-        serviceClient.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+        serviceClient.from(
+          "bookmarks",
+        ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+      )
         .update({
           is_invalid: true,
           invalidated_at: new Date().toISOString(),
@@ -271,8 +301,10 @@ export async function POST(request: NextRequest) {
       const validIds = validBookmarks.map((b) => b.bookmarkId);
 
       const { error: updateError } = (await (
-        serviceClient.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+        serviceClient.from(
+          "bookmarks",
+        ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+      )
         .update({
           is_invalid: false,
           invalidated_at: null,
@@ -295,38 +327,39 @@ export async function POST(request: NextRequest) {
     // 9. 记录验证历史
     const endTime = new Date();
     const { error: historyError } = (await (
-      serviceClient.from("validation_history") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
-      .insert({
-        user_id: user.id,
-        total_bookmarks: bookmarks.length,
-        total_checked: validatableBookmarks.length,
-        skipped_count: skippedBookmarks.length,
-        valid_count: validBookmarks.length,
-        invalid_count: invalidBookmarks.length,
-        error_count: 0, // 当前实现中没有单独追踪错误
-        duration_ms: duration,
-        average_response_time_ms:
-          validatableBookmarks.length > 0
-            ? Math.round(duration / validatableBookmarks.length)
-            : 0,
-        invalid_bookmarks: invalidBookmarks.map((b) => ({
-          id: b.bookmarkId,
-          url: b.url,
-          error: b.error,
-          statusCode: b.statusCode,
-        })),
-        skipped_reasons: skippedBookmarks.reduce(
-          (acc, item) => {
-            const reason = item.skipReason;
-            acc[reason] = (acc[reason] || 0) + 1;
-            return acc;
-          },
-          {} as Record<string, number>,
-        ),
-        started_at: new Date(startTime).toISOString(),
-        completed_at: endTime.toISOString(),
-      })) as { error: { message: string } | null };
+      serviceClient.from(
+        "validation_history",
+      ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+    ).insert({
+      user_id: user.id,
+      total_bookmarks: bookmarks.length,
+      total_checked: validatableBookmarks.length,
+      skipped_count: skippedBookmarks.length,
+      valid_count: validBookmarks.length,
+      invalid_count: invalidBookmarks.length,
+      error_count: 0, // 当前实现中没有单独追踪错误
+      duration_ms: duration,
+      average_response_time_ms:
+        validatableBookmarks.length > 0
+          ? Math.round(duration / validatableBookmarks.length)
+          : 0,
+      invalid_bookmarks: invalidBookmarks.map((b) => ({
+        id: b.bookmarkId,
+        url: b.url,
+        error: b.error,
+        statusCode: b.statusCode,
+      })),
+      skipped_reasons: skippedBookmarks.reduce(
+        (acc, item) => {
+          const reason = item.skipReason;
+          acc[reason] = (acc[reason] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      started_at: new Date(startTime).toISOString(),
+      completed_at: endTime.toISOString(),
+    })) as { error: { message: string } | null };
 
     if (historyError) {
       logger.error(

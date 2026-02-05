@@ -229,7 +229,7 @@ export const BookmarkListItem = memo(function BookmarkListItem({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
-                aria-label="更多操作"
+                aria-label={`书签操作: ${bookmark.title || bookmark.url}`}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>

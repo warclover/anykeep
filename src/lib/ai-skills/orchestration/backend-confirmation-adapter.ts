@@ -191,7 +191,9 @@ export class BackendConfirmationAdapter {
    * @param input - 确认决策输入
    * @returns 确认决策结果
    */
-  evaluate(input: ConfirmationDecisionInput): ConfirmationDecision {
+  async evaluate(
+    input: ConfirmationDecisionInput,
+  ): Promise<ConfirmationDecision> {
     const riskLevel = this.calculateRiskLevel(input);
     const requiresConfirmation = this.shouldRequireConfirmation(
       input,
@@ -210,7 +212,7 @@ export class BackendConfirmationAdapter {
 
     if (requiresConfirmation) {
       // 需要用户确认
-      const pendingConfirmation = this.createPendingConfirmation(
+      const pendingConfirmation = await this.createPendingConfirmation(
         input,
         riskLevel,
       );
@@ -241,8 +243,11 @@ export class BackendConfirmationAdapter {
   /**
    * 快捷方法：检查是否需要用户确认
    */
-  shouldRequireUserConfirmation(input: ConfirmationDecisionInput): boolean {
-    return this.evaluate(input).requiresUserConfirmation;
+  async shouldRequireUserConfirmation(
+    input: ConfirmationDecisionInput,
+  ): Promise<boolean> {
+    const result = await this.evaluate(input);
+    return result.requiresUserConfirmation;
   }
 
   /**
@@ -263,9 +268,9 @@ export class BackendConfirmationAdapter {
    * @param options - 确认请求选项
    * @returns 待确认对象
    */
-  requestUserConfirmation(
+  async requestUserConfirmation(
     options: ConfirmationRequestOptions,
-  ): PendingConfirmation {
+  ): Promise<PendingConfirmation> {
     return confirmationHandler.createConfirmation(options);
   }
 
@@ -385,10 +390,10 @@ export class BackendConfirmationAdapter {
   /**
    * 创建待确认对象
    */
-  private createPendingConfirmation(
+  private async createPendingConfirmation(
     input: ConfirmationDecisionInput,
     riskLevel: RiskLevel,
-  ): PendingConfirmation {
+  ): Promise<PendingConfirmation> {
     const options = this.getConfirmationOptions(riskLevel);
     const title = this.getConfirmationTitle(input);
     const message = this.getConfirmationMessage(input, riskLevel);

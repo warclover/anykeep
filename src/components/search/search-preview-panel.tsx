@@ -152,6 +152,7 @@ export const SearchPreviewPanel = memo(function SearchPreviewPanel({
       {/* 封面图（如果有） */}
       {bookmark.cover_url && (
         <div className="relative h-32 overflow-hidden rounded-t-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bookmark.cover_url}
             alt=""

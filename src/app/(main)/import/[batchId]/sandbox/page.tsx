@@ -51,41 +51,8 @@ export default function SandboxPage() {
   const [undoDeadline, setUndoDeadline] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载初始状态
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const response = await fetch(
-          `/api/batch-classification/${batchId}/progress`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch status");
-        }
-
-        const data = await response.json();
-
-        if (data.phase === "completed") {
-          // 分类已完成，加载结果
-          await loadResults();
-        } else if (data.phase === "failed") {
-          setError(data.error?.message || "分类失败");
-          setPageState("error");
-        } else {
-          // 仍在处理中
-          setPageState("processing");
-        }
-      } catch (err) {
-        clientLogger.error({ err }, "Failed to check status:");
-        setPageState("processing"); // 假设正在处理
-      }
-    };
-
-    checkStatus();
-  }, [batchId]);
-
   // 加载分类结果
-  const loadResults = async () => {
+  const loadResults = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/batch-classification/${batchId}/results`,
@@ -103,12 +70,46 @@ export default function SandboxPage() {
       setError("加载结果失败");
       setPageState("error");
     }
-  };
+  }, [batchId]);
+
+  // 检查分类状态
+  const checkStatus = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/batch-classification/${batchId}/progress`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch status");
+      }
+
+      const data = await response.json();
+
+      if (data.phase === "completed") {
+        // 分类已完成，加载结果
+        await loadResults();
+      } else if (data.phase === "failed") {
+        setError(data.error?.message || "分类失败");
+        setPageState("error");
+      } else {
+        // 仍在处理中
+        setPageState("processing");
+      }
+    } catch (err) {
+      clientLogger.error({ err }, "Failed to check status:");
+      setPageState("processing"); // 假设正在处理
+    }
+  }, [batchId, loadResults]);
+
+  // 加载初始状态
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   // 处理分类完成
   const handleClassificationComplete = useCallback(() => {
     loadResults();
-  }, []);
+  }, [loadResults]);
 
   // 处理分类错误
   const handleClassificationError = useCallback((errorMessage: string) => {

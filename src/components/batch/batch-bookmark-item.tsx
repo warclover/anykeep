@@ -66,12 +66,22 @@ export const BatchBookmarkItem = memo(function BatchBookmarkItem({
 
   return (
     <div
+      role="checkbox"
+      aria-checked={isSelected}
+      aria-label={`选择书签: ${bookmark.title || bookmark.url}`}
       className={cn(
         "flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer",
         "hover:bg-gray-50 dark:hover:bg-gray-800/50",
         isSelected && "bg-blue-50 dark:bg-blue-900/20",
       )}
       onClick={handleClick}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick(e as unknown as React.MouseEvent);
+        }
+      }}
     >
       {/* 选择框 */}
       <div

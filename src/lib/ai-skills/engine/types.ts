@@ -155,6 +155,15 @@ export interface EngineContext {
    * 增强置信度值（0-1）
    */
   enhancedConfidence?: number;
+
+  // ============================================
+  // P0-4 新增：防止重复执行标记
+  // ============================================
+
+  /**
+   * 已执行的工具 ID 集合（用于回退时避免重复执行）
+   */
+  executedToolIds?: Set<string>;
 }
 
 /**
@@ -211,6 +220,16 @@ export interface EngineExecuteOptions {
    * 用户已确认执行高风险操作
    */
   userConfirmedRisk?: boolean;
+
+  // ============================================
+  // P0-4 新增：回退模式标记
+  // ============================================
+
+  /**
+   * 是否为回退执行（从 orchestration 降级到 atomic）
+   * 用于避免重复执行已执行过的工具
+   */
+  isFallback?: boolean;
 }
 
 /**

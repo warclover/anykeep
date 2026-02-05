@@ -150,20 +150,14 @@ export async function POST(request: Request) {
       try {
         // 尝试认领任务
         // 注意：job 对象中的字段是 "type"，不是 "job_type"
-        const { data: claimedJobs, error: claimError } = (await (
-          getSupabaseAdmin().rpc as any
-        )(
-          // eslint-disable-line @typescript-eslint/no-explicit-any
-          "claim_next_job",
-          {
-            p_worker_id: WORKER_ID,
-            p_job_types: [job.type],
-            p_lock_duration: "2 minutes",
-          },
-        )) as {
-          data: ClaimedJobRow[] | null;
-          error: { message: string } | null;
-        };
+        const claimResult = await getSupabaseAdmin().rpc("claim_next_job", {
+          p_worker_id: WORKER_ID,
+          p_job_types: [job.type],
+          p_lock_duration: "2 minutes",
+        });
+
+        const claimedJobs = claimResult.data as ClaimedJobRow[] | null;
+        const claimError = claimResult.error as { message: string } | null;
 
         if (claimError || !claimedJobs || claimedJobs.length === 0) {
           // 任务可能已被其他 worker 处理

@@ -210,7 +210,9 @@ describe("Story 8.3: 配额用尽提示 UI", () => {
         creditsCost={2}
         membershipType="free"
         variant="banner"
-        onUpgrade={() => {}}
+        onUpgrade={() => {
+          /* no-op for test */
+        }}
       />,
     );
 

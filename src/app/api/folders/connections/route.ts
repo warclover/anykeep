@@ -104,15 +104,11 @@ export async function GET(request: NextRequest) {
         connection_count: number;
       };
       const { data: matrixData, error: matrixError } = (await (
-        supabase.rpc as any
-      )(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
-        "get_folder_similarity_matrix",
-        {
-          p_user_id: user.id,
-          p_min_bookmarks: minBookmarks,
-        },
-      )) as { data: MatrixRow[] | null; error: { message: string } | null };
+        supabase.rpc /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+      )("get_folder_similarity_matrix", {
+        p_user_id: user.id,
+        p_min_bookmarks: minBookmarks,
+      })) as { data: MatrixRow[] | null; error: { message: string } | null };
 
       if (matrixError) {
         logger.error(
@@ -182,9 +178,8 @@ export async function GET(request: NextRequest) {
         similarity: number;
       };
       const { data: connectionsData, error: connectionsError } = (await (
-        supabase.rpc as any
+        supabase.rpc /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
       )("find_cross_folder_connections", {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         p_user_id: user.id,
         p_folder_id: folderId ?? undefined,
         p_min_similarity: minSimilarity,

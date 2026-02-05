@@ -92,8 +92,10 @@ export async function DELETE(
     if (bookmarkCount && bookmarkCount > 0) {
       const serviceClient = await createServiceClient();
       const { error: deleteError } = (await (
-        serviceClient.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+        serviceClient.from(
+          "bookmarks",
+        ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+      )
         .update({ deleted_at: new Date().toISOString() })
         .eq("folder_id", folderId)
         .eq("user_id", user.id)

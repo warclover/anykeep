@@ -218,23 +218,20 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 获取书签数据（验证所有权）
-    // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkTTSRow = {
-      id: number;
-      title: string;
-      ai_summary: string | null;
-    };
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const bookmarkResult = await supabase
+      .from("bookmarks")
       .select("id, title, ai_summary")
       .eq("id", bookmarkId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .single()) as {
-      data: BookmarkTTSRow | null;
-      error: { message: string } | null;
-    };
+      .single();
+
+    const bookmark = bookmarkResult.data as {
+      id: number;
+      title: string;
+      ai_summary: string | null;
+    } | null;
+    const bookmarkError = bookmarkResult.error as { message: string } | null;
 
     if (bookmarkError || !bookmark) {
       logger.warn(

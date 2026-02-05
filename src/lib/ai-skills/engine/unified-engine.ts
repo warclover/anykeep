@@ -760,8 +760,17 @@ export class UnifiedEngine {
         error instanceof Error ? error.message : "Unknown error",
       );
 
-      yield* this.executionCoordinator.execute(input, context, {
+      // 回退执行时，标记为 isFallback 并传递已执行的工具 ID
+      // 避免在 atomic 模式下重复执行已经执行过的工具
+      const fallbackContext: EngineContext = {
+        ...context,
+        // 初始化 executedToolIds（如果还没有）
+        executedToolIds: context.executedToolIds ?? new Set<string>(),
+      };
+
+      yield* this.executionCoordinator.execute(input, fallbackContext, {
         mode: "atomic",
+        isFallback: true,
       });
     }
   }

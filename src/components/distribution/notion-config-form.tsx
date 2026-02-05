@@ -172,68 +172,74 @@ export function NotionConfigForm({
   const databaseId = form.watch("databaseId");
   const triggerMode = form.watch("triggerMode");
 
-  // 获取 Database 属性
-  const fetchProperties = useCallback(async (dbId: string) => {
-    if (!dbId) {
-      setProperties([]);
-      return;
-    }
+  // 自动映射属性
+  const autoMapProperties = useCallback(
+    (props: NotionProperty[]) => {
+      const mapping: Record<string, string> = {};
 
-    setLoadingProperties(true);
-    try {
-      const response = await fetch(
-        `/api/distribution/notion/databases/${dbId}/properties`,
-      );
-
-      if (!response.ok) {
-        throw new Error("获取属性失败");
+      // 查找并映射标题字段
+      const titleProp = props.find((p) => p.type === "title");
+      if (titleProp) {
+        mapping.title = titleProp.name;
       }
 
-      const data = await response.json();
-      setProperties(data.properties || []);
-      setSelectedDatabase(data.database);
+      // 查找并映射 URL 字段
+      const urlProp = props.find(
+        (p) => p.type === "url" || p.name.toLowerCase().includes("url"),
+      );
+      if (urlProp) {
+        mapping.url = urlProp.name;
+      }
 
-      // 自动映射常用属性
-      autoMapProperties(data.properties);
-    } catch (error) {
-      clientLogger.error({ error }, "Failed to fetch properties:");
-      toast.error("获取 Database 属性失败");
-    } finally {
-      setLoadingProperties(false);
-    }
-  }, []);
+      // 查找并映射标签字段
+      const tagsProp = props.find(
+        (p) =>
+          p.type === "multi_select" &&
+          (p.name.toLowerCase().includes("tag") ||
+            p.name.toLowerCase().includes("标签")),
+      );
+      if (tagsProp) {
+        mapping.tags = tagsProp.name;
+      }
 
-  // 自动映射属性
-  const autoMapProperties = (props: NotionProperty[]) => {
-    const mapping: Record<string, string> = {};
+      form.setValue("propertyMapping", mapping);
+    },
+    [form],
+  );
 
-    // 查找并映射标题字段
-    const titleProp = props.find((p) => p.type === "title");
-    if (titleProp) {
-      mapping.title = titleProp.name;
-    }
+  // 获取 Database 属性
+  const fetchProperties = useCallback(
+    async (dbId: string) => {
+      if (!dbId) {
+        setProperties([]);
+        return;
+      }
 
-    // 查找并映射 URL 字段
-    const urlProp = props.find(
-      (p) => p.type === "url" || p.name.toLowerCase().includes("url"),
-    );
-    if (urlProp) {
-      mapping.url = urlProp.name;
-    }
+      setLoadingProperties(true);
+      try {
+        const response = await fetch(
+          `/api/distribution/notion/databases/${dbId}/properties`,
+        );
 
-    // 查找并映射标签字段
-    const tagsProp = props.find(
-      (p) =>
-        p.type === "multi_select" &&
-        (p.name.toLowerCase().includes("tag") ||
-          p.name.toLowerCase().includes("标签")),
-    );
-    if (tagsProp) {
-      mapping.tags = tagsProp.name;
-    }
+        if (!response.ok) {
+          throw new Error("获取属性失败");
+        }
 
-    form.setValue("propertyMapping", mapping);
-  };
+        const data = await response.json();
+        setProperties(data.properties || []);
+        setSelectedDatabase(data.database);
+
+        // 自动映射常用属性
+        autoMapProperties(data.properties);
+      } catch (error) {
+        clientLogger.error({ error }, "Failed to fetch properties:");
+        toast.error("获取 Database 属性失败");
+      } finally {
+        setLoadingProperties(false);
+      }
+    },
+    [autoMapProperties],
+  );
 
   useEffect(() => {
     if (databaseId) {

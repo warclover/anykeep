@@ -141,8 +141,10 @@ export async function POST(request: NextRequest) {
           // 更新数据库（pgvector 接受 number[] 格式，TypeScript 类型为 string）
           // V4.2.7: 同时保存 embedding_version 用于版本追踪
           const { error: updateError } = (await (
-            supabase.from("bookmarks") as any
-          ) // eslint-disable-line @typescript-eslint/no-explicit-any
+            supabase.from(
+              "bookmarks",
+            ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+          )
             .update({
               embedding: embedding as unknown as string,
               embedding_version: getCurrentEmbeddingVersion(),

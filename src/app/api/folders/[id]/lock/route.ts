@@ -45,7 +45,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // 解析请求体
-    const body = await request.json();
+    let body: { locked?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "无效的 JSON 格式" },
+        { status: 400 },
+      );
+    }
+
     const { locked } = body;
 
     if (typeof locked !== "boolean") {
@@ -93,20 +102,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // P1-2 修复：使用 upsert 避免并发请求导致的竞态条件
     // 替代原来的 update + insert 两步操作
     const { error: upsertError } = (await (
-      supabase.from("folder_profiles") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
-      .upsert(
-        {
-          folder_id: folderId,
-          user_id: user.id,
-          is_system_locked: locked,
-          // 如果锁定，同时禁止 AI 重命名
-          is_ai_renamable: !locked,
-        },
-        {
-          onConflict: "folder_id,user_id",
-        },
-      )) as { error: { message: string } | null };
+      supabase.from(
+        "folder_profiles",
+      ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+    ).upsert(
+      {
+        folder_id: folderId,
+        user_id: user.id,
+        is_system_locked: locked,
+        // 如果锁定，同时禁止 AI 重命名
+        is_ai_renamable: !locked,
+      },
+      {
+        onConflict: "folder_id,user_id",
+      },
+    )) as { error: { message: string } | null };
 
     if (upsertError) {
       logger.error(

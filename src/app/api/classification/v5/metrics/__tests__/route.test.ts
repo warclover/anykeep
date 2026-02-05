@@ -258,6 +258,7 @@ describe("Metrics API - Error Handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Suppress console.error for expected error logs
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     mockSupabaseClient.auth.getUser.mockResolvedValue({

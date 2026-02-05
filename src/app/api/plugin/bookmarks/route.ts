@@ -98,10 +98,8 @@ export async function POST(request: NextRequest) {
     const validFolderId =
       parsedFolderId && !isNaN(parsedFolderId) ? parsedFolderId : null;
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    const { data: bookmark, error: insertError } = (await (
-      serviceClient.from("bookmarks") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    const insertResult = await serviceClient
+      .from("bookmarks")
       .insert({
         user_id: authResult.userId,
         url,
@@ -111,10 +109,10 @@ export async function POST(request: NextRequest) {
         folder_id: validFolderId,
       })
       .select()
-      .single()) as {
-      data: BookmarkRow | null;
-      error: { message: string } | null;
-    };
+      .single();
+
+    const bookmark = insertResult.data as BookmarkRow | null;
+    const insertError = insertResult.error as { message: string } | null;
 
     if (insertError || !bookmark) {
       logger.error(

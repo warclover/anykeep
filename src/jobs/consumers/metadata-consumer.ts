@@ -52,12 +52,14 @@ export class MetadataConsumer extends BaseConsumer {
 
     try {
       // 检查书签是否存在
-      const { data: bookmark, error: fetchError } = (await (
-        context.supabase.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+      const fetchResult = await context.supabase
+        .from("bookmarks")
         .select("id, title, description, cover_url")
         .eq("id", bookmarkId)
-        .single()) as { data: BookmarkMetadataRow | null; error: Error | null };
+        .single();
+
+      const bookmark = fetchResult.data as BookmarkMetadataRow | null;
+      const fetchError = fetchResult.error as Error | null;
 
       if (fetchError || !bookmark) {
         return {
@@ -79,14 +81,14 @@ export class MetadataConsumer extends BaseConsumer {
       const metadata = await this.fetchMetadata(url, context.abortSignal);
 
       // 更新书签（不包含 metadata 字段，因为表中没有该列）
-      const { error: updateError } = await (
-        context.supabase.from("bookmarks") as any
-      ) // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await context.supabase
+        .from("bookmarks")
         .update({
-          title: metadata.title || bookmark.title,
-          description: metadata.description || bookmark.description,
-          cover_url: metadata.image || bookmark.cover_url,
-          author: metadata.author,
+          title: metadata.title || bookmark.title || "",
+          description:
+            metadata.description || bookmark.description || undefined,
+          cover_url: metadata.image || bookmark.cover_url || undefined,
+          author: metadata.author || undefined,
           platform: metadata.platform || "web",
           status: "METADATA_DONE",
           updated_at: new Date().toISOString(),

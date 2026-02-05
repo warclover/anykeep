@@ -173,6 +173,11 @@ export class ConfirmationHandler {
     }
   >;
   private cleanupTimer?: NodeJS.Timeout;
+  /**
+   * 创建确认的互斥锁，防止并发创建时的竞态条件
+   * 使用 Promise 队列确保 createConfirmation 操作的原子性
+   */
+  private createLock: Promise<unknown> = Promise.resolve();
 
   constructor(config: Partial<ConfirmationHandlerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -198,53 +203,62 @@ export class ConfirmationHandler {
    * @param options - 确认请求选项
    * @returns 待确认操作对象
    */
-  createConfirmation(options: ConfirmationRequestOptions): PendingConfirmation {
-    // 检查数量限制
-    if (this.pendingConfirmations.size >= this.config.maxPendingConfirmations) {
-      // 清理过期的确认
-      this.cleanupExpired();
-
-      // 如果仍然超过限制，删除最旧的
+  async createConfirmation(
+    options: ConfirmationRequestOptions,
+  ): Promise<PendingConfirmation> {
+    // 使用锁机制确保并发安全
+    this.createLock = this.createLock.then(async () => {
+      // 检查数量限制
       if (
         this.pendingConfirmations.size >= this.config.maxPendingConfirmations
       ) {
-        const oldestId = this.findOldestPending();
-        if (oldestId) {
-          this.cancelConfirmation(oldestId, "达到最大待确认数量限制");
+        // 清理过期的确认
+        this.cleanupExpired();
+
+        // 如果仍然超过限制，删除最旧的
+        if (
+          this.pendingConfirmations.size >= this.config.maxPendingConfirmations
+        ) {
+          const oldestId = this.findOldestPending();
+          if (oldestId) {
+            this.cancelConfirmation(oldestId, "达到最大待确认数量限制");
+          }
         }
       }
-    }
 
-    const id = this.generateId();
-    const now = new Date();
-    const timeoutMs = options.timeoutMs ?? this.config.defaultTimeoutMs;
+      const id = this.generateId();
+      const now = new Date();
+      const timeoutMs = options.timeoutMs ?? this.config.defaultTimeoutMs;
 
-    const confirmation: PendingConfirmation = {
-      id,
-      title: options.title,
-      message: options.message,
-      options: options.options ?? DEFAULT_OPTIONS,
-      preview: options.preview,
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + timeoutMs),
-      status: "pending",
-      contextData: options.contextData,
-      skillId: options.skillId,
-      userId: options.userId,
-    };
-
-    this.pendingConfirmations.set(id, confirmation);
-
-    logger.debug(
-      {
-        confirmationId: id,
+      const confirmation: PendingConfirmation = {
+        id,
         title: options.title,
-        expiresAt: confirmation.expiresAt,
-      },
-      "ConfirmationHandler: 创建确认请求",
-    );
+        message: options.message,
+        options: options.options ?? DEFAULT_OPTIONS,
+        preview: options.preview,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + timeoutMs),
+        status: "pending",
+        contextData: options.contextData,
+        skillId: options.skillId,
+        userId: options.userId,
+      };
 
-    return confirmation;
+      this.pendingConfirmations.set(id, confirmation);
+
+      logger.debug(
+        {
+          confirmationId: id,
+          title: options.title,
+          expiresAt: confirmation.expiresAt,
+        },
+        "ConfirmationHandler: 创建确认请求",
+      );
+
+      return confirmation;
+    });
+
+    return this.createLock as Promise<PendingConfirmation>;
   }
 
   /**
@@ -579,11 +593,17 @@ export class ConfirmationHandler {
     if (confirmation && confirmation.status === "pending") {
       confirmation.status = "expired";
 
+      // 解析 Promise 并清理相关资源
       this.resolvePromise(confirmationId, {
         confirmed: false,
         selectedOption: "",
         status: "expired",
       });
+
+      // 确保 pendingConfirmations 中的过期确认在适当时候被清理
+      // 注意：不立即删除 pendingConfirmations 中的条目，以便用户仍可查询
+      // cleanupCompleted() 会定期清理已过期的条目
+      logger.debug({ confirmationId }, "ConfirmationHandler: 确认请求超时");
     }
   }
 
@@ -594,11 +614,20 @@ export class ConfirmationHandler {
     const promiseData = this.confirmationPromises.get(confirmationId);
 
     if (promiseData) {
+      // 清理超时定时器
       if (promiseData.timeoutId) {
         clearTimeout(promiseData.timeoutId);
       }
+      // 解析 Promise
       promiseData.resolve(result);
+      // 从 Map 中删除，释放内存
       this.confirmationPromises.delete(confirmationId);
+    } else {
+      // 如果没有对应的 Promise，说明已经超时或被清理
+      logger.debug(
+        { confirmationId },
+        "ConfirmationHandler: resolvePromise 没有找到对应的 Promise",
+      );
     }
   }
 

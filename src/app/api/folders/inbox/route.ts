@@ -51,8 +51,10 @@ export async function POST(_request: NextRequest) {
 
     // 3. 如果不存在，创建新的待整理文件夹
     const { data: newFolder, error: createError } = (await (
-      supabase.from("folders") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+      supabase.from(
+        "folders",
+      ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
+    )
       .insert({
         user_id: user.id,
         name: "待整理",
