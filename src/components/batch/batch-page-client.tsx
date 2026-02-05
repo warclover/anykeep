@@ -36,30 +36,32 @@ import { BATCH_TEXT } from "./constants";
 import type { BatchTagsResult } from "@/lib/batch/validation";
 import type { BookmarkWithFolder } from "@/lib/export/types";
 import { clientLogger } from "@/lib/client-logger";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 /**
- * 平台选项
+ * 平台选项（不包含标签，标签由 i18n 提供）
  */
 const PLATFORM_OPTIONS = [
-  { value: "all", label: "全部平台" },
-  { value: "WECHAT", label: "微信" },
-  { value: "BILIBILI", label: "B站" },
-  { value: "XIAOHONGSHU", label: "小红书" },
-  { value: "ZHIHU", label: "知乎" },
-  { value: "WEIBO", label: "微博" },
-  { value: "DOUYIN", label: "抖音" },
-  { value: "browser", label: "浏览器书签" },
-  { value: "OTHER", label: "其他" },
+  { value: "all", i18nKey: "all" },
+  { value: "WECHAT", i18nKey: "wechat" },
+  { value: "BILIBILI", i18nKey: "bilibili" },
+  { value: "XIAOHONGSHU", i18nKey: "xiaohongshu" },
+  { value: "ZHIHU", i18nKey: "zhihu" },
+  { value: "WEIBO", i18nKey: "weibo" },
+  { value: "DOUYIN", i18nKey: "douyin" },
+  { value: "browser", i18nKey: "browser" },
+  { value: "OTHER", i18nKey: "other" },
 ] as const;
 
 /**
- * 排序选项
+ * 排序选项（不包含标签，标签由 i18n 提供）
  */
 const SORT_OPTIONS = [
-  { value: "created_desc", label: "最新添加" },
-  { value: "created_asc", label: "最早添加" },
-  { value: "title_asc", label: "标题 A-Z" },
-  { value: "title_desc", label: "标题 Z-A" },
+  { value: "created_desc", i18nKey: "newest" },
+  { value: "created_asc", i18nKey: "oldest" },
+  { value: "title_asc", i18nKey: "titleAZ" },
+  { value: "title_desc", i18nKey: "titleZA" },
 ] as const;
 
 /**
@@ -67,6 +69,8 @@ const SORT_OPTIONS = [
  */
 export function BatchPageClient() {
   const router = useRouter();
+  // 国际化
+  const t = useUiText();
 
   // 客户端挂载状态（防止 Hydration 错误）
   const [isMounted, setIsMounted] = useState(false);
@@ -106,6 +110,27 @@ export function BatchPageClient() {
 
   // 所有书签 ID（用于 Shift 选择）
   const allBookmarkIds = useMemo(() => bookmarks.map((b) => b.id), [bookmarks]);
+
+  // 平台选项（带 i18n 标签）
+  const platformOptions = useMemo(
+    () =>
+      PLATFORM_OPTIONS.map((option) => ({
+        ...option,
+        label:
+          t.batch.platform[option.i18nKey as keyof typeof t.batch.platform],
+      })),
+    [t],
+  );
+
+  // 排序选项（带 i18n 标签）
+  const sortOptions = useMemo(
+    () =>
+      SORT_OPTIONS.map((option) => ({
+        ...option,
+        label: t.batch.sort[option.i18nKey as keyof typeof t.batch.sort],
+      })),
+    [t],
+  );
 
   // 选择模式（批量页面始终启用）
   const {
@@ -151,6 +176,7 @@ export function BatchPageClient() {
   );
 
   // 创建综述
+  /* eslint-disable react-hooks/exhaustive-deps -- t 是稳定的 hook 返回值，不需要作为依赖 */
   const handleCreateSynthesis = useCallback(async () => {
     if (selectedIds.size < 3) return;
 
@@ -167,7 +193,7 @@ export function BatchPageClient() {
       });
 
       if (!response.ok) {
-        throw new Error("创建失败");
+        throw new Error(t.batch.synthesis.createFailed);
       }
 
       const { data } = await response.json();
@@ -180,14 +206,15 @@ export function BatchPageClient() {
         "@/lib/notifications/toast/toast.service"
       );
       toastService.error(
-        "创建失败",
-        error instanceof Error ? error.message : "创建综述时发生错误",
+        t.batch.synthesis.createFailed,
+        error instanceof Error ? error.message : t.batch.synthesis.createError,
       );
     } finally {
       setIsCreatingSynthesis(false);
       setIsSynthesisDialogOpen(false);
     }
   }, [selectedIds, router]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // 监听 Esc 键清空选择
   useEffect(() => {
@@ -223,10 +250,10 @@ export function BatchPageClient() {
           {/* 平台筛选 */}
           <Select value={platform} onValueChange={setPlatform}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="全部平台" />
+              <SelectValue placeholder={t.batch.filter.allPlatforms} />
             </SelectTrigger>
             <SelectContent>
-              {PLATFORM_OPTIONS.map((option) => (
+              {platformOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -237,10 +264,10 @@ export function BatchPageClient() {
           {/* 排序 */}
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="排序" />
+              <SelectValue placeholder={t.batch.filter.sort} />
             </SelectTrigger>
             <SelectContent>
-              {SORT_OPTIONS.map((option) => (
+              {sortOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -278,20 +305,22 @@ export function BatchPageClient() {
       <footer className="px-6 py-2 border-t bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center justify-between">
           <span>
-            {isMounted ? BATCH_TEXT.TOTAL_COUNT(bookmarks.length) : "加载中..."}
+            {isMounted
+              ? BATCH_TEXT.TOTAL_COUNT(bookmarks.length)
+              : t.batch.loading}
           </span>
           <div className="flex items-center gap-4">
             <span>
               <kbd className="mx-1 px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">
                 Shift
               </kbd>
-              +点击 范围选择
+              {t.batch.shortcuts.rangeSelect}
             </span>
             <span>
               <kbd className="mx-1 px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">
                 Esc
               </kbd>
-              清空选择
+              {t.batch.shortcuts.clearSelection}
             </span>
           </div>
         </div>
@@ -322,15 +351,17 @@ export function BatchPageClient() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>生成主题综述</AlertDialogTitle>
+            <AlertDialogTitle>{t.batch.synthesis.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              将为选中的 {selectedIds.size} 个书签生成 AI 综述报告。
-              报告将包含概述、共识、分歧点和知识盲区分析。
+              {t.batch.synthesis.description.replace(
+                "{count}",
+                String(selectedIds.size),
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isCreatingSynthesis}>
-              取消
+              {t.common.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCreateSynthesis}
@@ -340,10 +371,10 @@ export function BatchPageClient() {
               {isCreatingSynthesis ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  创建中...
+                  {t.batch.synthesis.creating}
                 </>
               ) : (
-                "开始生成"
+                t.batch.synthesis.start
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

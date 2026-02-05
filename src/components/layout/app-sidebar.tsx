@@ -52,6 +52,8 @@ import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 import {
   Tooltip,
   TooltipContent,
@@ -62,7 +64,7 @@ import {
 // ==================== 类型定义 ====================
 
 interface NavItem {
-  name: string;
+  name: string; // 翻译键，如 "nav.myBookmarks"
   href: string;
   icon: typeof BookOpen;
   pageId?: PageId;
@@ -85,34 +87,43 @@ interface _NavGroup {
  * 内容中心导航项
  */
 const contentCenterItems: NavItem[] = [
-  { name: "我的收藏", href: "/home", icon: BookOpen, pageId: "home" },
-  { name: "我的搜索", href: "/search", icon: Search, pageId: "search" },
-  { name: "我的分类", href: "/folders", icon: FolderOpen, pageId: "folders" },
-  { name: "我的标签", href: "/tags", icon: Tags },
-  { name: "我的笔记", href: "/md-collections", icon: FileText, isPro: true },
-  { name: "我的语音", href: "/audio-library", icon: Volume2 },
+  { name: "nav.myBookmarks", href: "/home", icon: BookOpen, pageId: "home" },
+  { name: "nav.mySearch", href: "/search", icon: Search, pageId: "search" },
+  {
+    name: "nav.myFolders",
+    href: "/folders",
+    icon: FolderOpen,
+    pageId: "folders",
+  },
+  { name: "nav.myTags", href: "/tags", icon: Tags },
+  { name: "nav.myNotes", href: "/md-collections", icon: FileText, isPro: true },
+  { name: "nav.myAudio", href: "/audio-library", icon: Volume2 },
 ];
 
 /**
  * 整理工具导航项
  */
 const organizeToolsItems: NavItem[] = [
-  { name: "整理中心", href: "/organize", icon: Sparkles },
-  { name: "收件箱", href: "/inbox", icon: Inbox },
-  { name: "数据中心", href: "/data", icon: Database },
-  { name: "分类管理", href: "/classification-manager", icon: BrainCircuit },
-  { name: "批量操作", href: "/batch", icon: CheckSquare, pageId: "batch" },
-  { name: "健康检测", href: "/health", icon: Stethoscope },
+  { name: "nav.organizeCenter", href: "/organize", icon: Sparkles },
+  { name: "nav.inbox", href: "/inbox", icon: Inbox },
+  { name: "nav.dataCenter", href: "/data", icon: Database },
+  {
+    name: "nav.classificationManager",
+    href: "/classification-manager",
+    icon: BrainCircuit,
+  },
+  { name: "nav.batch", href: "/batch", icon: CheckSquare, pageId: "batch" },
+  { name: "nav.healthCheck", href: "/health", icon: Stethoscope },
 ];
 
 /**
  * 学习中心导航项
  */
 const learningCenterItems: NavItem[] = [
-  { name: "学习助手", href: "/learning-hub", icon: BookMarked },
-  { name: "对比分析", href: "/synthesis", icon: FlaskConical },
+  { name: "nav.learningHub", href: "/learning-hub", icon: BookMarked },
+  { name: "nav.synthesis", href: "/synthesis", icon: FlaskConical },
   {
-    name: "草稿工坊",
+    name: "nav.draftStudio",
     href: "/knowledge-studio/v2",
     icon: Sparkles,
     isPro: true,
@@ -123,16 +134,16 @@ const learningCenterItems: NavItem[] = [
  * 洞察中心导航项
  */
 const insightCenterItems: NavItem[] = [
-  { name: "AI 能力中心", href: "/ai-hub", icon: Zap },
+  { name: "nav.aiHub", href: "/ai-hub", icon: Zap },
   {
-    name: "数据分析",
+    name: "nav.analytics",
     href: "/analytics",
     icon: BarChart3,
     pageId: "analytics",
   },
-  { name: "活动日志", href: "/activity", icon: Activity },
+  { name: "nav.activityLog", href: "/activity", icon: Activity },
   {
-    name: "消息通知",
+    name: "nav.notifications",
     href: "/messages",
     icon: Bell,
     pageId: "messages",
@@ -144,9 +155,9 @@ const insightCenterItems: NavItem[] = [
  * 开发者工具导航项
  */
 const devToolsItems: NavItem[] = [
-  { name: "RAG 监控", href: "/settings/rag-dashboard", icon: Gauge },
-  { name: "文件夹健康", href: "/folder-health", icon: HeartPulse },
-  { name: "AI 助手调试", href: "/dev/ai-debug", icon: Zap },
+  { name: "nav.ragDashboard", href: "/settings/rag-dashboard", icon: Gauge },
+  { name: "nav.folderHealth", href: "/folder-health", icon: HeartPulse },
+  { name: "nav.aiDebug", href: "/dev/ai-debug", icon: Zap },
 ];
 
 // ==================== 糖果色配色 ====================
@@ -204,6 +215,9 @@ export const AppSidebar = memo(function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFolder = searchParams?.get("folder") ?? null;
+
+  // 国际化
+  const t = useUiText();
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
@@ -322,6 +336,18 @@ export const AppSidebar = memo(function AppSidebar() {
     // 使用分组糖果色，如无则回退默认蓝色
     const colors = groupColor || groupCandyColors.content;
 
+    // 获取翻译文本（支持嵌套键如 "nav.myBookmarks"）
+    const getDisplayName = (key: string): string => {
+      const parts = key.split(".");
+      let value: unknown = t;
+      for (const part of parts) {
+        value = (value as Record<string, unknown>)?.[part];
+      }
+      return (value as string) || key;
+    };
+
+    const displayName = getDisplayName(item.name);
+
     const content = (
       <Link
         href={item.href}
@@ -343,7 +369,7 @@ export const AppSidebar = memo(function AppSidebar() {
         />
         {isVisuallyExpanded && (
           <>
-            <span className="flex-1 truncate">{item.name}</span>
+            <span className="flex-1 truncate">{displayName}</span>
             {item.isPro && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
                 Pro

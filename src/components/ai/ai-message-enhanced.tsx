@@ -34,6 +34,8 @@ import { ZeroTakeoverConfirmCard } from "./zero-takeover-confirm-card";
 import type { FeedbackDetails } from "./phase4/types";
 import type { IntentType } from "@/lib/ai-skills/router/types";
 import type { ThinkingRecord } from "@/hooks/domain/ai/use-ai-chat";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 // =============================================================================
 // 类型定义
@@ -96,6 +98,9 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
   onZeroTakeoverCancel,
   isZeroTakeoverLoading = false,
 }: AIMessageEnhancedProps) {
+  // 国际化
+  const t = useUiText();
+
   const isUser = message.role === "user";
   const isStreaming = message.status === "streaming";
   const hasError = message.status === "error";
@@ -258,7 +263,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
           <div className="flex items-center gap-1 mt-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200">
               <Layers className="size-3" />
-              <span>编排模式</span>
+              <span>{t.ai.executionMode.orchestration}</span>
               {message.skillId && (
                 <span className="text-purple-500">· {message.skillId}</span>
               )}
@@ -269,7 +274,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
           <div className="flex items-center gap-1 mt-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-200">
               <Zap className="size-3" />
-              <span>原子模式</span>
+              <span>{t.ai.executionMode.atomic}</span>
             </span>
           </div>
         )}
@@ -357,7 +362,12 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
           message.usedAttachments.length > 0 && (
             <div className="mt-2 pt-2 border-t border-purple-100 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <Paperclip className="size-3 text-purple-400" />
-              <span>参考了 {message.usedAttachments.length} 个附件：</span>
+              <span>
+                {t.ai.attachmentsReference.replace(
+                  "{count}",
+                  String(message.usedAttachments.length),
+                )}
+              </span>
               {message.usedAttachments.map((att) => (
                 <span
                   key={att.id}
@@ -372,7 +382,7 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
 
         {/* 时间戳 */}
         <span className="text-xs text-gray-400 mt-0.5">
-          {formatTime(message.createdAt)}
+          {formatTime(message.createdAt, t)}
         </span>
 
         {/* 快速操作栏 - Phase 4 */}
@@ -399,31 +409,31 @@ export const AIMessageEnhanced = memo(function AIMessageEnhanced({
 // 辅助函数
 // =============================================================================
 
-function formatTime(date: Date): string {
+function formatTime(date: Date, t: ReturnType<typeof useUiText>): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
 
   // 小于 1 分钟
   if (diff < 60 * 1000) {
-    return "刚刚";
+    return t.ai.time.justNow;
   }
 
   // 小于 1 小时
   if (diff < 60 * 60 * 1000) {
     const minutes = Math.floor(diff / (60 * 1000));
-    return `${minutes} 分钟前`;
+    return t.ai.time.minutesAgo.replace("{minutes}", String(minutes));
   }
 
   // 同一天
   if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString("zh-CN", {
+    return date.toLocaleTimeString(t.ai.time.locale, {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
 
   // 其他
-  return date.toLocaleDateString("zh-CN", {
+  return date.toLocaleDateString(t.ai.time.locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

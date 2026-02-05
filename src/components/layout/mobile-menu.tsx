@@ -56,6 +56,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 // ==================== 类型定义 ====================
 
@@ -79,147 +81,147 @@ interface NavGroup {
 
 const navigationGroups: NavGroup[] = [
   {
-    title: "内容中心",
+    title: "navGroup.contentCenter",
     titleColor: "text-pink-500 dark:text-pink-400",
     activeColor:
       "bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400",
     items: [
       {
-        name: "我的收藏",
+        name: "nav.myBookmarks",
         href: "/home",
         icon: BookOpen,
-        description: "查看所有收藏",
+        description: "mobileMenu.viewAllBookmarks",
       },
       {
-        name: "我的搜索",
+        name: "nav.mySearch",
         href: "/search",
         icon: Search,
-        description: "AI 智能搜索",
+        description: "mobileMenu.aiSmartSearch",
       },
       {
-        name: "我的分类",
+        name: "nav.myFolders",
         href: "/folders",
         icon: FolderOpen,
-        description: "管理文件夹",
+        description: "mobileMenu.manageFolders",
       },
       {
-        name: "我的标签",
+        name: "nav.myTags",
         href: "/tags",
         icon: Tags,
-        description: "标签管理",
+        description: "mobileMenu.tagManagement",
       },
       {
-        name: "我的笔记",
+        name: "nav.myNotes",
         href: "/md-collections",
         icon: FileText,
-        description: "Markdown 笔记",
+        description: "mobileMenu.markdownNotes",
         isPro: true,
       },
     ],
   },
   {
-    title: "整理工具",
+    title: "navGroup.organizeTools",
     titleColor: "text-cyan-500 dark:text-cyan-400",
     activeColor:
       "bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400",
     items: [
       {
-        name: "等待分类",
+        name: "nav.inbox",
         href: "/inbox",
         icon: Inbox,
-        description: "未分类内容",
+        description: "mobileMenu.waitingClassification",
       },
       {
-        name: "批量操作",
+        name: "nav.batch",
         href: "/batch",
         icon: CheckSquare,
-        description: "批量管理书签",
+        description: "mobileMenu.batchManagement",
       },
       {
-        name: "内容导出",
+        name: "nav.export",
         href: "/export",
         icon: Download,
-        description: "导出数据",
+        description: "mobileMenu.exportData",
       },
       {
-        name: "分发中心",
+        name: "mobileMenu.distributionCenter",
         href: "/distribution",
         icon: Share2,
-        description: "内容分发",
+        description: "mobileMenu.distributionCenter",
       },
       {
-        name: "链接检测",
+        name: "mobileMenu.linkHealthCheck",
         href: "/link-health",
         icon: LinkIcon,
-        description: "检测失效链接",
+        description: "mobileMenu.linkHealthCheck",
       },
     ],
   },
   {
-    title: "学习中心",
+    title: "navGroup.learningCenter",
     titleColor: "text-purple-500 dark:text-purple-400",
     activeColor:
       "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
     items: [
       {
-        name: "知识萃取",
+        name: "nav.synthesis",
         href: "/synthesis",
         icon: FlaskConical,
-        description: "主题合成",
+        description: "mobileMenu.themeExtraction",
       },
       {
-        name: "知识工坊",
+        name: "nav.draftStudio",
         href: "/knowledge-studio",
         icon: Sparkles,
-        description: "AI 报告生成",
+        description: "mobileMenu.aiReportGeneration",
         isPro: true,
       },
     ],
   },
   {
-    title: "洞察中心",
+    title: "navGroup.insightCenter",
     titleColor: "text-rose-500 dark:text-rose-400",
     activeColor:
       "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400",
     items: [
       {
-        name: "数据分析",
+        name: "nav.analytics",
         href: "/analytics",
         icon: BarChart3,
-        description: "查看数据分析",
+        description: "mobileMenu.viewDataAnalysis",
       },
       {
-        name: "活动日志",
+        name: "nav.activityLog",
         href: "/activity",
         icon: Activity,
-        description: "操作历史",
+        description: "mobileMenu.operationHistory",
       },
       {
-        name: "消息通知",
+        name: "nav.notifications",
         href: "/messages",
         icon: Bell,
-        description: "系统消息",
+        description: "mobileMenu.systemMessages",
         badge: "unread",
       },
     ],
   },
   {
-    title: "系统",
+    title: "mobileMenu.system",
     titleColor: "text-slate-400 dark:text-slate-500",
     activeColor:
       "bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300",
     items: [
       {
-        name: "设置",
+        name: "nav.settings",
         href: "/settings",
         icon: Settings,
-        description: "应用设置",
+        description: "mobileMenu.appSettings",
       },
       {
-        name: "垃圾箱",
+        name: "nav.trash",
         href: "/home?folder=trash",
         icon: Trash2,
-        description: "已删除内容",
+        description: "mobileMenu.deletedContent",
       },
     ],
   },
@@ -231,6 +233,18 @@ export function MobileMenu() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  // 国际化
+  const t = useUiText();
+
+  // 获取翻译文本的辅助函数
+  const getText = (key: string): string => {
+    const parts = key.split(".");
+    let value: unknown = t;
+    for (const part of parts) {
+      value = (value as Record<string, unknown>)?.[part];
+    }
+    return (value as string) || key;
+  };
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
@@ -253,7 +267,7 @@ export function MobileMenu() {
           variant="ghost"
           size="icon"
           className="lg:hidden"
-          aria-label="打开菜单"
+          aria-label={getText("mobileMenu.openMenu")}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -283,7 +297,7 @@ export function MobileMenu() {
                   group.titleColor,
                 )}
               >
-                {group.title}
+                {getText(group.title)}
               </p>
 
               {/* 分组项目 */}
@@ -320,7 +334,7 @@ export function MobileMenu() {
                               isActive && "font-semibold",
                             )}
                           >
-                            {item.name}
+                            {getText(item.name)}
                           </span>
                           {item.isPro && (
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
@@ -336,7 +350,7 @@ export function MobileMenu() {
                         </div>
                         {item.description && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                            {item.description}
+                            {getText(item.description)}
                           </p>
                         )}
                       </div>
@@ -360,14 +374,16 @@ export function MobileMenu() {
             <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute left-10 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="ml-6">
-              {theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+              {theme === "dark"
+                ? getText("mobileMenu.switchToLightMode")
+                : getText("mobileMenu.switchToDarkMode")}
             </span>
           </Button>
 
           {/* 版本信息 */}
           <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
             <span>AnyKeep v1.0.0</span>
-            <span>智能收藏管理</span>
+            <span>{getText("mobileMenu.version")}</span>
           </div>
         </div>
       </SheetContent>

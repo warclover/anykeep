@@ -24,6 +24,8 @@ import type {
   LockStatus,
   FolderActionCallbacks,
 } from "./types";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 // ==================== 组件 Props ====================
 
@@ -45,6 +47,9 @@ export const FolderCard = memo(function FolderCard({
   onFolderMerged,
   onExportFolder,
 }: FolderCardProps) {
+  // 国际化
+  const t = useUiText();
+
   const isInbox = folder.is_system && folder.system_type === "INBOX";
   const isArchived = folder.is_archived;
 
@@ -122,7 +127,7 @@ export const FolderCard = memo(function FolderCard({
                       variant="secondary"
                       className="text-[10px] px-1.5 py-0 bg-slate-700 text-white"
                     >
-                      系统
+                      {t.folder.system}
                     </Badge>
                   )}
                   {isArchived && (
@@ -130,11 +135,11 @@ export const FolderCard = memo(function FolderCard({
                       variant="secondary"
                       className="text-[10px] px-1.5 py-0"
                     >
-                      已停用
+                      {t.folder.archived}
                     </Badge>
                   )}
                   {folder.is_locked && (
-                    <span title="AI 管理已锁定">
+                    <span title={t.folder.aiLocked}>
                       <Lock className="size-3.5 text-amber-500" />
                     </span>
                   )}
@@ -143,7 +148,7 @@ export const FolderCard = memo(function FolderCard({
                 {/* 描述文字 */}
                 {folder.bookmark_count === 0 && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {isInbox ? "新收藏将自动归入这里" : "还没有收藏内容"}
+                    {isInbox ? t.folder.inboxEmpty : t.folder.emptyContent}
                   </p>
                 )}
               </div>
@@ -155,7 +160,9 @@ export const FolderCard = memo(function FolderCard({
                 <span className={cn("text-lg font-bold", colors.accent)}>
                   {folder.bookmark_count || 0}
                 </span>
-                <span className="text-xs text-muted-foreground">篇收藏</span>
+                <span className="text-xs text-muted-foreground">
+                  {t.folder.itemsCount}
+                </span>
 
                 {folder.today_count > 0 && (
                   <span className="flex items-center gap-0.5 text-xs text-green-500 font-medium">
@@ -209,6 +216,9 @@ export const FolderListItem = memo(function FolderListItem({
   onFolderMerged,
   onExportFolder,
 }: FolderListItemProps) {
+  // 国际化
+  const t = useUiText();
+
   const isInbox = folder.is_system && folder.system_type === "INBOX";
   const isArchived = folder.is_archived;
 
@@ -259,16 +269,16 @@ export const FolderListItem = memo(function FolderListItem({
               </h4>
               {folder.is_system && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  系统
+                  {t.folder.system}
                 </Badge>
               )}
               {isArchived && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  已停用
+                  {t.folder.archived}
                 </Badge>
               )}
               {folder.is_locked && (
-                <span title="AI 管理已锁定">
+                <span title={t.folder.aiLocked}>
                   <Lock className="size-3 text-amber-500" />
                 </span>
               )}
@@ -280,7 +290,9 @@ export const FolderListItem = memo(function FolderListItem({
             <span className={cn("text-sm font-medium", colors.accent)}>
               {folder.bookmark_count || 0}
             </span>
-            <span className="text-xs text-muted-foreground">篇</span>
+            <span className="text-xs text-muted-foreground">
+              {t.folder.items}
+            </span>
             {folder.today_count > 0 && (
               <span className="text-xs text-green-500 font-medium">
                 +{folder.today_count}
@@ -328,12 +340,17 @@ export function FolderCardGrid({
   onFolderRenamed,
   onFolderMerged,
   onExportFolder,
-  emptyMessage = "暂无文件夹",
+  emptyMessage,
 }: FolderCardGridProps) {
+  // 国际化
+  const t = useUiText();
+
+  const displayEmptyMessage = emptyMessage ?? t.folder.emptyMessage;
+
   if (folders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <p>{emptyMessage}</p>
+        <p>{displayEmptyMessage}</p>
       </div>
     );
   }

@@ -64,6 +64,8 @@ import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 import { SnapshotMenuItem, useSnapshotFeature } from "@/components/snapshot";
 // TTS 语音朗读
 import { TTSPlayerButton } from "@/components/tts";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 type ViewVariant = "card" | "list" | "compact";
 
@@ -121,7 +123,8 @@ interface BookmarkCardProps {
 }
 
 // 判断是否是正在获取中的占位符标题
-const isLoadingTitle = (title: string) => title === "正在获取标题...";
+const isLoadingTitle = (title: string, loadingText: string) =>
+  title === loadingText;
 
 /**
  * V4.2.1: 自定义比较函数，避免不必要的重渲染
@@ -189,6 +192,8 @@ export const BookmarkCard = memo(function BookmarkCard({
 }: BookmarkCardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  // 国际化
+  const t = useUiText();
   const [isDeleting, setIsDeleting] = useState(false);
   // V4.2.27: 图片加载失败状态（用于 CDN 防盗链等场景的兜底处理）
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -198,7 +203,10 @@ export const BookmarkCard = memo(function BookmarkCard({
   const isSnapshotEnabled = useSnapshotFeature();
 
   // 判断标题是否正在加载
-  const titleLoading = isLoadingTitle(bookmark.title ?? "");
+  const titleLoading = isLoadingTitle(
+    bookmark.title ?? "",
+    t.bookmark.loadingTitle,
+  );
 
   // 生成占位图（用于无封面或加载失败时）
   const placeholderImage = generatePlaceholderImage(
@@ -288,7 +296,7 @@ export const BookmarkCard = memo(function BookmarkCard({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleOpenOriginal}>
           <ExternalLink className="mr-2 h-4 w-4" />
-          打开原文
+          {t.bookmark.openOriginal}
         </DropdownMenuItem>
         {/* TTS 语音朗读 */}
         {bookmark.ai_summary && (
@@ -319,12 +327,12 @@ export const BookmarkCard = memo(function BookmarkCard({
             {bookmark.is_read ? (
               <>
                 <Circle className="mr-2 h-4 w-4" />
-                标记为未读
+                {t.bookmark.markAsUnread}
               </>
             ) : (
               <>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                标记为已读
+                {t.bookmark.markAsRead}
               </>
             )}
           </DropdownMenuItem>
@@ -334,12 +342,12 @@ export const BookmarkCard = memo(function BookmarkCard({
             {bookmark.is_starred ? (
               <>
                 <Star className="mr-2 h-4 w-4 fill-yellow-400 text-yellow-400" />
-                取消星标
+                {t.bookmark.removeStar}
               </>
             ) : (
               <>
                 <Star className="mr-2 h-4 w-4" />
-                添加星标
+                {t.bookmark.addStar}
               </>
             )}
           </DropdownMenuItem>
@@ -347,7 +355,7 @@ export const BookmarkCard = memo(function BookmarkCard({
         {onEdit && (
           <DropdownMenuItem onClick={handleEdit}>
             <Edit className="mr-2 h-4 w-4" />
-            编辑
+            {t.common.edit}
           </DropdownMenuItem>
         )}
         {onDelete && (
@@ -356,7 +364,7 @@ export const BookmarkCard = memo(function BookmarkCard({
             className="text-red-600 dark:text-red-400"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? "删除中..." : "删除"}
+            {isDeleting ? t.bookmark.deleting : t.common.delete}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -472,13 +480,13 @@ export const BookmarkCard = memo(function BookmarkCard({
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 cursor-help flex-shrink-0">
                     <Sparkles className="h-3 w-3 animate-pulse" />
-                    <span className="hidden sm:inline">AI整理中</span>
+                    <span className="hidden sm:inline">
+                      {t.bookmark.aiOrganizing}
+                    </span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px]">
-                  <p className="text-xs">
-                    AI 正在观察相似内容，稍后会智能建议归类文件夹
-                  </p>
+                  <p className="text-xs">{t.bookmark.aiOrganizingTooltip}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -502,7 +510,9 @@ export const BookmarkCard = memo(function BookmarkCard({
           <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {/* compact 视图：简洁显示来源/作者 */}
             <span className="truncate max-w-[80px] sm:max-w-none">
-              {bookmark.source_name || bookmark.author || "未知作者"}
+              {bookmark.source_name ||
+                bookmark.author ||
+                t.bookmark.unknownAuthor}
             </span>
             <span>·</span>
             <span className="flex-shrink-0">
@@ -656,12 +666,12 @@ export const BookmarkCard = memo(function BookmarkCard({
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 cursor-help flex-shrink-0">
                         <Sparkles className="h-3 w-3 animate-pulse" />
-                        <span>AI整理中</span>
+                        <span>{t.bookmark.aiOrganizing}</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[200px]">
                       <p className="text-xs">
-                        AI 正在观察相似内容，稍后会智能建议归类文件夹
+                        {t.bookmark.aiOrganizingTooltip}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -685,7 +695,7 @@ export const BookmarkCard = memo(function BookmarkCard({
                         className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 text-xs"
                       >
                         <Zap className="size-2.5 mr-0.5" />
-                        AI
+                        {t.bookmark.ai}
                       </Badge>
                       {bookmark.ai_tags.slice(0, 1).map((tag) => {
                         const colorStyle = getAiTagColor(tag);
@@ -745,7 +755,7 @@ export const BookmarkCard = memo(function BookmarkCard({
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                 {/* list 视图：简洁显示来源/作者 */}
                 <span className="truncate max-w-[80px] sm:max-w-none">
-                  {bookmark.source_name || bookmark.author || "未知"}
+                  {bookmark.source_name || bookmark.author || t.common.other}
                 </span>
                 <span>·</span>
                 <span>
@@ -986,11 +996,11 @@ export const BookmarkCard = memo(function BookmarkCard({
           {bookmark.status === "PROCESSING" && (
             <div className="mb-2 flex items-center gap-1 text-xs text-blue-600">
               <span className="animate-pulse">●</span>
-              AI 正在提炼要点...
+              {t.bookmark.processing}
             </div>
           )}
           {bookmark.status === "FAILED" && (
-            <div className="mb-2 text-xs text-red-500">处理失败</div>
+            <div className="mb-2 text-xs text-red-500">{t.bookmark.failed}</div>
           )}
 
           {/* V12.0: AI 整理中状态（缓存池等待聚类） */}
@@ -999,13 +1009,11 @@ export const BookmarkCard = memo(function BookmarkCard({
               <TooltipTrigger asChild>
                 <div className="mb-2 flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 cursor-help">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                  <span>AI 整理中</span>
+                  <span>{t.bookmark.aiOrganizing}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-[200px]">
-                <p className="text-xs">
-                  AI 正在观察相似内容，稍后会智能建议归类文件夹
-                </p>
+                <p className="text-xs">{t.bookmark.aiOrganizingTooltip}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -1015,7 +1023,9 @@ export const BookmarkCard = memo(function BookmarkCard({
             <div className="flex items-center justify-between text-xs text-gray-400/70 dark:text-gray-500/70">
               {/* 左侧：来源/作者 */}
               <span className="truncate max-w-[60%]">
-                {bookmark.source_name || bookmark.author || "未知来源"}
+                {bookmark.source_name ||
+                  bookmark.author ||
+                  t.bookmark.unknownSource}
               </span>
               {/* 右侧：时间 */}
               <span className="flex-shrink-0">

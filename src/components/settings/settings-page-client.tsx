@@ -40,6 +40,8 @@ import {
   SettingsItemCard,
 } from "./settings-group-section";
 import { SETTINGS_GROUPS } from "./settings-config";
+// 国际化
+import { useUiText } from "@/lib/i18n";
 
 interface SettingsPageClientProps {
   user: User;
@@ -54,6 +56,9 @@ export function SettingsPageClient({
 }: SettingsPageClientProps) {
   const router = useRouter();
   const supabase = createClient();
+  // 国际化
+  const t = useUiText();
+
   const [settings, setSettings] = useState(initialSettings);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -119,7 +124,7 @@ export function SettingsPageClient({
 
   // 平台授权
   const handlePlatformAuth = (platform: string) => {
-    alert(`「${platform}」平台授权功能开发中，敬请期待！`);
+    alert(t.settings.platformAuth.comingSoon.replace("{platform}", platform));
   };
 
   // 导出数据
@@ -134,7 +139,7 @@ export function SettingsPageClient({
       });
 
       if (!response.ok) {
-        throw new Error("导出失败");
+        throw new Error(t.settings.export.failed);
       }
 
       const contentDisposition = response.headers.get("Content-Disposition");
@@ -153,7 +158,8 @@ export function SettingsPageClient({
 
       clientLogger.info({}, "Data exported successfully");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "导出失败";
+      const message =
+        error instanceof Error ? error.message : t.settings.export.failed;
       alert(message);
       clientLogger.error({ error: message }, "Failed to export data");
     } finally {
@@ -164,17 +170,17 @@ export function SettingsPageClient({
   // 删除账号
   const [deleting, setDeleting] = useState(false);
   const handleDeleteAccount = async () => {
-    if (!confirm("确定要删除账号吗？此操作将删除所有数据且不可逆！")) {
+    if (!confirm(t.settings.deleteAccount.confirm)) {
       return;
     }
 
-    const confirmEmail = prompt("请输入您的邮箱地址以确认删除：");
+    const confirmEmail = prompt(t.settings.deleteAccount.promptEmail);
     if (!confirmEmail) {
       return;
     }
 
     if (confirmEmail !== user.email) {
-      alert("邮箱地址不匹配，删除已取消");
+      alert(t.settings.deleteAccount.emailMismatch);
       return;
     }
 
@@ -194,13 +200,18 @@ export function SettingsPageClient({
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error?.message || "删除失败");
+        throw new Error(
+          result.error?.message || t.settings.deleteAccount.failed,
+        );
       }
 
-      alert("账号已删除");
+      alert(t.settings.deleteAccount.deleted);
       router.push("/login");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "删除账号失败";
+      const message =
+        error instanceof Error
+          ? error.message
+          : t.settings.deleteAccount.failed;
       alert(message);
       clientLogger.error({ error: message }, "Failed to delete account");
     } finally {
@@ -244,14 +255,14 @@ export function SettingsPageClient({
             {/* 账号信息 */}
             <SettingsItemCard
               id="settings-item-account-account-info"
-              title="基本信息"
-              description="管理你的个人信息"
+              title={t.settings.account.basicInfo}
+              description={t.settings.account.basicInfoDesc}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      邮箱地址
+                      {t.settings.account.emailAddress}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {user.email}
@@ -261,14 +272,14 @@ export function SettingsPageClient({
                     variant="outline"
                     className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-600 dark:text-green-300"
                   >
-                    已验证
+                    {t.settings.account.verified}
                   </Badge>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      用户 ID
+                      {t.settings.account.userId}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {user.id.slice(0, 8)}...
@@ -295,8 +306,8 @@ export function SettingsPageClient({
           <SettingsGroupSection group={SETTINGS_GROUPS[1]}>
             <SettingsItemCard
               id="settings-item-appearance-theme"
-              title="品牌色主题"
-              description="选择你喜欢的品牌色彩，让 AnyKeep 更符合你的风格"
+              title={t.settings.appearance.colorTheme}
+              description={t.settings.appearance.colorThemeDesc}
             >
               <ColorThemeSelector />
             </SettingsItemCard>
@@ -309,8 +320,8 @@ export function SettingsPageClient({
             {/* AI 功能开关 */}
             <SettingsItemCard
               id="settings-item-ai-ai-features"
-              title="AI 功能开关"
-              description="配置 AI 自动处理和分析功能"
+              title={t.settings.ai.features}
+              description={t.settings.ai.featuresDesc}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -319,10 +330,10 @@ export function SettingsPageClient({
                       htmlFor="auto-tags"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      自动标签生成
+                      {t.settings.ai.autoTags}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      使用 AI 为收藏内容自动生成相关标签
+                      {t.settings.ai.autoTagsDesc}
                     </p>
                   </div>
                   <Switch
@@ -340,10 +351,10 @@ export function SettingsPageClient({
                       htmlFor="auto-summary"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      自动摘要生成
+                      {t.settings.ai.autoSummary}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      自动为长文章生成简洁的摘要
+                      {t.settings.ai.autoSummaryDesc}
                     </p>
                   </div>
                   <Switch
@@ -361,16 +372,16 @@ export function SettingsPageClient({
                       htmlFor="semantic-search"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      语义搜索
+                      {t.settings.ai.semanticSearch}
                       <Badge
                         variant="outline"
                         className="ml-2 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-300 text-xs"
                       >
-                        实验性
+                        {t.settings.ai.experimental}
                       </Badge>
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      使用 AI 理解搜索意图，获得更准确的结果
+                      {t.settings.ai.semanticSearchDesc}
                     </p>
                   </div>
                   <Switch
@@ -426,8 +437,8 @@ export function SettingsPageClient({
           <SettingsGroupSection group={SETTINGS_GROUPS[4]}>
             <SettingsItemCard
               id="settings-item-platforms-platform-auth"
-              title="平台授权管理"
-              description="连接你的社交媒体账号，自动同步收藏内容"
+              title={t.settings.platforms.title}
+              description={t.settings.platforms.description}
             >
               <div className="space-y-4">
                 {ALL_PLATFORMS.map((platform) => (
@@ -449,8 +460,8 @@ export function SettingsPageClient({
                           {settings.platforms[
                             platform.key as keyof typeof settings.platforms
                           ]
-                            ? "已连接"
-                            : "未连接"}
+                            ? t.settings.platforms.connected
+                            : t.settings.platforms.disconnected}
                         </p>
                       </div>
                     </div>
@@ -468,8 +479,8 @@ export function SettingsPageClient({
                       {settings.platforms[
                         platform.key as keyof typeof settings.platforms
                       ]
-                        ? "断开"
-                        : "连接"}
+                        ? t.settings.platforms.disconnect
+                        : t.settings.platforms.connect}
                     </Button>
                   </div>
                 ))}
@@ -484,8 +495,8 @@ export function SettingsPageClient({
             {/* 通知偏好 */}
             <SettingsItemCard
               id="settings-item-notifications-notification-prefs"
-              title="通知偏好"
-              description="管理通知方式和频��"
+              title={t.settings.notifications.title}
+              description={t.settings.notifications.description}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -494,10 +505,10 @@ export function SettingsPageClient({
                       htmlFor="email-notifications"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      邮件通知
+                      {t.settings.notifications.email}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      接收重要更新和提醒邮件
+                      {t.settings.notifications.emailDesc}
                     </p>
                   </div>
                   <Switch
@@ -515,10 +526,10 @@ export function SettingsPageClient({
                       htmlFor="in-app-notifications"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      应用内通知
+                      {t.settings.notifications.inApp}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      在应用内显示通知提示
+                      {t.settings.notifications.inAppDesc}
                     </p>
                   </div>
                   <Switch
@@ -536,10 +547,10 @@ export function SettingsPageClient({
                       htmlFor="weekly-digest"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      每周摘要
+                      {t.settings.notifications.weeklyDigest}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      每周一封收藏统计和推荐邮件
+                      {t.settings.notifications.weeklyDigestDesc}
                     </p>
                   </div>
                   <Switch
@@ -566,8 +577,8 @@ export function SettingsPageClient({
             {/* 数据安全 */}
             <SettingsItemCard
               id="settings-item-privacy-data-security"
-              title="数据安全"
-              description="保护你的数据和隐私"
+              title={t.settings.privacy.title}
+              description={t.settings.privacy.description}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -576,10 +587,10 @@ export function SettingsPageClient({
                       htmlFor="data-encryption"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      数据加密
+                      {t.settings.privacy.dataEncryption}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      启用端到端加密保护你的收藏内容
+                      {t.settings.privacy.dataEncryptionDesc}
                     </p>
                   </div>
                   <Switch
@@ -597,10 +608,10 @@ export function SettingsPageClient({
                       htmlFor="share-analytics"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      分享使用数据
+                      {t.settings.privacy.shareAnalytics}
                     </Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      帮助我们改进产品（不包含个人隐私）
+                      {t.settings.privacy.shareAnalyticsDesc}
                     </p>
                   </div>
                   <Switch
@@ -617,8 +628,8 @@ export function SettingsPageClient({
             {/* 账号管理 */}
             <SettingsItemCard
               id="settings-item-privacy-account-actions"
-              title="账号管理"
-              description="导出数据或删除账号"
+              title={t.settings.privacy.accountActions}
+              description={t.settings.privacy.accountActionsDesc}
             >
               <div className="space-y-3">
                 <Button
@@ -628,7 +639,9 @@ export function SettingsPageClient({
                   disabled={exporting}
                 >
                   <Download className="size-4 mr-2" />
-                  {exporting ? "导出中..." : "导出我的数据"}
+                  {exporting
+                    ? t.settings.export.exporting
+                    : t.settings.export.button}
                 </Button>
                 <Button
                   variant="outline"
@@ -637,7 +650,9 @@ export function SettingsPageClient({
                   disabled={deleting}
                 >
                   <Trash2 className="size-4 mr-2" />
-                  {deleting ? "删除中..." : "删除我的账号"}
+                  {deleting
+                    ? t.settings.deleteAccount.deleting
+                    : t.settings.deleteAccount.button}
                 </Button>
               </div>
             </SettingsItemCard>
@@ -655,15 +670,15 @@ export function SettingsPageClient({
             {/* 帮助反馈 */}
             <SettingsItemCard
               id="settings-item-support-feedback"
-              title="帮助与反馈"
-              description="查看已提交的反馈，跟踪处理进度"
+              title={t.settings.support.title}
+              description={t.settings.support.description}
             >
               <Button
                 variant="outline"
                 className="w-full justify-start"
                 onClick={() => router.push("/settings/feedback")}
               >
-                我的反馈记录
+                {t.settings.support.myFeedback}
               </Button>
             </SettingsItemCard>
           </SettingsGroupSection>
@@ -681,10 +696,10 @@ export function SettingsPageClient({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold">
-              设置
+              {t.settings.header.title}
             </h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              管理你的账号、授权和偏好设置
+              {t.settings.header.description}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -696,11 +711,11 @@ export function SettingsPageClient({
             {saveSuccess && (
               <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                 <Check className="size-4" />
-                已保存
+                {t.settings.header.saved}
               </span>
             )}
             <Button onClick={handleSave} disabled={saving} size="sm">
-              {saving ? "保存中..." : "保存设置"}
+              {saving ? t.settings.header.saving : t.settings.header.save}
             </Button>
             <Button
               variant="outline"
@@ -709,7 +724,7 @@ export function SettingsPageClient({
               className="hidden sm:flex"
             >
               <LogOut className="size-4 mr-2" />
-              退出登录
+              {t.settings.header.logout}
             </Button>
           </div>
         </div>
@@ -755,7 +770,9 @@ export function SettingsPageClient({
                 {/* 退出登录 - 桌面端底部 */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">账号操作</CardTitle>
+                    <CardTitle className="text-base">
+                      {t.settings.footer.accountActions}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <Button
@@ -764,7 +781,7 @@ export function SettingsPageClient({
                       onClick={handleLogout}
                     >
                       <LogOut className="size-4 mr-2" />
-                      退出登录
+                      {t.settings.header.logout}
                     </Button>
                   </CardContent>
                 </Card>
@@ -783,7 +800,7 @@ export function SettingsPageClient({
             onClick={handleLogout}
           >
             <LogOut className="size-4 mr-2" />
-            退出登录
+            {t.settings.header.logout}
           </Button>
         </div>
       )}
