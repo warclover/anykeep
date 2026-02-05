@@ -11,6 +11,9 @@
  *
  * V5.3 性能优化 (2026-02-01):
  * - P2-3.4: 使用 React.memo 避免不必要的重渲染
+ *
+ * P3 性能优化 (2026-02-05):
+ * - 提取 NavItem 为独立 memo 组件，减少父组件重渲染影响
  */
 
 "use client";
@@ -80,6 +83,110 @@ interface _NavGroup {
   collapsible?: boolean;
   defaultExpanded?: boolean;
 }
+
+// ==================== 组件 ====================
+
+/**
+ * NavItem 导航项组件
+ * 使用 memo 优化，仅在 props 变化时重渲染
+ */
+interface NavItemProps {
+  item: NavItem;
+  groupColor: GroupColorScheme;
+  isNested: boolean;
+  isActive: boolean;
+  isVisuallyExpanded: boolean;
+  displayName: string;
+  showUnreadBadge: boolean;
+  unreadCount: number;
+  importantCount: number;
+  onClick: (e: React.MouseEvent) => void;
+}
+
+const NavItem = memo(
+  function NavItem({
+    item,
+    groupColor,
+    isNested,
+    isActive,
+    isVisuallyExpanded,
+    displayName,
+    showUnreadBadge,
+    unreadCount,
+    importantCount,
+    onClick,
+  }: NavItemProps) {
+    const Icon = item.icon;
+    const colors = groupColor;
+
+    const content = (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className={cn(
+          "group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150",
+          isActive
+            ? colors.active
+            : cn("text-gray-700 dark:text-gray-300", colors.hover),
+          !isVisuallyExpanded && "justify-center px-2",
+          isNested && isVisuallyExpanded && "pl-8",
+        )}
+      >
+        <Icon
+          className={cn(
+            "size-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
+            isActive ? colors.icon : "text-gray-400 dark:text-gray-500",
+          )}
+        />
+        {isVisuallyExpanded && (
+          <>
+            <span className="flex-1 truncate">{displayName}</span>
+            {item.isPro && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                Pro
+              </span>
+            )}
+            {showUnreadBadge && (
+              <MessageBadge
+                count={unreadCount}
+                hasImportant={importantCount > 0}
+              />
+            )}
+          </>
+        )}
+      </Link>
+    );
+
+    // 折叠时显示 tooltip
+    if (!isVisuallyExpanded) {
+      return (
+        <Tooltip delayDuration={100}>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <p>
+              {item.name}
+              {item.isPro ? " (Pro)" : ""}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return <div>{content}</div>;
+  },
+  (prevProps, nextProps) => {
+    // 自定义比较函数：只有关键 props 变化时才重渲染
+    return (
+      prevProps.isActive === nextProps.isActive &&
+      prevProps.isVisuallyExpanded === nextProps.isVisuallyExpanded &&
+      prevProps.showUnreadBadge === nextProps.showUnreadBadge &&
+      prevProps.unreadCount === nextProps.unreadCount &&
+      prevProps.importantCount === nextProps.importantCount &&
+      prevProps.item === nextProps.item &&
+      prevProps.groupColor === nextProps.groupColor
+    );
+  },
+);
 
 // ==================== 导航配置 ====================
 
@@ -319,89 +426,50 @@ export const AppSidebar = memo(function AppSidebar() {
   };
 
   /**
-   * 渲染单个导航项
-   * @param item 导航项配置
-   * @param groupColor 分组糖果色（可选）
-   * @param isNested 是否嵌套项
+   * 获取翻译文本（支持嵌套键如 "nav.myBookmarks"）
+   * P3 优化: 提取为 useCallback 钩子，避免在渲染中重复创建
    */
-  const renderNavItem = (
-    item: NavItem,
-    groupColor?: GroupColorScheme,
-    isNested = false,
-  ) => {
-    const Icon = item.icon;
-    const isActive = isLinkActive(item.href, item.pageId);
-    const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
-
-    // 使用分组糖果色，如无则回退默认蓝色
-    const colors = groupColor || groupCandyColors.content;
-
-    // 获取翻译文本（支持嵌套键如 "nav.myBookmarks"）
-    const getDisplayName = (key: string): string => {
+  const getDisplayName = useCallback(
+    (key: string): string => {
       const parts = key.split(".");
       let value: unknown = t;
       for (const part of parts) {
         value = (value as Record<string, unknown>)?.[part];
       }
       return (value as string) || key;
-    };
+    },
+    [t],
+  );
 
+  /**
+   * 渲染单个导航项
+   * P3 优化: 使用独立的 NavItem memo 组件减少重渲染
+   */
+  const renderNavItem = (
+    item: NavItem,
+    groupColor?: GroupColorScheme,
+    isNested = false,
+  ) => {
+    const isActive = isLinkActive(item.href, item.pageId);
+    const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
     const displayName = getDisplayName(item.name);
+    const colors = groupColor || groupCandyColors.content;
 
-    const content = (
-      <Link
-        href={item.href}
+    return (
+      <NavItem
+        key={item.name}
+        item={item}
+        groupColor={colors}
+        isNested={isNested}
+        isActive={isActive}
+        isVisuallyExpanded={isVisuallyExpanded}
+        displayName={displayName}
+        showUnreadBadge={showUnreadBadge}
+        unreadCount={unreadCount}
+        importantCount={importantCount}
         onClick={(e) => handleNavClick(item.pageId, e)}
-        className={cn(
-          "group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150",
-          isActive
-            ? colors.active
-            : cn("text-gray-700 dark:text-gray-300", colors.hover),
-          !isVisuallyExpanded && "justify-center px-2",
-          isNested && isVisuallyExpanded && "pl-8",
-        )}
-      >
-        <Icon
-          className={cn(
-            "size-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-            isActive ? colors.icon : "text-gray-400 dark:text-gray-500",
-          )}
-        />
-        {isVisuallyExpanded && (
-          <>
-            <span className="flex-1 truncate">{displayName}</span>
-            {item.isPro && (
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                Pro
-              </span>
-            )}
-            {showUnreadBadge && (
-              <MessageBadge
-                count={unreadCount}
-                hasImportant={importantCount > 0}
-              />
-            )}
-          </>
-        )}
-      </Link>
+      />
     );
-
-    // 折叠时显示 tooltip
-    if (!isVisuallyExpanded) {
-      return (
-        <Tooltip key={item.name} delayDuration={100}>
-          <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            <p>
-              {item.name}
-              {item.isPro ? " (Pro)" : ""}
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return <div key={item.name}>{content}</div>;
   };
 
   /**

@@ -39,17 +39,15 @@ import {
 } from "@/components/layout/responsive-layout-wrapper";
 
 // V5.2: 非关键组件懒加载，减少首屏 JS 体积
-const LayoutAIPanel = dynamic(
-  () =>
-    import("@/components/layout/layout-ai-panel").then(
-      (mod) => mod.LayoutAIPanel,
-    ),
-  { ssr: false },
+// P3 优化: 移除 ssr: false，让 Next.js 自动处理 SSR 避免客户端导航时重新加载
+const LayoutAIPanel = dynamic(() =>
+  import("@/components/layout/layout-ai-panel").then(
+    (mod) => mod.LayoutAIPanel,
+  ),
 );
 
-const FloatingActionMenu = dynamic(
-  () => import("@/components/fab").then((mod) => mod.FloatingActionMenu),
-  { ssr: false },
+const FloatingActionMenu = dynamic(() =>
+  import("@/components/fab").then((mod) => mod.FloatingActionMenu),
 );
 
 export default function MainLayout({

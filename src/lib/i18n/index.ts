@@ -34,6 +34,13 @@ export { LOCALE_NAMES, LOCALE_TERRITORY } from "./config";
 
 // Hooks
 export { useUiText, useLocale, useSetLocale, useLanguageSwitch } from "./hooks";
+export {
+  useUiTextMemo,
+  clearTranslationCache,
+  isTranslationKey,
+  getNestedValue,
+  getCacheStats,
+} from "./cache";
 
 // 工具函数
 export {
