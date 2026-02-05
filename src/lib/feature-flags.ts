@@ -18,6 +18,8 @@ export type FeatureFlag =
   // V4.2.17: 首页重构相关
   | "home_use_context" // 首页使用新 Context 系统
   | "home_use_new_bookmarks_hook" // 首页使用新书签数据 Hook
+  // Phase 3: 首页分层架构重构 (2026-02-05)
+  | "home_layered_architecture" // 首页使用分层架构（数据层 + 视图层分离）
   // V4.2.2: 微信文章功能
   | "wechat_article" // 微信公众号文章完整内容抓取
   // V4.3.0: 知识工坊 v2
@@ -32,6 +34,9 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // Phase 2.4: 启用 Context 系统（已修复 hydration 问题）
   home_use_context: true,
   home_use_new_bookmarks_hook: false,
+  // Phase 3: 首页分层架构重构 (2026-02-05)
+  // 默认关闭，验证后开启
+  home_layered_architecture: false,
   // V4.2.2: 微信文章功能
   wechat_article: false, // 默认关闭，通过环境变量启用
   // V4.3.0: 知识工坊 v2
@@ -53,6 +58,9 @@ const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
   home_use_context: process.env.NEXT_PUBLIC_FEATURE_HOME_USE_CONTEXT,
   home_use_new_bookmarks_hook:
     process.env.NEXT_PUBLIC_FEATURE_HOME_USE_NEW_BOOKMARKS_HOOK,
+  // Phase 3: 首页分层架构重构 (2026-02-05)
+  home_layered_architecture:
+    process.env.NEXT_PUBLIC_FEATURE_HOME_LAYERED_ARCHITECTURE,
   // V4.2.2: 微信文章功能
   wechat_article: process.env.NEXT_PUBLIC_FEATURE_WECHAT_ARTICLE,
   // V4.3.0: 知识工坊 v2
@@ -156,6 +164,13 @@ export function useHomeContextFeature(): boolean {
  */
 export function useHomeBookmarksHookFeature(): boolean {
   return useFeatureFlag("home_use_new_bookmarks_hook");
+}
+
+/**
+ * 首页是否使用分层架构 (Phase 3: 数据层 + 视图层分离)
+ */
+export function useHomeLayeredArchitectureFeature(): boolean {
+  return useFeatureFlag("home_layered_architecture");
 }
 
 // ============================================================================
