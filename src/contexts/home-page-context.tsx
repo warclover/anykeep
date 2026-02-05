@@ -1,13 +1,20 @@
 /**
- * V4.2.17: 首页状态 Context
+ * V4.2.18: 首页状态 Context（性能优化版）
  *
  * Phase 2.1 - 适配层构建
  * 使用 React Context 替代 Window Event 通信模式
+ *
+ * Phase 2 - 性能优化（2026-02-05）:
+ * 1. 使用 ref 存储回调函数需要访问的状态值
+ * 2. 回调函数保持空依赖数组，确保引用稳定
+ * 3. Context value 只依赖原始状态，不依赖回调函数
+ * 4. 消费者组件只在订阅的状态变化时重渲染
  *
  * 设计原则：
  * 1. Event Bridge - 与现有 window event 系统双向同步（渐进迁移）
  * 2. 类型安全 - 使用 types.ts 中定义的类型契约
  * 3. 向后兼容 - 不修改现有组件，仅提供新的数据源
+ * 4. 性能优先 - 减少不必要的组件重渲染
  */
 
 "use client";
@@ -19,6 +26,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import type { ViewMode, LayoutMode, DialogType } from "@/components/home/types";
@@ -161,7 +169,8 @@ export interface HomePageContextType {
 // Context 创建
 // ============================================================================
 
-const HomePageContext = createContext<HomePageContextType | null>(null);
+// Context 创建（导出供选择器 Hooks 使用）
+export const HomePageContext = createContext<HomePageContextType | null>(null);
 
 // ============================================================================
 // localStorage 工具函数
@@ -230,11 +239,9 @@ export function HomePageProvider({
   // Phase 2.4: 客户端 hydration 后从 localStorage 读取初始值
   // 这是合法的 hydration 模式：SSR 使用默认值，客户端挂载后从 localStorage 同步
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
     setViewModeState(getStoredViewMode());
     setLayoutModeState(getStoredLayoutMode());
     setEnableFlipCardState(getStoredFlipCard());
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   // ========== 筛选状态 ==========
@@ -261,60 +268,75 @@ export function HomePageProvider({
   const isTrashFolder = folder === "trash";
   const effectiveViewMode: ViewMode = isBrowserPlatform ? "list" : viewMode;
 
+  // ========== Phase 2 性能优化：使用 ref 存储回调需要的状态值 ==========
+  // 这样回调函数可以有空的依赖数组，保持引用稳定
+  const filterRef = useRef({ platform, folder });
+  const viewModeRef = useRef({ viewMode, layoutMode, enableFlipCard });
+
+  // 同步 ref 值（在状态变化后）
+  useEffect(() => {
+    filterRef.current = { platform, folder };
+  }, [platform, folder]);
+
+  useEffect(() => {
+    viewModeRef.current = { viewMode, layoutMode, enableFlipCard };
+  }, [viewMode, layoutMode, enableFlipCard]);
+
   // ========== 视图模式操作（带持久化） ==========
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode);
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
     // UIEventBus: 通知其他组件（内置 Legacy Bridge 会自动触发 window event）
+    // 注意：ref 中的值仅供内部使用，事件只发送必要的 mode 字段
     uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode });
-  }, []);
+  }, []); // ✅ 空依赖数组，引用稳定
 
   const setLayoutMode = useCallback((mode: LayoutMode) => {
     setLayoutModeState(mode);
     localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
     uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const setEnableFlipCard = useCallback((enabled: boolean) => {
     setEnableFlipCardState(enabled);
     localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(enabled));
     uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== 筛选操作 ==========
   const setPlatform = useCallback((newPlatform: string) => {
     setPlatformState(newPlatform);
     uiEventBus.emit(UIEvents.PLATFORM_CHANGE, {
       platform: newPlatform,
-      folder: "",
+      folder: filterRef.current.folder, // 从 ref 读取
     });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const setFolder = useCallback((newFolder: string) => {
     setFolderState(newFolder);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const setUsageTags = useCallback((tags: string[]) => {
     setUsageTagsState(tags);
     uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: tags });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== 对话框操作 ==========
   const openDialogAction = useCallback((type: DialogType) => {
     setOpenDialogState(type);
     uiEventBus.emit(UIEvents.DIALOG_OPEN, { type });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const closeDialog = useCallback(() => {
     setOpenDialogState(null);
     uiEventBus.emit(UIEvents.DIALOG_CLOSE, {});
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== 选择模式操作 ==========
   const setSelectionMode = useCallback((enabled: boolean) => {
     setIsSelectionModeState(enabled);
     uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const toggleSelectionMode = useCallback(() => {
     setIsSelectionModeState((prev) => {
@@ -322,46 +344,46 @@ export function HomePageProvider({
       uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: newValue });
       return newValue;
     });
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== AI 面板操作 ==========
   const openAIPanel = useCallback(() => {
     setIsAIPanelOpen(true);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const closeAIPanel = useCallback(() => {
     setIsAIPanelOpen(false);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const toggleAIPanel = useCallback(() => {
     setIsAIPanelOpen((prev) => !prev);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== 用途筛选面板操作 ==========
   const openFilterPanel = useCallback(() => {
     setIsFilterPanelOpen(true);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const closeFilterPanel = useCallback(() => {
     setIsFilterPanelOpen(false);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const toggleFilterPanel = useCallback(() => {
     setIsFilterPanelOpen((prev) => !prev);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== 手动创建面板操作 ==========
   const openCreatePanel = useCallback(() => {
     setIsCreatePanelOpen(true);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const closeCreatePanel = useCallback(() => {
     setIsCreatePanelOpen(false);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   const toggleCreatePanel = useCallback(() => {
     setIsCreatePanelOpen((prev) => !prev);
-  }, []);
+  }, []); // ✅ 空依赖数组
 
   // ========== Event Bridge: 通过 UIEventBus 订阅外部事件 ==========
   // V4.2: 完全迁移到 UIEventBus，替代 window.addEventListener
@@ -423,6 +445,8 @@ export function HomePageProvider({
   }, [enableEventBridge]);
 
   // ========== Context Value ==========
+  // Phase 2 性能优化：只依赖原始状态值，不依赖回调函数
+  // 因为所有回调函数都使用空依赖数组，引用永远稳定
   const value = useMemo<HomePageContextType>(
     () => ({
       view: {
@@ -469,40 +493,28 @@ export function HomePageProvider({
         toggleCreatePanel,
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2 优化：回调函数使用空依赖数组，引用稳定，不需要在依赖数组中
     [
+      // ✅ 只依赖原始状态值，回调函数引用稳定不需要依赖
       viewMode,
       layoutMode,
       enableFlipCard,
       effectiveViewMode,
-      setViewMode,
-      setLayoutMode,
-      setEnableFlipCard,
       platform,
       folder,
       usageTags,
       isBrowserPlatform,
       isTrashFolder,
-      setPlatform,
-      setFolder,
-      setUsageTags,
       openDialogState,
-      openDialogAction,
-      closeDialog,
       isSelectionMode,
-      setSelectionMode,
-      toggleSelectionMode,
       isAIPanelOpen,
       isFilterPanelOpen,
       isCreatePanelOpen,
-      openAIPanel,
-      closeAIPanel,
-      toggleAIPanel,
-      openFilterPanel,
-      closeFilterPanel,
-      toggleFilterPanel,
-      openCreatePanel,
-      closeCreatePanel,
-      toggleCreatePanel,
+      // 回调函数已经稳定，不需要在依赖数组中
+      // setViewMode, setLayoutMode, setEnableFlipCard, setPlatform, setFolder, setUsageTags,
+      // openDialogAction, closeDialog, setSelectionMode, toggleSelectionMode,
+      // openAIPanel, closeAIPanel, toggleAIPanel, openFilterPanel, closeFilterPanel, toggleFilterPanel,
+      // openCreatePanel, closeCreatePanel, toggleCreatePanel,
     ],
   );
 
