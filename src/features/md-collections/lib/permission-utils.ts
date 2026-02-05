@@ -51,13 +51,15 @@ export async function verifyCollectionOwnership(
   try {
     const supabase = await createClient();
 
+    /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase 类型推断限制，md_collections 表未在类型定义中 */
     const { data: collection, error } = (await (
       supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    )
       .select("id, user_id")
       .eq("id", collectionId)
       .is("deleted_at", null)
       .single()) as { data: CollectionOwnerRow | null; error: Error | null };
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

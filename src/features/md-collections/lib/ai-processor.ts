@@ -71,14 +71,16 @@ export async function processMdCollectionAI(
   try {
     // 1. 获取 MD 收藏内容
     const supabase = await createServiceClient();
+    /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase 类型推断限制，md_collections 表未在类型定义中 */
     const { data: collection, error: fetchError } = (await (
       supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    )
       .select("id, title, raw_content, processing_status")
       .eq("id", collectionId)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .single()) as { data: MdCollectionRow | null; error: Error | null };
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (fetchError || !collection) {
       logger.error(
@@ -185,11 +187,13 @@ export async function processMdCollectionAI(
       updateData.embedding_version = result.embeddingVersion;
     }
 
+    /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase 类型推断限制 */
     const { error: updateError } = await (
       supabase.from("md_collections") as any
-    ) // eslint-disable-line @typescript-eslint/no-explicit-any
+    )
       .update(updateData)
       .eq("id", collectionId);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (updateError) {
       logger.error(
