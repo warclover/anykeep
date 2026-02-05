@@ -105,6 +105,7 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import type { Bookmark } from "@/types/supabase";
 import { DEFAULT_PAGE_SIZE, getPageSizeByView } from "./constants";
+import type { UserSettings } from "@/types/user-settings";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
 import { useHomeMutations } from "./hooks/use-home-mutations";
 import { useHomeBatch } from "./hooks/use-home-batch";
@@ -129,6 +130,8 @@ interface HomePageClientProps {
   urlPlatform?: string;
   // 智能列表模式：传入 smartListId 时显示智能列表视图
   smartListId?: number | null;
+  // 用户设置（服务端传递）
+  userSettings?: UserSettings;
 }
 
 export function HomePageClient({
@@ -137,6 +140,7 @@ export function HomePageClient({
   urlFolder: propFolder,
   urlPlatform: propPlatform,
   smartListId,
+  userSettings,
 }: HomePageClientProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -849,7 +853,8 @@ export function HomePageClient({
 
         {/* AI Secretary Evolution Phase 0: 主动简报卡片（懒加载 + 延迟渲染） */}
         {/* FCP 性能优化：仅在首屏渲染完成后才加载 AI 简报组件 */}
-        {deferredAIReady && (
+        {/* 免打扰模式：仅在用户设置开启时显示 */}
+        {deferredAIReady && userSettings?.notifications?.showWelcomeMessage && (
           <SilentErrorBoundary>
             <Suspense fallback={null}>
               <ProactiveBriefingCard className="mb-4" />

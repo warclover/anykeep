@@ -20,6 +20,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
 import HomeLoading from "./loading";
 import type { Bookmark, Platform } from "@/types/supabase";
+import { mergeWithDefaults } from "@/types/user-settings";
+import type { UserSettings } from "@/types/user-settings";
 
 // 动态渲染（用户特定数据）
 export const dynamic = "force-dynamic";
@@ -31,6 +33,32 @@ const UUID_REGEX =
 type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
 };
+
+/**
+ * 获取用户设置（带请求级缓存）
+ */
+const getUserSettings = cache(async (): Promise<UserSettings> => {
+  try {
+    const headersList = await headers();
+    const userId = headersList.get("x-user-id");
+    const isVerified = headersList.get("x-user-verified") === "true";
+
+    if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
+      return mergeWithDefaults(null);
+    }
+
+    const supabase = await createClient();
+    const { data } = (await supabase
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .single()) as unknown as { data: { settings: unknown } | null };
+
+    return mergeWithDefaults(data?.settings as Partial<UserSettings> | null);
+  } catch {
+    return mergeWithDefaults(null);
+  }
+});
 
 /**
  * 获取初始书签数据（带请求级缓存）
@@ -159,8 +187,15 @@ async function HomePageWithData({
     sort,
     folder,
   );
+  const userSettings = await getUserSettings();
 
-  return <HomePageClient initialBookmarks={bookmarks} error={error} />;
+  return (
+    <HomePageClient
+      initialBookmarks={bookmarks}
+      error={error}
+      userSettings={userSettings}
+    />
+  );
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
@@ -172,9 +207,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   // 智能列表视图模式：不预加载书签，由客户端组件处理
   if (smartListId && !isNaN(smartListId)) {
+    const userSettings = await getUserSettings();
     return (
       <ErrorBoundary>
-        <HomePageClient smartListId={smartListId} />
+        <HomePageClient smartListId={smartListId} userSettings={userSettings} />
       </ErrorBoundary>
     );
   }

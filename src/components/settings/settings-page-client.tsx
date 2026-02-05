@@ -561,6 +561,33 @@ export function SettingsPageClient({
                     }
                   />
                 </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 pr-4">
+                    <Label
+                      htmlFor="show-welcome-message"
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {t.settings.notifications.showWelcomeMessage ||
+                        "欢迎消息"}
+                    </Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t.settings.notifications.showWelcomeMessageDesc ||
+                        "首页顶部显示欢迎回来和离线变化统计"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-welcome-message"
+                    checked={settings.notifications.showWelcomeMessage ?? false}
+                    onCheckedChange={(value) =>
+                      updateSetting(
+                        "notifications",
+                        "showWelcomeMessage",
+                        value,
+                      )
+                    }
+                  />
+                </div>
               </div>
             </SettingsItemCard>
 

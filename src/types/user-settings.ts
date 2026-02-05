@@ -72,6 +72,8 @@ export interface UserSettings {
     email: boolean;
     inApp: boolean;
     weeklyDigest: boolean;
+    /** 是否显示首页欢迎消息（ProactiveBriefingCard）*/
+    showWelcomeMessage: boolean;
   };
   /** 自动快照设置 (P2-010) */
   autoSnapshot?: AutoSnapshotSettings;
@@ -121,6 +123,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     email: true,
     inApp: true,
     weeklyDigest: false,
+    showWelcomeMessage: false,
   },
   autoSnapshot: DEFAULT_AUTO_SNAPSHOT_SETTINGS,
   appearance: DEFAULT_APPEARANCE_SETTINGS,
@@ -150,7 +153,10 @@ export function mergeWithDefaults(
       ...(stored.privacy || {}),
     },
     notifications: {
-      ...DEFAULT_USER_SETTINGS.notifications,
+      email: true,
+      inApp: true,
+      weeklyDigest: false,
+      showWelcomeMessage: false,
       ...(stored.notifications || {}),
     },
     autoSnapshot: {
