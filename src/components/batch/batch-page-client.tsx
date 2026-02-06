@@ -44,14 +44,10 @@ import { useUiText } from "@/lib/i18n";
  */
 const PLATFORM_OPTIONS = [
   { value: "all", i18nKey: "all" },
-  { value: "WECHAT", i18nKey: "wechat" },
+  { value: "WECHAT_OFFICIAL_ACCOUNT", i18nKey: "wechat" },
   { value: "BILIBILI", i18nKey: "bilibili" },
   { value: "XIAOHONGSHU", i18nKey: "xiaohongshu" },
-  { value: "ZHIHU", i18nKey: "zhihu" },
-  { value: "WEIBO", i18nKey: "weibo" },
-  { value: "DOUYIN", i18nKey: "douyin" },
   { value: "browser", i18nKey: "browser" },
-  { value: "OTHER", i18nKey: "other" },
 ] as const;
 
 /**
