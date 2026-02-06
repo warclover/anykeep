@@ -171,6 +171,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, groupId, keepBookmarkId, deleteBookmarkIds } = body;
 
+    logger.info(
+      { action, groupId, keepBookmarkId, deleteBookmarkIds, userId: user.id },
+      "Duplicates API: Processing request",
+    );
+
     if (!action) {
       return NextResponse.json(
         { success: false, error: "参数不完整" },

@@ -62,15 +62,25 @@ function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
   const matchLabel = TAB_TEXT.matchTypes[group.matchType] || group.matchType;
 
   const handleKeepOne = async () => {
+    if (!selectedKeepId) {
+      toast.error("请先选择要保留的项目");
+      return;
+    }
+
+    const selectedIdNum = parseInt(selectedKeepId, 10);
+    const deleteIds = group.items
+      .filter(
+        (item) => item.bookmarkId !== null && item.bookmarkId !== selectedIdNum,
+      )
+      .map((item) => item.bookmarkId as number);
+
+    if (deleteIds.length === 0) {
+      toast.error("没有需要删除的项目");
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const selectedIdNum = selectedKeepId
-        ? parseInt(selectedKeepId, 10)
-        : null;
-      const deleteIds = group.items
-        .filter((item) => item.bookmarkId !== selectedIdNum)
-        .map((item) => item.bookmarkId);
-
       await onAction("keep_one", {
         keepBookmarkId: selectedIdNum,
         deleteBookmarkIds: deleteIds,
@@ -203,8 +213,8 @@ export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
       action,
       params as {
         groupId?: string;
-        keepBookmarkId?: string;
-        deleteBookmarkIds?: string[];
+        keepBookmarkId?: number | null;
+        deleteBookmarkIds?: number[];
       },
     );
     refresh();

@@ -267,8 +267,8 @@ export function useHealthFix() {
       action: string,
       params: {
         groupId?: string;
-        keepBookmarkId?: string;
-        deleteBookmarkIds?: string[];
+        keepBookmarkId?: number | null;
+        deleteBookmarkIds?: number[];
       },
     ) => executeFix("/api/health/duplicates", action, params),
 
