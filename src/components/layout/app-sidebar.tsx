@@ -202,7 +202,6 @@ const contentCenterItems: NavItem[] = [
     icon: FolderOpen,
     pageId: "folders",
   },
-  { name: "nav.myTags", href: "/tags", icon: Tags },
   { name: "nav.myNotes", href: "/md-collections", icon: FileText, isPro: true },
   { name: "nav.myAudio", href: "/audio-library", icon: Volume2 },
 ];
@@ -243,6 +242,7 @@ const insightCenterItems: NavItem[] = [
     icon: BarChart3,
     pageId: "analytics",
   },
+  { name: "nav.myTags", href: "/tags", icon: Tags },
   { name: "nav.activityLog", href: "/activity", icon: Activity },
   {
     name: "nav.notifications",
