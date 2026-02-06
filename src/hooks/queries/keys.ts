@@ -224,6 +224,7 @@ export const operationHistoryKeys = {
 export const healthKeys = {
   all: ["health"] as const,
   overview: () => [...healthKeys.all, "overview"] as const,
+  scanStatus: () => [...healthKeys.all, "scanStatus"] as const,
   brokenLinks: (page: number, pageSize: number) =>
     [...healthKeys.all, "brokenLinks", page, pageSize] as const,
   duplicates: (page: number, pageSize: number) =>

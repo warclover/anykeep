@@ -8,4 +8,5 @@ export {
   useDuplicates,
   useStaleContent,
   useHealthFix,
+  useHealthScan,
 } from "./use-health-check";

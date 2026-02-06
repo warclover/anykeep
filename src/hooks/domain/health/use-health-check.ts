@@ -158,6 +158,74 @@ export function useStaleContent(
 }
 
 // ============================================
+// 健康扫描 Hook
+// ============================================
+
+interface ScanStatus {
+  lastRun: {
+    id: string;
+    status: "running" | "completed" | "failed";
+    progress: number;
+    totalChecked: number;
+    brokenLinksCount: number;
+    duplicatesCount: number;
+    staleCount: number;
+    startedAt: string;
+    completedAt: string | null;
+  } | null;
+  totalIssues: number;
+}
+
+interface ScanResult {
+  runId: string;
+  duplicatesFound: number;
+  brokenLinksChecked: number;
+  scanDuration: number;
+  timestamp: string;
+}
+
+export function useHealthScan() {
+  const queryClient = useQueryClient();
+
+  const { data, error, isLoading, refetch } = useQuery<ScanStatus>({
+    queryKey: healthKeys.scanStatus(),
+    queryFn: () => fetcher<ScanStatus>("/api/health/scan"),
+    staleTime: STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
+
+  const startScan = useCallback(
+    async (checkTypes: string[] = ["duplicate", "broken_link"]) => {
+      const res = await fetch("/api/health/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ checkTypes }),
+      });
+
+      const result = await res.json();
+      if (!result.success) {
+        throw new Error(result.error || "扫描失败");
+      }
+
+      // 刷新所有健康检查数据
+      await queryClient.invalidateQueries({ queryKey: healthKeys.all });
+
+      return result.data as ScanResult;
+    },
+    [queryClient],
+  );
+
+  return {
+    scanStatus: data,
+    isLoading,
+    error: error?.message,
+    refresh: refetch,
+    startScan,
+  };
+}
+
+// ============================================
 // 修复操作 Hook
 // ============================================
 

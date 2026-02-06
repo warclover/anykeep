@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
-import { useHealthOverview } from "@/hooks/domain/health";
+import { useHealthOverview, useHealthScan } from "@/hooks/domain/health";
 import { BrokenLinksTab } from "./broken-links/broken-links-tab";
 import { DuplicatesTab } from "./duplicates/duplicates-tab";
 import { StaleContentTab } from "./stale-content/stale-content-tab";
@@ -38,6 +38,8 @@ const PAGE_TEXT = {
   title: "健康检测",
   description: "检测失效链接、重复内容和过期内容，全面诊断收藏夹健康状况",
   refreshButton: "重新检测",
+  scanButton: "开始扫描",
+  scanningButton: "扫描中...",
   quickFixButton: "一键修复",
   tabs: {
     brokenLinks: "失效链接",
@@ -58,7 +60,144 @@ const PAGE_TEXT = {
     fair: "一般",
     poor: "需改善",
   },
+  scan: {
+    running: "扫描进行中",
+    completed: "扫描完成",
+    failed: "扫描失败",
+    progress: "进度",
+    duplicatesFound: "发现重复",
+    duration: "耗时",
+  },
 };
+
+// ============================================
+// 扫描状态卡片组件
+// ============================================
+
+interface ScanStatusCardProps {
+  scanStatus:
+    | {
+        lastRun: {
+          id: string;
+          status: "running" | "completed" | "failed";
+          progress: number;
+          totalChecked: number;
+          brokenLinksCount: number;
+          duplicatesCount: number;
+          staleCount: number;
+          startedAt: string;
+          completedAt: string | null;
+        } | null;
+        totalIssues: number;
+      }
+    | undefined;
+  isScanning: boolean;
+  onStartScan: () => void;
+}
+
+function ScanStatusCard({
+  scanStatus,
+  isScanning,
+  onStartScan,
+}: ScanStatusCardProps) {
+  const lastRun = scanStatus?.lastRun;
+  const isRunning = lastRun?.status === "running" || isScanning;
+
+  return (
+    <Card className="col-span-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <RefreshCw
+              className={`h-4 w-4 ${isRunning ? "animate-spin" : ""}`}
+            />
+            {PAGE_TEXT.scan.running}
+          </span>
+          <Button size="sm" onClick={onStartScan} disabled={isRunning}>
+            {isRunning ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {PAGE_TEXT.scanningButton}
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {PAGE_TEXT.scanButton}
+              </>
+            )}
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {lastRun ? (
+          <div className="space-y-3">
+            {/* 进度条 */}
+            {isRunning && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {PAGE_TEXT.scan.progress}
+                  </span>
+                  <span>{lastRun.progress}%</span>
+                </div>
+                <Progress value={lastRun.progress} className="h-2" />
+              </div>
+            )}
+
+            {/* 扫描结果 */}
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">状态：</span>
+                <span
+                  className={`ml-1 ${
+                    lastRun.status === "completed"
+                      ? "text-green-500"
+                      : lastRun.status === "failed"
+                        ? "text-red-500"
+                        : "text-blue-500"
+                  }`}
+                >
+                  {lastRun.status === "completed"
+                    ? PAGE_TEXT.scan.completed
+                    : lastRun.status === "failed"
+                      ? PAGE_TEXT.scan.failed
+                      : PAGE_TEXT.scan.running}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">
+                  {PAGE_TEXT.scan.duplicatesFound}：
+                </span>
+                <span className="ml-1 font-medium">
+                  {lastRun.duplicatesCount}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">已检查：</span>
+                <span className="ml-1 font-medium">{lastRun.totalChecked}</span>
+              </div>
+            </div>
+
+            {/* 时间信息 */}
+            <div className="text-xs text-muted-foreground">
+              开始时间：{new Date(lastRun.startedAt).toLocaleString("zh-CN")}
+              {lastRun.completedAt && (
+                <span className="ml-4">
+                  完成时间：
+                  {new Date(lastRun.completedAt).toLocaleString("zh-CN")}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {PAGE_TEXT.overview.neverChecked}，点击上方按钮开始首次扫描
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 // ============================================
 // 健康评分组件
@@ -172,7 +311,14 @@ export function HealthPageClient() {
   const searchParams = useSearchParams();
 
   const { overview, isLoading, error, refresh } = useHealthOverview();
+  const {
+    scanStatus,
+    isLoading: isScanLoading,
+    startScan,
+    refresh: refreshScan,
+  } = useHealthScan();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [showQuickFix, setShowQuickFix] = useState(false);
 
   const activeTab = searchParams?.get("tab") || "broken-links";
@@ -201,6 +347,19 @@ export function HealthPageClient() {
       toast.error("检测失败，请重试");
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleStartScan = async () => {
+    setIsScanning(true);
+    try {
+      const result = await startScan(["duplicate", "broken_link"]);
+      await Promise.all([refresh(), refreshScan()]);
+      toast.success(`扫描完成，发现 ${result.duplicatesFound} 个重复项`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "扫描失败");
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -305,6 +464,13 @@ export function HealthPageClient() {
           onClick={() => handleTabChange("stale-content")}
         />
       </div>
+
+      {/* 扫描状态卡片 */}
+      <ScanStatusCard
+        scanStatus={scanStatus}
+        isScanning={isScanning || isScanLoading}
+        onStartScan={handleStartScan}
+      />
 
       {/* 上次检测时间 */}
       {data.lastCheckedAt && (
