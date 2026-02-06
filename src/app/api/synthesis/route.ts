@@ -4,8 +4,12 @@
  * GET /api/synthesis - 获取综述列表
  * POST /api/synthesis - 创建综述（异步）
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-29
+ *
+ * V4.2.28: 添加登录后 session 同步延迟的回退机制
+ * - 优先使用 Middleware 注入的 x-user-id header
+ * - 回退到 getUser()，再回退到 getSession()
  */
 
 import type { NextRequest } from "next/server";
@@ -27,6 +31,47 @@ import {
   MIN_BOOKMARKS_COUNT,
 } from "@/lib/synthesis/constants";
 
+/** UUID 正则表达式 */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * 获取已验证的用户 ID（V4.2.28 回退机制）
+ *
+ * 认证优先级：
+ * 1. Middleware 注入的 x-user-id header（最快）
+ * 2. supabase.auth.getUser()（标准方式）
+ * 3. supabase.auth.getSession()（回退，解决登录后同步延迟）
+ */
+async function getAuthenticatedUserId(
+  request: NextRequest,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string | null> {
+  // 1. 优先使用 Middleware 预验证的 header
+  const headerUserId = request.headers.get("x-user-id");
+  const isVerified = request.headers.get("x-user-verified") === "true";
+
+  if (isVerified && headerUserId && UUID_REGEX.test(headerUserId)) {
+    return headerUserId;
+  }
+
+  // 2. 回退到 getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user?.id) {
+    return user.id;
+  }
+
+  // 3. 最终回退到 getSession()（解决登录后 session 同步延迟）
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return session?.user?.id || null;
+}
+
 /**
  * GET /api/synthesis - 获取综述列表
  */
@@ -34,13 +79,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // V4.2.28: 使用回退机制获取用户 ID
+    const userId = await getAuthenticatedUserId(request, supabase);
 
-    if (authError || !user) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
         { status: 401 },
@@ -74,7 +116,7 @@ export async function GET(request: NextRequest) {
     let dbQuery = supabase
       .from("synthesis_reports")
       .select("*", { count: "exact" })
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     // 筛选条件
     if (query.sourceType && query.sourceType !== "all") {
@@ -152,13 +194,10 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // V4.2.28: 使用回退机制获取用户 ID
+    const userId = await getAuthenticatedUserId(request, supabase);
 
-    if (authError || !user) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
         { status: 401 },
@@ -260,7 +299,7 @@ export async function POST(request: NextRequest) {
       (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from("synthesis_reports") as any)
         .insert({
-          user_id: user.id,
+          user_id: userId,
           title: reportTitle,
           source_type: sourceType,
           source_id: sourceId || null,
@@ -289,7 +328,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         reportId: report.id,
-        userId: user.id,
+        userId,
         sourceType,
         depthMode,
         outputStyle: outputStyle || "narrative",
