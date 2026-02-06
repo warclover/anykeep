@@ -14,15 +14,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
-import { supabaseEnv, appEnv } from "@/lib/env";
+import { supabaseEnv } from "@/lib/env";
 import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 使用 Service Role Key 以绕过 RLS
 const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
-
-// Cron secret for authentication
-const CRON_SECRET = appEnv.cronSecret;
 
 /**
  * GET /api/internal/cron/update-folder-tag-profiles
@@ -30,10 +31,10 @@ const CRON_SECRET = appEnv.cronSecret;
  */
 export async function GET(request: Request) {
   try {
-    // 验证 Cron 请求
-    const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // 🔒 安全修复：使用统一的内部 API 认证
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // 检查 Feature Flag

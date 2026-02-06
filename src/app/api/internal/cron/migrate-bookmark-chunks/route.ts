@@ -13,6 +13,10 @@ import type { Database } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import { createChunkMigrationService } from "@/lib/chunking/chunk-migration.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 使用服务角色密钥创建客户端
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -23,12 +27,10 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  */
 export async function GET(request: Request) {
   try {
-    // 验证 CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // 检查 Feature Flag
@@ -84,12 +86,10 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    // 验证 CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // 检查 Feature Flag

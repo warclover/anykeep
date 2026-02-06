@@ -16,12 +16,10 @@ import type { NextRequest } from "next/server";
 import { profileUpdater } from "@/lib/classification/learning/profile-updater";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-
-/**
- * Vercel Cron 认证密钥
- * 在 vercel.json 中配置 cron 任务时会自动发送此 header
- */
-const CRON_SECRET = process.env.CRON_SECRET;
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 /**
  * 活跃用户天数阈值（最近 N 天有活动的用户）
@@ -41,13 +39,11 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 验证 Cron 认证（生产环境）
-    if (process.env.NODE_ENV === "production" && CRON_SECRET) {
-      const authHeader = request.headers.get("authorization");
-      if (authHeader !== `Bearer ${CRON_SECRET}`) {
-        logger.warn("Cron profile-updates: Invalid authorization");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      logger.warn("Cron profile-updates: Invalid authorization");
+      return internalUnauthorizedResponse(auth.error);
     }
 
     const supabase = await createClient();
@@ -78,7 +74,9 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type UserIdRow = { user_id: string };
     const uniqueUserIds = [
-      ...new Set((activeUsers as UserIdRow[] | null)?.map((b) => b.user_id) || []),
+      ...new Set(
+        (activeUsers as UserIdRow[] | null)?.map((b) => b.user_id) || [],
+      ),
     ];
 
     // 限制每次执行的用户数

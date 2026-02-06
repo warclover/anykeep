@@ -9,10 +9,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { reportService } from "@/lib/classification/services/report.service";
-import { supabaseEnv, appEnv } from "@/lib/env";
-
-// Cron secret for authentication
-const CRON_SECRET = appEnv.cronSecret;
+import { supabaseEnv } from "@/lib/env";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Use Service Role Key to bypass RLS
 const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
@@ -23,10 +24,10 @@ const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
  */
 export async function GET(request: Request) {
   try {
-    // Verify Cron request
-    const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // 🔒 安全修复：使用统一的内部 API 认证
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     logger.info("Starting monthly reports generation cron job");

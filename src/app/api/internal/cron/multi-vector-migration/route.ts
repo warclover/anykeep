@@ -12,17 +12,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { createMultiVectorEmbeddingService } from "@/lib/embedding";
-import { supabaseEnv, appEnv } from "@/lib/env";
+import { supabaseEnv } from "@/lib/env";
 import type { Database } from "@/types/supabase";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 使用 Service Role Key 以绕过 RLS
 const supabaseAdmin = createClient<Database>(
   supabaseEnv.url,
   supabaseEnv.serviceRoleKey,
 );
-
-// Cron secret for authentication
-const CRON_SECRET = appEnv.cronSecret;
 
 // 每次迁移的最大书签数
 const MAX_BOOKMARKS_PER_RUN = 200;
@@ -35,10 +36,10 @@ const BATCH_SIZE = 10;
  */
 export async function GET(request: Request) {
   try {
-    // 验证 Cron 请求
-    const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     logger.info("Starting multi-vector migration cron job");

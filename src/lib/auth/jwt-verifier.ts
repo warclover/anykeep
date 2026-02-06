@@ -63,8 +63,11 @@ let cachedSecret: Uint8Array | null = null;
 let cachedSecretVersion: string | null = null;
 let cachedAt: number = 0;
 
-/** 密钥缓存 TTL: 1小时 */
-const JWT_SECRET_CACHE_TTL = 3600000;
+/** 密钥缓存 TTL: 5分钟（从1小时缩短，便于密钥轮换） */
+const JWT_SECRET_CACHE_TTL = 300000;
+
+/** 强制刷新标志（用于密钥轮换） */
+let forceRefreshFlag: boolean = false;
 
 /**
  * 获取 JWT 密钥
@@ -74,6 +77,14 @@ function getJwtSecret(): Uint8Array | null {
   const secret = process.env.SUPABASE_JWT_SECRET;
   const version = process.env.SUPABASE_JWT_SECRET_VERSION || "1";
   const now = Date.now();
+
+  // 检查强制刷新标志
+  if (forceRefreshFlag) {
+    forceRefreshFlag = false;
+    cachedSecret = null;
+    cachedSecretVersion = null;
+    cachedAt = 0;
+  }
 
   // 检查缓存是否有效（版本匹配 + 未过期）
   if (
@@ -103,6 +114,44 @@ export function clearJwtSecretCache(): void {
   cachedSecret = null;
   cachedSecretVersion = null;
   cachedAt = 0;
+}
+
+/**
+ * 强制刷新 JWT 密钥缓存
+ *
+ * @security 用于密钥泄露后的紧急轮换
+ * - 设置强制刷新标志
+ * - 下次验证时将重新加载密钥
+ *
+ * @example
+ * ```typescript
+ * // 管理端点调用
+ * forceRefreshJwtSecret();
+ * return { message: "JWT secret cache will be refreshed on next request" };
+ * ```
+ */
+export function forceRefreshJwtSecret(): void {
+  forceRefreshFlag = true;
+  cachedSecret = null;
+  cachedSecretVersion = null;
+  cachedAt = 0;
+}
+
+/**
+ * 获取 JWT 缓存状态（用于监控）
+ */
+export function getJwtCacheStatus(): {
+  cached: boolean;
+  version: string | null;
+  ageMs: number;
+  ttlMs: number;
+} {
+  return {
+    cached: !!cachedSecret,
+    version: cachedSecretVersion,
+    ageMs: cachedAt > 0 ? Date.now() - cachedAt : 0,
+    ttlMs: JWT_SECRET_CACHE_TTL,
+  };
 }
 
 /**

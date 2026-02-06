@@ -21,6 +21,10 @@ import { logger } from "@/lib/logger";
 import { feedbackLoopService } from "@/lib/classification/learning/feedback-loop";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import type { NextRequest } from "next/server";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Vercel Cron 配置
 export const runtime = "nodejs";
@@ -33,16 +37,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 验证 Cron Secret（Vercel Cron 会自动添加）
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    // 开发环境允许跳过验证
-    if (process.env.NODE_ENV === "production" && cronSecret) {
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        logger.warn("Unauthorized cron request");
-        return new Response("Unauthorized", { status: 401 });
-      }
+    // 🔒 安全修复：使用统一的内部 API 认证
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     const supabase = await createClient();
@@ -53,11 +51,11 @@ export async function POST(request: NextRequest) {
 
     // 类型断言: 手动维护类型文件时需要此断言
     type UserIdType = { user_id: string };
-    const { data: activeUsers, error: usersError } = await supabase
+    const { data: activeUsers, error: usersError } = (await supabase
       .from("bookmarks")
       .select("user_id")
       .gte("created_at", sevenDaysAgo.toISOString())
-      .limit(100) as unknown as {
+      .limit(100)) as unknown as {
       data: UserIdType[] | null;
       error: { message: string } | null;
     };

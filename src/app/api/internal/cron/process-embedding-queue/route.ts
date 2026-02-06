@@ -15,9 +15,12 @@ import { createClient } from "@supabase/supabase-js";
 import { getIncrementalIndexService } from "@/lib/embedding/incremental-index.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import { logger } from "@/lib/logger";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 配置
-const CRON_SECRET = process.env.CRON_SECRET;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
@@ -33,11 +36,10 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  */
 export async function GET(request: Request) {
   try {
-    // 1. 验证授权
-    const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      logger.warn("Embedding Queue Cron: Unauthorized request");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // 🔒 安全修复：使用统一的内部 API 认证
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // 2. 检查功能开关

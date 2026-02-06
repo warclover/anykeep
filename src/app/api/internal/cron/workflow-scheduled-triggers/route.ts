@@ -13,9 +13,10 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { getTriggerScheduler } from "@/lib/workflow/triggers/trigger-scheduler";
 import { isWorkflowEnabled } from "@/lib/ai-agent/config/feature-flags";
-
-// Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 /**
  * GET /api/internal/cron/workflow-scheduled-triggers
@@ -25,19 +26,10 @@ export async function GET(request: Request) {
   const startTime = Date.now();
 
   try {
-    // Verify environment variables
-    if (!CRON_SECRET) {
-      logger.error("CRON_SECRET environment variable is not set");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
-    }
-
-    // Verify Cron request
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // Check if workflow system is enabled

@@ -14,9 +14,10 @@ import { EmbeddingConsumer } from "@/jobs/consumers/embedding-consumer";
 import { ClassificationConsumer } from "@/jobs/consumers/classification-consumer";
 import type { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
-
-// Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Max jobs per consumer per run
 const MAX_JOBS_PER_CONSUMER = 10;
@@ -27,19 +28,10 @@ const MAX_JOBS_PER_CONSUMER = 10;
  */
 export async function GET(request: Request) {
   try {
-    // Verify environment variables
-    if (!CRON_SECRET) {
-      logger.error("CRON_SECRET environment variable is not set");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
-    }
-
-    // Verify Cron request
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // Initialize Supabase admin

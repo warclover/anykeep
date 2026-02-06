@@ -19,6 +19,10 @@ import { createClient } from "@supabase/supabase-js";
 import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { NextRequest } from "next/server";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Vercel Cron 配置
 export const runtime = "nodejs";
@@ -61,15 +65,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // 验证 Cron Secret
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (process.env.NODE_ENV === "production" && cronSecret) {
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        logger.warn("[Snapshot Cleanup] Unauthorized cron request");
-        return new Response("Unauthorized", { status: 401 });
-      }
+    // 🔒 安全修复：使用统一的内部 API 认证
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     const admin = getSupabaseAdmin();

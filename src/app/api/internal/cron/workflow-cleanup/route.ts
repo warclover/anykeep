@@ -12,21 +12,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-
-/**
- * 验证 cron 调用的 secret
- */
-function verifyCronSecret(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  // 如果没有配置 CRON_SECRET，允许本地开发调用
-  if (!cronSecret) {
-    return process.env.NODE_ENV === "development";
-  }
-
-  return authHeader === `Bearer ${cronSecret}`;
-}
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 interface CleanupResult {
   execution_history: {
@@ -41,10 +30,11 @@ interface CleanupResult {
 
 export async function GET(request: Request) {
   try {
-    // 验证调用权限
-    if (!verifyCronSecret(request)) {
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
       logger.warn("Workflow cleanup: Unauthorized cron call attempted");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return internalUnauthorizedResponse(auth.error);
     }
 
     const supabase = await createClient();

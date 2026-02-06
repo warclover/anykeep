@@ -16,9 +16,10 @@ import {
 } from "@/lib/supabase/admin-client";
 import type { Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-// Cron secret for authentication
-const CRON_SECRET = process.env.CRON_SECRET;
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Worker ID for this cron instance
 const WORKER_ID = `cron-worker-${Date.now()}`;
@@ -32,19 +33,10 @@ const MAX_JOBS_PER_RUN = 20;
  */
 export async function GET(request: Request) {
   try {
-    // Verify environment variables
-    if (!CRON_SECRET) {
-      logger.error("CRON_SECRET environment variable is not set");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
-    }
-
-    // Verify Cron request
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // Initialize Supabase admin

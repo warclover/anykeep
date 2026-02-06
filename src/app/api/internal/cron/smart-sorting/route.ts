@@ -12,6 +12,10 @@ import {
   initSupabaseAdmin,
   getSupabaseAdmin,
 } from "@/lib/supabase/admin-client";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 配置常量
 const MIN_PENDING_AGE_HOURS = 1; // 最少等待 1 小时
@@ -26,20 +30,10 @@ const MIN_SIMILARITY = 0.65; // 最小相似度阈值
  */
 export async function GET(request: Request) {
   try {
-    // 验证环境变量配置
-    const CRON_SECRET = process.env.CRON_SECRET;
-    if (!CRON_SECRET) {
-      logger.error("CRON_SECRET environment variable is not set");
-      return NextResponse.json(
-        { error: "Server configuration error: CRON_SECRET not set" },
-        { status: 500 },
-      );
-    }
-
-    // 验证 Cron 请求
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     // 初始化 Supabase Admin 客户端

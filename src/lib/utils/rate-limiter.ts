@@ -167,6 +167,10 @@ class DistributedRateLimiterStore {
 
   /**
    * 检查并记录请求（使用数据库或内存回退）
+   *
+   * @security 安全修复 v1.1.0:
+   * - 数据库不可用时使用更严格的内存限制（原限制的 50%）
+   * - 高风险端点（auth/dangerous）在数据库不可用时直接拒绝
    */
   async check(
     key: string,
@@ -178,19 +182,38 @@ class DistributedRateLimiterStore {
     try {
       return await this.checkWithDatabase(key, config, identifier, configKey);
     } catch (error) {
-      // 数据库不可用时回退到内存（记录警告）
+      // 数据库不可用时的处理
       if (!DistributedRateLimiterStore.warnedAboutFallback) {
         logger.warn(
           {
             error: error instanceof Error ? error.message : String(error),
             configKey,
           },
-          "Rate limiter: Database unavailable, falling back to memory storage. " +
-            "This may not work correctly in distributed deployments.",
+          "Rate limiter: Database unavailable, applying fallback strategy.",
         );
         DistributedRateLimiterStore.warnedAboutFallback = true;
       }
-      return this.checkWithMemory(key, config);
+
+      // 🔒 安全修复：高风险���点在数据库不可用时直接拒绝
+      if (configKey === "auth" || configKey === "dangerous") {
+        logger.error(
+          { configKey, identifier },
+          "Rate limiter: High-risk endpoint blocked due to database unavailability",
+        );
+        return {
+          allowed: false,
+          remaining: 0,
+          resetMs: 60000, // 1 分钟后重试
+        };
+      }
+
+      // 🔒 安全修复：其他端点使用更严格的限制（50%）
+      const strictConfig: RateLimitConfig = {
+        ...config,
+        maxRequests: Math.max(1, Math.floor(config.maxRequests * 0.5)),
+      };
+
+      return this.checkWithMemory(key, strictConfig);
     }
   }
 

@@ -12,6 +12,11 @@
  * @param email - 用户邮箱
  * @returns 是否为管理员
  *
+ * @security
+ * - 🔒 安全修复 v1.1.0: 移除开发环境绕过逻辑
+ * - 所有环境都必须通过 ADMIN_EMAILS 配置管理员
+ * - 防止误配置导致的权限提升
+ *
  * @example
  * ```typescript
  * if (!isAdminUser(user.email)) {
@@ -26,9 +31,14 @@ export function isAdminUser(email: string | undefined): boolean {
     process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ||
     [];
 
-  // 开发环境默认允许所有用户访问（便于调试）
-  if (process.env.NODE_ENV === "development" && adminEmails.length === 0) {
-    return true;
+  // 🔒 安全修复：移除开发环境绕过逻辑
+  // 所有环境都必须显式配置 ADMIN_EMAILS
+  if (adminEmails.length === 0) {
+    // 未配置管理员列表时，记录警告但不授予权限
+    if (process.env.NODE_ENV === "development") {
+      // 开发环境静默处理，避免日志噪音
+    }
+    return false;
   }
 
   return adminEmails.includes(email.toLowerCase());

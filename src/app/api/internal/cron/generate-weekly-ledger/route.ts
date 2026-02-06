@@ -3,11 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 import { ledgerService } from "@/lib/ledger/services/ledger.service";
 import { emailService } from "@/lib/email/email.service";
-import { supabaseEnv, appEnv } from "@/lib/env";
+import { supabaseEnv } from "@/lib/env";
 import pLimit from "p-limit";
-
-// Cron secret for authentication
-const CRON_SECRET = appEnv.cronSecret;
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Use Service Role Key to bypass RLS
 const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
@@ -21,10 +22,10 @@ export const maxDuration = 300; // 5 minutes
  */
 export async function GET(request: Request) {
   try {
-    // Verify Cron request
-    const authHeader = request.headers.get("authorization");
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify internal request using unified auth
+    const auth = verifyInternalRequest(request);
+    if (!auth.authorized) {
+      return internalUnauthorizedResponse(auth.error);
     }
 
     logger.info("Starting weekly ledger generation cron job");
