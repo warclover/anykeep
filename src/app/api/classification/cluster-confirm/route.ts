@@ -135,8 +135,6 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         name: folderName,
         is_system: false,
-        is_ai_suggested: true,
-        ai_reason: suggestion.reason,
       })
       .select("id, name")
       .single()) as {
