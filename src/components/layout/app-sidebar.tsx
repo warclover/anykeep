@@ -214,11 +214,6 @@ const organizeToolsItems: NavItem[] = [
   { name: "nav.organizeCenter", href: "/organize", icon: Sparkles },
   { name: "nav.inbox", href: "/inbox", icon: Inbox },
   { name: "nav.dataCenter", href: "/data", icon: Database },
-  {
-    name: "nav.classificationManager",
-    href: "/classification-manager",
-    icon: BrainCircuit,
-  },
   { name: "nav.batch", href: "/batch", icon: CheckSquare, pageId: "batch" },
   { name: "nav.healthCheck", href: "/health", icon: Stethoscope },
 ];
@@ -682,6 +677,16 @@ export const AppSidebar = memo(function AppSidebar() {
                     href: "/settings",
                     icon: Settings,
                     pageId: "settings",
+                  },
+                  groupCandyColors.system,
+                )}
+
+                {/* 分类管理 */}
+                {renderNavItem(
+                  {
+                    name: "nav.classificationManager",
+                    href: "/classification-manager",
+                    icon: BrainCircuit,
                   },
                   groupCandyColors.system,
                 )}
