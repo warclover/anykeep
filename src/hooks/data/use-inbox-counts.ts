@@ -60,7 +60,7 @@ async function fetchInboxCounts(): Promise<InboxCounts> {
     // 高价值：quality_score >= 0.7
     baseQuery().gte("quality_score", 0.7),
 
-    // 已失效
+    // 已失效：link_status = 'broken'
     baseQuery().eq("link_status", "broken"),
 
     // 最近7天
