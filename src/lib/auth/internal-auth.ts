@@ -81,7 +81,7 @@ export function verifyInternalRequest(
     }
 
     logger.warn(
-      { path: request.nextUrl.pathname },
+      { path: new URL(request.url).pathname },
       "[Internal Auth] Allowing unauthenticated access in development mode",
     );
     return { authorized: true, method: "dev_mode" };
@@ -108,7 +108,7 @@ export function verifyInternalRequest(
   // 记录未授权尝试
   logger.warn(
     {
-      path: request.nextUrl.pathname,
+      path: new URL(request.url).pathname,
       hasAuthHeader: !!authHeader,
       userAgent: userAgent.substring(0, 50),
     },
