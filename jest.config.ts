@@ -27,11 +27,13 @@ const config: Config = {
     "^uuid$": "<rootDir>/__mocks__/uuid.js",
     // Mock p-limit to avoid ESM issues
     "^p-limit$": "<rootDir>/__mocks__/p-limit.js",
+    // Mock franc-min to avoid ESM issues
+    "^franc-min$": "<rootDir>/__mocks__/franc-min.js",
   },
   // Transform ESM modules that Jest can't handle natively
   // Note: lucide-react is handled by moduleNameMapper, so not included here
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-virtuoso|sonner|@radix-ui|react-markdown|remark-gfm|remark-parse|unified|unist-.*|bail|is-plain-obj|trough|vfile|vfile-message|micromark|micromark-.*|mdast-.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities|devlop|html-url-attributes|ccount|escape-string-regexp|markdown-table|zwitch|uuid|p-limit|yocto-queue)/)",
+    "/node_modules/(?!(react-virtuoso|sonner|@radix-ui|react-markdown|remark-gfm|remark-parse|unified|unist-.*|bail|is-plain-obj|trough|vfile|vfile-message|micromark|micromark-.*|mdast-.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities|devlop|html-url-attributes|ccount|escape-string-regexp|markdown-table|zwitch|uuid|p-limit|yocto-queue|franc-min|trigram-utils)/)",
   ],
   testMatch: [
     "**/__tests__/**/*.(test|spec).[jt]s?(x)",

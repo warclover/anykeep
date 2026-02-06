@@ -1,21 +1,20 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ruleRegistry } from "../prediction/rule-registry";
 import { predictionEngine } from "../prediction/prediction-engine";
 import { telemetryManager } from "../telemetry/telemetry-manager";
 import type { Bookmark } from "@/types/bookmark";
 
 // Mock telemetry
-vi.mock("../telemetry/telemetry-manager", () => ({
+jest.mock("../telemetry/telemetry-manager", () => ({
   telemetryManager: {
-    recordMatch: vi.fn().mockResolvedValue(undefined),
-    recordDecision: vi.fn().mockResolvedValue(undefined),
+    recordMatch: jest.fn().mockResolvedValue(undefined),
+    recordDecision: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
 describe("PredictionEngine", () => {
   beforeEach(() => {
     ruleRegistry.clear();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it("should return empty array for empty selection", () => {

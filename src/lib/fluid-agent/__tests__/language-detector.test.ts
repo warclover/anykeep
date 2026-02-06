@@ -1,4 +1,3 @@
-import { describe, it, expect } from "vitest";
 import { languageDetector } from "../prediction/language-detector";
 
 describe("LanguageDetector", () => {
@@ -40,7 +39,10 @@ describe("LanguageDetector", () => {
   });
 
   it("should detect mixed language texts", () => {
-    const mixedTexts = ["This is an English sentence.", "这是一段中文句子。"];
+    const mixedTexts = [
+      "This is an English sentence.",
+      "这是一段用于测试的中文句子。",
+    ];
 
     expect(languageDetector.isMixedLanguage(mixedTexts)).toBe(true);
   });

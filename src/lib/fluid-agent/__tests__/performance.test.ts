@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { ruleRegistry } from "../prediction/rule-registry";
 import { predictionEngine } from "../prediction/prediction-engine";
 import type { Bookmark } from "@/types/bookmark";
