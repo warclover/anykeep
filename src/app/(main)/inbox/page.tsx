@@ -8,8 +8,12 @@
 import { InboxPageClient } from "@/components/inbox/inbox-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUserId } from "@/lib/server/auth";
+import { headers } from "next/headers";
 import type { Bookmark } from "@/types/supabase";
+
+/** UUID 正则表达式 (RFC 4122) */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // 确保每次请求都获取最新数据
 export const dynamic = "force-dynamic";
@@ -30,8 +34,29 @@ async function getInboxData(): Promise<{
   error?: string;
 }> {
   try {
-    const userId = await getAuthenticatedUserId();
+    // V4.2.28: 从 Middleware 注入的 header 获取预验证的 userId
+    const headersList = await headers();
+    let userId = headersList.get("x-user-id");
+    const isVerified = headersList.get("x-user-verified") === "true";
+
     const supabase = await createClient();
+
+    // V4.2.28: 回退机制 - 当 header 验证失败时，尝试直接获取 session
+    // 这解决了登录后首次请求时 session 同步延迟的问题
+    if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        return {
+          bookmarks: [],
+          folders: [],
+          inboxFolderId: null,
+          error: "请先登录",
+        };
+      }
+      userId = session.user.id;
+    }
 
     // 获取待整理文件夹
     // 类型断言: 手动维护类型文件时需要此断言
