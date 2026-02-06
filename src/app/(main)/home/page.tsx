@@ -65,6 +65,7 @@ const getUserSettings = cache(async (): Promise<UserSettings> => {
  * 使用 React cache() 确保同一请求中多次调用只执行一次查询
  *
  * V4.2.27: 使用 Middleware 预验证的 userId，跳过重复认证
+ * V4.2.28: 添加回退机制，解决登录后 session 同步延迟问题
  */
 const getInitialBookmarks = cache(
   async (
@@ -78,17 +79,24 @@ const getInitialBookmarks = cache(
       // V4.2.27: 从 Middleware 注入的 header 获取预验证的 userId
       // 这避免了在 Server Component 中重复调用 supabase.auth.getUser()
       const headersList = await headers();
-      const userId = headersList.get("x-user-id");
+      let userId = headersList.get("x-user-id");
       const isVerified = headersList.get("x-user-verified") === "true";
 
       const _headerTime = performance.now() - startTime;
 
-      // 验证 userId 是否为有效的 UUID 格式（防止 header 注入攻击）
-      if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
-        return { bookmarks: [], error: "请先登录" };
-      }
-
       const supabase = await createClient();
+
+      // V4.2.28: 回退机制 - 当 header 验证失败时，尝试直接获取 session
+      // 这解决了登录后首次请求时 session 同步延迟的问题
+      if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user?.id) {
+          return { bookmarks: [], error: "请先登录" };
+        }
+        userId = session.user.id;
+      }
       const clientTime = performance.now() - startTime;
 
       let query = supabase
