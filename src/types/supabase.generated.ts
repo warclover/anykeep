@@ -1,6 +1,6 @@
 /**
  * 此文件由 scripts/gen-supabase-types.js 自动生成
- * 生成时间: 2026-02-07T10:28:58.210Z
+ * 生成时间: 2026-02-07T10:48:08.755Z
  *
  * ⚠️ 请勿手动修改此文件！
  * 如需扩展类型，请在 src/types/supabase.ts 中添加
@@ -8462,6 +8462,16 @@ export type Database = {
           total_chunks: number;
         }[];
       };
+      get_collection_stats: {
+        Args: { p_user_id: string };
+        Returns: Database["public"]["CompositeTypes"]["collection_stats_result"];
+        SetofOptions: {
+          from: "*";
+          to: "collection_stats_result";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       get_consumption_summary: {
         Args: { p_end_date: string; p_start_date: string; p_user_id: string };
         Returns: Json;
@@ -9981,6 +9991,13 @@ export type Database = {
         end_offset: number | null;
         parent_index: number | null;
         embedding: string | null;
+      };
+      collection_stats_result: {
+        total: number | null;
+        uncategorized: number | null;
+        duplicates: number | null;
+        untagged: number | null;
+        stale: number | null;
       };
       folder_bookmark_stats: {
         folder_id: number | null;

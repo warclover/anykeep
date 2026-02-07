@@ -66,11 +66,23 @@ function calculateStep(percent: number): number {
   return PROGRESS_STEP_THRESHOLDS.length - 1;
 }
 
+/**
+ * 进度状态类型（合并多个状态减少重渲染）
+ */
+interface ProgressState {
+  message: string;
+  percent: number;
+  step: number;
+}
+
 export function OrganizePageClient() {
   const [state, setState] = useState<OrganizePageState>("idle");
-  const [progressMessage, setProgressMessage] = useState<string>("");
-  const [progressPercent, setProgressPercent] = useState<number>(0);
-  const [currentStep, setCurrentStep] = useState<number>(0);
+  // 合并进度相关状态，减少流式响应时的重渲染次数（3次 → 1次）
+  const [progress, setProgress] = useState<ProgressState>({
+    message: "",
+    percent: 0,
+    step: 0,
+  });
   const [organizeError, setOrganizeError] = useState<string | null>(null);
   const [showIssueDrawer, setShowIssueDrawer] = useState(false);
 
@@ -98,19 +110,22 @@ export function OrganizePageClient() {
 
   const { sendMessage, cancel } = useAIChat({
     onStream: (chunk) => {
-      // 处理进度更新
+      // 处理进度更新（合并状态更新，减少重渲染）
       if ("type" in chunk && chunk.type === "progress") {
         const data = chunk.data as {
           step?: string;
           percent?: number;
           message?: string;
         };
-        if (data.step) setProgressMessage(data.step);
-        if (typeof data.percent === "number") {
-          setProgressPercent(data.percent);
-          // 根据百分比计算步骤
-          setCurrentStep(calculateStep(data.percent));
-        }
+        setProgress((prev) => {
+          const newPercent =
+            typeof data.percent === "number" ? data.percent : prev.percent;
+          return {
+            message: data.step ?? prev.message,
+            percent: newPercent,
+            step: calculateStep(newPercent),
+          };
+        });
       }
     },
     onComplete: async () => {
@@ -140,9 +155,7 @@ export function OrganizePageClient() {
   const handleOrganizeAction = useCallback(
     async (actionType: QuickActionType) => {
       setState("analyzing");
-      setProgressMessage("正在分析您的收藏...");
-      setProgressPercent(0);
-      setCurrentStep(0);
+      setProgress({ message: "正在分析您的收藏...", percent: 0, step: 0 });
       setOrganizeError(null);
 
       try {
@@ -173,9 +186,7 @@ export function OrganizePageClient() {
    */
   const handleReset = useCallback(() => {
     setState("idle");
-    setProgressMessage("");
-    setProgressPercent(0);
-    setCurrentStep(0);
+    setProgress({ message: "", percent: 0, step: 0 });
     setOrganizeError(null);
     resetSnapshots();
   }, [resetSnapshots]);
@@ -186,8 +197,7 @@ export function OrganizePageClient() {
   const handleCancel = useCallback(() => {
     cancel();
     setState("idle");
-    setProgressMessage("");
-    setProgressPercent(0);
+    setProgress({ message: "", percent: 0, step: 0 });
     setOrganizeError(null);
   }, [cancel]);
 
@@ -286,9 +296,9 @@ export function OrganizePageClient() {
           {isExecuting && (
             <OrganizeProgress
               status={state}
-              message={progressMessage}
-              progress={progressPercent}
-              currentStep={currentStep}
+              message={progress.message}
+              progress={progress.percent}
+              currentStep={progress.step}
               onCancel={handleCancel}
             />
           )}

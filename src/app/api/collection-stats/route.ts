@@ -3,8 +3,9 @@
  *
  * GET /api/collection-stats - 获取收藏统计数据用于整理前后对比
  *
- * @version 1.0.0
+ * @version 2.0.0 - 使用 RPC 函数优化性能（6次查询 → 1次）
  * @since 2026-01-10
+ * @updated 2026-02-07
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,9 @@ import type { OrganizeSnapshot } from "@/lib/organize/types";
 /**
  * GET /api/collection-stats
  * 获取收藏统计快照
+ *
+ * 性能优化：使用 RPC 函数将 6 次数据库查询合并为 1 次
+ * @see migrations/20260207110001_add_collection_stats_rpc.sql
  */
 export async function GET() {
   try {
@@ -33,107 +37,28 @@ export async function GET() {
       return unauthorizedError("请先登录");
     }
 
-    // 2. 获取总数
-    const { count: total, error: totalError } = await supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("deleted_at", null);
+    // 2. 调用 RPC 函数获取所有统计数据（单次查询）
+    const { data: stats, error: statsError } = await supabase.rpc(
+      "get_collection_stats",
+      { p_user_id: user.id },
+    );
 
-    if (totalError) {
-      logger.error({ error: totalError }, "Failed to count total bookmarks");
-      throw totalError;
-    }
-
-    // 3. 获取未分类数量（没有 folder_id 的书签）
-    const { count: uncategorized, error: uncategorizedError } = await supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .is("folder_id", null);
-
-    if (uncategorizedError) {
+    if (statsError) {
       logger.error(
-        { error: uncategorizedError },
-        "Failed to count uncategorized bookmarks",
+        { error: statsError },
+        "Failed to get collection stats via RPC",
       );
-      throw uncategorizedError;
+      throw statsError;
     }
 
-    // 4. 获取重复 URL 数量
-    // 查询所有 URL，客户端计算重复数量
-    const { data: urlData, error: urlError } = await supabase
-      .from("bookmarks")
-      .select("url")
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .not("url", "is", null);
-
-    if (urlError) {
-      logger.error(
-        { error: urlError },
-        "Failed to fetch URLs for duplicate check",
-      );
-      throw urlError;
-    }
-
-    // 计算重复的 URL 数量（出现次数 > 1 的 URL 对应的额外书签数）
-    const urlCounts = new Map<string, number>();
-    for (const item of urlData || []) {
-      if (item.url) {
-        urlCounts.set(item.url, (urlCounts.get(item.url) || 0) + 1);
-      }
-    }
-    let duplicates = 0;
-    for (const count of urlCounts.values()) {
-      if (count > 1) {
-        duplicates += count - 1; // 每个重复 URL 多出的副本数
-      }
-    }
-
-    // 5. 获取无标签数量（user_tags 和 ai_tags 都为空）
-    // 注意：Supabase 的空数组检查使用 {} 语法
-    const { count: untagged, error: untaggedError } = await supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .or("user_tags.is.null,user_tags.eq.{}");
-
-    if (untaggedError) {
-      logger.error(
-        { error: untaggedError },
-        "Failed to count untagged bookmarks",
-      );
-      throw untaggedError;
-    }
-
-    // 6. 获取长期未读数量（超过 90 天未访问）
-    // 暂时基于创建时间判断，后续可添加访问追踪
-    const staleDate = new Date();
-    staleDate.setDate(staleDate.getDate() - 90);
-
-    const { count: stale, error: staleError } = await supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .lt("created_at", staleDate.toISOString());
-
-    if (staleError) {
-      logger.error({ error: staleError }, "Failed to count stale bookmarks");
-      throw staleError;
-    }
-
-    // 7. 构建快照响应
+    // 3. 构建快照响应
     const snapshot: OrganizeSnapshot = {
       timestamp: new Date().toISOString(),
-      total: total || 0,
-      uncategorized: uncategorized || 0,
-      duplicates,
-      untagged: untagged || 0,
-      stale: stale || 0,
+      total: stats?.total ?? 0,
+      uncategorized: stats?.uncategorized ?? 0,
+      duplicates: stats?.duplicates ?? 0,
+      untagged: stats?.untagged ?? 0,
+      stale: stats?.stale ?? 0,
     };
 
     return successResponse(snapshot);
