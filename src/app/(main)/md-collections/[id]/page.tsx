@@ -1,6 +1,8 @@
 /**
  * MD 收藏详情页面
  * P2-007: Markdown 内容收藏 - 专业阅读视图
+ *
+ * V1.1.0: 使用统一权限检查函数，消除类型断言
  */
 
 import { unstable_noStore } from "next/cache";
@@ -8,6 +10,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MdCollectionDetailClient } from "./page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { checkMdCollectionAccess } from "@/features/md-collections/lib/permission-utils";
+import { logger } from "@/lib/logger";
 import type { MdCollection } from "@/features/md-collections";
 
 interface PageProps {
@@ -40,13 +44,18 @@ async function getMdCollection(id: number): Promise<MdCollection | null> {
     }
 
     return data as MdCollection;
-  } catch {
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error), id },
+      "Failed to get MD collection",
+    );
     return null;
   }
 }
 
 /**
  * 检查用户会员权限
+ * V1.1.0: 使用统一权限检查函数
  */
 async function checkUserAccess(): Promise<boolean> {
   try {
@@ -59,15 +68,14 @@ async function checkUserAccess(): Promise<boolean> {
       return false;
     }
 
-    // 类型断言: 手动维护类型文件时需要此断言
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_type")
-      .eq("id", user.id)
-      .single() as unknown as { data: { membership_type: string | null } | null };
-
-    return profile?.membership_type === "PRO";
-  } catch {
+    // 使用统一权限检查函数（消除 `as unknown as` 断言）
+    const result = await checkMdCollectionAccess(supabase, user.id);
+    return result.hasAccess;
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to check user access",
+    );
     return false;
   }
 }

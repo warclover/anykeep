@@ -588,6 +588,7 @@ export type UpdateMdCollection = z.infer<typeof updateMdCollectionSchema>;
 
 /**
  * MD 收藏列表查询参数验证
+ * V1.1.0: 增强 keyword 安全验证，防止恶意模式攻击
  */
 export const getMdCollectionsQuerySchema = z.object({
   cursor: z.coerce.number().int().positive().nullable().optional(),
@@ -604,7 +605,18 @@ export const getMdCollectionsQuerySchema = z.object({
     .max(200, VALIDATION.TOO_LONG("关键词", 200))
     .nullable()
     .optional()
-    .transform((val) => val ?? undefined),
+    .transform((val) => val ?? undefined)
+    .refine(
+      (val) => {
+        if (!val) return true;
+        // 防止恶意通配符模式（连续 10 个以上 % 或 _）
+        if (/[%_]{10,}/.test(val)) return false;
+        // 防止过长的连续特殊字符
+        if (/(.)\1{20,}/.test(val)) return false;
+        return true;
+      },
+      { message: "关键词包含无效模式" },
+    ),
   sort: z
     .enum([
       "created_desc",

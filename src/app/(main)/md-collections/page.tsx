@@ -6,6 +6,8 @@
  * 1. 使用 Suspense 实现流式 SSR，首屏立即返回骨架屏
  * 2. 权限检查前置：非 Pro 用户不执行 md_collections 查询
  * 3. 本地 JWT 验证，避免 getUser() 网络请求（~1500ms → ~5ms）
+ *
+ * V1.1.0: 使用统一权限检查函数，消除类型断言
  */
 
 import { Suspense, cache } from "react";
@@ -14,6 +16,8 @@ import { MdCollectionPageClient } from "./page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
 import { verifyJwtLocally, extractAccessToken } from "@/lib/auth/jwt-verifier";
+import { checkMdCollectionAccess } from "@/features/md-collections/lib/permission-utils";
+import { logger } from "@/lib/logger";
 import MdCollectionsLoading from "./loading";
 import type { MdCollection } from "@/features/md-collections";
 
@@ -72,16 +76,9 @@ const getPageData = cache(
 
       const supabase = await createClient();
 
-      // 2. 先检查权限（单独查询，快速返回）
-      // 类型断言: 手动维护类型文件时需要此断言
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("membership_type")
-        .eq("id", userId)
-        .single() as unknown as { data: { membership_type: string | null } | null };
-
-      const membershipType = profile?.membership_type || "FREE";
-      const hasAccess = membershipType === "PRO";
+      // 2. 使用统一权限检查函数（消除 `as unknown as` 断言）
+      const accessResult = await checkMdCollectionAccess(supabase, userId);
+      const { hasAccess, membershipType } = accessResult;
 
       // 3. 非 Pro 用户直接返回，不执行 collections 查询
       if (!hasAccess) {
@@ -114,6 +111,16 @@ const getPageData = cache(
         hasMore,
       };
     } catch (error) {
+      // 统一日志记录，避免静默失败
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          operation: "getPageData",
+        },
+        "Failed to fetch MD collections page data",
+      );
+
       // 开发环境下抛出错误，便于调试
       if (process.env.NODE_ENV === "development") {
         throw error;

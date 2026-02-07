@@ -10,6 +10,7 @@
  * 性能优化:
  * - V1.1.0: 轮询间隔从 3 秒优化为 5 秒，减少 40% 网络请求
  * - V1.1.0: 新增页面可见性检测，后台时暂停轮询节省资源
+ * - V1.2.0: 修复 setTimeout 竞态条件，追踪并清理所有定时器
  */
 
 "use client";
@@ -17,15 +18,35 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { MdCollection, MdProcessingStatus } from "../types";
 
-// 轮询配置
-const POLL_INTERVAL = 5000; // 5 秒轮询一次（从 3 秒优化为 5 秒，减少 40% 请求）
-const MAX_POLL_COUNT = 36; // 最多轮询 36 次（3 分钟，保持总时长不变）
+// ============================================
+// 轮询配置（使用配置对象提供上下文）
+// ============================================
+const POLLING_CONFIG = {
+  /** 轮询间隔（毫秒） */
+  INTERVAL_MS: 5000,
+  /** 最大��询时长（3 分钟） */
+  MAX_DURATION_MS: 3 * 60 * 1000,
+  /** 最大轮询次数（自动计算） */
+  MAX_COUNT: Math.ceil((3 * 60 * 1000) / 5000),
 
-// 卡住检测配置
-const STUCK_PENDING_THRESHOLD = 10000; // pending 超过 10 秒视为卡住
-const STUCK_PROCESSING_THRESHOLD = 120000; // processing 超过 2 分钟视为卡住
-const MAX_RETRY_COUNT = 2; // 每个 item 最多重试 2 次
-const RETRY_STAGGER_INTERVAL = 2000; // 重试请求间隔 2 秒，避免并发冲突
+  /** 卡住检测阈值 */
+  STUCK_THRESHOLDS: {
+    /** pending 超过此时间视为卡住（10 秒） */
+    PENDING_MS: 10 * 1000,
+    /** processing 超过此时间视为卡住（2 分钟） */
+    PROCESSING_MS: 2 * 60 * 1000,
+  },
+
+  /** 重试配置 */
+  RETRY: {
+    /** 每个 item 最多重试次数 */
+    MAX_COUNT: 2,
+    /** 重试请求间隔（毫秒），避免并发冲突 */
+    STAGGER_MS: 2000,
+    /** 重试冷却时间（毫秒） */
+    COOLDOWN_MS: 15 * 1000,
+  },
+} as const;
 
 /**
  * 轮询追踪条目
@@ -73,8 +94,11 @@ function isStuck(
 ): boolean {
   const now = Date.now();
 
-  // 如果刚重试过，等待一段时间再判断
-  if (entry.lastRetryTime && now - entry.lastRetryTime < 15000) {
+  // 如果刚重试过，等待冷却时间再判断
+  if (
+    entry.lastRetryTime &&
+    now - entry.lastRetryTime < POLLING_CONFIG.RETRY.COOLDOWN_MS
+  ) {
     return false;
   }
 
@@ -84,11 +108,17 @@ function isStuck(
     : entry.startTime;
   const elapsed = now - referenceTime;
 
-  if (status === "pending" && elapsed > STUCK_PENDING_THRESHOLD) {
+  if (
+    status === "pending" &&
+    elapsed > POLLING_CONFIG.STUCK_THRESHOLDS.PENDING_MS
+  ) {
     return true;
   }
 
-  if (status === "processing" && elapsed > STUCK_PROCESSING_THRESHOLD) {
+  if (
+    status === "processing" &&
+    elapsed > POLLING_CONFIG.STUCK_THRESHOLDS.PROCESSING_MS
+  ) {
     return true;
   }
 
@@ -116,6 +146,8 @@ export function useMdProcessingPoller({
   const trackingRef = useRef<Map<number, PollTrackingEntry>>(new Map());
   // 正在重试的 ID（防止并发重试）
   const retryingRef = useRef<Set<number>>(new Set());
+  // V1.2.0: 追踪所有 setTimeout ID，用于清理
+  const timeoutIdsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   // V1.1.0: 页面可见性状态（后台时暂停轮询节省资源）
   const [isPageVisible, setIsPageVisible] = useState(true);
@@ -142,7 +174,7 @@ export function useMdProcessingPoller({
     }
 
     const entry = trackingRef.current.get(id);
-    if (!entry || entry.retryCount >= MAX_RETRY_COUNT) {
+    if (!entry || entry.retryCount >= POLLING_CONFIG.RETRY.MAX_COUNT) {
       return;
     }
 
@@ -230,24 +262,26 @@ export function useMdProcessingPoller({
             // 检查是否卡住并且还有重试次数
             if (
               isStuck(updated.processing_status, entry) &&
-              entry.retryCount < MAX_RETRY_COUNT
+              entry.retryCount < POLLING_CONFIG.RETRY.MAX_COUNT
             ) {
               // 收集需要重试的 ID，稍后错开执行
               retryQueue.push(updated.id);
             }
 
             // 超过最大轮询次数，停止轮询
-            if (entry.pollCount >= MAX_POLL_COUNT) {
+            if (entry.pollCount >= POLLING_CONFIG.MAX_COUNT) {
               trackingRef.current.delete(updated.id);
             }
           }
         }
 
-        // 错开执行重试请求，避免并发冲突
+        // V1.2.0: 错开执行重试请求，追踪 setTimeout ID 以便清理
         retryQueue.forEach((id, index) => {
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             triggerRetry(id);
-          }, index * RETRY_STAGGER_INTERVAL);
+            timeoutIdsRef.current.delete(timeoutId);
+          }, index * POLLING_CONFIG.RETRY.STAGGER_MS);
+          timeoutIdsRef.current.add(timeoutId);
         });
       } catch {
         // 静默处理错误，不影响用户体验
@@ -272,7 +306,7 @@ export function useMdProcessingPoller({
           if (!needsPolling(c)) return false;
           const entry = trackingRef.current.get(c.id);
           if (!entry) return true; // 新 item 总是需要轮询
-          return entry.pollCount < MAX_POLL_COUNT;
+          return entry.pollCount < POLLING_CONFIG.MAX_COUNT;
         })
         .map((c) => c.id);
     };
@@ -315,7 +349,7 @@ export function useMdProcessingPoller({
         // 没有需要轮询的收藏，清除定时器
         clearInterval(intervalId);
       }
-    }, POLL_INTERVAL);
+    }, POLLING_CONFIG.INTERVAL_MS);
 
     // 清理函数
     return () => {
@@ -323,13 +357,17 @@ export function useMdProcessingPoller({
     };
   }, [collections, enabled, isPageVisible, pollCollections]);
 
-  // 组件卸载时清理
+  // V1.2.0: 组件卸载时清理所有资源（包括 setTimeout）
   useEffect(() => {
     const trackingMap = trackingRef.current;
     const retryingSet = retryingRef.current;
+    const timeoutIds = timeoutIdsRef.current;
     return () => {
       trackingMap.clear();
       retryingSet.clear();
+      // 清理所有未执行的 setTimeout
+      timeoutIds.forEach(clearTimeout);
+      timeoutIds.clear();
     };
   }, []);
 }

@@ -7,6 +7,8 @@
  * - 再次访问：立即返回缓存，后台刷新
  * - 支持 SSR initialData，避免重复请求
  * - 乐观更新支持
+ *
+ * V1.1.0: 修复 useEffect 依赖项问题，防止内存泄漏
  */
 
 "use client";
@@ -20,17 +22,22 @@ const DEFAULT_LIMIT = 20;
 
 /**
  * 生成缓存键
+ * V1.1.0: 添加 isRead 和 isStarred 参数，确保缓存键唯一性
  */
 function generateCacheKey(params: {
   folderId?: number;
   contentType?: string;
   keyword?: string;
   sort?: string;
+  isRead?: boolean;
+  isStarred?: boolean;
 }): string {
   const parts = ["md-collections"];
   if (params.folderId) parts.push(`folder:${params.folderId}`);
   if (params.contentType) parts.push(`type:${params.contentType}`);
   if (params.keyword) parts.push(`q:${params.keyword}`);
+  if (params.isRead !== undefined) parts.push(`read:${params.isRead}`);
+  if (params.isStarred !== undefined) parts.push(`star:${params.isStarred}`);
   parts.push(params.sort || "created_desc");
   return parts.join(":");
 }
@@ -101,13 +108,22 @@ export function useMdCollectionsSWR(
     contentType,
     keyword,
     sort = "created_desc",
+    isRead,
+    isStarred,
     initialData = [],
     initialHasMore,
     onBackgroundError,
   } = options;
 
-  // 缓存键
-  const cacheKey = generateCacheKey({ folderId, contentType, keyword, sort });
+  // 缓存键（V1.1.0: 添加 isRead 和 isStarred）
+  const cacheKey = generateCacheKey({
+    folderId,
+    contentType,
+    keyword,
+    sort,
+    isRead,
+    isStarred,
+  });
 
   /**
    * 使用 useState 初始化函数同步读取缓存
