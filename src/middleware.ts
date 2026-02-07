@@ -181,28 +181,25 @@ export async function middleware(request: NextRequest) {
   );
 
   // 3.4 用户信息注入 (Performance Optimization)
-  const shouldInjectUserHeaders = user && isProtectedRoute;
-
-  if (shouldInjectUserHeaders) {
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-user-id", user.id);
-    requestHeaders.set("x-user-verified", "true");
-
-    const newResponse = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
+  // V5.5: 使用 cookies 传递用户信息，避免 RSC payload 请求失败
+  // 原方案创建新 NextResponse 并复制 headers 会破坏 RSC 请求链
+  if (user && isProtectedRoute) {
+    // 设置短期 cookie 传递用户信息（仅本次请求有效）
+    // httpOnly: false 允许 Server Component 通过 cookies() 读取
+    finalResponse.cookies.set("x-user-id", user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60, // 60秒，仅用于请求传递
+      path: "/",
     });
-
-    // 复制所有 headers from finalResponse
-    finalResponse.headers.forEach((value, key) => {
-      newResponse.headers.set(key, value);
+    finalResponse.cookies.set("x-user-verified", "true", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60,
+      path: "/",
     });
-    finalResponse.cookies.getAll().forEach((cookie) => {
-      newResponse.cookies.set(cookie);
-    });
-
-    return newResponse;
   }
 
   // 3.5 路由跳转保护

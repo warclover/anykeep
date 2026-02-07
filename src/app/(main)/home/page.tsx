@@ -13,7 +13,7 @@
  */
 
 import { Suspense, cache } from "react";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { HomePageClientLayered } from "@/components/home/home-page-client-layered";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
@@ -36,12 +36,13 @@ type BookmarkWithFolder = Bookmark & {
 
 /**
  * 获取用户设置（带请求级缓存）
+ * V5.5: 从 cookies 读取用户信息，避免 RSC payload 请求失败
  */
 const getUserSettings = cache(async (): Promise<UserSettings> => {
   try {
-    const headersList = await headers();
-    const userId = headersList.get("x-user-id");
-    const isVerified = headersList.get("x-user-verified") === "true";
+    const cookieStore = await cookies();
+    const userId = cookieStore.get("x-user-id")?.value;
+    const isVerified = cookieStore.get("x-user-verified")?.value === "true";
 
     if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
       return mergeWithDefaults(null);
@@ -66,6 +67,7 @@ const getUserSettings = cache(async (): Promise<UserSettings> => {
  *
  * V4.2.27: 使用 Middleware 预验证的 userId，跳过重复认证
  * V4.2.28: 添加回退机制，解决登录后 session 同步延迟问题
+ * V5.5: 从 cookies 读取用户信息，避免 RSC payload 请求失败
  */
 const getInitialBookmarks = cache(
   async (
@@ -76,11 +78,10 @@ const getInitialBookmarks = cache(
     const startTime = performance.now();
 
     try {
-      // V4.2.27: 从 Middleware 注入的 header 获取预验证的 userId
-      // 这避免了在 Server Component 中重复调用 supabase.auth.getUser()
-      const headersList = await headers();
-      let userId = headersList.get("x-user-id");
-      const isVerified = headersList.get("x-user-verified") === "true";
+      // V5.5: 从 cookies 读取 Middleware 注入的用户信息
+      const cookieStore = await cookies();
+      let userId = cookieStore.get("x-user-id")?.value;
+      const isVerified = cookieStore.get("x-user-verified")?.value === "true";
 
       const _headerTime = performance.now() - startTime;
 
