@@ -1,6 +1,10 @@
 /**
  * Knowledge Studio v2 - 主页面客户端组件
  * @module knowledge-studio/v2
+ *
+ * 性能优化 V1.1.0:
+ * - 使用 useBlueprints hook（TanStack Query 缓存，二次访问秒开）
+ * - 减少初始书签加载数量（50 → 20）
  */
 
 "use client";
@@ -29,10 +33,10 @@ import {
 import {
   BlueprintSelectorV2,
   MaterialRecommendations,
-  type BlueprintListItem,
 } from "@/components/knowledge-studio/v2";
 import { MaterialSelector } from "@/components/knowledge-studio/material-selector";
 import { useBookmarks } from "@/hooks/queries/use-bookmarks";
+import { useBlueprints } from "@/hooks/queries/use-blueprints";
 import {
   MATERIAL_LIMITS,
   MATERIAL_SELECTOR_TEXT,
@@ -62,40 +66,6 @@ function useDebouncedValue<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-/**
- * 获取蓝图列表
- */
-function useBlueprintList() {
-  const [blueprints, setBlueprints] = useState<BlueprintListItem[]>([]);
-  const [userTier, setUserTier] = useState<"free" | "pro" | "enterprise">(
-    "free",
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchBlueprints() {
-      try {
-        const response = await fetch("/api/knowledge-studio/v2/blueprints");
-        if (!response.ok) {
-          throw new Error("Failed to fetch blueprints");
-        }
-        const data = await response.json();
-        setBlueprints(data.blueprints);
-        setUserTier(data.userTier);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchBlueprints();
-  }, []);
-
-  return { blueprints, userTier, isLoading, error };
-}
-
 // ============================================================
 // Component
 // ============================================================
@@ -103,7 +73,8 @@ function useBlueprintList() {
 export function KnowledgeStudioV2PageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { blueprints, userTier, isLoading, error } = useBlueprintList();
+  // V1.1.0: 使用 TanStack Query 缓存的 useBlueprints hook
+  const { blueprints, userTier, isLoading, error } = useBlueprints();
 
   // 检查 URL 错误参数
   const errorType = searchParams?.get("error") ?? null;
@@ -115,15 +86,15 @@ export function KnowledgeStudioV2PageClient() {
   const [materialSearchQuery, setMaterialSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(materialSearchQuery, 300);
 
-  // 获取书签数据（搜索时不限制数量，否则只加载 50 条）
+  // V1.1.0: 减少初始加载数量（50 → 20），搜索时加载 50 条
   const {
     data: bookmarksData,
     isLoading: isLoadingBookmarks,
     isFetching: isFetchingBookmarks,
   } = useBookmarks({
-    limit: debouncedSearchQuery ? 100 : 50, // 搜索时增加限制
+    limit: debouncedSearchQuery ? 50 : 20,
     platform: platformFilter || undefined,
-    search: debouncedSearchQuery || undefined, // 后端搜索
+    search: debouncedSearchQuery || undefined,
   });
 
   // 判断是否正在搜索（输入与 debounced 不同，或正在请求）

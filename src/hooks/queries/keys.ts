@@ -261,3 +261,11 @@ export const knowledgeLinkKeys = {
     params: { limit: number; minStrength: number; types?: string[] },
   ) => [...knowledgeLinkKeys.all, "related", bookmarkId, params] as const,
 };
+
+/**
+ * Knowledge Studio Blueprint Query Keys
+ */
+export const blueprintKeys = {
+  all: ["blueprints"] as const,
+  list: () => [...blueprintKeys.all, "list"] as const,
+};
