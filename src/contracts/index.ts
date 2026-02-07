@@ -18,6 +18,7 @@ export {
   BatchMoveSchema,
   BatchAddTagsSchema,
   BatchRemoveTagsSchema,
+  BatchSnapshotSchema,
   type CreateBookmarkInput,
   type UpdateBookmarkInput,
   type BookmarkQueryInput,
@@ -25,6 +26,7 @@ export {
   type BatchMoveInput,
   type BatchAddTagsInput,
   type BatchRemoveTagsInput,
+  type BatchSnapshotInput,
 } from "./schemas/bookmark.schema";
 
 // Folder Schemas

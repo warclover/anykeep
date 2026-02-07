@@ -129,3 +129,13 @@ export const BatchRemoveTagsSchema = z.object({
 });
 
 export type BatchRemoveTagsInput = z.infer<typeof BatchRemoveTagsSchema>;
+
+/**
+ * 批量创建快照请求 Schema
+ */
+export const BatchSnapshotSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(50),
+  snapshotType: z.enum(["basic", "standard", "full"]).default("basic"),
+});
+
+export type BatchSnapshotInput = z.infer<typeof BatchSnapshotSchema>;

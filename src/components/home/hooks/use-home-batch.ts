@@ -182,6 +182,7 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
 
   /**
    * 批量创建快照
+   * 优化：调用批量 API，避免 N 次单独请求
    */
   const handleBatchCreateSnapshot = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -205,29 +206,31 @@ export function useHomeBatch(options: UseHomeBatchOptions): UseHomeBatchReturn {
     setIsBatchCreatingSnapshot(true);
 
     try {
-      // 逐个创建快照，收集结果
-      const results = await Promise.allSettled(
-        validBookmarks.map(async (bookmark) => {
-          const res = await fetchWithAbort(
-            `/api/bookmarks/${bookmark.id}/snapshot`,
-            { method: "POST" },
-          );
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error?.message || "快照创建失败");
-          }
-          return bookmark.id;
-        }),
+      // 调用批量快照 API（单次请求）
+      const response = await fetchWithAbort(
+        "/api/v1/bookmarks/batch/snapshot",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ids: validBookmarks.map((b) => b.id),
+            snapshotType: "basic",
+          }),
+        },
       );
 
-      const succeeded = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-
-      if (succeeded > 0) {
-        toast.success(`成功创建 ${succeeded} 个快照`);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error?.message || "批量创建快照失败");
       }
-      if (failed > 0) {
-        toast.error(`${failed} 个快照创建失败`);
+
+      const { data } = await response.json();
+
+      if (data.totalCreated > 0) {
+        toast.success(`成功创建 ${data.totalCreated} 个快照`);
+      }
+      if (data.totalSkipped > 0) {
+        toast.info(`${data.totalSkipped} 个书签已有快照，已跳过`);
       }
 
       exitSelectionMode();

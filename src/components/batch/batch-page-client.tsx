@@ -100,12 +100,18 @@ export function BatchPageClient() {
     platform: platform === "all" ? "" : platform,
     sort,
     folder: "",
-    pageSize: 200, // 批量页面加载更多数据
+    pageSize: 50, // 优化：降低初始加载量，提升首屏速度
     enabled: true,
   });
 
   // 所有书签 ID（用于 Shift 选择）
   const allBookmarkIds = useMemo(() => bookmarks.map((b) => b.id), [bookmarks]);
+
+  // 书签 Map（优化查找性能，O(1) 查找代替 O(n) 遍历）
+  const bookmarkMap = useMemo(
+    () => new Map(bookmarks.map((b) => [b.id, b])),
+    [bookmarks],
+  );
 
   // 平台选项（带 i18n 标签）
   const platformOptions = useMemo(
@@ -137,10 +143,13 @@ export function BatchPageClient() {
     handleItemClick,
   } = useSelectionMode();
 
-  // 获取选中的书签
+  // 获取选中的书签（使用 Map 实现 O(1) 查找）
   const selectedBookmarks = useMemo(
-    () => bookmarks.filter((b) => selectedIds.has(b.id)),
-    [bookmarks, selectedIds],
+    () =>
+      Array.from(selectedIds)
+        .map((id) => bookmarkMap.get(id))
+        .filter((b): b is NonNullable<typeof b> => b !== undefined),
+    [bookmarkMap, selectedIds],
   );
 
   // 全选
