@@ -49,7 +49,7 @@ export interface UseFolderHeatReturn {
 interface FolderHeatRpcResult {
   folder_id: number;
   heat_score: number;
-  recent_addition_count: number;
+  recent_additions: number;
   updated_at: string;
 }
 
@@ -76,7 +76,7 @@ async function fetchFolderHeats(): Promise<FolderHeat[]> {
   // 获取用户所有文件夹的热度数据
   const { data, error } = await supabase
     .from("folder_profiles")
-    .select("folder_id, heat_score, recent_addition_count, updated_at")
+    .select("folder_id, heat_score, recent_additions, updated_at")
     .eq("user_id", user.id)
     .not("heat_score", "is", null);
 
@@ -91,7 +91,7 @@ async function fetchFolderHeats(): Promise<FolderHeat[]> {
   return (data || []).map((item: FolderHeatRpcResult) => ({
     folderId: item.folder_id,
     heat: item.heat_score ?? 0,
-    recentCount: item.recent_addition_count ?? 0,
+    recentCount: item.recent_additions ?? 0,
     lastUpdated: item.updated_at,
   }));
 }
