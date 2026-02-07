@@ -32,6 +32,10 @@ import {
   ensureAIGeneratedFolder,
 } from "@/features/md-collections/lib";
 import { triggerMdAIProcessing } from "@/features/md-collections/lib/ai";
+import {
+  prepareSearchQuery,
+  escapeIlikePattern,
+} from "@/lib/utils/fulltext-search";
 
 /**
  * GET /api/md-collections
@@ -95,10 +99,25 @@ export async function GET(request: NextRequest) {
     }
 
     if (keyword) {
-      // 标题和内容模糊搜索
-      query = query.or(
-        `title.ilike.%${keyword}%,raw_content.ilike.%${keyword}%`,
-      );
+      // V1.1.0: 使用全文搜索优化性能（替代 raw_content.ilike 全表扫描）
+      const tsquery = prepareSearchQuery(keyword);
+      if (tsquery) {
+        try {
+          // 优先使用全文搜索（需要 search_vector 列）
+          query = query.textSearch("search_vector", tsquery, {
+            type: "websearch",
+            config: "simple",
+          });
+        } catch {
+          // 如果全文搜索失败，降级到标题 ILIKE（不搜索 raw_content）
+          const escapedKeyword = escapeIlikePattern(keyword);
+          query = query.ilike("title", `%${escapedKeyword}%`);
+        }
+      } else {
+        // 空查询，只搜索标题
+        const escapedKeyword = escapeIlikePattern(keyword);
+        query = query.ilike("title", `%${escapedKeyword}%`);
+      }
     }
 
     if (isRead !== undefined) {

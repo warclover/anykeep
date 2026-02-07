@@ -6,16 +6,20 @@
  * 自动检测并重试卡住的处理任务
  *
  * 参考: src/hooks/ui/use-processing-poller.ts (书签轮询)
+ *
+ * 性能优化:
+ * - V1.1.0: 轮询间隔从 3 秒优化为 5 秒，减少 40% 网络请求
+ * - V1.1.0: 新增页面可见性检测，后台时暂停轮询节省资源
  */
 
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { MdCollection, MdProcessingStatus } from "../types";
 
 // 轮询配置
-const POLL_INTERVAL = 3000; // 3 秒轮询一次
-const MAX_POLL_COUNT = 60; // 最多轮询 60 次（3 分钟）
+const POLL_INTERVAL = 5000; // 5 秒轮询一次（从 3 秒优化为 5 秒，减少 40% 请求）
+const MAX_POLL_COUNT = 36; // 最多轮询 36 次（3 分钟，保持总时长不变）
 
 // 卡住检测配置
 const STUCK_PENDING_THRESHOLD = 10000; // pending 超过 10 秒视为卡住
@@ -112,6 +116,21 @@ export function useMdProcessingPoller({
   const trackingRef = useRef<Map<number, PollTrackingEntry>>(new Map());
   // 正在重试的 ID（防止并发重试）
   const retryingRef = useRef<Set<number>>(new Set());
+
+  // V1.1.0: 页面可见性状态（后台时暂停轮询节省资源）
+  const [isPageVisible, setIsPageVisible] = useState(true);
+
+  // V1.1.0: 监听页面可见性变化
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   /**
    * 触发单个 item 的 AI 处理重试
@@ -239,9 +258,11 @@ export function useMdProcessingPoller({
 
   /**
    * 设置轮询定时器
+   * V1.1.0: 页面不可见时暂停轮询，可见时立即恢复
    */
   useEffect(() => {
-    if (!enabled) return;
+    // V1.1.0: 页面不可见或未启用时不轮询
+    if (!enabled || !isPageVisible) return;
 
     // 找出需要轮询的收藏 ID
     const getPollingIds = () => {
@@ -279,7 +300,8 @@ export function useMdProcessingPoller({
       return;
     }
 
-    // 如果有新收藏加入，立即执行首次轮询（不等待 3 秒）
+    // 如果有新收藏加入，立即执行首次轮询（不等待 5 秒）
+    // V1.1.0: 页面从不可见变为可见时，也立即执行一次轮询
     if (hasNewPollingItems) {
       pollCollections(pollingIds);
     }
@@ -299,7 +321,7 @@ export function useMdProcessingPoller({
     return () => {
       clearInterval(intervalId);
     };
-  }, [collections, enabled, pollCollections]);
+  }, [collections, enabled, isPageVisible, pollCollections]);
 
   // 组件卸载时清理
   useEffect(() => {

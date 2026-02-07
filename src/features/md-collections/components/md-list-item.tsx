@@ -6,10 +6,14 @@
  * - 紧凑布局，适合大量数据展示
  * - 悬停显示操作按钮
  * - 支持 AI 摘要和标签展示
+ *
+ * 性能优化:
+ * - V1.1.0: 使用 React.memo 避免不必要的重渲染
  */
 
 "use client";
 
+import { memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { CONTENT_TYPE_CONFIG, DEFAULT_CONTENT_TYPE_CONFIG } from "../constants";
 import type { MdCollection } from "../types";
@@ -22,7 +26,7 @@ export interface MdListItemProps {
   isDeleting: boolean;
 }
 
-export function MdListItem({
+export const MdListItem = memo(function MdListItem({
   collection,
   onClick,
   onDelete,
@@ -36,10 +40,22 @@ export function MdListItem({
       color: "bg-gray-100 text-gray-600",
     };
 
+  const handleClick = useCallback(() => {
+    onClick(collection.id);
+  }, [onClick, collection.id]);
+
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDelete(collection.id);
+    },
+    [onDelete, collection.id],
+  );
+
   return (
     <div
       className="group p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors cursor-pointer"
-      onClick={() => onClick(collection.id)}
+      onClick={handleClick}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
@@ -111,10 +127,7 @@ export function MdListItem({
             variant="ghost"
             size="sm"
             className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(collection.id);
-            }}
+            onClick={handleDelete}
             disabled={isDeleting}
           >
             删除
@@ -123,4 +136,4 @@ export function MdListItem({
       </div>
     </div>
   );
-}
+});
