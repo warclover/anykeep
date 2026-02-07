@@ -10,7 +10,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
@@ -67,7 +67,7 @@ export function useClusterDistribution(): UseClusterDistributionReturn {
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async (): Promise<ClusterDistributionItem[]> => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       const { data, error } = await supabase.rpc(
         "get_cluster_size_distribution",

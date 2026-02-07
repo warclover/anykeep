@@ -11,7 +11,7 @@
 
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
@@ -81,7 +81,7 @@ export function useClusterStats(): UseClusterStatsReturn {
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async (): Promise<ClusterStats> => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       const { data, error } = await supabase.rpc("get_user_cluster_stats");
 

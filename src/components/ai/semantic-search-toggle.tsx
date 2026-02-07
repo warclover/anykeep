@@ -83,7 +83,7 @@ export function SemanticSearchToggle({
   compact = false,
   className,
 }: SemanticSearchToggleProps) {
-  const currentModeInfo = MODE_INFO[mode];
+  const currentModeInfo = MODE_INFO[mode] ?? MODE_INFO.hybrid;
   const isHybridMode = mode === "hybrid";
   const isSemanticMode = mode === "semantic";
 

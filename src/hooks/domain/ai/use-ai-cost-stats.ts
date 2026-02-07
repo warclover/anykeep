@@ -11,7 +11,7 @@
 
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================
@@ -151,7 +151,7 @@ export function useAiCostStats(): UseAiCostStatsReturn {
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       // 并行获取所有统计数据
       const [

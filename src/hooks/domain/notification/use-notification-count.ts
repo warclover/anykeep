@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 import { toast } from "sonner";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -105,7 +105,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
   } = useQuery({
     queryKey: COUNT_QUERY_KEY,
     queryFn: async (): Promise<NotificationCounts> => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       const { data, error } = await supabase.rpc("get_notification_counts");
 
@@ -152,7 +152,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
   } = useQuery({
     queryKey: LIST_QUERY_KEY,
     queryFn: async (): Promise<NotificationItem[]> => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       const { data, error } = await supabase
         .from("user_notifications")
@@ -212,7 +212,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
   // ==================== 标记已读 ====================
   const markReadMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
       const { error } = await supabase.rpc("mark_notifications_read", {
         p_ids: ids,
       });
@@ -231,7 +231,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
   // ==================== 标记全部已读 ====================
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
       const { error } = await supabase.rpc("mark_all_notifications_read");
       if (error) throw new Error(error.message);
     },
@@ -261,7 +261,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createClient();
 
     // 创建 Realtime 订阅
     const channel = supabase
