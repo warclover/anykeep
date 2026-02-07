@@ -44,6 +44,7 @@ import { OrganizationSuggestionsPanel } from "./organization-suggestions-panel";
 import { ClusterSuggestionsPanel } from "./cluster-suggestions-panel";
 import { ClusterAnalysisBanner } from "./cluster-analysis-banner";
 import { InboxTabs } from "./inbox-tabs";
+import { InboxStatsCards } from "./inbox-stats-cards";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { useTrustMode, useConfirmations } from "@/hooks/ui";
 import { useInboxCounts } from "@/hooks/data/use-inbox-counts";
@@ -193,7 +194,11 @@ export function InboxPageClient({
   const [isOrganizing, setIsOrganizing] = useState(false);
 
   // Hooks
-  const { refresh: refreshCounts } = useInboxCounts();
+  const {
+    extendedStats,
+    isLoading: isCountsLoading,
+    refresh: refreshCounts,
+  } = useInboxCounts();
   const invalidateInboxItems = useInvalidateInboxItems();
   const {
     items: cachedItems,
@@ -456,6 +461,15 @@ export function InboxPageClient({
 
         {/* Tab 切换器 */}
         <InboxTabs activeTab={activeTab} onTabChange={handleTabChange} />
+
+        {/* 智能统计卡片（仅待分类 Tab 显示） */}
+        {showOrganizePanels && (
+          <InboxStatsCards
+            stats={extendedStats}
+            isLoading={isCountsLoading}
+            className="mt-4"
+          />
+        )}
       </div>
 
       {/* 内容区域 */}

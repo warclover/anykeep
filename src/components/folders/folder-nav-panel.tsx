@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/collapsible";
 import { FolderActionMenu } from "./folder-action-menu";
 import { DroppableFolder } from "./droppable-folder";
+import { FolderHeatIndicator } from "@/components/folder/folder-heat-indicator";
+import { useFolderHeat } from "@/hooks/domain/folder/use-folder-heat";
 import {
   FOLDER_GROUPS,
   UI_GROUP_KEYS,
@@ -68,6 +70,8 @@ interface NavItemProps {
   label: string;
   count?: number;
   todayCount?: number;
+  /** 文件夹热度值 (0-100) */
+  heat?: number;
   isSelected?: boolean;
   isSystem?: boolean;
   indent?: number;
@@ -80,6 +84,7 @@ function NavItem({
   label,
   count,
   todayCount,
+  heat,
   isSelected,
   isSystem,
   indent = 0,
@@ -105,6 +110,10 @@ function NavItem({
           {icon}
         </span>
         <span className="flex-1 text-left truncate">{label}</span>
+        {/* 热度指示器 */}
+        {heat !== undefined && heat > 0 && (
+          <FolderHeatIndicator heat={heat} size="sm" />
+        )}
         {count !== undefined && count > 0 && (
           <span className="text-xs text-muted-foreground tabular-nums">
             {count}
@@ -228,6 +237,9 @@ export function FolderNavPanel({
 
   // 已归档展开状态
   const [showArchived, setShowArchived] = useState(false);
+
+  // 获取文件夹热度数据
+  const { getHeat } = useFolderHeat();
 
   // 分组后的文件夹
   const groupedFolders = useMemo(() => groupFolders(folders), [folders]);
@@ -397,6 +409,7 @@ export function FolderNavPanel({
                               label={folder.name}
                               count={folder.bookmark_count}
                               todayCount={folder.today_count}
+                              heat={getHeat(folder.id)}
                               indent={1}
                               isSelected={isFolderSelected(folder.id)}
                               onClick={() => onSelectFolder(folder.id)}

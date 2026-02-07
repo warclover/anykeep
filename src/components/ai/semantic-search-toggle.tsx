@@ -9,18 +9,10 @@
 
 "use client";
 
-import { useCallback } from "react";
 import { Brain, Search, Sparkles, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
@@ -32,7 +24,7 @@ import { cn } from "@/lib/utils";
 // 类型定义
 // ============================================
 
-export type SearchMode = "keyword" | "semantic";
+export type SearchMode = "keyword" | "semantic" | "hybrid";
 
 export interface SemanticSearchToggleProps {
   /** 当前搜索模式 */
@@ -61,10 +53,18 @@ const MODE_INFO = {
   },
   semantic: {
     label: "语义",
-    description: "理解搜索意图，找到语义相关的内容",
+    description: "理解搜索意图，找到语义��关的内容",
     icon: Brain,
     color: "text-purple-600",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
+  },
+  hybrid: {
+    label: "智能混合",
+    description: "结合关键词精确匹配与语义理解，获得最佳搜索结果",
+    icon: Sparkles,
+    color: "text-amber-600",
+    bgColor: "bg-amber-100 dark:bg-amber-900/30",
+    recommended: true,
   },
 };
 
@@ -73,7 +73,8 @@ const MODE_INFO = {
 // ============================================
 
 /**
- * 语义搜索开关组件
+ * 语义搜索开关组件（三态选择器）
+ * 支持：关键词 / 智能混合（推荐） / 语义 三种模式
  */
 export function SemanticSearchToggle({
   mode,
@@ -82,53 +83,23 @@ export function SemanticSearchToggle({
   compact = false,
   className,
 }: SemanticSearchToggleProps) {
-  const isSemanticMode = mode === "semantic";
   const currentModeInfo = MODE_INFO[mode];
+  const isHybridMode = mode === "hybrid";
+  const isSemanticMode = mode === "semantic";
 
-  const handleToggle = useCallback(() => {
-    onModeChange(isSemanticMode ? "keyword" : "semantic");
-  }, [isSemanticMode, onModeChange]);
-
-  // 紧凑模式
+  // 紧凑模式：使用三态切换按钮组
   if (compact) {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={isSemanticMode ? "default" : "outline"}
-              size="sm"
-              onClick={handleToggle}
-              disabled={disabled}
-              className={cn(
-                "h-8 gap-1.5",
-                isSemanticMode &&
-                  "bg-purple-600 hover:bg-purple-700 text-white",
-                className,
-              )}
-            >
-              {isSemanticMode ? (
-                <Brain className="size-4" />
-              ) : (
-                <Search className="size-4" />
-              )}
-              <span className="hidden sm:inline">
-                {currentModeInfo.label}搜索
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>{currentModeInfo.description}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              点击切换到{isSemanticMode ? "关键词" : "语义"}搜索
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <SearchModeToggleGroup
+        mode={mode}
+        onModeChange={onModeChange}
+        disabled={disabled}
+        className={className}
+      />
     );
   }
 
-  // 完整模式
+  // 完整模式：三态选择器卡片
   return (
     <div
       className={cn(
@@ -155,12 +126,21 @@ export function SemanticSearchToggle({
             <Label htmlFor="search-mode" className="font-medium">
               {currentModeInfo.label}搜索
             </Label>
+            {isHybridMode && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+              >
+                <Sparkles className="size-3 mr-1" />
+                推荐
+              </Badge>
+            )}
             {isSemanticMode && (
               <Badge
                 variant="secondary"
                 className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
               >
-                <Sparkles className="size-3 mr-1" />
+                <Brain className="size-3 mr-1" />
                 AI 增强
               </Badge>
             )}
@@ -171,7 +151,7 @@ export function SemanticSearchToggle({
         </div>
       </div>
 
-      {/* 开关 */}
+      {/* 三态切换按钮组 + 帮助信息 */}
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
@@ -179,7 +159,7 @@ export function SemanticSearchToggle({
               <Info className="size-4 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent side="left" className="w-72">
+          <PopoverContent side="left" className="w-80">
             <div className="space-y-3">
               <h4 className="font-medium">搜索模式说明</h4>
 
@@ -192,6 +172,23 @@ export function SemanticSearchToggle({
                     <p className="text-sm font-medium">关键词搜索</p>
                     <p className="text-xs text-muted-foreground">
                       精确匹配文字内容，适合查找特定词汇
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <div className="flex items-center justify-center size-6 rounded bg-amber-100 dark:bg-amber-900/30 flex-shrink-0 mt-0.5">
+                    <Sparkles className="size-3 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      智能混合
+                      <Badge variant="outline" className="ml-1 text-[10px]">
+                        推荐
+                      </Badge>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      结合关键词精确匹配与语义理解，获得最佳搜索结果
                     </p>
                   </div>
                 </div>
@@ -210,25 +207,56 @@ export function SemanticSearchToggle({
               </div>
 
               <p className="text-xs text-muted-foreground border-t pt-2">
-                语义搜索使用 AI 向量技术，可能需要更长的响应时间
+                语义和混合搜索使用 AI 向量技术，可能需要更长的响应时间
               </p>
             </div>
           </PopoverContent>
         </Popover>
 
-        <Switch
-          id="search-mode"
-          checked={isSemanticMode}
-          onCheckedChange={handleToggle}
-          disabled={disabled}
-        />
+        {/* 三态切换按钮 */}
+        <div className="flex rounded-md border p-0.5 bg-muted/30">
+          <Button
+            variant={mode === "keyword" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onModeChange("keyword")}
+            disabled={disabled}
+            className="h-7 px-2"
+          >
+            <Search className="size-3.5" />
+          </Button>
+          <Button
+            variant={mode === "hybrid" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onModeChange("hybrid")}
+            disabled={disabled}
+            className={cn(
+              "h-7 px-2",
+              mode === "hybrid" && "bg-amber-600 hover:bg-amber-700 text-white",
+            )}
+          >
+            <Sparkles className="size-3.5" />
+          </Button>
+          <Button
+            variant={mode === "semantic" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onModeChange("semantic")}
+            disabled={disabled}
+            className={cn(
+              "h-7 px-2",
+              mode === "semantic" &&
+                "bg-purple-600 hover:bg-purple-700 text-white",
+            )}
+          >
+            <Brain className="size-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * 搜索模式切换按钮组
+ * 搜索模式切换按钮组（三态选择器）
  */
 export function SearchModeToggleGroup({
   mode,
@@ -246,7 +274,26 @@ export function SearchModeToggleGroup({
         className="flex-1 h-8 gap-1.5"
       >
         <Search className="size-4" />
-        关键词
+        <span className="hidden sm:inline">关键词</span>
+      </Button>
+      <Button
+        variant={mode === "hybrid" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onModeChange("hybrid")}
+        disabled={disabled}
+        className={cn(
+          "flex-1 h-8 gap-1.5",
+          mode === "hybrid" && "bg-amber-600 hover:bg-amber-700 text-white",
+        )}
+      >
+        <Sparkles className="size-4" />
+        <span className="hidden sm:inline">智能混合</span>
+        <Badge
+          variant="secondary"
+          className="text-[10px] px-1 py-0 hidden md:inline-flex"
+        >
+          推荐
+        </Badge>
       </Button>
       <Button
         variant={mode === "semantic" ? "default" : "ghost"}
@@ -259,7 +306,7 @@ export function SearchModeToggleGroup({
         )}
       >
         <Brain className="size-4" />
-        语义
+        <span className="hidden sm:inline">语义</span>
       </Button>
     </div>
   );

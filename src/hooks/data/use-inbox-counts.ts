@@ -5,8 +5,9 @@
  * - TanStack Query 缓存和自动刷新
  * - 乐观更新
  * - 错误处理
+ * - 扩展统计（智能计数卡片）
  *
- * @version 2.0.0 - 迁移到 TanStack Query
+ * @version 2.1.0 - 添加扩展统计支持
  */
 
 "use client";
@@ -21,8 +22,26 @@ import type { InboxTabId } from "@/lib/constants/inbox-tabs";
 
 export type InboxCounts = Record<InboxTabId, number>;
 
+/** 扩展统计信息（智能计数卡片使用） */
+export interface InboxExtendedStats {
+  /** AI 处理中的书签数量 */
+  processing: number;
+  /** 高价值内容数量 */
+  highValue: number;
+  /** 待分类数量 */
+  uncategorized: number;
+}
+
+/** 完整的收件箱统计数据 */
+interface InboxCountsData {
+  counts: InboxCounts;
+  extendedStats: InboxExtendedStats;
+}
+
 interface UseInboxCountsReturn {
   counts: InboxCounts;
+  /** 扩展统计信息（用于智能计数卡片） */
+  extendedStats: InboxExtendedStats;
   isLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -35,15 +54,16 @@ interface InboxCountsRpcResult {
   high_value: number;
   broken: number;
   recent: number;
+  processing: number;
 }
 
 // ==================== 数据获取 ====================
 
 /**
  * 使用 RPC 函数获取收件箱计数
- * 将 5 次数据库往返合并为 1 次，提升性能
+ * 将 6 次数据库往返合并为 1 次，提升性能
  */
-async function fetchInboxCounts(): Promise<InboxCounts> {
+async function fetchInboxCounts(): Promise<InboxCountsData> {
   const supabase = createClient();
   const {
     data: { user },
@@ -70,11 +90,18 @@ async function fetchInboxCounts(): Promise<InboxCounts> {
   const result = data as unknown as InboxCountsRpcResult | null;
 
   return {
-    uncategorized: result?.uncategorized ?? 0,
-    unread: result?.unread ?? 0,
-    "high-value": result?.high_value ?? 0,
-    broken: result?.broken ?? 0,
-    recent: result?.recent ?? 0,
+    counts: {
+      uncategorized: result?.uncategorized ?? 0,
+      unread: result?.unread ?? 0,
+      "high-value": result?.high_value ?? 0,
+      broken: result?.broken ?? 0,
+      recent: result?.recent ?? 0,
+    },
+    extendedStats: {
+      processing: result?.processing ?? 0,
+      highValue: result?.high_value ?? 0,
+      uncategorized: result?.uncategorized ?? 0,
+    },
   };
 }
 
@@ -84,7 +111,7 @@ async function fetchInboxCounts(): Promise<InboxCounts> {
 async function fetchInboxCountsFallback(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-): Promise<InboxCounts> {
+): Promise<InboxCountsData> {
   const baseQuery = () =>
     supabase
       .from("bookmarks")
@@ -93,23 +120,36 @@ async function fetchInboxCountsFallback(
       .is("deleted_at", null)
       .eq("is_in_trash", false);
 
-  const [uncategorized, unread, highValue, broken, recent] = await Promise.all([
-    baseQuery().is("folder_id", null),
-    baseQuery().eq("is_read", false),
-    baseQuery().gte("quality_score", 0.7),
-    baseQuery().eq("link_status", "broken"),
-    baseQuery().gte(
-      "created_at",
-      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    ),
-  ]);
+  const [uncategorized, unread, highValue, broken, recent, processing] =
+    await Promise.all([
+      baseQuery().is("folder_id", null),
+      baseQuery().eq("is_read", false),
+      baseQuery().gte("quality_score", 0.7),
+      baseQuery().eq("link_status", "broken"),
+      baseQuery().gte(
+        "created_at",
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      ),
+      baseQuery().in("processing_status", ["processing", "pending"]),
+    ]);
+
+  const uncategorizedCount = uncategorized.count ?? 0;
+  const highValueCount = highValue.count ?? 0;
+  const processingCount = processing.count ?? 0;
 
   return {
-    uncategorized: uncategorized.count ?? 0,
-    unread: unread.count ?? 0,
-    "high-value": highValue.count ?? 0,
-    broken: broken.count ?? 0,
-    recent: recent.count ?? 0,
+    counts: {
+      uncategorized: uncategorizedCount,
+      unread: unread.count ?? 0,
+      "high-value": highValueCount,
+      broken: broken.count ?? 0,
+      recent: recent.count ?? 0,
+    },
+    extendedStats: {
+      processing: processingCount,
+      highValue: highValueCount,
+      uncategorized: uncategorizedCount,
+    },
   };
 }
 
@@ -123,6 +163,12 @@ const EMPTY_COUNTS: InboxCounts = {
   recent: 0,
 };
 
+const EMPTY_EXTENDED_STATS: InboxExtendedStats = {
+  processing: 0,
+  highValue: 0,
+  uncategorized: 0,
+};
+
 /** 缓存时间：30 秒（实时性数据） */
 const STALE_TIME = 30 * 1000;
 
@@ -132,7 +178,7 @@ const REFETCH_INTERVAL = 30 * 1000;
 export function useInboxCounts(): UseInboxCountsReturn {
   const _queryClient = useQueryClient();
 
-  const { data, error, isLoading, refetch } = useQuery<InboxCounts, Error>({
+  const { data, error, isLoading, refetch } = useQuery<InboxCountsData, Error>({
     queryKey: inboxKeys.counts(),
     queryFn: fetchInboxCounts,
     staleTime: STALE_TIME,
@@ -147,7 +193,8 @@ export function useInboxCounts(): UseInboxCountsReturn {
   }, [refetch]);
 
   return {
-    counts: data ?? EMPTY_COUNTS,
+    counts: data?.counts ?? EMPTY_COUNTS,
+    extendedStats: data?.extendedStats ?? EMPTY_EXTENDED_STATS,
     isLoading,
     error: error ?? null,
     refresh,

@@ -69,11 +69,13 @@ export function SearchPageClient({
 }: SearchPageClientProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
-  // V4.3.0: 使用 SearchMode 类型替代 boolean
-  const [searchMode, setSearchMode] = useState<SearchMode>(
-    initialAIMode ? "semantic" : "keyword",
-  );
-  const aiMode = searchMode === "semantic";
+  // V4.4.0: 使用 SearchMode 类型，默认推荐 hybrid 模式
+  const [searchMode, setSearchMode] = useState<SearchMode>(() => {
+    if (initialAIMode) return "semantic";
+    // 默认使用智能混合模式
+    return "hybrid";
+  });
+  const aiMode = searchMode === "semantic" || searchMode === "hybrid";
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -167,10 +169,16 @@ export function SearchPageClient({
       setExecutionTimeMs(null);
 
       try {
+        // V4.4.0: 根据 searchMode 选择不同的 API 模式
+        const apiMode = isAI
+          ? searchMode === "hybrid"
+            ? "hybrid"
+            : "enhanced"
+          : "keyword";
+
         const params = new URLSearchParams({
           q: searchQuery,
-          // 使用 enhanced 模式以启用智能过滤器提取
-          mode: isAI ? "enhanced" : "keyword",
+          mode: apiMode,
           limit: "50",
           // V4.3.2: 启用 debug 以获取 chunkSearch 和 rrfFusion 信息
           debug: isAI ? "true" : "false",
@@ -222,7 +230,7 @@ export function SearchPageClient({
         setIsClientSearching(false);
       }
     },
-    [],
+    [searchMode],
   );
 
   // V4.2.17: 使用 ref 追踪上一次的查询，用于检测查询变化
@@ -330,18 +338,21 @@ export function SearchPageClient({
     handleSearch(tag);
   };
 
-  // 切换 AI 模式
-  // V4.3.0: 使用 SearchMode 类型
+  // 切换搜索模式
+  // V4.4.0: 使用 SearchMode 三态类型
   const handleSearchModeChange = (mode: SearchMode) => {
     setSearchMode(mode);
-    const isAI = mode === "semantic";
     // 如果当前有搜索，立即重新搜索
     if (query.trim()) {
       const params = new URLSearchParams();
       params.set("q", query);
-      if (isAI) {
+      // 将模式同步到 URL
+      if (mode === "semantic") {
         params.set("ai", "true");
+      } else if (mode === "hybrid") {
+        params.set("mode", "hybrid");
       }
+      // keyword 模式不需要额外参数
       router.push(`/search?${params.toString()}`);
     }
   };
