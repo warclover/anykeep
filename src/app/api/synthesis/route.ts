@@ -162,9 +162,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Supabase 返回的数据结构与 SynthesisReportRow 兼容
-    // 使用类型守卫确保数据有效性
-    const rows = (data ?? []) as SynthesisReportRow[];
+    // Supabase 返回的数据可能缺少某些可选字段（如 embedding）
+    // 使用 unknown 中间转换确保类型安全
+    const rows = (data ?? []) as unknown as SynthesisReportRow[];
 
     const response: SynthesisListResponse = {
       data: rows.map(mapRowToSummary),
