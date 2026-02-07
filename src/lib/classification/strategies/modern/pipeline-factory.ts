@@ -117,12 +117,12 @@ export class ClassificationPipelineFactory {
     // 初始化共享服务（懒加载）
     this.ensureServicesInitialized();
 
-    // 创建新的 Pipeline
+    // 创建新的 Pipeline（ensureServicesInitialized 保证这些服务已初始化）
     const pipeline = new ClassificationPipelineService(
-      this.loggerService!,
-      this.embeddingService!,
-      this.vectorSearchService!,
-      this.llmService!,
+      this.loggerService as LoggerService,
+      this.embeddingService as DashScopeEmbeddingAdapter,
+      this.vectorSearchService as VectorSearchService,
+      this.llmService as LLMService,
       {
         t0ConfidenceThreshold:
           this.config.pipelineConfig?.t0ConfidenceThreshold ?? 0.85,

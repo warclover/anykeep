@@ -64,7 +64,7 @@ export class T0Generator {
 
     // 1. L0规则匹配 (v5.1: L0RuleMatcher.match 现在是异步的，支持 AI 标签匹配)
     const l0Result = await this.l0Matcher.match(request);
-    if (l0Result.matched && l0Result.folderId) {
+    if (l0Result.matched && l0Result.folderId && l0Result.confidence) {
       const latencyMs = Date.now() - startTime;
 
       this.logger.info("L0规则匹配成功", {
@@ -73,13 +73,13 @@ export class T0Generator {
       });
 
       return {
-        folderId: l0Result.folderId!,
-        confidence: l0Result.confidence!,
+        folderId: l0Result.folderId,
+        confidence: l0Result.confidence,
         candidates: [
           {
-            folderId: l0Result.folderId!,
+            folderId: l0Result.folderId,
             folderName: "", // L0规则不返回文件夹名称
-            similarity: l0Result.confidence!,
+            similarity: l0Result.confidence,
           },
         ],
         needsT1: false,

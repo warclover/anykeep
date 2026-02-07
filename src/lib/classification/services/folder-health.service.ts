@@ -155,7 +155,10 @@ export class FolderHealthService {
 
     // Pre-filter: Only profiles with valid embeddings
     const profilesWithEmbeddings = profiles.filter(
-      (p) => p.profileEmbedding && p.profileEmbedding.length > 0,
+      (p): p is FolderProfile & { profileEmbedding: number[] } =>
+        p.profileEmbedding !== null &&
+        p.profileEmbedding !== undefined &&
+        p.profileEmbedding.length > 0,
     );
 
     const totalPairs =
@@ -171,8 +174,8 @@ export class FolderHealthService {
 
         // Calculate similarity (embeddings guaranteed to exist from pre-filter)
         const similarity = cosineSimilarity(
-          p1.profileEmbedding!,
-          p2.profileEmbedding!,
+          p1.profileEmbedding,
+          p2.profileEmbedding,
         );
 
         if (similarity >= threshold) {

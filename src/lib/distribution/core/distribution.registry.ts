@@ -174,8 +174,13 @@ export class DistributionRegistry {
    */
   async clear(): Promise<void> {
     const disposePromises = this.getAll()
-      .filter((adapter) => adapter.dispose)
-      .map((adapter) => adapter.dispose!());
+      .filter(
+        (
+          adapter,
+        ): adapter is IDistributionAdapter & { dispose: () => Promise<void> } =>
+          typeof adapter.dispose === "function",
+      )
+      .map((adapter) => adapter.dispose());
 
     await Promise.allSettled(disposePromises);
     this.adapters.clear();

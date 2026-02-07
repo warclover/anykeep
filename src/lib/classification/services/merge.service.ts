@@ -292,11 +292,10 @@ export class MergeService {
 
     for (let i = 0; i < folderProfiles.length; i++) {
       for (let j = i + 1; j < folderProfiles.length; j++) {
-        if (folderProfiles[i].embedding && folderProfiles[j].embedding) {
-          totalSimilarity += this.cosineSimilarity(
-            folderProfiles[i].embedding!,
-            folderProfiles[j].embedding!,
-          );
+        const embeddingI = folderProfiles[i].embedding;
+        const embeddingJ = folderProfiles[j].embedding;
+        if (embeddingI && embeddingJ) {
+          totalSimilarity += this.cosineSimilarity(embeddingI, embeddingJ);
         }
         totalTagOverlap += this.calculateTagOverlap(
           folderProfiles[i].commonTags,

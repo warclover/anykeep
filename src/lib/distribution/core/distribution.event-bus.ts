@@ -152,13 +152,16 @@ export class DistributionEventBus implements IDistributionEventBus {
       this.handlers.set(eventType, new Set());
     }
 
-    this.handlers.get(eventType)!.add(handler);
+    const handlers = this.handlers.get(eventType);
+    if (handlers) {
+      handlers.add(handler);
+    }
 
     if (this.config.enableLogging) {
       logger.debug(
         {
           eventType,
-          totalHandlers: this.handlers.get(eventType)!.size,
+          totalHandlers: this.handlers.get(eventType)?.size ?? 0,
         },
         "EventBus: Handler subscribed",
       );

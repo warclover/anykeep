@@ -289,15 +289,23 @@ export function getAllUsageTags(
   }));
 
   // 自定义标签
+  const defaultStyle: Omit<UsageTagPreset, "value" | "label" | "icon"> = {
+    color: "blue",
+    bgLight: "bg-blue-50",
+    bgDark: "dark:bg-blue-900/30",
+    borderLight: "border-blue-200",
+    borderDark: "dark:border-blue-700",
+    textLight: "text-blue-700",
+    textDark: "dark:text-blue-300",
+  };
   const customUnifiedTags: UnifiedUsageTag[] = customTags.map((tag) => {
     const colorStyle =
-      CUSTOM_TAG_COLOR_STYLES[tag.color as CustomTagColor] ??
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      CUSTOM_TAG_COLOR_STYLES[tag.color as CustomTagColor] ?? defaultStyle;
     return {
       value: tag.value,
-      label: tag.label || tag.value, // 如果没有 label，使用 value 作为默认
+      label: tag.label || tag.value,
       isPreset: false as const,
-      style: colorStyle!, // 明确断言：蓝色是默认后备值，必定存在
+      style: colorStyle,
       lastUsedAt: tag.lastUsedAt,
     };
   });
@@ -355,14 +363,23 @@ export function getUsageTagStyleExtended(
   // 再检查自定义
   const customTag = customTags.find((tag) => tag.value === tagValue);
   if (customTag) {
+    const defaultStyle: Omit<UsageTagPreset, "value" | "label" | "icon"> = {
+      color: "blue",
+      bgLight: "bg-blue-50",
+      bgDark: "dark:bg-blue-900/30",
+      borderLight: "border-blue-200",
+      borderDark: "dark:border-blue-700",
+      textLight: "text-blue-700",
+      textDark: "dark:text-blue-300",
+    };
     const colorStyle =
       CUSTOM_TAG_COLOR_STYLES[customTag.color as CustomTagColor] ??
-      CUSTOM_TAG_COLOR_STYLES.blue;
+      defaultStyle;
     return {
       value: customTag.value,
-      label: customTag.label || customTag.value, // 如果没有 label，使用 value 作为默认
+      label: customTag.label || customTag.value,
       isPreset: false as const,
-      style: colorStyle!, // 明确断言：蓝色是默认后备值，必定存在
+      style: colorStyle,
       lastUsedAt: customTag.lastUsedAt,
     };
   }

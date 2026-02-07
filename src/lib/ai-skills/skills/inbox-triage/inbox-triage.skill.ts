@@ -217,7 +217,10 @@ export class InboxTriageSkill extends OrchestrationSkill<
       if (!clusters.has(key)) {
         clusters.set(key, []);
       }
-      clusters.get(key)!.push(bookmark);
+      const cluster = clusters.get(key);
+      if (cluster) {
+        cluster.push(bookmark);
+      }
     }
 
     return clusters;

@@ -133,7 +133,10 @@ function groupByCategory(
     if (!groups.has(category)) {
       groups.set(category, []);
     }
-    groups.get(category)!.push({ q, a: answer });
+    const group = groups.get(category);
+    if (group) {
+      group.push({ q, a: answer });
+    }
   });
 
   return groups;

@@ -723,21 +723,6 @@ export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
     // 知识工坊报告：使用 content 作为 fullMarkdown，设置默认的四维结构
     const content = row.content || row.full_markdown || "";
 
-    // 调试日志
-    if (process.env.NODE_ENV === "development") {
-      console.info("Mapping Knowledge Studio report:", {
-        id: row.id,
-        hasContent: !!row.content,
-        contentLength: row.content?.length,
-        contentPreview: row.content?.slice(0, 200),
-        hasFullMarkdown: !!row.full_markdown,
-        fullMarkdownLength: row.full_markdown?.length,
-        blueprintType: row.blueprint_type,
-        generationMetadata: row.generation_metadata,
-        rowKeys: Object.keys(row),
-      });
-    }
-
     // 从 generation_metadata 中获取 source_bookmark_ids
     // 注意：知识工坊保存的是字符串数组，需要转换为字符串格式以便 API 使用
     const metadataBookmarkIds = row.generation_metadata?.source_bookmark_ids as
