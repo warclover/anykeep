@@ -5,6 +5,7 @@
  * V4.2.21: 修复轮询定时器丢失问题
  * V4.2.25: 修复中间状态不更新问题 - 每次轮询都更新数据
  * V4.2.26: 新增首次立即轮询，避免新书签等待 3 秒才更新
+ * V4.2.30: 新增页面可见性检测，后台时暂停轮询节省资源
  *
  * 对 PROCESSING 状态或"正在获取标题..."的书签进行定时轮询
  * 当数据更新完成后自动停止轮询该书签
@@ -15,9 +16,10 @@
  * - 书签完成后自动移除轮询列表
  * - 无需轮询时不发送请求
  * - 首次检测到新书签时立即轮询
+ * - 页面不可见时暂停轮询，可见时立即恢复
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { API_PATHS } from "@/lib/constants/api-paths";
 import type { Bookmark } from "@/types/supabase";
 
@@ -67,6 +69,21 @@ export function useProcessingPoller({
 }: UseProcessingPollerOptions) {
   // 轮询计数器（用于限制最大轮询次数）
   const pollCountRef = useRef<Map<number, number>>(new Map());
+
+  // V4.2.30: 页面可见性状态
+  const [isPageVisible, setIsPageVisible] = useState(true);
+
+  // V4.2.30: 监听页面可见性变化
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   /**
    * 执行轮询请求
@@ -126,9 +143,11 @@ export function useProcessingPoller({
    * 设置轮询定时器
    * V4.2.21: 移除错误的"跳过"逻辑，确保每次 effect 执行都正确设置定时器
    * V4.2.26: 新增首次立即轮询，检测到新书签后立即执行一次轮询
+   * V4.2.30: 页面不可见时暂停轮询，可见时立即恢复并执行一次轮询
    */
   useEffect(() => {
-    if (!enabled) return;
+    // V4.2.30: 页面不可见或未启用时不轮询
+    if (!enabled || !isPageVisible) return;
 
     // 找出需要轮询的书签 ID
     const getPollingIds = () => {
@@ -160,6 +179,7 @@ export function useProcessingPoller({
     }
 
     // V4.2.26: 如果有新书签加入，立即执行首次轮询（不等待 3 秒）
+    // V4.2.30: 页面从不可见变为可见时，也立即执行一次轮询
     if (hasNewPollingBookmarks) {
       pollBookmarks(pollingIds);
     }
@@ -183,7 +203,7 @@ export function useProcessingPoller({
     return () => {
       clearInterval(intervalId);
     };
-  }, [bookmarks, enabled, pollBookmarks]);
+  }, [bookmarks, enabled, isPageVisible, pollBookmarks]);
 
   // 组件卸载时清理
   useEffect(() => {

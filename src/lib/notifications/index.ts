@@ -1,21 +1,19 @@
 /**
  * 统一通知系统模块导出
  * @description V5.0 重构版 - 统一通知系统
- * @version 2.0.0
+ * @version 2.1.0
  * @since 2026-02-01
+ *
+ * ⚠️ 重要：服务端模块已分离，避免客户端组件导入服务端代码
+ * - 服务端使用: import { NotificationService, Notify } from "@/lib/notifications/server"
+ * - 客户端使用: import { type Notification, PRIORITY_CONFIG } from "@/lib/notifications"
  */
 
 // ============================================================================
-// V5.0 新通知系统（推荐使用）
+// 客户端安全导出（不包含 next/headers 等服务端依赖）
 // ============================================================================
 
-// 核心服务 - 仅服务端使用
-export { NotificationService } from "./notification.service";
-
-// 业务快捷方法 - 仅服务端使用
-export { Notify } from "./notification.helpers";
-
-// 类型定义
+// 类型定义（客户端安全）
 export type {
   NotificationChannel,
   NotificationPriority,
@@ -31,7 +29,7 @@ export type {
   NotificationCounts,
 } from "./notification.types";
 
-// 常量
+// 常量（客户端安全）
 export { DATE_GROUP_LABELS, PRIORITY_CONFIG } from "./notification.types";
 
 // ============================================================================
@@ -66,10 +64,7 @@ export { MESSAGE_TYPE_MIGRATION_MAP } from "./types";
 export { toastService } from "./toast/toast.service";
 
 // ============================================================================
-// 服务端模块（请直接导入，避免污染客户端）
+// 服务端模块（请从 server.ts 导入）
 // ============================================================================
-// Inbox Service (L2) - 仅服务端使用
-// import { confirmationService } from "@/lib/confirmation";
-
-// Activity Service (L3) - 仅服务端使用
-// import { activityService } from "./activity/activity.service";
+// ⚠️ NotificationService 和 Notify 已移至 ./server.ts
+// 服务端使用: import { NotificationService, Notify } from "@/lib/notifications/server"

@@ -13,7 +13,7 @@ import {
   databaseError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import type { ImportSource, Json } from "@/types/supabase";
 
 // 有效的导入来源列表

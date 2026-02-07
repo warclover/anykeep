@@ -15,7 +15,7 @@ import {
 } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 
 /**
  * POST /api/bookmarks/batch-delete

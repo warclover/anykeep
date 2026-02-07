@@ -8,21 +8,24 @@
  *
  * ## 架构说明
  *
- * Provider 分为两组：
- * - **CoreProviders**: 基础设施类 Provider，必须按顺序执行
- * - **FeatureProviders**: 功能类 Provider，相对独立
+ * Provider 分为三组（V4.2.30 性能优化）：
+ * - **EssentialProviders**: 首屏必需的基础 Provider
+ * - **NavigationProviders**: 导航相关的 Provider
+ * - **DeferredProviders**: 可延迟加载的功能 Provider
  *
  * ## 变更记录
  *
+ * - V2.2.0 (2026-02-07): Provider 分层延迟加载，提升首屏性能
  * - V2.1.0 (2025-12-29): 添加 QueryProvider (TanStack Query) - Phase 4
  * - V2.0.0 (2025-12-24): 使用 composeProviders 重构，减少嵌套层级
  * - V1.3.0 (V4.2.30): 添加 SessionHeartbeatProvider 解决长时间操作会话过期问题
  * - V1.2.0 (Phase 3.5): HomePageProvider 移出 Suspense 边界
  *
- * @version 2.1.0
+ * @version 2.2.0
  * @since 2025-12-24
  */
 
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
@@ -47,16 +50,16 @@ import {
 } from "@/lib/utils/compose-providers";
 
 // ============================================
-// Provider 分组定义
+// Provider 分组定义（V4.2.30 性能优化）
 // ============================================
 
 /**
- * 核心 Providers
+ * 首屏必需 Providers
  *
- * 基础设施类 Provider，提供主题、用户、会话等核心功能
- * 必须按顺序执行：Query → Theme → Sidebar → User → SessionHeartbeat
+ * 最小化首屏所需的 Provider，提升首次渲染速度
+ * 包含：Query、Theme、Sidebar、User
  */
-const CoreProviders = composeProviders(
+const EssentialProviders = composeProviders(
   // TanStack Query (最外层，供其他 Provider 使用)
   QueryProvider,
   // 主题管理
@@ -70,33 +73,39 @@ const CoreProviders = composeProviders(
   SidebarProvider,
   // 用户认证状态
   UserProvider,
-  // 会话心跳检测，防止长时间操作时会话过期
-  SessionHeartbeatProvider,
 );
 
 /**
- * 功能 Providers
+ * 导航相关 Providers
  *
- * 应用功能类 Provider，提供引导、页面状态、导航、缓存等功能
- * 相对独立，可按需调整顺序
- *
+ * 页面导航和缓存必需的 Provider
  * 注意：NavigationProvider 使用 useSearchParams()，需要 Suspense 包裹
- * HomePageProvider 必须在 NavigationProvider 外层，避免挂起时 Context 不可用
  */
-const FeatureProviders = composeProviders(
-  // 新用户引导
-  OnboardingProvider,
+const NavigationProviders = composeProviders(
   // 首页状态管理（必须在 NavigationProvider 外层）
   HomePageProvider,
-  // 导航状态（使用 useSearchParams，需要 Suspense）
+  // 导航状态（使用 useSearchParams���需要 Suspense）
   withSuspense(NavigationProvider, null),
   // 组件缓存
   KeepAliveProvider,
-  // 消息通知
+);
+
+/**
+ * 延迟加载 Providers
+ *
+ * 非首屏关键的功能 Provider，首屏渲染完成后加载
+ * 包含：SessionHeartbeat、Onboarding、Notification、TTS
+ */
+const DeferredProviders = composeProviders(
+  // 会话心跳检测（可延迟）
+  SessionHeartbeatProvider,
+  // 新用户引导（可延迟）
+  OnboardingProvider,
+  // 消息通知（可延迟）
   MessageNotificationProvider,
-  // AI Effect 通知（v2.0.0 新增）
+  // AI Effect 通知（可延迟）
   NotificationProvider,
-  // TTS 全局播放器（V4.2.27 新增，修复组件卸载导致请求中止的问题）
+  // TTS 全局播放器（可延迟）
   TTSPlayerProvider,
 );
 
@@ -113,6 +122,12 @@ interface RootProvidersProps {
  *
  * 包含所有客户端 Context Provider，按优化后的结构组织
  *
+ * 架构改进 v2.2 (2026-02-07):
+ * - Provider 分层延迟加载，提升首屏性能
+ * - EssentialProviders: 首屏必需
+ * - NavigationProviders: 导航必需
+ * - DeferredProviders: 首屏完成后加载
+ *
  * 架构改进 v2.0 (2026-01-28):
  * - FeedbackProvider 移到 GlobalErrorBoundary 内部，确保错误边界触发时仍可用
  * - 这样 GlobalFallbackUI 可以安全地使用 useFeedback hook
@@ -123,19 +138,71 @@ interface RootProvidersProps {
  * - 自动上报到 Sentry
  */
 export function RootProviders({ children }: RootProvidersProps) {
+  // V4.2.30: 延迟加载非首屏必需的 Provider
+  const [deferredReady, setDeferredReady] = useState(false);
+
+  useEffect(() => {
+    // 使用 requestIdleCallback 在浏览器空闲时加载��迟 Provider
+    // 如果不支持则使用 setTimeout 降级
+    let idleCallbackId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (typeof window !== "undefined") {
+      if ("requestIdleCallback" in window) {
+        idleCallbackId = (
+          window as Window & {
+            requestIdleCallback: (
+              cb: () => void,
+              opts?: { timeout: number },
+            ) => number;
+          }
+        ).requestIdleCallback(
+          () => {
+            setDeferredReady(true);
+          },
+          { timeout: 2000 }, // 最多延迟 2 秒
+        );
+      } else {
+        // Safari 等不支持 requestIdleCallback 的浏览器
+        timeoutId = setTimeout(() => {
+          setDeferredReady(true);
+        }, 500); // 延迟 500ms
+      }
+    }
+
+    return () => {
+      if (idleCallbackId !== undefined && "cancelIdleCallback" in window) {
+        (
+          window as Window & { cancelIdleCallback: (id: number) => void }
+        ).cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
   return (
     <GlobalErrorBoundary feature="global">
       {/* FeedbackProvider 必须在 GlobalErrorBoundary 内部，这样错误边界触发时仍可用 */}
       <FeedbackProvider>
-        <CoreProviders>
-          <FeatureProviders>{children}</FeatureProviders>
+        <EssentialProviders>
+          <NavigationProviders>
+            {/* V4.2.30: 延迟加载非首屏必需的 Provider */}
+            {deferredReady ? (
+              <DeferredProviders>{children}</DeferredProviders>
+            ) : (
+              // 首屏渲染时直接渲染 children，延迟 Provider 稍后加载
+              children
+            )}
+          </NavigationProviders>
           {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
           <Toaster position="top-center" offset={16} />
-          {/* FeedbackFloatingButton 已��至 FloatingActionMenu 统一管理 */}
+          {/* FeedbackFloatingButton 已移至 FloatingActionMenu 统一管理 */}
           <ServiceWorkerRegister />
           {/* Web Vitals 性能监控 */}
           <WebVitalsReporter debug={process.env.NODE_ENV === "development"} />
-        </CoreProviders>
+        </EssentialProviders>
       </FeedbackProvider>
     </GlobalErrorBoundary>
   );

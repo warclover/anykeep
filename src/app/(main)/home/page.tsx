@@ -10,9 +10,14 @@
  * V4.2.27 性能优化：
  * - 使用 Middleware 预验证的 x-user-id header
  * - 消除 Server Component 中的重复认证调用（节省 ~1000ms）
+ *
+ * V4.2.30 性能优化：
+ * - 使用 unstable_cache 缓存用户设置（5 分钟）
+ * - 减少重复数据库查询
  */
 
 import { Suspense, cache } from "react";
+import { unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import { HomePageClientLayered } from "@/components/home/home-page-client-layered";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -35,8 +40,35 @@ type BookmarkWithFolder = Bookmark & {
 };
 
 /**
+ * 从数据库获取用户设置（带持久化缓存）
+ * V4.2.30: 使用 unstable_cache 缓存 5 分钟，减少重复数据库查询
+ */
+const getCachedUserSettings = unstable_cache(
+  async (userId: string): Promise<UserSettings> => {
+    try {
+      const supabase = await createClient();
+      const { data } = (await supabase
+        .from("profiles")
+        .select("settings")
+        .eq("id", userId)
+        .single()) as unknown as { data: { settings: unknown } | null };
+
+      return mergeWithDefaults(data?.settings as Partial<UserSettings> | null);
+    } catch {
+      return mergeWithDefaults(null);
+    }
+  },
+  ["user-settings"],
+  {
+    revalidate: 300, // 5 分钟缓存
+    tags: ["user-settings"],
+  },
+);
+
+/**
  * 获取用户设置（带请求级缓存）
  * V5.5: 从 cookies 读取用户信息，避免 RSC payload 请求失败
+ * V4.2.30: 结合 unstable_cache 实现持久化缓存
  */
 const getUserSettings = cache(async (): Promise<UserSettings> => {
   try {
@@ -48,14 +80,8 @@ const getUserSettings = cache(async (): Promise<UserSettings> => {
       return mergeWithDefaults(null);
     }
 
-    const supabase = await createClient();
-    const { data } = (await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", userId)
-      .single()) as unknown as { data: { settings: unknown } | null };
-
-    return mergeWithDefaults(data?.settings as Partial<UserSettings> | null);
+    // V4.2.30: 使用持久化缓存获取用户设置
+    return getCachedUserSettings(userId);
   } catch {
     return mergeWithDefaults(null);
   }

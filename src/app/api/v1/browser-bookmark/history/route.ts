@@ -13,7 +13,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import type { ImportSource, Json } from "@/types/supabase";
 
 const VALID_IMPORT_SOURCES: ImportSource[] = [

@@ -35,10 +35,7 @@ import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { clientLogger } from "@/lib/client-logger";
 import { HomeToolbar } from "./home-toolbar";
 import { HomeContent } from "./home-content";
-import { HomeDialogs } from "./home-dialogs";
 import { useSnapshotFeature } from "@/components/snapshot";
-import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
-import { SynthesisRecommendBubble } from "@/components/synthesis/synthesis-recommend-bubble";
 
 // ============================================================================
 // 懒加载组件（非首屏关键）
@@ -47,6 +44,27 @@ import { SynthesisRecommendBubble } from "@/components/synthesis/synthesis-recom
 const SynthesisConfirmDialog = lazy(() =>
   import("./synthesis-confirm-dialog").then((mod) => ({
     default: mod.SynthesisConfirmDialog,
+  })),
+);
+
+// V4.2.30: 懒加载 HomeDialogs（包含多个对话框，减少首屏 bundle）
+const HomeDialogs = lazy(() =>
+  import("./home-dialogs").then((mod) => ({
+    default: mod.HomeDialogs,
+  })),
+);
+
+// V4.2.30: 懒加载 BatchTagDialog（仅批量操作时需要）
+const BatchTagDialog = lazy(() =>
+  import("@/components/batch/batch-tag-dialog").then((mod) => ({
+    default: mod.BatchTagDialog,
+  })),
+);
+
+// V4.2.30: 懒加��� SynthesisRecommendBubble（AI 功能，可延迟）
+const SynthesisRecommendBubble = lazy(() =>
+  import("@/components/synthesis/synthesis-recommend-bubble").then((mod) => ({
+    default: mod.SynthesisRecommendBubble,
   })),
 );
 
@@ -524,6 +542,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       onBookmarkCreated: handleBookmarkCreated,
       onMoveSuccess: handleMoveSuccess,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 函数引用稳定，无需添加依赖
     [
       showImportDialog,
       showBrowserImportDialog,
@@ -546,33 +565,42 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       {/* 内容区 */}
       <HomeContent {...contentProps} />
 
-      {/* 对话框层 */}
-      <HomeDialogs {...dialogsProps} />
+      {/* 对话框层（V4.2.30: 懒加载） */}
+      <Suspense fallback={null}>
+        <HomeDialogs {...dialogsProps} />
+      </Suspense>
 
-      {/* 批量标签对话框 */}
-      <BatchTagDialog
-        open={showBatchTagDialog}
-        onOpenChange={setShowBatchTagDialog}
-        selectedIds={Array.from(selectedIds)}
-        selectedBookmarks={bookmarks.filter((b) => selectedIds.has(b.id))}
-        onSuccess={(result) => {
-          result.affectedIds.forEach((id) => {
-            updateCacheItem(id, (bookmark) => {
-              if (result.action === "add") {
-                const newTags = [
-                  ...new Set([...(bookmark.user_tags || []), ...result.tags]),
-                ];
-                return { ...bookmark, user_tags: newTags };
-              } else {
-                const newTags = (bookmark.user_tags || []).filter(
-                  (t) => !result.tags.includes(t),
-                );
-                return { ...bookmark, user_tags: newTags };
-              }
-            });
-          });
-        }}
-      />
+      {/* 批量标签对话框（V4.2.30: 懒加载） */}
+      {showBatchTagDialog && (
+        <Suspense fallback={null}>
+          <BatchTagDialog
+            open={showBatchTagDialog}
+            onOpenChange={setShowBatchTagDialog}
+            selectedIds={Array.from(selectedIds)}
+            selectedBookmarks={bookmarks.filter((b) => selectedIds.has(b.id))}
+            onSuccess={(result) => {
+              result.affectedIds.forEach((id) => {
+                updateCacheItem(id, (bookmark) => {
+                  if (result.action === "add") {
+                    const newTags = [
+                      ...new Set([
+                        ...(bookmark.user_tags || []),
+                        ...result.tags,
+                      ]),
+                    ];
+                    return { ...bookmark, user_tags: newTags };
+                  } else {
+                    const newTags = (bookmark.user_tags || []).filter(
+                      (t) => !result.tags.includes(t),
+                    );
+                    return { ...bookmark, user_tags: newTags };
+                  }
+                });
+              });
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* 综述确认对话框（懒加载） */}
       {showSynthesisDialog && (
@@ -587,14 +615,16 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
         </Suspense>
       )}
 
-      {/* 综述智能推荐气泡 */}
-      <SynthesisRecommendBubble
-        recommend={currentRecommend}
-        visible={shouldShowBubble}
-        onAccept={acceptRecommend}
-        onDismiss={dismissRecommend}
-        onClose={closeBubble}
-      />
+      {/* 综述智能推荐气泡（V4.2.30: 懒加载） */}
+      <Suspense fallback={null}>
+        <SynthesisRecommendBubble
+          recommend={currentRecommend}
+          visible={shouldShowBubble}
+          onAccept={acceptRecommend}
+          onDismiss={dismissRecommend}
+          onClose={closeBubble}
+        />
+      </Suspense>
     </div>
   );
 }

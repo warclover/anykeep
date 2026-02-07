@@ -15,7 +15,7 @@ import {
   internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 
 /**

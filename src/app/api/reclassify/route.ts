@@ -21,7 +21,7 @@ import {
 import { logger } from "@/lib/logger";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import type { Database, ProfileSettings } from "@/types/supabase";
 
 // 请求体验证

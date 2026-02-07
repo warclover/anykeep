@@ -13,7 +13,7 @@ import type {
   SplitOperationState,
   MergeOperationState,
 } from "@/lib/classification/types";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import { eventBus, OrganizationEvents } from "@/lib/shared/event-bus";
 import type {
   SupabaseClientType,

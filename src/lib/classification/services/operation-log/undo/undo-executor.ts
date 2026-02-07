@@ -17,7 +17,7 @@ import type {
   MergeOperationState,
   RenameOperationState,
 } from "@/lib/classification/types";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import { eventBus, OrganizationEvents } from "@/lib/shared/event-bus";
 import type { SupabaseClientType, UndoResult } from "../types";
 import { getSnapshotById, markSnapshotAsUndone } from "../persistence";

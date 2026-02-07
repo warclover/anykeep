@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 import {
   successResponse,
   badRequestError,

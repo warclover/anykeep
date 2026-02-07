@@ -19,7 +19,7 @@ import { withAuthMiddleware } from "@/lib/api/middleware";
 import type { ClassificationSuggestionInsert } from "@/types/supabase";
 import { recommendFolder, type FolderRecommendation } from "@/lib/ai-generator";
 import { TrustModeService } from "@/lib/trust-mode/trust-mode.service";
-import { Notify } from "@/lib/notifications";
+import { Notify } from "@/lib/notifications/server";
 
 // 请求体 Schema
 const ReclassifySchema = z.object({
