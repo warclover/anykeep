@@ -59,6 +59,17 @@ export async function POST(request: NextRequest) {
     "Deprecated endpoint called. Use POST /api/classification/inbox instead",
   );
 
+  // 添加标准 HTTP 弃用 headers (RFC 8594)
+  const addDeprecationHeaders = (response: Response) => {
+    response.headers.set("Deprecation", "true");
+    response.headers.set("Sunset", "2026-03-31T00:00:00Z"); // 计划于 2026-03-31 移除
+    response.headers.set(
+      "Link",
+      '</api/classification/inbox>; rel="successor-version"',
+    );
+    return response;
+  };
+
   try {
     // 1. 验证用户身份
     const supabase = await createClient();
@@ -85,29 +96,13 @@ export async function POST(request: NextRequest) {
     const { suggestionId, customFolderName } = validation.data;
 
     // 3. 获取建议记录
-    // Note: bookmark_ids, suggested_action, metadata 是 V4.2 新增字段
-    // 类型断言: 手动维护类型文件时需要此断言
-    type SuggestionType = {
-      id: number;
-      user_id: string;
-      status: string;
-      suggested_action: string | null;
-      suggested_folder_name: string | null;
-      reason: string | null;
-      bookmark_ids: number[] | null;
-      bookmark_id: number | null;
-      metadata: unknown;
-    };
-    const { data: suggestion, error: fetchError } = (await supabase
+    const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single()) as unknown as {
-      data: SuggestionType | null;
-      error: { message: string } | null;
-    };
+      .single();
 
     if (fetchError || !suggestion) {
       return notFoundError("建议不存在或已处理");
@@ -126,21 +121,15 @@ export async function POST(request: NextRequest) {
       return internalError("建议中没有有效的文件夹名称");
     }
 
-    const { data: newFolder, error: createError } = (await (
-      supabase.from(
-        "folders",
-      ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
-    )
+    const { data: newFolder, error: createError } = await supabase
+      .from("folders")
       .insert({
         user_id: user.id,
         name: folderName,
         is_system: false,
       })
       .select("id, name")
-      .single()) as {
-      data: { id: number; name: string } | null;
-      error: { message: string } | null;
-    };
+      .single();
 
     if (createError || !newFolder) {
       logger.error(
@@ -164,10 +153,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. 移动书签到新文件夹并清除聚类状态
-    // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: moveError } = (await (supabase.from("bookmarks") as any)
+    const { error: moveError } = await supabase
+      .from("bookmarks")
       .update({
         folder_id: newFolder.id,
         pending_cluster: false,
@@ -176,7 +163,7 @@ export async function POST(request: NextRequest) {
         cluster_confidence: null,
       })
       .in("id", bookmarkIds)
-      .eq("user_id", user.id)) as { error: { message: string } | null };
+      .eq("user_id", user.id);
 
     if (moveError) {
       logger.error(
@@ -187,9 +174,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. 更新建议状态
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("classification_suggestions") as any)
+    await supabase
+      .from("classification_suggestions")
       .update({
         status: "accepted",
         processed_at: new Date().toISOString(),
@@ -215,15 +201,17 @@ export async function POST(request: NextRequest) {
       "Cluster suggestion confirmed, folder created",
     );
 
-    return successResponse({
-      success: true,
-      folder: {
-        id: newFolder.id,
-        name: newFolder.name,
-      },
-      bookmarkCount: bookmarkIds.length,
-      message: `已创建「${newFolder.name}」并移动 ${bookmarkIds.length} 个书签`,
-    });
+    return addDeprecationHeaders(
+      successResponse({
+        success: true,
+        folder: {
+          id: newFolder.id,
+          name: newFolder.name,
+        },
+        bookmarkCount: bookmarkIds.length,
+        message: `已创建「${newFolder.name}」并移动 ${bookmarkIds.length} 个书签`,
+      }),
+    );
   } catch (error) {
     logger.error(
       {
@@ -232,7 +220,7 @@ export async function POST(request: NextRequest) {
       },
       "POST /api/classification/cluster-confirm error",
     );
-    return internalError("确认建议失败");
+    return addDeprecationHeaders(internalError("确认建议失败"));
   }
 }
 
@@ -247,6 +235,17 @@ export async function DELETE(request: NextRequest) {
     { endpoint: "/api/classification/cluster-confirm", method: "DELETE" },
     "Deprecated endpoint called. Use DELETE /api/classification/inbox instead",
   );
+
+  // 添加标准 HTTP 弃用 headers (RFC 8594)
+  const addDeprecationHeaders = (response: Response) => {
+    response.headers.set("Deprecation", "true");
+    response.headers.set("Sunset", "2026-03-31T00:00:00Z");
+    response.headers.set(
+      "Link",
+      '</api/classification/inbox>; rel="successor-version"',
+    );
+    return response;
+  };
 
   try {
     // 1. 验证用户身份
@@ -274,33 +273,21 @@ export async function DELETE(request: NextRequest) {
     const { suggestionId, reason } = validation.data;
 
     // 3. 获取建议记录
-    // Note: bookmark_ids, metadata 是 V4.2 新增字段
-    // 类型断言: 手动维护类型文件时需要此断言
-    type DeleteSuggestionType = {
-      id: number;
-      bookmark_ids: number[] | null;
-      bookmark_id: number | null;
-      metadata: unknown;
-    };
-    const { data: suggestion, error: fetchError } = (await supabase
+    const { data: suggestion, error: fetchError } = await supabase
       .from("classification_suggestions")
       .select("*")
       .eq("id", suggestionId)
       .eq("user_id", user.id)
       .eq("status", "pending")
-      .single()) as unknown as {
-      data: DeleteSuggestionType | null;
-      error: { message: string } | null;
-    };
+      .single();
 
     if (fetchError || !suggestion) {
       return notFoundError("建议不存在或已处理");
     }
 
     // 4. 更新建议状态为拒绝
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("classification_suggestions") as any)
+    await supabase
+      .from("classification_suggestions")
       .update({
         status: "rejected",
         processed_at: new Date().toISOString(),
@@ -321,8 +308,8 @@ export async function DELETE(request: NextRequest) {
           ? [suggestion.bookmark_id]
           : [];
     if (bookmarkIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("bookmarks") as any)
+      await supabase
+        .from("bookmarks")
         .update({
           cluster_id: null,
           cluster_confidence: null,
@@ -342,10 +329,12 @@ export async function DELETE(request: NextRequest) {
       "Cluster suggestion rejected",
     );
 
-    return successResponse({
-      success: true,
-      message: "已拒绝此建议",
-    });
+    return addDeprecationHeaders(
+      successResponse({
+        success: true,
+        message: "已拒绝此建议",
+      }),
+    );
   } catch (error) {
     logger.error(
       {
@@ -354,6 +343,6 @@ export async function DELETE(request: NextRequest) {
       },
       "DELETE /api/classification/cluster-confirm error",
     );
-    return internalError("拒绝建议失败");
+    return addDeprecationHeaders(internalError("拒绝建议失败"));
   }
 }

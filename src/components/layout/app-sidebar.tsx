@@ -75,15 +75,6 @@ interface NavItem {
   isPro?: boolean;
 }
 
-// 保留接口定义供未来使用
-interface _NavGroup {
-  title: string;
-  titleColor: string;
-  items: NavItem[];
-  collapsible?: boolean;
-  defaultExpanded?: boolean;
-}
-
 // ==================== 组件 ====================
 
 /**
@@ -617,7 +608,10 @@ export const AppSidebar = memo(function AppSidebar() {
           <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
             {/* 内容中心 */}
             <div>
-              {renderGroupTitle("内容中心", "text-pink-500 dark:text-pink-400")}
+              {renderGroupTitle(
+                getDisplayName("navGroup.contentCenter"),
+                "text-pink-500 dark:text-pink-400",
+              )}
               <div className="space-y-1">
                 {contentCenterItems.map((item) =>
                   renderNavItem(item, groupCandyColors.content),
@@ -627,7 +621,10 @@ export const AppSidebar = memo(function AppSidebar() {
 
             {/* 整理工具 */}
             <div>
-              {renderGroupTitle("整理工具", "text-cyan-500 dark:text-cyan-400")}
+              {renderGroupTitle(
+                getDisplayName("navGroup.organizeTools"),
+                "text-cyan-500 dark:text-cyan-400",
+              )}
               <div className="space-y-1">
                 {/* 待分类 */}
                 {renderNavItem(
@@ -647,7 +644,7 @@ export const AppSidebar = memo(function AppSidebar() {
             {/* 学习中心 */}
             <div>
               {renderGroupTitle(
-                "学习中心",
+                getDisplayName("navGroup.learningCenter"),
                 "text-purple-500 dark:text-purple-400",
               )}
               <div className="space-y-1">
@@ -659,7 +656,10 @@ export const AppSidebar = memo(function AppSidebar() {
 
             {/* 洞察中心 */}
             <div>
-              {renderGroupTitle("洞察中心", "text-rose-500 dark:text-rose-400")}
+              {renderGroupTitle(
+                getDisplayName("navGroup.insightCenter"),
+                "text-rose-500 dark:text-rose-400",
+              )}
               <div className="space-y-1">
                 {insightCenterItems.map((item) =>
                   renderNavItem(item, groupCandyColors.insight),
@@ -669,11 +669,14 @@ export const AppSidebar = memo(function AppSidebar() {
 
             {/* 系统 */}
             <div>
-              {renderGroupTitle("系统", "text-slate-400 dark:text-slate-500")}
+              {renderGroupTitle(
+                getDisplayName("mobileMenu.system"),
+                "text-slate-400 dark:text-slate-500",
+              )}
               <div className="space-y-1">
                 {renderNavItem(
                   {
-                    name: "设置",
+                    name: "nav.settings",
                     href: "/settings",
                     icon: Settings,
                     pageId: "settings",
@@ -694,7 +697,7 @@ export const AppSidebar = memo(function AppSidebar() {
                 {/* 开发者工具（可折叠） */}
                 {renderCollapsibleMenu(
                   "devTools",
-                  "开发者工具",
+                  getDisplayName("navGroup.devTools"),
                   Wrench,
                   devToolsItems,
                   groupCandyColors.system,
@@ -709,7 +712,7 @@ export const AppSidebar = memo(function AppSidebar() {
             <div className={cn("px-2 py-2", !isVisuallyExpanded && "px-2")}>
               {renderNavItem(
                 {
-                  name: "垃圾箱",
+                  name: "nav.trash",
                   href: "/home?folder=trash",
                   icon: Trash2,
                 },

@@ -443,12 +443,41 @@ export function SynthesisListPageClient() {
 
         {/* 列表内容 */}
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            加载中...
+          <div className="space-y-4">
+            {/* 骨架屏 - 显示 3 个占位卡片 */}
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="h-5 bg-muted rounded w-2/3" />
+                    <div className="h-5 bg-muted rounded w-16" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="h-4 bg-muted rounded w-full" />
+                  <div className="h-4 bg-muted rounded w-4/5" />
+                  <div className="flex gap-2">
+                    <div className="h-4 bg-muted rounded w-12" />
+                    <div className="h-4 bg-muted rounded w-16" />
+                    <div className="h-4 bg-muted rounded w-14" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-destructive">
-            加载失败，请刷新重试
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="rounded-full bg-destructive/10 p-4 mb-4">
+              <FileText className="h-8 w-8 text-destructive" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 text-destructive">
+              加载失败
+            </h3>
+            <p className="text-muted-foreground mb-4">请检查网络连接后重试</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              重试
+            </Button>
           </div>
         ) : reports.length === 0 ? (
           <EmptyState />

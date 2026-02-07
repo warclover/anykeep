@@ -1,3 +1,13 @@
+/**
+ * 此文件由 scripts/gen-supabase-types.js 自动生成
+ * 生成时间: 2026-02-07T02:13:30.235Z
+ *
+ * ⚠️ 请勿手动修改此文件！
+ * 如需扩展类型，请在 src/types/supabase.ts 中添加
+ *
+ * 重新生成命令: npm run supabase:gen:types
+ */
+
 export type Json =
   | string
   | number
@@ -1408,10 +1418,12 @@ export type Database = {
           is_read: boolean | null;
           is_starred: boolean;
           last_accessed_at: string | null;
+          last_link_check_at: string | null;
           last_read_at: string | null;
           last_reviewed_at: string | null;
           last_snapshot_at: string | null;
           last_validation_at: string | null;
+          link_status: string | null;
           next_review_at: string | null;
           notes: string | null;
           original_path: string | null;
@@ -1421,6 +1433,7 @@ export type Database = {
           platform: string;
           platform_content_id: string | null;
           publish_time: string | null;
+          quality_score: number | null;
           rating: number | null;
           read_at: string | null;
           read_count: number;
@@ -1488,10 +1501,12 @@ export type Database = {
           is_read?: boolean | null;
           is_starred?: boolean;
           last_accessed_at?: string | null;
+          last_link_check_at?: string | null;
           last_read_at?: string | null;
           last_reviewed_at?: string | null;
           last_snapshot_at?: string | null;
           last_validation_at?: string | null;
+          link_status?: string | null;
           next_review_at?: string | null;
           notes?: string | null;
           original_path?: string | null;
@@ -1501,6 +1516,7 @@ export type Database = {
           platform: string;
           platform_content_id?: string | null;
           publish_time?: string | null;
+          quality_score?: number | null;
           rating?: number | null;
           read_at?: string | null;
           read_count?: number;
@@ -1568,10 +1584,12 @@ export type Database = {
           is_read?: boolean | null;
           is_starred?: boolean;
           last_accessed_at?: string | null;
+          last_link_check_at?: string | null;
           last_read_at?: string | null;
           last_reviewed_at?: string | null;
           last_snapshot_at?: string | null;
           last_validation_at?: string | null;
+          link_status?: string | null;
           next_review_at?: string | null;
           notes?: string | null;
           original_path?: string | null;
@@ -1581,6 +1599,7 @@ export type Database = {
           platform?: string;
           platform_content_id?: string | null;
           publish_time?: string | null;
+          quality_score?: number | null;
           rating?: number | null;
           read_at?: string | null;
           read_count?: number;
