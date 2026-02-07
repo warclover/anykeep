@@ -70,7 +70,10 @@ export type {
 // Chat-to-Edit Types & Constants
 // ============================================================================
 
-export { EDIT_MODE_CONFIG, DEFAULT_SLIDING_WINDOW_CONFIG } from "./chat-edit";
+export {
+  EDIT_MODE_CONFIG,
+  DEFAULT_SLIDING_WINDOW_CONFIG,
+} from "./chat-edit/types";
 
 export type {
   EditMode,
@@ -84,7 +87,7 @@ export type {
   ChatEditResponse,
   EditHistory,
   SlidingWindowConfig,
-} from "./chat-edit";
+} from "./chat-edit/types";
 
 // ============================================================================
 // Material Types & Constants
