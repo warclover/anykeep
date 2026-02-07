@@ -117,13 +117,18 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   }
 
   // 2. 调用原子化批量创建函数
-  const { data, error } = await supabase.rpc("atomic_batch_create_snapshots", {
-    p_user_id: userId,
-    p_bookmark_ids: validIds,
-    p_snapshot_type: snapshotType,
-    p_trigger_source: "batch",
-    p_max_batch_size: 50,
-  });
+  // 注意：atomic_batch_create_snapshots 是手动创建的 RPC 函数，尚未在 supabase.generated.ts 中定义
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)(
+    "atomic_batch_create_snapshots",
+    {
+      p_user_id: userId,
+      p_bookmark_ids: validIds,
+      p_snapshot_type: snapshotType,
+      p_trigger_source: "batch",
+      p_max_batch_size: 50,
+    },
+  );
 
   if (error) {
     logger.error({ error, userId }, "Batch snapshot creation failed");

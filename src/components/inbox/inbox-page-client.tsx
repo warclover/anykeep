@@ -61,6 +61,70 @@ import {
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import type { Bookmark } from "@/types/supabase";
 
+// ==================== 工具函数 ====================
+
+/**
+ * 带重试的 fetch 请求
+ * @param url 请求 URL
+ * @param options fetch 选项
+ * @param maxRetries 最大重试次数
+ */
+async function fetchWithRetry(
+  url: string,
+  options?: RequestInit,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+      if (response.status >= 400 && response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error("Network error");
+    }
+    if (attempt < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
+    }
+  }
+  throw lastError || new Error("Request failed after retries");
+}
+
+/**
+ * 批量��理函数（控制并发）
+ * @param items 待处理项
+ * @param processor 处理函数
+ * @param concurrency 并发数
+ */
+async function processBatch<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+  concurrency = 3,
+): Promise<Array<{ success: boolean; result?: R; error?: Error }>> {
+  const results: Array<{ success: boolean; result?: R; error?: Error }> = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(batch.map(processor));
+    for (const result of batchResults) {
+      if (result.status === "fulfilled") {
+        results.push({ success: true, result: result.value });
+      } else {
+        results.push({
+          success: false,
+          error:
+            result.reason instanceof Error
+              ? result.reason
+              : new Error(String(result.reason)),
+        });
+      }
+    }
+  }
+  return results;
+}
+
 // ==================== 类型定义 ====================
 
 type BookmarkWithFolder = Bookmark & {
@@ -75,7 +139,8 @@ interface FolderOption {
 interface InboxPageClientProps {
   initialBookmarks: BookmarkWithFolder[];
   availableFolders: FolderOption[];
-  inboxFolderId: number | null;
+  /** @deprecated 已弃用：客户端使用 useInboxItems hook 独立获取数据，不需要此参数 */
+  inboxFolderId?: number | null;
   error?: string;
   initialTab?: InboxTabId;
 }
@@ -110,6 +175,7 @@ const TAB_LABELS: Record<InboxTabId, { title: string; description: string }> = {
 export function InboxPageClient({
   initialBookmarks,
   availableFolders,
+  // inboxFolderId 已弃用：客户端使用 useInboxItems hook 独立获取数据
   inboxFolderId: _inboxFolderId,
   error,
   initialTab,
@@ -136,7 +202,7 @@ export function InboxPageClient({
     refresh: refreshItems,
   } = useInboxItems(activeTab);
   const {
-    mode,
+    // mode 已移除：TrustModeBanner 现在只使用布尔值
     isFullAuto,
     isSemiAuto,
     isManual,
@@ -201,57 +267,6 @@ export function InboxPageClient({
 
     setIsOrganizing(true);
     const loadingToast = toast.loading("正在分析并整理书签...");
-
-    const fetchWithRetry = async (
-      url: string,
-      options?: RequestInit,
-      maxRetries = 3,
-    ): Promise<Response> => {
-      let lastError: Error | null = null;
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const response = await fetch(url, options);
-          if (response.ok) return response;
-          if (response.status >= 400 && response.status < 500) {
-            return response;
-          }
-          lastError = new Error(`HTTP ${response.status}`);
-        } catch (err) {
-          lastError = err instanceof Error ? err : new Error("Network error");
-        }
-        if (attempt < maxRetries - 1) {
-          await new Promise((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
-        }
-      }
-      throw lastError || new Error("Request failed after retries");
-    };
-
-    const processBatch = async <T, R>(
-      items: T[],
-      processor: (item: T) => Promise<R>,
-      concurrency = 3,
-    ): Promise<Array<{ success: boolean; result?: R; error?: Error }>> => {
-      const results: Array<{ success: boolean; result?: R; error?: Error }> =
-        [];
-      for (let i = 0; i < items.length; i += concurrency) {
-        const batch = items.slice(i, i + concurrency);
-        const batchResults = await Promise.allSettled(batch.map(processor));
-        for (const result of batchResults) {
-          if (result.status === "fulfilled") {
-            results.push({ success: true, result: result.value });
-          } else {
-            results.push({
-              success: false,
-              error:
-                result.reason instanceof Error
-                  ? result.reason
-                  : new Error(String(result.reason)),
-            });
-          }
-        }
-      }
-      return results;
-    };
 
     try {
       const analysisResponse = await fetchWithRetry(API_CLASSIFICATION.inbox);
@@ -369,7 +384,6 @@ export function InboxPageClient({
       {/* V4.2: 托管模式提示横幅 */}
       {showOrganizePanels && (
         <TrustModeBanner
-          mode={mode}
           isFullAuto={isFullAuto}
           isSemiAuto={isSemiAuto}
           isManual={isManual}
@@ -570,7 +584,6 @@ function BookmarkListCard({
 // ==================== 托管模式横幅 ====================
 
 interface TrustModeBannerProps {
-  mode: string;
   isFullAuto: boolean;
   isSemiAuto: boolean;
   isManual: boolean;
@@ -581,7 +594,6 @@ interface TrustModeBannerProps {
 }
 
 function TrustModeBanner({
-  mode: _mode,
   isFullAuto,
   isSemiAuto,
   isManual,

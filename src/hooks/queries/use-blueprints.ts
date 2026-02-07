@@ -30,7 +30,14 @@ export interface BlueprintListItem {
   description: string;
   icon: string;
   tier: BlueprintTier;
-  category: string;
+  category?:
+    | "geek"
+    | "creator"
+    | "business"
+    | "professional"
+    | "tech"
+    | "classic"
+    | "custom";
   isNew?: boolean;
   tags?: string[];
   canAccess: boolean;

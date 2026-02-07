@@ -24,7 +24,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useMemo } from "react";
 import { toast } from "sonner";
-import { logger } from "@/lib/logger";
+import { clientLogger } from "@/lib/client-logger";
 import {
   ArrowLeft,
   Share2,
@@ -184,7 +184,7 @@ export function SynthesisDetailPageClient({
       toast.success("已开始重新生成");
       refetch();
     } catch (err) {
-      logger.error({ error: err, reportId }, "Retry synthesis error");
+      clientLogger.error({ error: err, reportId }, "Retry synthesis error");
       toast.error("重新生成失败，请重试");
     } finally {
       setIsRetrying(false);
@@ -214,7 +214,7 @@ export function SynthesisDetailPageClient({
       toast.success("已复制到剪贴板");
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      logger.error({ error: err }, "Copy markdown error");
+      clientLogger.error({ error: err }, "Copy markdown error");
       toast.error("复制失败，请重试");
     }
   }, [report?.fullMarkdown]);
@@ -291,7 +291,7 @@ export function SynthesisDetailPageClient({
         toast.success("报告已更新");
         refetch();
       } catch (err) {
-        logger.error(
+        clientLogger.error(
           { error: err, reportId: report.id },
           "Failed to update report",
         );
@@ -309,7 +309,7 @@ export function SynthesisDetailPageClient({
         downloadKSReport(ksReport, format);
         toast.success(`已导出为 ${format.toUpperCase()} 格式`);
       } catch (err) {
-        logger.error(
+        clientLogger.error(
           { error: err, format, reportId: ksReport.id },
           "Failed to export report",
         );

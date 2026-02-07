@@ -94,8 +94,8 @@ export function BatchPageClient() {
     data: bookmarks,
     isLoading,
     updateCacheItem,
-    createSnapshot: _createSnapshot,
-    rollback: _rollback,
+    createSnapshot,
+    rollback,
   } = useBookmarksSWR({
     platform: platform === "all" ? "" : platform,
     sort,
@@ -157,7 +157,7 @@ export function BatchPageClient() {
     selectAll(allBookmarkIds);
   }, [selectAll, allBookmarkIds]);
 
-  // 批量标签操作成功回调
+  // 批量标签操作成功回调（支持乐观更新回滚）
   const handleBatchTagsSuccess = useCallback(
     (result: BatchTagsResult) => {
       // 更新缓存
@@ -180,8 +180,22 @@ export function BatchPageClient() {
     [updateCacheItem],
   );
 
+  // 批量标签操作失败回调（回滚到快照）
+  // TODO: 集成到 BatchTagDialog 组件的 onError 回调
+  const _handleBatchTagsError = useCallback(
+    (snapshot: ReturnType<typeof createSnapshot>) => {
+      rollback(snapshot);
+    },
+    [rollback],
+  );
+
+  // 创建批量操作快照（供 BatchTagDialog 使用）
+  // TODO: 传递给 BatchTagDialog 实现乐观更新
+  const _handleCreateSnapshot = useCallback(() => {
+    return createSnapshot();
+  }, [createSnapshot]);
+
   // 创建综述
-  /* eslint-disable react-hooks/exhaustive-deps -- t 是稳定的 hook 返回值，不需要作为依赖 */
   const handleCreateSynthesis = useCallback(async () => {
     if (selectedIds.size < 3) return;
 
@@ -218,8 +232,7 @@ export function BatchPageClient() {
       setIsCreatingSynthesis(false);
       setIsSynthesisDialogOpen(false);
     }
-  }, [selectedIds, router]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  }, [selectedIds, router, t.batch.synthesis]);
 
   // 监听 Esc 键清空选择
   useEffect(() => {
