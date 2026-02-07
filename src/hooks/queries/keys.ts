@@ -269,3 +269,15 @@ export const blueprintKeys = {
   all: ["blueprints"] as const,
   list: () => [...blueprintKeys.all, "list"] as const,
 };
+
+/**
+ * Synthesis Query Keys
+ */
+export const synthesisKeys = {
+  all: ["synthesis"] as const,
+  lists: () => [...synthesisKeys.all, "list"] as const,
+  details: () => [...synthesisKeys.all, "detail"] as const,
+  detail: (id: string) => [...synthesisKeys.details(), id] as const,
+  highlights: (reportId: string) =>
+    [...synthesisKeys.all, "highlights", reportId] as const,
+};
