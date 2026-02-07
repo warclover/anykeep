@@ -90,5 +90,3 @@ export function ClusterDistributionChart({
     </ResponsiveContainer>
   );
 }
-
-export default ClusterDistributionChart;

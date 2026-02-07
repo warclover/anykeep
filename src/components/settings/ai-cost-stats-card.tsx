@@ -71,6 +71,7 @@ const LABELS = {
   tokens: "消耗 Token",
   cost: "费用",
   noData: "暂无使用记录",
+  loadError: "数据加载失败，显示默认值",
 } as const;
 
 const TIER_LABELS: Record<string, string> = {
@@ -179,10 +180,13 @@ export function AiCostStatsCard() {
     );
   }
 
-  // 错误状态 - 显示默认数据
+  // 错误状态 - 显示警告提示
   if (error) {
-    // 静默处理错误，显示空状态
+    // 继续渲染但显示警告
   }
+
+  // 显示错误警告标识
+  const showErrorWarning = !!error;
 
   const quotaPercentage =
     quotaStats.total > 0 ? (quotaStats.used / quotaStats.total) * 100 : 0;
@@ -195,7 +199,14 @@ export function AiCostStatsCard() {
           <DollarSign className="size-5 text-emerald-500" />
           {LABELS.title}
         </CardTitle>
-        <CardDescription>{LABELS.description}</CardDescription>
+        <CardDescription>
+          {LABELS.description}
+          {showErrorWarning && (
+            <span className="ml-2 text-amber-500 text-xs">
+              ({LABELS.loadError})
+            </span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* 成本概览 */}
@@ -307,5 +318,3 @@ export function AiCostStatsCard() {
     </Card>
   );
 }
-
-export default AiCostStatsCard;

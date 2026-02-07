@@ -9,7 +9,8 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 
@@ -107,6 +108,8 @@ export interface UseAiCostStatsReturn {
   isLoading: boolean;
   /** 错误信息 */
   error: string | null;
+  /** 刷新数据 */
+  refresh: () => Promise<void>;
 }
 
 // ============================================================================
@@ -139,6 +142,8 @@ const OPERATION_LABELS: Record<string, string> = {
  * ```
  */
 export function useAiCostStats(): UseAiCostStatsReturn {
+  const queryClient = useQueryClient();
+
   const {
     data,
     isLoading,
@@ -192,9 +197,10 @@ export function useAiCostStats(): UseAiCostStatsReturn {
       const breakdown: CostBreakdownItem[] = [];
 
       if (Array.isArray(dailyCostData)) {
-        const today = new Date().toISOString().split("T")[0];
-        const monthStart = new Date();
-        monthStart.setDate(1);
+        // 使用本地时间计算今日和本月
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         monthStart.setHours(0, 0, 0, 0);
 
         // 按日期聚合
@@ -210,7 +216,7 @@ export function useAiCostStats(): UseAiCostStatsReturn {
           const operation = item.operation || "unknown";
 
           // 今日成本
-          if (itemDate === today) {
+          if (itemDate === todayStr) {
             todayCost += costCents / 100;
           }
 
@@ -288,6 +294,11 @@ export function useAiCostStats(): UseAiCostStatsReturn {
     refetchOnWindowFocus: false,
   });
 
+  // ==================== 刷新函数 ====================
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+  }, [queryClient]);
+
   // ==================== 返回值 ====================
   return {
     dailyCost: data?.dailyCost ?? 0,
@@ -303,7 +314,6 @@ export function useAiCostStats(): UseAiCostStatsReturn {
     breakdown: data?.breakdown ?? [],
     isLoading,
     error: queryError?.message ?? null,
+    refresh,
   };
 }
-
-export default useAiCostStats;

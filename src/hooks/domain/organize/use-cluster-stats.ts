@@ -130,5 +130,3 @@ export function useClusterStats(): UseClusterStatsReturn {
     refresh,
   };
 }
-
-export default useClusterStats;

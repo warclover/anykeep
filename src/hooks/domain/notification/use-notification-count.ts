@@ -2,18 +2,21 @@
  * 通知计数 Hook
  *
  * 获取用户未读通知数量，用于导航栏徽章显示
+ * 支持 Supabase Realtime 实时订阅
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-07
+ * @updated 2026-02-07 - 添加 Realtime 订阅支持
  */
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // ============================================================================
 // 类型定义
@@ -254,6 +257,50 @@ export function useNotificationCount(): UseNotificationCountReturn {
     ]);
   }, [queryClient]);
 
+  // ==================== Realtime 订阅 ====================
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+
+    // 创建 Realtime 订阅
+    const channel = supabase
+      .channel("user-notifications-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // 监听 INSERT, UPDATE, DELETE
+          schema: "public",
+          table: "user_notifications",
+        },
+        (payload) => {
+          clientLogger.debug(
+            { payload },
+            "[useNotificationCount] Realtime event received",
+          );
+          // 收到变更后刷新数据
+          refresh();
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          clientLogger.debug(
+            "[useNotificationCount] Realtime subscription active",
+          );
+        }
+      });
+
+    channelRef.current = channel;
+
+    // 清理订阅
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [refresh]);
+
   // ==================== 返回值 ====================
   return {
     unreadCount: countsData?.total ?? 0,
@@ -272,5 +319,3 @@ export function useNotificationCount(): UseNotificationCountReturn {
     refresh,
   };
 }
-
-export default useNotificationCount;

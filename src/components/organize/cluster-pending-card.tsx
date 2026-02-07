@@ -173,5 +173,3 @@ export function ClusterPendingCard({
     </Card>
   );
 }
-
-export default ClusterPendingCard;

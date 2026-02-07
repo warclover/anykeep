@@ -3,13 +3,13 @@
  *
  * 在分析页面显示聚类相关的统计信息
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-07
+ * @updated 2026-02-07 - 使用真实分布数据替代模拟数据
  */
 
 "use client";
 
-import { useMemo } from "react";
 import {
   Layers,
   TrendingUp,
@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useClusterStats } from "@/hooks/domain/organize/use-cluster-stats";
+import { useClusterDistribution } from "@/hooks/domain/organize/use-cluster-distribution";
 import { ClusterDistributionChart } from "./cluster-distribution-chart";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -35,7 +36,7 @@ const LABELS = {
   totalClusters: "聚类数量",
   avgSize: "平均大小",
   pendingCount: "待聚类",
-  lastCluster: "上次聚类",
+  oldestPending: "最早待处理",
   distribution: "聚类大小分布",
   noData: "暂无聚类数据",
   goToCluster: "开始聚类",
@@ -96,25 +97,9 @@ function StatCard({
 export function ClusterStatsTab() {
   const router = useRouter();
   const { stats, isLoading, error } = useClusterStats();
+  const { distribution: distributionData } = useClusterDistribution();
 
-  // 计算分布数据（用于图表）
-  const distributionData = useMemo(() => {
-    if (!stats) return [];
-
-    // 模拟分布数据（实际应从 RPC 获取详细分布）
-    const total = stats.clusterCount;
-    if (total === 0) return [];
-
-    // 基于现有数据生成示意分布
-    return [
-      { size: "1-2", count: Math.floor(total * 0.3), label: "小型 (1-2)" },
-      { size: "3-5", count: Math.floor(total * 0.35), label: "中型 (3-5)" },
-      { size: "6-10", count: Math.floor(total * 0.25), label: "大型 (6-10)" },
-      { size: "10+", count: Math.floor(total * 0.1), label: "超大 (10+)" },
-    ].filter((item) => item.count > 0);
-  }, [stats]);
-
-  // 格式化上次聚类时间
+  // 格式化最早待处理时间
   const lastClusterText = stats?.oldestPending
     ? formatDistanceToNow(new Date(stats.oldestPending), {
         addSuffix: true,
@@ -213,7 +198,7 @@ export function ClusterStatsTab() {
           iconClass="text-amber-500"
         />
         <StatCard
-          title={LABELS.lastCluster}
+          title={LABELS.oldestPending}
           value={lastClusterText}
           icon={BarChart3}
           iconClass="text-green-500"
@@ -234,5 +219,3 @@ export function ClusterStatsTab() {
     </div>
   );
 }
-
-export default ClusterStatsTab;

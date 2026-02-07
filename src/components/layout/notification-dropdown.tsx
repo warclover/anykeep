@@ -111,7 +111,7 @@ function NotificationListItem({
   return (
     <div
       className={cn(
-        "p-3 hover:bg-muted/50 cursor-pointer transition-colors",
+        "p-3 hover:bg-muted/50 cursor-pointer transition-colors group",
         PRIORITY_STYLES[notification.priority],
       )}
       onClick={() => onClick(notification)}
@@ -247,7 +247,7 @@ export function NotificationDropdown() {
               <p className="text-sm">{LABELS.empty}</p>
             </div>
           ) : (
-            <div className="divide-y group">
+            <div className="divide-y">
               {notifications.map((notification) => (
                 <NotificationListItem
                   key={notification.id}
@@ -280,5 +280,3 @@ export function NotificationDropdown() {
     </Popover>
   );
 }
-
-export default NotificationDropdown;
