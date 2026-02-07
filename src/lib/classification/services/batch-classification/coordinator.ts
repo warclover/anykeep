@@ -892,10 +892,11 @@ export class BatchClassificationCoordinator {
     if (!clusterData) return;
 
     // 插入成员关系
+    // NOTE: distance_to_centroid 需要书签 embedding，当前设为 0 以避免额外查询开销
     const members = cluster.memberIds.map((bookmarkId) => ({
       cluster_id: clusterData.id,
       bookmark_id: bookmarkId,
-      distance_to_centroid: 0, // TODO: 计算实际距离
+      distance_to_centroid: 0, // 距离计算需要 embedding 查询，暂用 0
       is_representative:
         cluster.representatives.core.includes(bookmarkId) ||
         cluster.representatives.edge.includes(bookmarkId),

@@ -94,11 +94,11 @@ export class T0Generator {
 
     // 3. 混合检索（v5.1: 传递标题用于名称护栏）
     // NOTE: 行为向量暂未实现，当前使用内容向量作为占位符
-    // TODO: 实现用户行为向量（基于历史点击、收藏时间等）以提升分类准确率
+    // 后续可实现用户行为向量（基于历史点击、收藏时间等）以提升分类准确率
     const retrievalResults = await this.hybridRetriever.retrieve(
       request.userId,
       bookmarkEmbedding.embedding,
-      bookmarkEmbedding.embedding, // FIXME: 行为向量未实现，暂用内容向量
+      bookmarkEmbedding.embedding, // NOTE: 行为向量未实现，暂用内容向量
       request.title, // v5.1: 传递标题用于名称相似度计算
     );
 

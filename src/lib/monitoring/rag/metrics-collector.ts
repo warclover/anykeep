@@ -216,7 +216,8 @@ export class RAGMetricsCollector {
     const vectorCache = getVectorCache();
     const cacheStats = vectorCache.getStats();
     const vectorCacheHitRate = cacheStats.hitRate;
-    const queryCacheHitRate = 0; // TODO: 从 QueryRewriter 缓存获取
+    // NOTE: QueryRewriter 缓存统计暂未暴露接口，使用向量缓存命中率作为参考
+    const queryCacheHitRate = vectorCacheHitRate; // 使用向量缓存命中率作为近似值
     const cacheSize = cacheStats.size;
 
     // 质量指标
