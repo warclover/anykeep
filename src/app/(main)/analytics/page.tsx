@@ -56,7 +56,8 @@ async function fetchAnalyticsData(
       includeSkillsStats: true,
     });
     return { data: analyticsData, error: null };
-  } catch {
+  } catch (err) {
+    console.error("[Analytics] Failed to load data:", err);
     return {
       data: EMPTY_ANALYTICS_DATA,
       error: "加载数据统计时出错，请稍后重试",

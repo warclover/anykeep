@@ -120,7 +120,7 @@ export class AnalyticsService {
       folderData: rpcData.folderDistribution,
       tagData: rpcData.tagStats,
       typeData: rpcData.typeStats,
-      comparison: rpcData.comparison,
+      comparison: this.enrichComparison(rpcData.comparison),
       generatedAt: rpcData.generatedAt,
     };
 
@@ -156,6 +156,23 @@ export class AnalyticsService {
           : getPlatformHexColor(item.platform as Platform),
       percentage: item.percentage,
     }));
+  }
+
+  /**
+   * 补充 comparison 数据的 trend 字段
+   * RPC 返回的 comparison 不含 trend，需要根据 change 值推导
+   */
+  private enrichComparison(rawComparison: PeriodComparison): PeriodComparison {
+    const addTrend = (tc: TimeComparison): TimeComparison => ({
+      ...tc,
+      trend: tc.change > 0 ? "up" : tc.change < 0 ? "down" : "flat",
+    });
+
+    return {
+      daily: addTrend(rawComparison.daily),
+      weekly: addTrend(rawComparison.weekly),
+      monthly: addTrend(rawComparison.monthly),
+    };
   }
 
   /**
