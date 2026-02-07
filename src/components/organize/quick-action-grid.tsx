@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { QuickActionType } from "@/lib/organize/types";
+import { ClusterPendingCard } from "./cluster-pending-card";
 
 interface QuickActionGridProps {
   onAction: (actionType: QuickActionType) => void;
@@ -124,6 +125,9 @@ export function QuickActionGrid({ onAction, disabled }: QuickActionGridProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* 智能聚类卡片 - 有待处理时显示 */}
+      <ClusterPendingCard disabled={disabled} />
 
       {/* 快捷操作网格 */}
       <div className="grid grid-cols-2 gap-4" role="list" aria-label="快捷操作">

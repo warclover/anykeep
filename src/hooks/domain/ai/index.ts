@@ -39,3 +39,6 @@ export * from "./use-persona";
 // AI 分类相关（历史遗留，见文件头部注释关于未来迁移计划）
 export * from "./use-evolution-reports";
 export * from "./use-inbox-organization";
+
+// AI 成本统计（2026-02-07 新增）
+export * from "./use-ai-cost-stats";

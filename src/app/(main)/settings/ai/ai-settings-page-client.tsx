@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { AIProviderSettingsCard } from "@/components/settings/ai-provider-settings-card";
 import { SynthesisRecommendSettingsCard } from "@/components/settings/synthesis-recommend-settings-card";
+import { AiCostStatsCard } from "@/components/settings/ai-cost-stats-card";
 
 // ============================================
 // 类型定义
@@ -468,6 +469,7 @@ export function AISettingsPageClient({ userId }: AISettingsPageClientProps) {
 
         {/* 使用统计 */}
         <TabsContent value="usage" className="space-y-4">
+          <AiCostStatsCard />
           <UsageStatsCard userId={userId} />
         </TabsContent>
 
