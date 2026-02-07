@@ -47,12 +47,14 @@ import { InboxTabs } from "./inbox-tabs";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { useTrustMode, useConfirmations } from "@/hooks/ui";
 import { useInboxCounts } from "@/hooks/data/use-inbox-counts";
+import {
+  useInboxItems,
+  useInvalidateInboxItems,
+} from "@/hooks/data/use-inbox-items";
 import { cn } from "@/lib/utils";
 import { dataCache } from "@/lib/cache";
-import { createClient } from "@/lib/supabase/client";
 import {
   DEFAULT_TAB,
-  INBOX_TABS,
   isValidInboxTabId,
   type InboxTabId,
 } from "@/lib/constants/inbox-tabs";
@@ -121,14 +123,18 @@ export function InboxPageClient({
     initialTab || (urlTab && isValidInboxTabId(urlTab) ? urlTab : DEFAULT_TAB);
 
   const [activeTab, setActiveTab] = useState<InboxTabId>(defaultTab);
-  const [bookmarks, setBookmarks] =
-    useState<BookmarkWithFolder[]>(initialBookmarks);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
-  const [isLoadingTab, setIsLoadingTab] = useState(false);
 
   // Hooks
   const { refresh: refreshCounts } = useInboxCounts();
+  const invalidateInboxItems = useInvalidateInboxItems();
+  const {
+    items: cachedItems,
+    isLoading: isItemsLoading,
+    isFetching: isItemsFetching,
+    refresh: refreshItems,
+  } = useInboxItems(activeTab);
   const {
     mode,
     isFullAuto,
@@ -141,6 +147,11 @@ export function InboxPageClient({
     type: "classification",
   });
 
+  // 使用缓存数据，首次加载使用服务端数据
+  const displayBookmarks =
+    cachedItems.length > 0 ? cachedItems : initialBookmarks;
+  const isLoadingTab = isItemsLoading && cachedItems.length === 0;
+
   // 当前 Tab 配置
   const currentTabConfig = useMemo(() => TAB_LABELS[activeTab], [activeTab]);
 
@@ -150,75 +161,16 @@ export function InboxPageClient({
   // ==================== Tab 切换 ====================
 
   const handleTabChange = useCallback(
-    async (tab: InboxTabId) => {
+    (tab: InboxTabId) => {
       if (tab === activeTab) return;
 
       setActiveTab(tab);
-      setIsLoadingTab(true);
 
       // 更新 URL（不刷新页面）
       const newUrl = tab === DEFAULT_TAB ? "/inbox" : `/inbox?tab=${tab}`;
       window.history.replaceState(null, "", newUrl);
 
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          toast.error("请先登录");
-          return;
-        }
-
-        // 根据 Tab 构建查询
-        let query = supabase
-          .from("bookmarks")
-          .select("*, folders!bookmarks_folder_id_fkey(name)")
-          .eq("user_id", user.id)
-          .is("deleted_at", null)
-          .eq("is_in_trash", false);
-
-        // 应用 Tab 筛选条件
-        const tabConfig = INBOX_TABS.find((t) => t.id === tab);
-        if (tabConfig) {
-          const filter = tabConfig.getFilter();
-
-          if (filter.folderId === null) {
-            query = query.is("folder_id", null);
-          }
-          if (filter.isRead === false) {
-            query = query.eq("is_read", false);
-          }
-          if (filter.qualityScoreGte) {
-            query = query.gte("quality_score", filter.qualityScoreGte);
-          }
-          if (filter.linkStatus) {
-            query = query.eq("link_status", filter.linkStatus);
-          }
-          if (filter.createdAfter === "7d") {
-            query = query.gte(
-              "created_at",
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            );
-          }
-        }
-
-        const { data, error: queryError } = await query
-          .order("created_at", { ascending: false })
-          .limit(100);
-
-        if (queryError) {
-          toast.error("加载失败：" + queryError.message);
-          return;
-        }
-
-        setBookmarks((data as BookmarkWithFolder[]) || []);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "加载失败");
-      } finally {
-        setIsLoadingTab(false);
-      }
+      // TanStack Query 会自动根据 activeTab 变化获取数据
     },
     [activeTab],
   );
@@ -229,20 +181,20 @@ export function InboxPageClient({
     setIsRefreshing(true);
     try {
       dataCache.invalidate(/^bookmarks:/);
-      // 重新加载当前 Tab
-      await handleTabChange(activeTab);
+      invalidateInboxItems();
+      await refreshItems();
       refreshCounts();
     } catch {
       toast.error("刷新失败");
     } finally {
       setIsRefreshing(false);
     }
-  }, [activeTab, handleTabChange, refreshCounts]);
+  }, [invalidateInboxItems, refreshItems, refreshCounts]);
 
   // ==================== 一键整理 ====================
 
   const handleOneClickOrganize = useCallback(async () => {
-    if (bookmarks.length === 0) {
+    if (displayBookmarks.length === 0) {
       toast.info("没有需要整理的书签");
       return;
     }
@@ -360,7 +312,7 @@ export function InboxPageClient({
     } finally {
       setIsOrganizing(false);
     }
-  }, [bookmarks.length, refreshBookmarks, refreshCounts]);
+  }, [displayBookmarks.length, refreshBookmarks, refreshCounts]);
 
   // ==================== 回调函数 ====================
 
@@ -370,12 +322,13 @@ export function InboxPageClient({
   }, [refreshBookmarks]);
 
   const handleBookmarkDelete = useCallback(
-    (id: number) => {
-      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    (_id: number) => {
+      // 乐观更新由 TanStack Query 处理，这里只刷新缓存
+      invalidateInboxItems();
       refreshCounts();
       toast.success("书签已删除");
     },
-    [refreshCounts],
+    [invalidateInboxItems, refreshCounts],
   );
 
   // ==================== 初始化加载 ====================
@@ -446,7 +399,7 @@ export function InboxPageClient({
 
           <div className="flex items-center gap-2">
             {/* 一键整理按钮（仅待分类 Tab） */}
-            {showOrganizePanels && bookmarks.length > 0 && (
+            {showOrganizePanels && displayBookmarks.length > 0 && (
               <Button
                 size="sm"
                 onClick={handleOneClickOrganize}
@@ -507,8 +460,9 @@ export function InboxPageClient({
           {/* 右侧：书签列表 */}
           <div className="lg:col-span-2 order-1 lg:order-2">
             <BookmarkListCard
-              bookmarks={bookmarks}
+              bookmarks={displayBookmarks}
               isLoading={isLoadingTab}
+              isFetching={isItemsFetching}
               tabConfig={currentTabConfig}
               onDelete={handleBookmarkDelete}
             />
@@ -517,8 +471,9 @@ export function InboxPageClient({
       ) : (
         // 其他 Tab：单栏布局
         <BookmarkListCard
-          bookmarks={bookmarks}
+          bookmarks={displayBookmarks}
           isLoading={isLoadingTab}
+          isFetching={isItemsFetching}
           tabConfig={currentTabConfig}
           onDelete={handleBookmarkDelete}
         />
@@ -532,6 +487,7 @@ export function InboxPageClient({
 interface BookmarkListCardProps {
   bookmarks: BookmarkWithFolder[];
   isLoading: boolean;
+  isFetching?: boolean;
   tabConfig: { title: string; description: string };
   onDelete: (id: number) => void;
 }
@@ -539,6 +495,7 @@ interface BookmarkListCardProps {
 function BookmarkListCard({
   bookmarks,
   isLoading,
+  isFetching: _isFetching,
   tabConfig,
   onDelete,
 }: BookmarkListCardProps) {

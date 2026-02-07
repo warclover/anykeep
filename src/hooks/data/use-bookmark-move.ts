@@ -13,7 +13,7 @@ import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { API_PATHS } from "@/lib/constants/api-paths";
-import { bookmarkKeys, folderBookmarkKeys } from "@/hooks/queries/keys";
+import { invalidateBookmarkCaches } from "@/lib/cache/invalidate-caches";
 
 interface MoveBookmarkOptions {
   /** 移动完成后的回调 */
@@ -71,11 +71,8 @@ export function useBookmarkMove(
         const movedCount = result.data?.movedCount ?? bookmarkIds.length;
         const folderName = result.data?.folderName ?? "目标文件夹";
 
-        // 刷新相关的 TanStack Query 缓存
-        await queryClient.invalidateQueries({ queryKey: bookmarkKeys.all });
-        await queryClient.invalidateQueries({
-          queryKey: folderBookmarkKeys.all,
-        });
+        // 刷新相关的 TanStack Query 缓存（统一失效机制）
+        invalidateBookmarkCaches(queryClient);
 
         toast.success(`已移动 ${movedCount} 条收藏到「${folderName}」`);
         options.onSuccess?.(movedCount, folderName);

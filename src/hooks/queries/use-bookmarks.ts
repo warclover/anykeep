@@ -17,6 +17,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import { bookmarkKeys, type BookmarkFilters } from "./keys";
+import { invalidateBookmarkCaches } from "@/lib/cache/invalidate-caches";
 import { API_PATHS } from "@/lib/constants/api-paths";
 import type {
   BookmarkListResponse,
@@ -350,8 +351,7 @@ export function useDeleteBookmark() {
 
     // 完成后重新获取
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: bookmarkKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: bookmarkKeys.stats() });
+      invalidateBookmarkCaches(queryClient);
     },
   });
 }

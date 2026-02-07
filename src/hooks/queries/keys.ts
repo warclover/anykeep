@@ -150,6 +150,10 @@ export const initDataKeys = {
 export const inboxKeys = {
   all: ["inbox"] as const,
   counts: () => [...inboxKeys.all, "counts"] as const,
+  /** Tab 书签列表 */
+  items: () => [...inboxKeys.all, "items"] as const,
+  /** 特定 Tab 的书签列表 */
+  itemsByTab: (tabId: string) => [...inboxKeys.items(), tabId] as const,
 };
 
 /**

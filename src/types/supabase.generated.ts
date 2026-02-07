@@ -1,6 +1,6 @@
 /**
  * 此文件由 scripts/gen-supabase-types.js 自动生成
- * 生成时间: 2026-02-07T02:13:30.235Z
+ * 生成时间: 2026-02-07T10:28:58.210Z
  *
  * ⚠️ 请勿手动修改此文件！
  * 如需扩展类型，请在 src/types/supabase.ts 中添加
@@ -5046,6 +5046,7 @@ export type Database = {
           raw_content: string;
           read_at: string | null;
           reading_time_minutes: number | null;
+          search_vector: unknown;
           source_filename: string | null;
           source_metadata: Json | null;
           source_type: string | null;
@@ -5078,6 +5079,7 @@ export type Database = {
           raw_content: string;
           read_at?: string | null;
           reading_time_minutes?: number | null;
+          search_vector?: unknown;
           source_filename?: string | null;
           source_metadata?: Json | null;
           source_type?: string | null;
@@ -5110,6 +5112,7 @@ export type Database = {
           raw_content?: string;
           read_at?: string | null;
           reading_time_minutes?: number | null;
+          search_vector?: unknown;
           source_filename?: string | null;
           source_metadata?: Json | null;
           source_type?: string | null;
@@ -8562,6 +8565,16 @@ export type Database = {
           total_issues: number;
         }[];
       };
+      get_inbox_counts: {
+        Args: { p_user_id: string };
+        Returns: Database["public"]["CompositeTypes"]["inbox_counts_result"];
+        SetofOptions: {
+          from: "*";
+          to: "inbox_counts_result";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       get_intent_cache_stats: {
         Args: never;
         Returns: {
@@ -9973,6 +9986,13 @@ export type Database = {
         folder_id: number | null;
         bookmark_count: number | null;
         today_count: number | null;
+      };
+      inbox_counts_result: {
+        uncategorized: number | null;
+        unread: number | null;
+        high_value: number | null;
+        broken: number | null;
+        recent: number | null;
       };
     };
   };

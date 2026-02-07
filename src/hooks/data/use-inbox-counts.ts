@@ -28,8 +28,21 @@ interface UseInboxCountsReturn {
   refresh: () => Promise<void>;
 }
 
+/** RPC 返回类型 */
+interface InboxCountsRpcResult {
+  uncategorized: number;
+  unread: number;
+  high_value: number;
+  broken: number;
+  recent: number;
+}
+
 // ==================== 数据获取 ====================
 
+/**
+ * 使用 RPC 函数获取收件箱计数
+ * 将 5 次数据库往返合并为 1 次，提升性能
+ */
 async function fetchInboxCounts(): Promise<InboxCounts> {
   const supabase = createClient();
   const {
@@ -40,30 +53,51 @@ async function fetchInboxCounts(): Promise<InboxCounts> {
     throw new Error("未登录");
   }
 
-  // 基础查询条件
+  // 使用 RPC 函数一次查询获取所有计数
+  // 注意：RPC 函数需要运行迁移后才可用，否则自动降级
+  const { data, error } = await supabase.rpc(
+    "get_inbox_counts" as never,
+    {
+      p_user_id: user.id,
+    } as never,
+  );
+
+  if (error) {
+    // RPC 不可用时降级到并行查询
+    return fetchInboxCountsFallback(supabase, user.id);
+  }
+
+  const result = data as unknown as InboxCountsRpcResult | null;
+
+  return {
+    uncategorized: result?.uncategorized ?? 0,
+    unread: result?.unread ?? 0,
+    "high-value": result?.high_value ?? 0,
+    broken: result?.broken ?? 0,
+    recent: result?.recent ?? 0,
+  };
+}
+
+/**
+ * 降级方案：并行查询（RPC 不可用时使用）
+ */
+async function fetchInboxCountsFallback(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<InboxCounts> {
   const baseQuery = () =>
     supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .eq("is_in_trash", false);
 
-  // 并行查询各 Tab 计数
   const [uncategorized, unread, highValue, broken, recent] = await Promise.all([
-    // 待分类：folder_id 为 null
     baseQuery().is("folder_id", null),
-
-    // 未读
     baseQuery().eq("is_read", false),
-
-    // 高价值：quality_score >= 0.7
     baseQuery().gte("quality_score", 0.7),
-
-    // 已失效：link_status = 'broken'
     baseQuery().eq("link_status", "broken"),
-
-    // 最近7天
     baseQuery().gte(
       "created_at",
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
