@@ -62,6 +62,8 @@ export interface TTSPlayerStateValue {
   bookmarkTitle: string | null;
   /** 当前播放的书签 ID */
   currentBookmarkId: number | null;
+  /** 是否来自缓存 */
+  cached: boolean;
 }
 
 /**
@@ -107,6 +109,7 @@ const initialState: TTSPlayerStateValue = {
   error: null,
   bookmarkTitle: null,
   currentBookmarkId: null,
+  cached: false,
 };
 
 // ============================================
@@ -226,6 +229,7 @@ export function useTTSPlayer(): UseTTSPlayerReturn {
         }
 
         const data = result.data as TTSAPIResponse;
+        const isCached = result.cached === true;
 
         // 创建音频 Blob
         const audioBlob = base64ToBlob(
@@ -287,6 +291,7 @@ export function useTTSPlayer(): UseTTSPlayerReturn {
           ...prev,
           state: "playing",
           speed: speed || 1.0,
+          cached: isCached,
         }));
       } catch (error) {
         // 忽略取消错误

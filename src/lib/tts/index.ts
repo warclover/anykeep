@@ -32,3 +32,14 @@ export {
 
 // 服务导出
 export { getTTSService, resetTTSService, TTSError } from "./aliyun-tts.service";
+
+// 缓存服务导出
+export {
+  getTTSCacheService,
+  resetTTSCacheService,
+  type TTSCacheKey,
+  type TTSCacheMetadata,
+  type TTSCacheResult,
+  type TTSCacheHit,
+  type TTSCacheMiss,
+} from "./tts-cache.service";
