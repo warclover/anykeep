@@ -190,14 +190,14 @@ export async function middleware(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60, // 60秒，仅用于请求传递
+      maxAge: 300, // 5分钟，覆盖 RSC payload 请求的生命周期
       path: "/",
     });
     finalResponse.cookies.set("x-user-verified", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60,
+      maxAge: 300,
       path: "/",
     });
   }

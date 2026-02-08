@@ -38,30 +38,35 @@ type BookmarkWithFolder = Bookmark & {
 
 /**
  * 从数据库获取用户设置（带持久化缓存）
- * V4.2.30: 使用 unstable_cache 缓存 5 分钟，减少重复数据库查询
+ * V4.2.30: 使用 unstable_cache 缓存，减少重复数据库查询
+ * 修复：缓存键包含 userId，避免不同用户共享缓存导致 RSC 序列化失败
  */
-const getCachedUserSettings = unstable_cache(
-  async (userId: string): Promise<UserSettings> => {
-    try {
-      const supabase = await createClient();
-      const { data } = (await supabase
-        .from("profiles")
-        .select("settings")
-        .eq("id", userId)
-        .single()) as unknown as { data: { settings: unknown } | null };
+function getCachedUserSettings(userId: string) {
+  return unstable_cache(
+    async (): Promise<UserSettings> => {
+      try {
+        const supabase = await createClient();
+        const { data } = (await supabase
+          .from("profiles")
+          .select("settings")
+          .eq("id", userId)
+          .single()) as unknown as { data: { settings: unknown } | null };
 
-      return mergeWithDefaults(data?.settings as Partial<UserSettings> | null);
-    } catch (error) {
-      logger.error({ error }, "[Home] Failed to get user settings");
-      return mergeWithDefaults(null);
-    }
-  },
-  ["user-settings"],
-  {
-    revalidate: 60, // 1 分钟缓存，缩短以确保设置变更及时生效
-    tags: ["user-settings"],
-  },
-);
+        return mergeWithDefaults(
+          data?.settings as Partial<UserSettings> | null,
+        );
+      } catch (error) {
+        logger.error({ error, userId }, "[Home] Failed to get user settings");
+        return mergeWithDefaults(null);
+      }
+    },
+    ["user-settings", userId],
+    {
+      revalidate: 60, // 1 分钟缓存，缩短以确保设置变更及时生效
+      tags: ["user-settings"],
+    },
+  )();
+}
 
 /**
  * 获取用户设置（带请求级缓存）
@@ -168,7 +173,11 @@ const getInitialBookmarks = cache(
         return { bookmarks: [], error: error.message };
       }
 
-      return { bookmarks: (data as BookmarkWithFolder[]) || [] };
+      // 确保数据可被 RSC 安全序列化（过滤 undefined / 函数等不可序列化值）
+      const safeData = JSON.parse(
+        JSON.stringify(data ?? []),
+      ) as BookmarkWithFolder[];
+      return { bookmarks: safeData };
     } catch (error) {
       return {
         bookmarks: [],
