@@ -253,19 +253,20 @@ export const AppHeader = memo(function AppHeader() {
               <QuickAddBookmark />
             </div>
 
-            {/* 手动创建按钮 - 糖果色风格 */}
+            {/* 手动创建按钮 - 主操作（保持渐变突出） */}
             <Button
-              className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:scale-105 transition-all duration-200"
+              className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-sm hover:shadow-md hover:shadow-pink-200/50 transition-all duration-200"
               onClick={handleOpenCreatePanel}
             >
               <Plus className="size-3.5 mr-1" />
               {t.mobileMenu.manualCreate}
             </Button>
 
-            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 糖果色风格（紫色） */}
+            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 次要操作 */}
             {!isBrowserPlatform && !currentFolder && homeContext && (
               <Button
-                className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all duration-200"
+                variant="outline"
+                className="shrink-0 h-8 px-3 text-sm text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
                 onClick={handleOpenFilterPanel}
               >
                 <Filter className="size-3.5 mr-1" />
@@ -273,10 +274,11 @@ export const AppHeader = memo(function AppHeader() {
               </Button>
             )}
 
-            {/* AI 助理按钮 - 糖果色风格（青蓝色） */}
+            {/* AI 助理按钮 - 次要操作 */}
             {homeContext && (
               <Button
-                className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-cyan-400 to-blue-400 text-white shadow-lg shadow-cyan-200 hover:shadow-cyan-300 hover:scale-105 transition-all duration-200"
+                variant="outline"
+                className="shrink-0 h-8 px-3 text-sm text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
                 onClick={() => homeContext.aiPanel.toggleAIPanel()}
               >
                 <Sparkles className="size-3.5 mr-1" />
