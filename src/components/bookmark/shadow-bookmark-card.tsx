@@ -6,8 +6,8 @@
 
 "use client";
 
-import { useState, useCallback, memo } from "react";
-import { Check, X, Folder, ExternalLink, Globe } from "lucide-react";
+import { useCallback, memo, useMemo } from "react";
+import { Check, X, Folder, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getFaviconInfo } from "@/lib/utils/favicon";
 
 interface ShadowBookmark {
   id: number;
@@ -40,18 +41,6 @@ interface ShadowBookmarkCardProps {
 }
 
 /**
- * 从 URL 提取域名用于显示 Favicon
- */
-function getFaviconUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
-  } catch {
-    return "";
-  }
-}
-
-/**
  * 置信度颜色映射
  */
 function getConfidenceColor(confidence: number): string {
@@ -71,7 +60,7 @@ export const ShadowBookmarkCard = memo(function ShadowBookmarkCard({
   isSelected = false,
   onToggleSelect,
 }: ShadowBookmarkCardProps) {
-  const [imageError, setImageError] = useState(false);
+  const favicon = useMemo(() => getFaviconInfo(bookmark.url), [bookmark.url]);
 
   const handleConfirm = useCallback(() => {
     onConfirm?.(bookmark.id);
@@ -105,21 +94,14 @@ export const ShadowBookmarkCard = memo(function ShadowBookmarkCard({
       )}
 
       {/* Favicon */}
-      <div className="shrink-0">
-        {!imageError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={getFaviconUrl(bookmark.url)}
-            alt=""
-            className="h-5 w-5"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="flex h-5 w-5 items-center justify-center rounded bg-muted">
-            <Globe className="h-3 w-3 text-muted-foreground" />
-          </div>
+      <div
+        className={cn(
+          "shrink-0 h-5 w-5 rounded text-xs font-medium flex items-center justify-center",
+          favicon.bgClass,
+          favicon.textClass,
         )}
+      >
+        {favicon.letter}
       </div>
 
       {/* 书签信息 */}

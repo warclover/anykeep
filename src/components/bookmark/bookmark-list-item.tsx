@@ -1,19 +1,20 @@
 /**
- * 浏览器书签列表项组件 (V4.2.1)
+ * 浏览器书签列表项组件 (V4.2.2)
  * 专为浏览器书签设计的紧凑列表视图
  *
  * 性能优化：
- * - 使用原生 img 标签避免 Next.js 图像优化器的网络请求
- * - 使用 DuckDuckGo favicon 服务（国内可访问）
- * - 添加 loading="lazy" 延迟加载
+ * - 使用本地域名首字母头像，无外部 favicon 网络请求
+ * - 确定性配色：同域名始终同色
  *
+ * V4.2.2 更新：
+ * - favicon 改为纯本地首字母方案，消除 DuckDuckGo/Google 超时
  * V4.2.1 更新：
  * - 添加快照状态指示器支持
  */
 
 "use client";
 
-import { useState, useMemo, memo, useCallback } from "react";
+import { useMemo, memo, useCallback } from "react";
 import Link from "next/link";
 import {
   MoreVertical,
@@ -21,7 +22,6 @@ import {
   Trash2,
   ExternalLink,
   Folder,
-  Globe,
   Camera,
 } from "lucide-react";
 import {
@@ -40,6 +40,7 @@ import {
 import type { BookmarkWithSnapshot } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { getMergedTags, limitTags } from "@/lib/utils/unified-tags";
+import { getFaviconInfo } from "@/lib/utils/favicon";
 import { useSnapshotFeature } from "@/lib/feature-flags";
 
 interface BookmarkListItemProps {
@@ -52,20 +53,6 @@ interface BookmarkListItemProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: number) => void;
-}
-
-/**
- * 从 URL 提取域名用于显示 Favicon
- * 使用 DuckDuckGo favicon 服务（国内可访问，比 Google 更稳定）
- */
-function getFaviconUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    // DuckDuckGo favicon 服务：国内可访问，无需 VPN
-    return `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
-  } catch {
-    return ""; // 返回空字符串，让 onError 处理
-  }
 }
 
 /**
@@ -82,7 +69,6 @@ export const BookmarkListItem = memo(function BookmarkListItem({
   isSelected = false,
   onToggleSelect,
 }: BookmarkListItemProps) {
-  const [imageError, setImageError] = useState(false);
   const isSnapshotEnabled = useSnapshotFeature();
 
   // V4.2.1: 快照状态显示
@@ -101,8 +87,8 @@ export const BookmarkListItem = memo(function BookmarkListItem({
     onToggleSelect?.(bookmark.id);
   }, [onToggleSelect, bookmark.id]);
 
-  // 性能优化：缓存 Favicon URL 计算结果
-  const faviconUrl = useMemo(() => getFaviconUrl(bookmark.url), [bookmark.url]);
+  // 性能优化：缓存 Favicon 信息（纯本地生成，无网络请求）
+  const favicon = useMemo(() => getFaviconInfo(bookmark.url), [bookmark.url]);
 
   // 性能优化：缓存合并后的标签
   const mergedTags = useMemo(() => getMergedTags(bookmark), [bookmark]);
@@ -135,22 +121,15 @@ export const BookmarkListItem = memo(function BookmarkListItem({
         </div>
       )}
 
-      {/* Favicon - 使用原生 img 避免 Next.js 图像优化器的网络请求超时 */}
-      <div className="w-4 h-4 flex-shrink-0 relative">
-        {!imageError && faviconUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={faviconUrl}
-            alt=""
-            width={16}
-            height={16}
-            loading="lazy"
-            className="w-4 h-4 object-contain"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <Globe className="w-4 h-4 text-gray-400 dark:text-gray-600" />
+      {/* Favicon - 纯本地首字母头像，无外部网络请求 */}
+      <div
+        className={cn(
+          "w-4 h-4 flex-shrink-0 relative rounded text-[10px] font-medium flex items-center justify-center",
+          favicon.bgClass,
+          favicon.textClass,
         )}
+      >
+        {favicon.letter}
       </div>
 
       {/* 内容区域 */}

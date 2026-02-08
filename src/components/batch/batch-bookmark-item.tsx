@@ -5,10 +5,11 @@
 
 "use client";
 
-import { memo, useState, useMemo, useCallback } from "react";
-import { Globe, Folder, Check } from "lucide-react";
+import { memo, useMemo, useCallback } from "react";
+import { Folder, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMergedTags, limitTags } from "@/lib/utils/unified-tags";
+import { getFaviconInfo } from "@/lib/utils/favicon";
 import type { Bookmark } from "@/types/supabase";
 
 type BookmarkWithFolder = Bookmark & {
@@ -25,18 +26,6 @@ interface BatchBookmarkItemProps {
 }
 
 /**
- * 从 URL 提取域名用于显示 Favicon
- */
-function getFaviconUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
-  } catch {
-    return "";
-  }
-}
-
-/**
  * 批量操作书签列表项组件
  */
 export const BatchBookmarkItem = memo(function BatchBookmarkItem({
@@ -44,10 +33,8 @@ export const BatchBookmarkItem = memo(function BatchBookmarkItem({
   isSelected,
   onClick,
 }: BatchBookmarkItemProps) {
-  const [imageError, setImageError] = useState(false);
-
-  // 缓存 Favicon URL
-  const faviconUrl = useMemo(() => getFaviconUrl(bookmark.url), [bookmark.url]);
+  // 缓存 Favicon 信息（纯本地生成，无网络请求）
+  const favicon = useMemo(() => getFaviconInfo(bookmark.url), [bookmark.url]);
 
   // 缓存合并后的标签
   const mergedTags = useMemo(() => getMergedTags(bookmark), [bookmark]);
@@ -96,21 +83,14 @@ export const BatchBookmarkItem = memo(function BatchBookmarkItem({
       </div>
 
       {/* Favicon */}
-      <div className="w-4 h-4 flex-shrink-0">
-        {!imageError && faviconUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={faviconUrl}
-            alt=""
-            width={16}
-            height={16}
-            loading="lazy"
-            className="w-4 h-4 object-contain"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <Globe className="w-4 h-4 text-gray-400 dark:text-gray-600" />
+      <div
+        className={cn(
+          "w-4 h-4 flex-shrink-0 rounded text-[10px] font-medium flex items-center justify-center",
+          favicon.bgClass,
+          favicon.textClass,
         )}
+      >
+        {favicon.letter}
       </div>
 
       {/* 内容区域 */}
