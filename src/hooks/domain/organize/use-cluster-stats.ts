@@ -83,7 +83,25 @@ export function useClusterStats(): UseClusterStatsReturn {
     queryFn: async (): Promise<ClusterStats> => {
       const supabase = createClient();
 
-      const { data, error } = await supabase.rpc("get_user_cluster_stats");
+      // 获取当前用户 ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        // 未登录时返回默认值，不抛错
+        return {
+          totalPending: 0,
+          clusteredCount: 0,
+          unclusteredCount: 0,
+          clusterCount: 0,
+          oldestPending: null,
+        };
+      }
+
+      const { data, error } = await supabase.rpc("get_user_cluster_stats", {
+        p_user_id: user.id,
+      });
 
       if (error) {
         clientLogger.error({ error }, "[useClusterStats] RPC error");
