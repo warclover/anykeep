@@ -1,8 +1,17 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
+
+  // 将版本号注入为环境变量，避免运行时 require()（Edge Runtime 兼容）
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+  },
 
   // 使用默认 Node/standalone 输出模式，支持动态路由与动态渲染
   // 注意：`output: "export"` 会与 `dynamic = "force-dynamic"` 等动态特性冲突，
