@@ -50,6 +50,7 @@
     "import": "Import",
     "export": "Export",
     "batch": "Batch",
+    "usageFilter": "Filter by Usage",
     "trash": "Trash",
     "myBookmarks": "My Bookmarks",
     "mySearch": "My Search",
@@ -371,6 +372,75 @@
       "title": "Help & Feedback",
       "description": "View submitted feedback and track progress",
       "myFeedback": "My Feedback Records"
+    },
+    "groups": {
+      "account": {
+        "label": "Account & Profile",
+        "description": "Manage personal info, profile, and interests",
+        "items": {
+          "accountInfo": "Basic Info",
+          "profile": "User Profile",
+          "interests": "Interests"
+        }
+      },
+      "appearance": {
+        "label": "Appearance",
+        "description": "Customize theme and interface style",
+        "items": {
+          "theme": "Color Theme"
+        }
+      },
+      "ai": {
+        "label": "AI Intelligence",
+        "description": "Configure smart classification, summary, and automation",
+        "items": {
+          "features": "Feature Toggles",
+          "classification": "Smart Classification",
+          "summaryMode": "Summary Mode",
+          "trustMode": "Trust Mode",
+          "provider": "AI Provider"
+        }
+      },
+      "content": {
+        "label": "Content Management",
+        "description": "Manage snapshot quota and auto-save rules",
+        "items": {
+          "snapshotQuota": "Snapshot Quota",
+          "autoSnapshot": "Auto Snapshot"
+        }
+      },
+      "platforms": {
+        "label": "Platform Connections",
+        "description": "Connect social media accounts to sync content",
+        "items": {
+          "socialAccounts": "Social Accounts"
+        }
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Manage email, in-app notifications and message levels",
+        "items": {
+          "preferences": "Notification Preferences",
+          "levels": "Message Levels"
+        }
+      },
+      "privacy": {
+        "label": "Privacy & Security",
+        "description": "Data encryption, export, and account management",
+        "items": {
+          "dataSecurity": "Data Security",
+          "accountActions": "Account Management",
+          "developerMode": "Developer Mode"
+        }
+      },
+      "support": {
+        "label": "History & Support",
+        "description": "View AI operation records and feedback",
+        "items": {
+          "aiHistory": "AI Operation History",
+          "feedback": "Help & Feedback"
+        }
+      }
     }
   },
   "auth": {

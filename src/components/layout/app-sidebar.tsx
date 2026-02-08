@@ -21,30 +21,7 @@
 import { useCallback, useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  BookOpen,
-  Search,
-  FolderOpen,
-  Tags,
-  FileText,
-  Inbox,
-  CheckSquare,
-  Database,
-  FlaskConical,
-  BarChart3,
-  Activity,
-  Bell,
-  Settings,
-  Trash2,
-  PanelLeftClose,
-  PanelLeft,
-  BrainCircuit,
-  HeartPulse,
-  Sparkles,
-  Gauge,
-  Zap,
-  Volume2,
-} from "lucide-react";
+import { PanelLeftClose, PanelLeft, Trash2 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
@@ -52,8 +29,13 @@ import { APP_VERSION } from "@/lib/constants/app";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
 // 国际化
-import { useUiText } from "@/lib/i18n";
+import { useUiText, getNestedValue } from "@/lib/i18n";
 import { useDeveloperMode } from "@/hooks/core/use-developer-mode";
+import {
+  NAV_GROUPS,
+  getDesktopItems,
+  type NavItemConfig,
+} from "@/lib/navigation/nav-config";
 import {
   Tooltip,
   TooltipContent,
@@ -63,14 +45,8 @@ import {
 
 // ==================== 类型定义 ====================
 
-interface NavItem {
-  name: string; // 翻译键，如 "nav.myBookmarks"
-  href: string;
-  icon: typeof BookOpen;
-  pageId?: PageId;
-  badge?: number | "unread";
-  isPro?: boolean;
-}
+// 使用统一导航配置的 NavItemConfig 类型
+type NavItem = NavItemConfig;
 
 // ==================== 组件 ====================
 
@@ -152,7 +128,7 @@ const NavItem = memo(
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
             <p>
-              {item.name}
+              {displayName}
               {item.isPro ? " (Pro)" : ""}
             </p>
           </TooltipContent>
@@ -178,74 +154,9 @@ const NavItem = memo(
 
 // ==================== 导航配置 ====================
 
-/**
- * 我的内容（方案 A：合并原"内容中心"+ Tags）
- */
-const myContentItems: NavItem[] = [
-  { name: "nav.myBookmarks", href: "/home", icon: BookOpen, pageId: "home" },
-  { name: "nav.mySearch", href: "/search", icon: Search, pageId: "search" },
-  {
-    name: "nav.myFolders",
-    href: "/folders",
-    icon: FolderOpen,
-    pageId: "folders",
-  },
-  { name: "nav.myTags", href: "/tags", icon: Tags },
-  { name: "nav.myNotes", href: "/md-collections", icon: FileText, isPro: true },
-  { name: "nav.myAudio", href: "/audio-library", icon: Volume2 },
-];
-
-/**
- * 智能工具（方案 A：合并原"整理工具"+"学习中心"）
- */
-const smartToolsItems: NavItem[] = [
-  { name: "nav.inbox", href: "/inbox", icon: Inbox },
-  { name: "nav.organizeCenter", href: "/organize", icon: Sparkles },
-  { name: "nav.synthesis", href: "/synthesis", icon: FlaskConical },
-  {
-    name: "nav.draftStudio",
-    href: "/knowledge-studio/v2",
-    icon: Sparkles,
-    isPro: true,
-  },
-  { name: "nav.batch", href: "/batch", icon: CheckSquare, pageId: "batch" },
-  { name: "nav.dataCenter", href: "/data", icon: Database },
-];
-
-/**
- * 洞察与通知（方案 A：精简原"洞察中心"，移除 Tags）
- */
-const insightItems: NavItem[] = [
-  { name: "nav.aiHub", href: "/ai-hub", icon: Zap },
-  {
-    name: "nav.analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    pageId: "analytics",
-  },
-  { name: "nav.activityLog", href: "/activity", icon: Activity },
-  {
-    name: "nav.notifications",
-    href: "/messages",
-    icon: Bell,
-    pageId: "messages",
-    badge: "unread",
-  },
-];
-
-/**
- * 开发者工具导航项（默认隐藏，仅在设置中启用后显示）
- */
-const devToolsItems: NavItem[] = [
-  {
-    name: "nav.classificationManager",
-    href: "/classification-manager",
-    icon: BrainCircuit,
-  },
-  { name: "nav.ragDashboard", href: "/settings/rag-dashboard", icon: Gauge },
-  { name: "nav.folderHealth", href: "/folder-health", icon: HeartPulse },
-  { name: "nav.aiDebug", href: "/dev/ai-debug", icon: Zap },
-];
+// ==================== 导航配置（从统一数据源获取） ====================
+// 导航项数据来自 src/lib/navigation/nav-config.ts
+// 侧边栏通过 getDesktopItems() 过滤仅桌面端可见的项
 
 // ==================== 糖果色配色 ====================
 
@@ -377,17 +288,12 @@ export const AppSidebar = memo(function AppSidebar() {
 
   /**
    * 获取翻译文本（支持嵌套键如 "nav.myBookmarks"）
-   * P3 优化: 提取为 useCallback 钩子，避免在渲染中重复创建
+   * 复用 i18n 共享工具函数，消除重复实现
    */
   const getDisplayName = useCallback(
-    (key: string): string => {
-      const parts = key.split(".");
-      let value: unknown = t;
-      for (const part of parts) {
-        value = (value as Record<string, unknown>)?.[part];
-      }
-      return (value as string) || key;
-    },
+    (key: string): string =>
+      getNestedValue<string>(t as unknown as Record<string, unknown>, key) ??
+      key,
     [t],
   );
 
@@ -502,80 +408,31 @@ export const AppSidebar = memo(function AppSidebar() {
             )}
           </div>
 
-          {/* 主导航区域 */}
+          {/* 主导航区域 - 数据驱动渲染（从统一导航配置） */}
           <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
-            {/* 我的内容 */}
-            <div>
-              {renderGroupTitle(
-                getDisplayName("navGroup.myContent"),
-                "text-purple-500 dark:text-purple-400",
-              )}
-              <div className="space-y-1">
-                {myContentItems.map((item) =>
-                  renderNavItem(item, groupCandyColors.content),
-                )}
-              </div>
-            </div>
+            {NAV_GROUPS.filter(
+              (group) => !group.requireDevMode || isDeveloperMode,
+            ).map((group) => {
+              const items = getDesktopItems(group);
+              if (items.length === 0) return null;
 
-            {/* 智能工具 */}
-            <div>
-              {renderGroupTitle(
-                getDisplayName("navGroup.smartTools"),
-                "text-purple-500 dark:text-purple-400",
-              )}
-              <div className="space-y-1">
-                {smartToolsItems.map((item) =>
-                  renderNavItem(item, groupCandyColors.content),
-                )}
-              </div>
-            </div>
+              const colorKey = group.id as GroupColorKey;
+              const colors =
+                groupCandyColors[colorKey] || groupCandyColors.content;
+              const titleColor =
+                colorKey === "system"
+                  ? "text-gray-400 dark:text-gray-500"
+                  : "text-purple-500 dark:text-purple-400";
 
-            {/* 洞察与通知 */}
-            <div>
-              {renderGroupTitle(
-                getDisplayName("navGroup.insightCenter"),
-                "text-purple-500 dark:text-purple-400",
-              )}
-              <div className="space-y-1">
-                {insightItems.map((item) =>
-                  renderNavItem(item, groupCandyColors.content),
-                )}
-              </div>
-            </div>
-
-            {/* 系统 */}
-            <div>
-              {renderGroupTitle(
-                getDisplayName("mobileMenu.system"),
-                "text-gray-400 dark:text-gray-500",
-              )}
-              <div className="space-y-1">
-                {renderNavItem(
-                  {
-                    name: "nav.settings",
-                    href: "/settings",
-                    icon: Settings,
-                    pageId: "settings",
-                  },
-                  groupCandyColors.system,
-                )}
-              </div>
-            </div>
-
-            {/* 开发者工具 - 通过用户设置 developer_mode 控制显隐 */}
-            {isDeveloperMode && (
-              <div>
-                {renderGroupTitle(
-                  getDisplayName("navGroup.devTools"),
-                  "text-gray-400 dark:text-gray-500",
-                )}
-                <div className="space-y-1">
-                  {devToolsItems.map((item) =>
-                    renderNavItem(item, groupCandyColors.system),
-                  )}
+              return (
+                <div key={group.title}>
+                  {renderGroupTitle(getDisplayName(group.title), titleColor)}
+                  <div className="space-y-1">
+                    {items.map((item) => renderNavItem(item, colors))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </nav>
 
           {/* 底部固定区域 */}

@@ -269,7 +269,7 @@ export const AppHeader = memo(function AppHeader() {
                 onClick={handleOpenFilterPanel}
               >
                 <Filter className="size-3.5 mr-1" />
-                {t.nav.batch}
+                {t.nav.usageFilter}
               </Button>
             )}
 

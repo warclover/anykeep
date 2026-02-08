@@ -22,25 +22,11 @@ import {
   Search,
   Inbox,
   MoreHorizontal,
-  // "更多" Sheet 内分组图标
-  FolderOpen,
-  Tags,
-  FileText,
-  CheckSquare,
-  Download,
-  Share2,
-  LinkIcon,
-  FlaskConical,
-  Sparkles,
-  BarChart3,
-  Activity,
-  Bell,
-  Settings,
-  Trash2,
   Moon,
   Sun,
   Plus,
   X,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -58,146 +44,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
-import { useUiText } from "@/lib/i18n";
+import { useUiText, getNestedValue } from "@/lib/i18n";
+import { getMobileMoreGroups } from "@/lib/navigation/nav-config";
 
-// ==================== 类型定义 ====================
-
-interface MoreNavItem {
-  name: string;
-  href: string;
-  icon: typeof BookOpen;
-  description?: string;
-  isPro?: boolean;
-  badge?: "unread";
-}
-
-interface MoreNavGroup {
-  title: string;
-  items: MoreNavItem[];
-}
-
-// ==================== "更多" Sheet 导航分组 ====================
-
-const moreNavigationGroups: MoreNavGroup[] = [
-  {
-    title: "navGroup.contentCenter",
-    items: [
-      {
-        name: "nav.myFolders",
-        href: "/folders",
-        icon: FolderOpen,
-        description: "mobileMenu.manageFolders",
-      },
-      {
-        name: "nav.myTags",
-        href: "/tags",
-        icon: Tags,
-        description: "mobileMenu.tagManagement",
-      },
-      {
-        name: "nav.myNotes",
-        href: "/md-collections",
-        icon: FileText,
-        description: "mobileMenu.markdownNotes",
-        isPro: true,
-      },
-    ],
-  },
-  {
-    title: "navGroup.organizeTools",
-    items: [
-      {
-        name: "nav.inbox",
-        href: "/inbox",
-        icon: Inbox,
-        description: "mobileMenu.waitingClassification",
-      },
-      {
-        name: "nav.batch",
-        href: "/batch",
-        icon: CheckSquare,
-        description: "mobileMenu.batchManagement",
-      },
-      {
-        name: "nav.export",
-        href: "/export",
-        icon: Download,
-        description: "mobileMenu.exportData",
-      },
-      {
-        name: "mobileMenu.distributionCenter",
-        href: "/distribution",
-        icon: Share2,
-        description: "mobileMenu.distributionCenter",
-      },
-      {
-        name: "mobileMenu.linkHealthCheck",
-        href: "/link-health",
-        icon: LinkIcon,
-        description: "mobileMenu.linkHealthCheck",
-      },
-    ],
-  },
-  {
-    title: "navGroup.learningCenter",
-    items: [
-      {
-        name: "nav.synthesis",
-        href: "/synthesis",
-        icon: FlaskConical,
-        description: "mobileMenu.themeExtraction",
-      },
-      {
-        name: "nav.draftStudio",
-        href: "/knowledge-studio",
-        icon: Sparkles,
-        description: "mobileMenu.aiReportGeneration",
-        isPro: true,
-      },
-    ],
-  },
-  {
-    title: "navGroup.insightCenter",
-    items: [
-      {
-        name: "nav.analytics",
-        href: "/analytics",
-        icon: BarChart3,
-        description: "mobileMenu.viewDataAnalysis",
-      },
-      {
-        name: "nav.activityLog",
-        href: "/activity",
-        icon: Activity,
-        description: "mobileMenu.operationHistory",
-      },
-      {
-        name: "nav.notifications",
-        href: "/messages",
-        icon: Bell,
-        description: "mobileMenu.systemMessages",
-        badge: "unread",
-      },
-    ],
-  },
-  {
-    title: "mobileMenu.system",
-    items: [
-      {
-        name: "nav.settings",
-        href: "/settings",
-        icon: Settings,
-        description: "mobileMenu.appSettings",
-      },
-      {
-        name: "nav.trash",
-        href: "/home?folder=trash",
-        icon: Trash2,
-        description: "mobileMenu.deletedContent",
-      },
-    ],
-  },
-];
+// ==================== 导航配置（从统一数据源获取） ====================
+// "更多" Sheet 的导航分组来自 src/lib/navigation/nav-config.ts
+const moreNavigationGroups = getMobileMoreGroups();
 
 // ==================== 组件 ====================
 
@@ -217,15 +69,9 @@ export function MobileBottomNav() {
     isClientNavEnabled: false,
   };
 
-  // 获取翻译文本的辅助函数
-  const getText = (key: string): string => {
-    const parts = key.split(".");
-    let value: unknown = t;
-    for (const part of parts) {
-      value = (value as Record<string, unknown>)?.[part];
-    }
-    return (value as string) || key;
-  };
+  // 获取翻译文本（复用 i18n 共享工具函数）
+  const getText = (key: string): string =>
+    getNestedValue<string>(t as unknown as Record<string, unknown>, key) ?? key;
 
   /**
    * 处理底部 Tab 导航点击

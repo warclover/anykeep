@@ -50,6 +50,7 @@
     "import": "导入",
     "export": "导出",
     "batch": "批量操作",
+    "usageFilter": "用途筛选",
     "trash": "回收站",
     "myBookmarks": "我的收藏",
     "mySearch": "我的搜索",
@@ -371,6 +372,75 @@
       "title": "帮助与反馈",
       "description": "查看已提交的反馈，跟踪处理进度",
       "myFeedback": "我的反馈记录"
+    },
+    "groups": {
+      "account": {
+        "label": "账号与资料",
+        "description": "管理个人信息、画像和兴趣领域",
+        "items": {
+          "accountInfo": "基本信息",
+          "profile": "用户画像",
+          "interests": "兴趣领域"
+        }
+      },
+      "appearance": {
+        "label": "外观显示",
+        "description": "自定义主题和界面风格",
+        "items": {
+          "theme": "主题色"
+        }
+      },
+      "ai": {
+        "label": "AI 智能",
+        "description": "配置智能分类、摘要和自动化功能",
+        "items": {
+          "features": "功能开关",
+          "classification": "智能分类",
+          "summaryMode": "摘要模式",
+          "trustMode": "托管模式",
+          "provider": "AI 服务商"
+        }
+      },
+      "content": {
+        "label": "内容管理",
+        "description": "管理快照配额和自动保存规则",
+        "items": {
+          "snapshotQuota": "快照配额",
+          "autoSnapshot": "自动快照"
+        }
+      },
+      "platforms": {
+        "label": "平台连接",
+        "description": "连接社交媒体账号同步内容",
+        "items": {
+          "socialAccounts": "社交账号"
+        }
+      },
+      "notifications": {
+        "label": "通知设置",
+        "description": "管理邮件、应用内通知和消息分级",
+        "items": {
+          "preferences": "通知偏好",
+          "levels": "消息分级"
+        }
+      },
+      "privacy": {
+        "label": "隐私安全",
+        "description": "数据加密、导出和账号管理",
+        "items": {
+          "dataSecurity": "数据安全",
+          "accountActions": "账号管理",
+          "developerMode": "开发者模式"
+        }
+      },
+      "support": {
+        "label": "历史与支持",
+        "description": "查看 AI 操作记录和反馈",
+        "items": {
+          "aiHistory": "AI 操作记录",
+          "feedback": "帮助反馈"
+        }
+      }
     }
   },
   "auth": {
