@@ -1,6 +1,40 @@
 import { useEffect, useState, useCallback } from "react";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
+// 本地 Favicon 首字母方案（避免 Google Favicon API 在国内不可用）
+const FAVICON_COLORS = [
+  { bg: "#FEE2E2", text: "#DC2626" },
+  { bg: "#FFEDD5", text: "#EA580C" },
+  { bg: "#FEF3C7", text: "#D97706" },
+  { bg: "#D1FAE5", text: "#059669" },
+  { bg: "#CCFBF1", text: "#0D9488" },
+  { bg: "#CFFAFE", text: "#0891B2" },
+  { bg: "#DBEAFE", text: "#2563EB" },
+  { bg: "#E0E7FF", text: "#4F46E5" },
+  { bg: "#EDE9FE", text: "#7C3AED" },
+  { bg: "#FCE7F3", text: "#DB2777" },
+];
+
+function getFaviconInfo(url: string) {
+  try {
+    const { hostname } = new URL(url);
+    const domain = hostname.replace(/^www\./, "");
+    const letter = (domain[0] || "?").toUpperCase();
+    const hash = Array.from(domain).reduce(
+      (acc, c) => acc + c.charCodeAt(0),
+      0,
+    );
+    const color = FAVICON_COLORS[hash % FAVICON_COLORS.length];
+    return { letter, bg: color.bg, text: color.text };
+  } catch {
+    return {
+      letter: "?",
+      bg: FAVICON_COLORS[0].bg,
+      text: FAVICON_COLORS[0].text,
+    };
+  }
+}
+
 interface Bookmark {
   id: string;
   title: string;
@@ -20,11 +54,7 @@ export function RecentTab() {
 
     chrome.runtime.sendMessage(
       { type: "GET_RECENT", payload: { limit: 10 } },
-      (response: {
-        success?: boolean;
-        data?: Bookmark[];
-        error?: string;
-      }) => {
+      (response: { success?: boolean; data?: Bookmark[]; error?: string }) => {
         setLoading(false);
         if (response?.success && response?.data) {
           setBookmarks(response.data);
@@ -103,59 +133,60 @@ export function RecentTab() {
   return (
     <div className="overflow-y-auto h-full">
       <div className="p-2">
-        {bookmarks.map((bookmark) => (
-          <button
-            key={bookmark.id}
-            onClick={() => openBookmark(bookmark.url)}
-            className="w-full flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-left group"
-          >
-            <div className="w-8 h-8 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=32`}
-                alt=""
-                className="w-4 h-4"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
+        {bookmarks.map((bookmark) => {
+          const favicon = getFaviconInfo(bookmark.url);
+          return (
+            <button
+              key={bookmark.id}
+              onClick={() => openBookmark(bookmark.url)}
+              className="w-full flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-left group"
+            >
+              <div
+                className="w-8 h-8 rounded flex-shrink-0 flex items-center justify-center text-xs font-medium"
+                style={{
+                  backgroundColor: favicon.bg,
+                  color: favicon.text,
                 }}
-              />
-            </div>
+              >
+                {favicon.letter}
+              </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <h4 className="text-sm font-medium text-gray-900 truncate flex-1">
-                  {bookmark.title}
-                </h4>
-                <ExternalLink className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <h4 className="text-sm font-medium text-gray-900 truncate flex-1">
+                    {bookmark.title}
+                  </h4>
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 flex-shrink-0" />
+                </div>
+                <p className="text-xs text-gray-400 truncate mt-0.5">
+                  {new URL(bookmark.url).hostname}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-400">
+                    {formatDate(bookmark.created_at)}
+                  </span>
+                  {bookmark.tags && bookmark.tags.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {bookmark.tags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {bookmark.tags.length > 2 && (
+                        <span className="text-xs text-gray-400">
+                          +{bookmark.tags.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-gray-400 truncate mt-0.5">
-                {new URL(bookmark.url).hostname}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400">
-                  {formatDate(bookmark.created_at)}
-                </span>
-                {bookmark.tags && bookmark.tags.length > 0 && (
-                  <div className="flex items-center gap-1">
-                    {bookmark.tags.slice(0, 2).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {bookmark.tags.length > 2 && (
-                      <span className="text-xs text-gray-400">
-                        +{bookmark.tags.length - 2}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

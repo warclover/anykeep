@@ -4,6 +4,7 @@
  * API 文档客户端组件
  *
  * @description 加载 Swagger UI 展示 OpenAPI 规范
+ * 使用本地静态资源，避免 unpkg.com CDN 在国内不稳定
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -13,13 +14,11 @@ import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clientLogger } from "@/lib/client-logger";
 
-// Swagger UI CDN URLs
-const SWAGGER_UI_CSS =
-  "https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css";
-const SWAGGER_UI_BUNDLE =
-  "https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js";
+// Swagger UI 本地资源路径（从 public/vendor/swagger-ui/ 加载）
+const SWAGGER_UI_CSS = "/vendor/swagger-ui/swagger-ui.css";
+const SWAGGER_UI_BUNDLE = "/vendor/swagger-ui/swagger-ui-bundle.js";
 const SWAGGER_UI_STANDALONE =
-  "https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js";
+  "/vendor/swagger-ui/swagger-ui-standalone-preset.js";
 
 declare global {
   interface Window {

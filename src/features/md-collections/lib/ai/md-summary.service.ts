@@ -108,12 +108,13 @@ function getAvailableProviders(): ProviderConfig[] {
   }
 
   // OpenAI (优先级 3 - 备用)
+  // 支持通过 OPENAI_API_BASE_URL 环境变量配置自定义端点（国内代理等）
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     providers.push({
       name: "openai",
-      baseUrl: "https://api.openai.com/v1",
-      model: "gpt-4o-mini",
+      baseUrl: process.env.OPENAI_API_BASE_URL || "https://api.openai.com/v1",
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       apiKey: openaiKey,
       priority: 3,
     });

@@ -32,6 +32,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { getFaviconInfo } from "@/lib/utils/favicon";
 import { differenceInHours, differenceInDays } from "date-fns";
 import type {
   ConfirmationMessageDisplay,
@@ -159,6 +160,10 @@ export function InboxItem({
   const isClassification = confirmation.type === "classification";
   const suggestion = confirmation.suggestion as ClassificationSuggestion;
 
+  const bookmarkFavicon = confirmation.bookmark
+    ? getFaviconInfo(confirmation.bookmark.url)
+    : null;
+
   const handleConfirm = () => {
     onConfirm?.(confirmation.id, selectedFolderId);
   };
@@ -212,17 +217,17 @@ export function InboxItem({
             {isClassification && (
               <div className="mt-3 space-y-2">
                 {/* 书签信息 */}
-                {confirmation.bookmark && (
+                {confirmation.bookmark && bookmarkFavicon && (
                   <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- External favicon API, not suitable for Next/Image optimization */}
-                    <img
-                      src={`https://www.google.com/s2/favicons?domain=${new URL(confirmation.bookmark.url).hostname}&sz=32`}
-                      alt=""
-                      className="size-4 rounded"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
+                    <div
+                      className={cn(
+                        "size-4 rounded text-[8px] font-medium flex items-center justify-center flex-shrink-0",
+                        bookmarkFavicon.bgClass,
+                        bookmarkFavicon.textClass,
+                      )}
+                    >
+                      {bookmarkFavicon.letter}
+                    </div>
                     <span className="text-sm truncate flex-1">
                       {confirmation.bookmark.title}
                     </span>

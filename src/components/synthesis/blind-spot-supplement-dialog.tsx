@@ -115,9 +115,9 @@ export function BlindSpotSupplementDialog({
     }
   }, []);
 
-  // 在新标签页中搜索
+  // 在新标签页中搜索（使用必应搜索，兼容国内网络环境）
   const handleSearchInBrowser = useCallback((keyword: string) => {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(keyword)}`;
+    const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(keyword)}`;
     window.open(searchUrl, "_blank");
   }, []);
 
