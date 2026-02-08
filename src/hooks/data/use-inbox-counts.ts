@@ -120,22 +120,21 @@ async function fetchInboxCountsFallback(
       .is("deleted_at", null)
       .eq("is_in_trash", false);
 
-  const [uncategorized, unread, highValue, broken, recent, processing] =
-    await Promise.all([
-      baseQuery().is("folder_id", null),
-      baseQuery().eq("is_read", false),
-      baseQuery().gte("quality_score", 0.7),
-      baseQuery().eq("link_status", "broken"),
-      baseQuery().gte(
-        "created_at",
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      ),
-      baseQuery().in("processing_status", ["processing", "pending"]),
-    ]);
+  // 注意：bookmarks 表无 processing_status 列（仅 md_collections 表有），暂返回 0
+  const [uncategorized, unread, highValue, broken, recent] = await Promise.all([
+    baseQuery().is("folder_id", null),
+    baseQuery().eq("is_read", false),
+    baseQuery().gte("quality_score", 0.7),
+    baseQuery().eq("link_status", "broken"),
+    baseQuery().gte(
+      "created_at",
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    ),
+  ]);
 
   const uncategorizedCount = uncategorized.count ?? 0;
   const highValueCount = highValue.count ?? 0;
-  const processingCount = processing.count ?? 0;
+  const processingCount = 0;
 
   return {
     counts: {

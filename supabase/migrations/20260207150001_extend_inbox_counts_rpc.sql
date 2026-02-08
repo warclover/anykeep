@@ -5,6 +5,8 @@
 -- - processing: processing_status = 'processing' 或 'pending'
 
 -- 更新返回类型
+-- 注意：processing_status 列不存在于 bookmarks 表（仅存在于 md_collections 表）
+-- 因此 processing 计数暂时返回 0，待 bookmarks 表添加该列后再启用
 DROP TYPE IF EXISTS inbox_counts_result CASCADE;
 CREATE TYPE inbox_counts_result AS (
   uncategorized integer,
@@ -33,7 +35,7 @@ BEGIN
     COUNT(*) FILTER (WHERE quality_score >= 0.7),
     COUNT(*) FILTER (WHERE link_status = 'broken'),
     COUNT(*) FILTER (WHERE created_at >= seven_days_ago),
-    COUNT(*) FILTER (WHERE processing_status IN ('processing', 'pending'))
+    0
   INTO
     result.uncategorized,
     result.unread,
@@ -54,4 +56,4 @@ $$;
 GRANT EXECUTE ON FUNCTION get_inbox_counts(uuid) TO authenticated;
 
 -- 添加注释
-COMMENT ON FUNCTION get_inbox_counts(uuid) IS '获取收件箱各 Tab 计数（待分类、未读、高价值、已失效、最近7天、AI处理中），合并 6 个 COUNT 为 1 次查询';
+COMMENT ON FUNCTION get_inbox_counts(uuid) IS '获取收件箱各 Tab 计数（待分类、未读、高价值、已失效、最近7天、AI处理中），合并为 1 次查询。processing 暂返回 0';
