@@ -55,13 +55,12 @@ BEGIN
         END IF;
     END IF;
 
-    -- 2. 原子更新书签（带锁防止并发）
+    -- 2. 原子更新书签（UPDATE 语句自带排他锁，无需额外 FOR UPDATE）
     UPDATE bookmarks b
     SET folder_id = p_target_folder_id, updated_at = NOW()
     WHERE b.id = ANY(p_bookmark_ids)
       AND b.user_id = p_user_id
-      AND b.deleted_at IS NULL
-    FOR UPDATE OF b SKIP LOCKED;  -- 跳过被锁定的行，避免死锁
+      AND b.deleted_at IS NULL;
 
     GET DIAGNOSTICS v_updated_count = ROW_COUNT;
 
@@ -106,6 +105,7 @@ DECLARE
     v_tag TEXT;
     v_bookmark_id BIGINT;
     v_added_count INT := 0;
+    v_rows INT;
 BEGIN
     -- 验证书签所有权
     FOR v_bookmark_id IN SELECT unnest(p_bookmark_ids)
@@ -132,7 +132,8 @@ BEGIN
         SELECT p_user_id, unnest(p_bookmark_ids), v_tag
         ON CONFLICT (user_id, bookmark_id, tag_name) DO NOTHING;
 
-        GET DIAGNOSTICS v_added_count = ROW_COUNT + v_added_count;
+        GET DIAGNOSTICS v_rows = ROW_COUNT;
+        v_added_count := v_added_count + v_rows;
     END LOOP;
 
     RETURN QUERY SELECT
@@ -200,13 +201,12 @@ AS $$
 DECLARE
     v_deleted_count INT;
 BEGIN
-    -- 原子软删除书签
+    -- 原子软删除书签（UPDATE 语句自带排他锁，无需额外 FOR UPDATE）
     UPDATE bookmarks
     SET deleted_at = NOW(), updated_at = NOW()
     WHERE id = ANY(p_bookmark_ids)
       AND user_id = p_user_id
-      AND deleted_at IS NULL
-    FOR UPDATE;
+      AND deleted_at IS NULL;
 
     GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
 
