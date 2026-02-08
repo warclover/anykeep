@@ -42,6 +42,7 @@ import {
 import { SETTINGS_GROUPS } from "./settings-config";
 // 国际化
 import { useUiText } from "@/lib/i18n";
+import { useDeveloperMode } from "@/hooks/core/use-developer-mode";
 
 interface SettingsPageClientProps {
   user: User;
@@ -58,6 +59,8 @@ export function SettingsPageClient({
   const supabase = createClient();
   // 国际化
   const t = useUiText();
+  // 开发者模式
+  const { isDeveloperMode, setDeveloperMode } = useDeveloperMode();
 
   const [settings, setSettings] = useState(initialSettings);
   const [saving, setSaving] = useState(false);
@@ -681,6 +684,32 @@ export function SettingsPageClient({
                     ? t.settings.deleteAccount.deleting
                     : t.settings.deleteAccount.button}
                 </Button>
+              </div>
+            </SettingsItemCard>
+
+            {/* 开发者模式 */}
+            <SettingsItemCard
+              id="settings-item-privacy-developer-mode"
+              title={t.settings.privacy.developerMode}
+              description={t.settings.privacy.developerModeDesc}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 pr-4">
+                  <Label
+                    htmlFor="developer-mode"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    {t.settings.privacy.developerMode}
+                  </Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t.settings.privacy.developerModeDesc}
+                  </p>
+                </div>
+                <Switch
+                  id="developer-mode"
+                  checked={isDeveloperMode}
+                  onCheckedChange={(value) => setDeveloperMode(value)}
+                />
               </div>
             </SettingsItemCard>
           </SettingsGroupSection>

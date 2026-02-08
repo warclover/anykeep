@@ -32,6 +32,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { MainContent } from "@/components/main/main-content";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
+import { MainContentSkeleton } from "@/components/layout/main-content-skeleton";
 // V5.3: P2-3.3 响应式布局组件（条件渲染优化）
 import {
   DesktopSidebar,
@@ -70,7 +71,7 @@ export default function MainLayout({
 
         {/* 主内容区 - 使用 Suspense + ErrorBoundary 隔离 */}
         <MainLayoutErrorBoundary>
-          <Suspense fallback={null}>
+          <Suspense fallback={<MainContentSkeleton />}>
             <MainContentWrapper>
               <MainContent>{children}</MainContent>
             </MainContentWrapper>

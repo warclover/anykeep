@@ -31,8 +31,6 @@ import {
   Inbox,
   CheckSquare,
   Download,
-  Share2,
-  LinkIcon,
   // 学习中心
   FlaskConical,
   Sparkles,
@@ -56,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
+import { APP_VERSION } from "@/lib/constants/app";
 // 国际化
 import { useUiText } from "@/lib/i18n";
 
@@ -81,10 +80,10 @@ interface NavGroup {
 
 const navigationGroups: NavGroup[] = [
   {
-    title: "navGroup.contentCenter",
-    titleColor: "text-pink-500 dark:text-pink-400",
+    title: "navGroup.myContent",
+    titleColor: "text-purple-500 dark:text-purple-400",
     activeColor:
-      "bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400",
+      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
     items: [
       {
         name: "nav.myBookmarks",
@@ -120,10 +119,10 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    title: "navGroup.organizeTools",
-    titleColor: "text-cyan-500 dark:text-cyan-400",
+    title: "navGroup.smartTools",
+    titleColor: "text-purple-500 dark:text-purple-400",
     activeColor:
-      "bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400",
+      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
     items: [
       {
         name: "nav.inbox",
@@ -131,38 +130,6 @@ const navigationGroups: NavGroup[] = [
         icon: Inbox,
         description: "mobileMenu.waitingClassification",
       },
-      {
-        name: "nav.batch",
-        href: "/batch",
-        icon: CheckSquare,
-        description: "mobileMenu.batchManagement",
-      },
-      {
-        name: "nav.export",
-        href: "/export",
-        icon: Download,
-        description: "mobileMenu.exportData",
-      },
-      {
-        name: "mobileMenu.distributionCenter",
-        href: "/distribution",
-        icon: Share2,
-        description: "mobileMenu.distributionCenter",
-      },
-      {
-        name: "mobileMenu.linkHealthCheck",
-        href: "/link-health",
-        icon: LinkIcon,
-        description: "mobileMenu.linkHealthCheck",
-      },
-    ],
-  },
-  {
-    title: "navGroup.learningCenter",
-    titleColor: "text-purple-500 dark:text-purple-400",
-    activeColor:
-      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-    items: [
       {
         name: "nav.synthesis",
         href: "/synthesis",
@@ -176,13 +143,25 @@ const navigationGroups: NavGroup[] = [
         description: "mobileMenu.aiReportGeneration",
         isPro: true,
       },
+      {
+        name: "nav.batch",
+        href: "/batch",
+        icon: CheckSquare,
+        description: "mobileMenu.batchManagement",
+      },
+      {
+        name: "nav.export",
+        href: "/export",
+        icon: Download,
+        description: "mobileMenu.exportData",
+      },
     ],
   },
   {
     title: "navGroup.insightCenter",
-    titleColor: "text-rose-500 dark:text-rose-400",
+    titleColor: "text-purple-500 dark:text-purple-400",
     activeColor:
-      "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400",
+      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
     items: [
       {
         name: "nav.analytics",
@@ -207,9 +186,9 @@ const navigationGroups: NavGroup[] = [
   },
   {
     title: "mobileMenu.system",
-    titleColor: "text-slate-400 dark:text-slate-500",
+    titleColor: "text-gray-400 dark:text-gray-500",
     activeColor:
-      "bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300",
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300",
     items: [
       {
         name: "nav.settings",
@@ -371,9 +350,12 @@ export function MobileMenu() {
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="w-full justify-start gap-2"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute left-10 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="ml-6">
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            <span className="ml-2">
               {theme === "dark"
                 ? getText("mobileMenu.switchToLightMode")
                 : getText("mobileMenu.switchToDarkMode")}
@@ -382,7 +364,7 @@ export function MobileMenu() {
 
           {/* 版本信息 */}
           <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
-            <span>AnyKeep v1.0.0</span>
+            <span>AnyKeep v{APP_VERSION}</span>
             <span>{getText("mobileMenu.version")}</span>
           </div>
         </div>

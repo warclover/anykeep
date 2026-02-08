@@ -37,6 +37,8 @@ import { useUser } from "@/contexts/user-context";
 import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { QuickAddBookmark } from "@/components/quick-add";
+import { useIsMobile } from "@/hooks/use-media-query";
+import { useUiText } from "@/lib/i18n";
 
 export const AppHeader = memo(function AppHeader() {
   const { user, profile, isLoading } = useUser();
@@ -45,6 +47,8 @@ export const AppHeader = memo(function AppHeader() {
   const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile();
+  const t = useUiText();
 
   // 获取导航和首页上下文
   const navigationContext = useSafeNavigation();
@@ -70,8 +74,8 @@ export const AppHeader = memo(function AppHeader() {
   const isTrashFolder = currentFolder === "trash";
   const isBrowserPlatform = currentPlatform === "browser";
 
-  // 是否显示快速添加区域：首页 + 非回收站
-  const showQuickAdd = isHomePage && !isTrashFolder;
+  // 是否显示快速添加区域：首页 + 非回收站 + 非移动端
+  const showQuickAdd = isHomePage && !isTrashFolder && !isMobile;
 
   // 手动创建按钮点击事件 - 使用挤压式面板
   const handleOpenCreatePanel = () => {
@@ -95,18 +99,18 @@ export const AppHeader = memo(function AppHeader() {
       const { error } = await supabase.auth.signOut();
 
       if (error) {
-        toast.error("退出失败", {
+        toast.error(t.common.logoutFailed, {
           description: error.message,
         });
         return;
       }
 
-      toast.success("已退出登录");
+      toast.success(t.common.logoutSuccess);
       router.push("/login");
       router.refresh();
     } catch {
-      toast.error("退出失败", {
-        description: "请稍后重试",
+      toast.error(t.common.logoutFailed, {
+        description: t.common.logoutRetry,
       });
     } finally {
       setLoading(false);
@@ -140,10 +144,13 @@ export const AppHeader = memo(function AppHeader() {
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="hidden sm:flex"
-            aria-label="切换主题"
+            aria-label={t.common.toggleTheme}
           >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {theme === "dark" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
           </Button>
 
           {/* 搜索按钮 - 使用 Link + Button asChild 启用预取并保持样式一致 */}
@@ -153,7 +160,7 @@ export const AppHeader = memo(function AppHeader() {
             asChild
             className="hidden sm:flex"
           >
-            <Link href="/search" aria-label="搜索" prefetch={true}>
+            <Link href="/search" aria-label={t.common.search} prefetch={true}>
               <Search className="h-5 w-5" />
             </Link>
           </Button>
@@ -187,7 +194,9 @@ export const AppHeader = memo(function AppHeader() {
                   </div>
                   {/* 用户名 - 在中等及以上屏幕显示 */}
                   <span className="hidden md:inline-block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
-                    {profile?.nickname || user.email?.split("@")[0] || "用户"}
+                    {profile?.nickname ||
+                      user.email?.split("@")[0] ||
+                      t.common.user}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
@@ -195,7 +204,7 @@ export const AppHeader = memo(function AppHeader() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {profile?.nickname || "用户"}
+                      {profile?.nickname || t.common.user}
                     </p>
                     <p className="text-xs leading-none text-gray-500">
                       {user.email}
@@ -205,8 +214,12 @@ export const AppHeader = memo(function AppHeader() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <span className="text-sm">
-                    已用 {profile?.storage_used || 0} /{" "}
-                    {profile?.storage_quota || 500} 条
+                    {t.common.usedQuota
+                      .replace("{used}", String(profile?.storage_used || 0))
+                      .replace(
+                        "{total}",
+                        String(profile?.storage_quota || 500),
+                      )}
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -215,7 +228,7 @@ export const AppHeader = memo(function AppHeader() {
                   disabled={loading}
                   className="text-red-600 focus:text-red-600"
                 >
-                  {loading ? "退出中..." : "退出登录"}
+                  {loading ? t.common.loggingOut : t.settings.header.logout}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -246,7 +259,7 @@ export const AppHeader = memo(function AppHeader() {
               onClick={handleOpenCreatePanel}
             >
               <Plus className="size-3.5 mr-1" />
-              手动创建
+              {t.mobileMenu.manualCreate}
             </Button>
 
             {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 糖果色风格（紫色） */}
@@ -256,7 +269,7 @@ export const AppHeader = memo(function AppHeader() {
                 onClick={handleOpenFilterPanel}
               >
                 <Filter className="size-3.5 mr-1" />
-                用途筛选
+                {t.nav.batch}
               </Button>
             )}
 
@@ -267,7 +280,7 @@ export const AppHeader = memo(function AppHeader() {
                 onClick={() => homeContext.aiPanel.toggleAIPanel()}
               >
                 <Sparkles className="size-3.5 mr-1" />
-                AI助理
+                {t.mobileMenu.aiAssistant}
               </Button>
             )}
           </div>

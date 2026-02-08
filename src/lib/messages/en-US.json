@@ -30,7 +30,14 @@
     "collapse": "Collapse",
     "none": "None",
     "other": "Other",
-    "total": "{count} items total"
+    "total": "{count} items total",
+    "user": "User",
+    "usedQuota": "Used {used} / {total} items",
+    "loggingOut": "Logging out...",
+    "logoutSuccess": "Logged out",
+    "logoutFailed": "Logout failed",
+    "logoutRetry": "Please try again later",
+    "toggleTheme": "Toggle theme"
   },
   "nav": {
     "home": "Home",
@@ -88,14 +95,21 @@
     "switchToLightMode": "Switch to light mode",
     "switchToDarkMode": "Switch to dark mode",
     "version": "Smart bookmark manager",
-    "system": "System"
+    "system": "System",
+    "more": "More",
+    "manualCreate": "Create",
+    "aiAssistant": "AI Assistant",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "navGroup": {
     "contentCenter": "Content",
     "organizeTools": "Organize Tools",
     "learningCenter": "Learning",
     "insightCenter": "Insights",
-    "devTools": "Dev Tools"
+    "devTools": "Dev Tools",
+    "myContent": "My Content",
+    "smartTools": "Smart Tools"
   },
   "bookmark": {
     "title": "Bookmarks",
@@ -335,7 +349,9 @@
       "shareAnalytics": "Share Usage Data",
       "shareAnalyticsDesc": "Help us improve the product (no personal information)",
       "accountActions": "Account Management",
-      "accountActionsDesc": "Export data or delete account"
+      "accountActionsDesc": "Export data or delete account",
+      "developerMode": "Developer Mode",
+      "developerModeDesc": "Show developer tools in sidebar (Classification, RAG Monitor, AI Debug, etc.)"
     },
     "export": {
       "failed": "Export failed",
@@ -373,7 +389,39 @@
     "registerFailed": "Registration failed",
     "invalidEmail": "Invalid email format",
     "invalidPassword": "Password must be at least 8 characters",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "welcomeBack": "Welcome Back",
+    "chooseLoginMethod": "Choose your preferred way to login to AnyKeep",
+    "phoneTab": "Phone",
+    "wechatTab": "WeChat",
+    "emailTab": "Email",
+    "comingSoon": "Coming Soon",
+    "phoneLabel": "Phone Number",
+    "phonePlaceholder": "Enter your phone number",
+    "codeLabel": "Verification Code",
+    "codePlaceholder": "Enter verification code",
+    "getCode": "Get Code",
+    "loggingIn": "Logging in...",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "Enter your email address",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "forgotPasswordLink": "Forgot password?",
+    "remainingAttempts": "{count} attempts remaining",
+    "rateLimited": "Login restricted",
+    "defaultLoginError": "Incorrect email or password",
+    "networkError": "Network error, please try again later",
+    "loginSuccessToast": "Login successful!",
+    "or": "or",
+    "tryDemo": "Try Demo Account",
+    "noAccount": "Don't have an account?",
+    "registerNow": "Register Now",
+    "privacyNotice": "By logging in, you agree to our Terms of Service and Privacy Policy. We are committed to protecting your privacy and only store necessary metadata.",
+    "wechatScanTitle": "Scan to Login",
+    "wechatScanDesc": "Open WeChat and scan the QR code for quick, secure login",
+    "wechatSimulate": "Simulate WeChat Login",
+    "demoNotAvailable": "Demo mode not available",
+    "demoNotAvailableDesc": "Please register with email to experience full features"
   },
   "error": {
     "title": "Error",
@@ -390,5 +438,13 @@
     "title": "Nothing Here",
     "description": "There's nothing here yet",
     "action": "Add Some"
+  },
+  "emptyState": {
+    "title": "Start Your Smart Bookmarking Journey",
+    "description": "Quickly add your first bookmark using one of these methods",
+    "importBrowser": "Import Browser Bookmarks",
+    "createManual": "Add Bookmark Manually",
+    "quickAdd": "Paste Link to Quick Add",
+    "tip": "You can also save content directly from your phone's share menu"
   }
 }

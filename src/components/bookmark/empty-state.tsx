@@ -1,13 +1,38 @@
 /**
  * 空状态组件
+ *
+ * 当用户没有收藏时显示，提供 CTA 引导用户开始操作。
+ * 所有文本通过 i18n 获取，支持多语言。
  */
 
-export function EmptyState() {
+"use client";
+
+import { Upload, Plus, Link2, Smartphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useUiText } from "@/lib/i18n";
+
+interface EmptyStateProps {
+  /** 点击"导入浏览器书签"回调 */
+  onImport?: () => void;
+  /** 点击"手动添加收藏"回调 */
+  onCreateManual?: () => void;
+  /** 点击"粘贴链接快速添加"回调 */
+  onQuickAdd?: () => void;
+}
+
+export function EmptyState({
+  onImport,
+  onCreateManual,
+  onQuickAdd,
+}: EmptyStateProps) {
+  const t = useUiText();
+
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-24 h-24 mb-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+      {/* 插画图标 - 渐变圆形 */}
+      <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
         <svg
-          className="w-12 h-12 text-gray-400"
+          className="w-12 h-12 text-purple-500 dark:text-purple-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -20,12 +45,52 @@ export function EmptyState() {
           />
         </svg>
       </div>
+
+      {/* 标题 */}
       <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-        还没有收藏
+        {t.emptyState?.title ?? "开始你的智能收藏之旅"}
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-        通过系统分享菜单将微信公众号、B站、小红书等内容分享到 AnyKeep 开始收藏吧
+
+      {/* 说明 */}
+      <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-8">
+        {t.emptyState?.description ?? "通过以下方式快速添加你的第一个收藏"}
       </p>
+
+      {/* CTA 按钮组 */}
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md px-4">
+        {/* 主按钮：导入浏览器书签 */}
+        <Button
+          className="flex-1 gap-2 bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600"
+          onClick={onImport}
+        >
+          <Upload className="size-4" />
+          {t.emptyState?.importBrowser ?? "导入浏览器书签"}
+        </Button>
+
+        {/* 次按钮：手动添加收藏 */}
+        <Button
+          variant="outline"
+          className="flex-1 gap-2"
+          onClick={onCreateManual}
+        >
+          <Plus className="size-4" />
+          {t.emptyState?.createManual ?? "手动添加收藏"}
+        </Button>
+
+        {/* 次按钮：粘贴链接快速添加 */}
+        <Button variant="outline" className="flex-1 gap-2" onClick={onQuickAdd}>
+          <Link2 className="size-4" />
+          {t.emptyState?.quickAdd ?? "粘贴链接快速添加"}
+        </Button>
+      </div>
+
+      {/* 新手提示 */}
+      <div className="mt-8 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+        <Smartphone className="size-3.5" />
+        <span>
+          {t.emptyState?.tip ?? "你也可以在手机上通过系统分享菜单直接收藏"}
+        </span>
+      </div>
     </div>
-  )
+  );
 }

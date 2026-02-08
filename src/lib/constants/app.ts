@@ -3,6 +3,12 @@
  * 统一管理所有魔法数字和配置值
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pkg = require("../../../package.json") as { version: string };
+
+/** 应用版本号（从 package.json 自动读取） */
+export const APP_VERSION = pkg.version;
+
 /**
  * 数据查询相关常量
  */

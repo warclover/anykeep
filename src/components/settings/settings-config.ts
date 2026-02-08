@@ -113,6 +113,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     items: [
       { id: "data-security", label: "数据安全" },
       { id: "account-actions", label: "账号管理" },
+      { id: "developer-mode", label: "开发者模式" },
     ],
   },
   {

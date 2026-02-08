@@ -35,10 +35,7 @@ import {
   Activity,
   Bell,
   Settings,
-  Wrench,
   Trash2,
-  ChevronRight,
-  ChevronDown,
   PanelLeftClose,
   PanelLeft,
   BrainCircuit,
@@ -47,16 +44,16 @@ import {
   Gauge,
   Zap,
   Volume2,
-  BookMarked,
-  Stethoscope,
 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/constants/app";
 import { useSafeNavigation, type PageId } from "@/contexts/navigation-context";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
 // 国际化
 import { useUiText } from "@/lib/i18n";
+import { useDeveloperMode } from "@/hooks/core/use-developer-mode";
 import {
   Tooltip,
   TooltipContent,
@@ -182,9 +179,9 @@ const NavItem = memo(
 // ==================== 导航配置 ====================
 
 /**
- * 内容中心导航项
+ * 我的内容（方案 A：合并原"内容中心"+ Tags）
  */
-const contentCenterItems: NavItem[] = [
+const myContentItems: NavItem[] = [
   { name: "nav.myBookmarks", href: "/home", icon: BookOpen, pageId: "home" },
   { name: "nav.mySearch", href: "/search", icon: Search, pageId: "search" },
   {
@@ -193,26 +190,17 @@ const contentCenterItems: NavItem[] = [
     icon: FolderOpen,
     pageId: "folders",
   },
+  { name: "nav.myTags", href: "/tags", icon: Tags },
   { name: "nav.myNotes", href: "/md-collections", icon: FileText, isPro: true },
   { name: "nav.myAudio", href: "/audio-library", icon: Volume2 },
 ];
 
 /**
- * 整理工具导航项
+ * 智能工具（方案 A：合并原"整理工具"+"学习中心"）
  */
-const organizeToolsItems: NavItem[] = [
-  { name: "nav.organizeCenter", href: "/organize", icon: Sparkles },
+const smartToolsItems: NavItem[] = [
   { name: "nav.inbox", href: "/inbox", icon: Inbox },
-  { name: "nav.dataCenter", href: "/data", icon: Database },
-  { name: "nav.batch", href: "/batch", icon: CheckSquare, pageId: "batch" },
-  { name: "nav.healthCheck", href: "/health", icon: Stethoscope },
-];
-
-/**
- * 学习中心导航项
- */
-const learningCenterItems: NavItem[] = [
-  { name: "nav.learningHub", href: "/learning-hub", icon: BookMarked },
+  { name: "nav.organizeCenter", href: "/organize", icon: Sparkles },
   { name: "nav.synthesis", href: "/synthesis", icon: FlaskConical },
   {
     name: "nav.draftStudio",
@@ -220,12 +208,14 @@ const learningCenterItems: NavItem[] = [
     icon: Sparkles,
     isPro: true,
   },
+  { name: "nav.batch", href: "/batch", icon: CheckSquare, pageId: "batch" },
+  { name: "nav.dataCenter", href: "/data", icon: Database },
 ];
 
 /**
- * 洞察中心导航项
+ * 洞察与通知（方案 A：精简原"洞察中心"，移除 Tags）
  */
-const insightCenterItems: NavItem[] = [
+const insightItems: NavItem[] = [
   { name: "nav.aiHub", href: "/ai-hub", icon: Zap },
   {
     name: "nav.analytics",
@@ -233,7 +223,6 @@ const insightCenterItems: NavItem[] = [
     icon: BarChart3,
     pageId: "analytics",
   },
-  { name: "nav.myTags", href: "/tags", icon: Tags },
   { name: "nav.activityLog", href: "/activity", icon: Activity },
   {
     name: "nav.notifications",
@@ -245,9 +234,14 @@ const insightCenterItems: NavItem[] = [
 ];
 
 /**
- * 开发者工具导航项
+ * 开发者工具导航项（默认隐藏，仅在设置中启用后显示）
  */
 const devToolsItems: NavItem[] = [
+  {
+    name: "nav.classificationManager",
+    href: "/classification-manager",
+    icon: BrainCircuit,
+  },
   { name: "nav.ragDashboard", href: "/settings/rag-dashboard", icon: Gauge },
   { name: "nav.folderHealth", href: "/folder-health", icon: HeartPulse },
   { name: "nav.aiDebug", href: "/dev/ai-debug", icon: Zap },
@@ -255,7 +249,7 @@ const devToolsItems: NavItem[] = [
 
 // ==================== 糖果色配色 ====================
 
-type GroupColorKey = "content" | "organize" | "learning" | "insight" | "system";
+type GroupColorKey = "content" | "system";
 
 interface GroupColorScheme {
   active: string;
@@ -264,41 +258,22 @@ interface GroupColorScheme {
 }
 
 /**
- * 分组糖果色配色方案
- * 每个分组使用独特的颜色，提供视觉区分和愉悦感
+ * 双色配色方案（糖果粉 + 中性灰）
+ * - content: 所有功能分组统一使用糖果粉红色
+ * - system: 系统/开发者工具使用中性灰
  */
 const groupCandyColors: Record<GroupColorKey, GroupColorScheme> = {
-  // 内容中心 - 粉红色（与首页"手动创建"按钮一致）
+  // 糖果粉红 - 统一用于所有功能导航项
   content: {
     active: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
     icon: "text-pink-500 dark:text-pink-400",
-    hover: "hover:bg-pink-50 dark:hover:bg-pink-900/20",
+    hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
   },
-  // 整理工具 - 天蓝色（与首页"AI助理"按钮一致）
-  organize: {
-    active: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-    icon: "text-cyan-500 dark:text-cyan-400",
-    hover: "hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
-  },
-  // 学习中心 - 紫色（智慧与创造的象征）
-  learning: {
-    active:
-      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    icon: "text-purple-600 dark:text-purple-400",
-    hover: "hover:bg-purple-50 dark:hover:bg-purple-900/20",
-  },
-  // 洞察中心 - 玫瑰色（洞察与发现的象征）
-  insight: {
-    active: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-    icon: "text-rose-600 dark:text-rose-400",
-    hover: "hover:bg-rose-50 dark:hover:bg-rose-900/20",
-  },
-  // 系统 - 石板灰（稳定与可靠的象征）
+  // 中性灰 - 系统与工具类
   system: {
-    active:
-      "bg-slate-200 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
-    icon: "text-slate-600 dark:text-slate-400",
-    hover: "hover:bg-slate-100 dark:hover:bg-slate-800/30",
+    active: "bg-gray-200 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300",
+    icon: "text-gray-500 dark:text-gray-400",
+    hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
   },
 };
 
@@ -311,6 +286,9 @@ export const AppSidebar = memo(function AppSidebar() {
 
   // 国际化
   const t = useUiText();
+
+  // 开发者模式
+  const { isDeveloperMode } = useDeveloperMode();
 
   // 获取未读消息数量
   const { total: unreadCount, important: importantCount } = useUnreadCount();
@@ -349,20 +327,6 @@ export const AppSidebar = memo(function AppSidebar() {
   const displayWidth = isMounted
     ? contextDisplayWidth
     : SIDEBAR_WIDTH.collapsed;
-
-  // 折叠状态管理
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    {
-      devTools: false,
-    },
-  );
-
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }));
-  };
 
   /**
    * 处理导航点击
@@ -472,72 +436,6 @@ export const AppSidebar = memo(function AppSidebar() {
     );
   };
 
-  /**
-   * 渲染可折叠子菜单
-   * @param id 菜单ID
-   * @param title 菜单标题
-   * @param icon 菜单图标
-   * @param items 子项列表
-   * @param groupColor 分组糖果色
-   */
-  const renderCollapsibleMenu = (
-    id: string,
-    title: string,
-    icon: typeof BookOpen,
-    items: NavItem[],
-    groupColor?: GroupColorScheme,
-  ) => {
-    const isExpanded = expandedGroups[id];
-    const Icon = icon;
-    const colors = groupColor || groupCandyColors.content;
-
-    if (!isVisuallyExpanded) {
-      return (
-        <Tooltip key={id} delayDuration={100}>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => toggleGroup(id)}
-              className={cn(
-                "flex items-center justify-center px-2 py-2 w-full text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300",
-                colors.hover,
-              )}
-            >
-              <Icon className="size-5 text-gray-400" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            <p>{title}</p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return (
-      <div key={id}>
-        <button
-          onClick={() => toggleGroup(id)}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2 w-full text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 transition-colors",
-            colors.hover,
-          )}
-        >
-          <Icon className="size-5 text-gray-400" />
-          <span className="flex-1 text-left">{title}</span>
-          {isExpanded ? (
-            <ChevronDown className="size-4 text-gray-400" />
-          ) : (
-            <ChevronRight className="size-4 text-gray-400" />
-          )}
-        </button>
-        {isExpanded && (
-          <div className="mt-1 space-y-1">
-            {items.map((item) => renderNavItem(item, groupColor, true))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <TooltipProvider>
       <aside
@@ -568,7 +466,7 @@ export const AppSidebar = memo(function AppSidebar() {
                     AnyKeep
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    智能收藏管理
+                    {getDisplayName("mobileMenu.version")}
                   </p>
                 </div>
                 <Tooltip delayDuration={100}>
@@ -576,13 +474,13 @@ export const AppSidebar = memo(function AppSidebar() {
                     <button
                       onClick={handleToggleClick}
                       className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      aria-label="折叠侧边栏"
+                      aria-label={getDisplayName("mobileMenu.collapseSidebar")}
                     >
                       <PanelLeftClose className="size-4 text-gray-500" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
-                    <p>折叠侧边栏</p>
+                    <p>{getDisplayName("mobileMenu.collapseSidebar")}</p>
                   </TooltipContent>
                 </Tooltip>
               </>
@@ -592,13 +490,13 @@ export const AppSidebar = memo(function AppSidebar() {
                   <button
                     onClick={handleToggleClick}
                     className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    aria-label="展开侧边栏"
+                    aria-label={getDisplayName("mobileMenu.expandSidebar")}
                   >
                     <PanelLeft className="size-5 text-gray-500" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
-                  <p>展开侧边栏</p>
+                  <p>{getDisplayName("mobileMenu.expandSidebar")}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -606,63 +504,41 @@ export const AppSidebar = memo(function AppSidebar() {
 
           {/* 主导航区域 */}
           <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
-            {/* 内容中心 */}
+            {/* 我的内容 */}
             <div>
               {renderGroupTitle(
-                getDisplayName("navGroup.contentCenter"),
-                "text-pink-500 dark:text-pink-400",
+                getDisplayName("navGroup.myContent"),
+                "text-purple-500 dark:text-purple-400",
               )}
               <div className="space-y-1">
-                {contentCenterItems.map((item) =>
+                {myContentItems.map((item) =>
                   renderNavItem(item, groupCandyColors.content),
                 )}
               </div>
             </div>
 
-            {/* 整理工具 */}
+            {/* 智能工具 */}
             <div>
               {renderGroupTitle(
-                getDisplayName("navGroup.organizeTools"),
-                "text-cyan-500 dark:text-cyan-400",
-              )}
-              <div className="space-y-1">
-                {/* 待分类 */}
-                {renderNavItem(
-                  organizeToolsItems[0],
-                  groupCandyColors.organize,
-                )}
-
-                {/* 其他整理工具 */}
-                {organizeToolsItems
-                  .slice(1)
-                  .map((item) =>
-                    renderNavItem(item, groupCandyColors.organize),
-                  )}
-              </div>
-            </div>
-
-            {/* 学习中心 */}
-            <div>
-              {renderGroupTitle(
-                getDisplayName("navGroup.learningCenter"),
+                getDisplayName("navGroup.smartTools"),
                 "text-purple-500 dark:text-purple-400",
               )}
               <div className="space-y-1">
-                {learningCenterItems.map((item) =>
-                  renderNavItem(item, groupCandyColors.learning),
+                {smartToolsItems.map((item) =>
+                  renderNavItem(item, groupCandyColors.content),
                 )}
               </div>
             </div>
 
-            {/* 洞察中心 */}
+            {/* 洞察与通知 */}
             <div>
               {renderGroupTitle(
                 getDisplayName("navGroup.insightCenter"),
-                "text-rose-500 dark:text-rose-400",
+                "text-purple-500 dark:text-purple-400",
               )}
               <div className="space-y-1">
-                {insightCenterItems.map((item) =>
-                  renderNavItem(item, groupCandyColors.insight),
+                {insightItems.map((item) =>
+                  renderNavItem(item, groupCandyColors.content),
                 )}
               </div>
             </div>
@@ -671,7 +547,7 @@ export const AppSidebar = memo(function AppSidebar() {
             <div>
               {renderGroupTitle(
                 getDisplayName("mobileMenu.system"),
-                "text-slate-400 dark:text-slate-500",
+                "text-gray-400 dark:text-gray-500",
               )}
               <div className="space-y-1">
                 {renderNavItem(
@@ -683,27 +559,23 @@ export const AppSidebar = memo(function AppSidebar() {
                   },
                   groupCandyColors.system,
                 )}
-
-                {/* 分类管理 */}
-                {renderNavItem(
-                  {
-                    name: "nav.classificationManager",
-                    href: "/classification-manager",
-                    icon: BrainCircuit,
-                  },
-                  groupCandyColors.system,
-                )}
-
-                {/* 开发者工具（可折叠） */}
-                {renderCollapsibleMenu(
-                  "devTools",
-                  getDisplayName("navGroup.devTools"),
-                  Wrench,
-                  devToolsItems,
-                  groupCandyColors.system,
-                )}
               </div>
             </div>
+
+            {/* 开发者工具 - 通过用户设置 developer_mode 控制显隐 */}
+            {isDeveloperMode && (
+              <div>
+                {renderGroupTitle(
+                  getDisplayName("navGroup.devTools"),
+                  "text-gray-400 dark:text-gray-500",
+                )}
+                <div className="space-y-1">
+                  {devToolsItems.map((item) =>
+                    renderNavItem(item, groupCandyColors.system),
+                  )}
+                </div>
+              </div>
+            )}
           </nav>
 
           {/* 底部固定区域 */}
@@ -728,14 +600,16 @@ export const AppSidebar = memo(function AppSidebar() {
               )}
             >
               {isVisuallyExpanded ? (
-                <p className="px-1 text-xs text-gray-400">AnyKeep v1.0.0</p>
+                <p className="px-1 text-xs text-gray-400">
+                  AnyKeep v{APP_VERSION}
+                </p>
               ) : (
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
                     <p className="text-xs text-gray-400 text-center">v1</p>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
-                    <p>AnyKeep v1.0.0</p>
+                    <p>AnyKeep v{APP_VERSION}</p>
                   </TooltipContent>
                 </Tooltip>
               )}

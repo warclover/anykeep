@@ -1,6 +1,7 @@
 /**
  * 登录页面 - Figma 设计版本
  * 左右分栏布局，品牌展示 + 多种登录方式
+ * i18n: 所有 UI 文本通过 useUiText() 获取
  */
 
 "use client";
@@ -29,11 +30,14 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useUiText } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const t = useUiText();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -64,18 +68,18 @@ export default function LoginPage() {
         if (response.status === 429) {
           setLoginError(data.error);
           setRemainingAttempts(0);
-          toast.error("登录受限", {
+          toast.error(t.auth.rateLimited, {
             description: data.error,
           });
           return;
         }
 
         // 处理登录失败
-        setLoginError(data.error || "邮箱或密码错误");
+        setLoginError(data.error || t.auth.defaultLoginError);
         if (data.remaining !== undefined) {
           setRemainingAttempts(data.remaining);
         }
-        toast.error("登录失败", {
+        toast.error(t.auth.loginFailed, {
           description: data.message || data.error,
         });
         return;
@@ -85,12 +89,12 @@ export default function LoginPage() {
       // V4.2.31: 移除双重 signInWithPassword 调用，避免密码在客户端内存中停留过久
 
       setRemainingAttempts(null);
-      toast.success("登录成功！");
+      toast.success(t.auth.loginSuccessToast);
       router.push("/home");
       router.refresh();
     } catch {
-      toast.error("登录失败", {
-        description: "网络错误，请稍后重试",
+      toast.error(t.auth.loginFailed, {
+        description: t.auth.networkError,
       });
     } finally {
       setLoading(false);
@@ -99,8 +103,8 @@ export default function LoginPage() {
 
   const handleDemoLogin = async () => {
     // TODO: 接入真实演示账号后启用
-    toast.info("演示模式暂未开放", {
-      description: "请使用邮箱注册体验完整功能",
+    toast.info(t.auth.demoNotAvailable, {
+      description: t.auth.demoNotAvailableDesc,
     });
   };
 
@@ -151,98 +155,57 @@ export default function LoginPage() {
         className="fixed top-4 right-4 z-50 glass-card rounded-full"
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       >
-        <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        {theme === "dark" ? (
+          <Sun className="h-4 w-4" />
+        ) : (
+          <Moon className="h-4 w-4" />
+        )}
       </Button>
 
       {/* 登录表单 */}
       <div className="w-full max-w-md px-6 py-12 relative z-10 animate-fade-in-up">
-        {/* Slogan - K 和 R 首字母放大突出 */}
-        <div className="flex flex-col items-center select-none mb-8">
-          <div className="flex items-baseline gap-0.5 flex-wrap justify-center">
-            {/* Keep - K 放大 */}
-            <span className="flex items-baseline">
-              <span
-                className="text-3xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent"
-                style={{
-                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                }}
-              >
-                K
-              </span>
-              <span
-                className="text-lg font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
-                style={{
-                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                }}
-              >
-                eep
-              </span>
-            </span>
-            <span
-              className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-violet-600 via-blue-500 via-cyan-400 via-blue-500 to-violet-600 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight ml-1"
-              style={{
-                fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-              }}
-            >
-              Smart.
-            </span>
-            {/* Read - R 放大 */}
-            <span className="flex items-baseline ml-2">
-              <span
-                className="text-3xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent"
-                style={{
-                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                  animationDelay: "0.3s",
-                }}
-              >
-                R
-              </span>
-              <span
-                className="text-lg font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-wide"
-                style={{
-                  fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                  animationDelay: "0.3s",
-                }}
-              >
-                ead
-              </span>
-            </span>
-            <span
-              className="text-2xl font-bold animate-gradient-flow bg-gradient-to-r from-cyan-400 via-blue-500 via-violet-600 via-blue-500 to-cyan-400 bg-[length:200%_100%] bg-clip-text text-transparent tracking-tight ml-1"
-              style={{
-                fontFamily: "'Segoe Script', 'Brush Script MT', cursive",
-                animationDelay: "0.3s",
-              }}
-            >
-              Anytime.
-            </span>
-          </div>
-          <div className="h-1 w-52 animate-gradient-flow bg-gradient-to-r from-violet-500 via-blue-500 via-cyan-400 via-blue-500 to-violet-500 bg-[length:200%_100%] rounded-full mt-1" />
+        {/* 品牌展示 - 简洁干净 */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-cyan-500 bg-clip-text text-transparent">
+            AnyKeep
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            Keep Smart. Read Anytime.
+          </p>
         </div>
 
         <Card className="w-full max-w-md glass-card shadow-2xl rounded-3xl border-0">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">欢迎回来</CardTitle>
-            <CardDescription>选择你喜欢的方式登录 AnyKeep</CardDescription>
+            <CardTitle className="text-2xl">{t.auth.welcomeBack}</CardTitle>
+            <CardDescription>{t.auth.chooseLoginMethod}</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="email" className="w-full">
               <TabsList className="login-tabs grid w-full grid-cols-3 mb-6 bg-white/50 dark:bg-gray-800/50 rounded-2xl p-1">
-                <TabsTrigger value="phone">手机号</TabsTrigger>
-                <TabsTrigger value="wechat">微信</TabsTrigger>
-                <TabsTrigger value="email">邮箱</TabsTrigger>
+                <TabsTrigger value="phone" disabled className="relative">
+                  {t.auth.phoneTab}
+                  <span className="ml-1 text-[9px] font-normal text-gray-400 dark:text-gray-500">
+                    {t.auth.comingSoon}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="wechat" disabled className="relative">
+                  {t.auth.wechatTab}
+                  <span className="ml-1 text-[9px] font-normal text-gray-400 dark:text-gray-500">
+                    {t.auth.comingSoon}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="email">{t.auth.emailTab}</TabsTrigger>
               </TabsList>
 
               {/* 手机号登录 */}
               <TabsContent value="phone" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">手机号</Label>
+                  <Label htmlFor="phone">{t.auth.phoneLabel}</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-pink-400" />
                     <Input
                       id="phone"
-                      placeholder="请输入手机号"
+                      placeholder={t.auth.phonePlaceholder}
                       className="pl-10 login-input"
                       type="tel"
                       value={phone}
@@ -251,18 +214,18 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="code">验证码</Label>
+                  <Label htmlFor="code">{t.auth.codeLabel}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="code"
-                      placeholder="请输入验证码"
+                      placeholder={t.auth.codePlaceholder}
                       className="login-input"
                       maxLength={6}
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                     />
                     <Button variant="outline" className="flex-shrink-0">
-                      获取验证码
+                      {t.auth.getCode}
                     </Button>
                   </div>
                 </div>
@@ -271,7 +234,7 @@ export default function LoginPage() {
                   size="lg"
                   disabled={loading}
                 >
-                  {loading ? "登录中..." : "登录"}
+                  {loading ? t.auth.loggingIn : t.auth.login}
                 </Button>
               </TabsContent>
 
@@ -284,12 +247,12 @@ export default function LoginPage() {
                         <div className="text-4xl">💬</div>
                       </div>
                       <p className="text-pink-500 dark:text-pink-300 text-xs font-medium">
-                        扫码登录
+                        {t.auth.wechatScanTitle}
                       </p>
                     </div>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-4">
-                    打开微信扫一扫，快速安全登录
+                    {t.auth.wechatScanDesc}
                   </p>
                   <Button
                     variant="outline"
@@ -297,7 +260,7 @@ export default function LoginPage() {
                     onClick={handleDemoLogin}
                     disabled={loading}
                   >
-                    {loading ? "登录中..." : "模拟微信登录"}
+                    {loading ? t.auth.loggingIn : t.auth.wechatSimulate}
                   </Button>
                 </div>
               </TabsContent>
@@ -317,7 +280,10 @@ export default function LoginPage() {
                           {remainingAttempts !== null &&
                             remainingAttempts > 0 && (
                               <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                                还可尝试 {remainingAttempts} 次
+                                {t.auth.remainingAttempts.replace(
+                                  "{count}",
+                                  String(remainingAttempts),
+                                )}
                               </p>
                             )}
                         </div>
@@ -325,13 +291,13 @@ export default function LoginPage() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="email">邮箱地址</Label>
+                    <Label htmlFor="email">{t.auth.emailLabel}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-pink-400" />
                       <Input
                         id="email"
                         type="email"
-                        placeholder="请输入邮箱地址"
+                        placeholder={t.auth.emailPlaceholder}
                         className="pl-10 login-input"
                         autoComplete="email"
                         value={email}
@@ -341,11 +307,11 @@ export default function LoginPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">密码</Label>
+                    <Label htmlFor="password">{t.auth.passwordLabel}</Label>
                     <Input
                       id="password"
                       type="password"
-                      placeholder="请输入密码"
+                      placeholder={t.auth.passwordPlaceholder}
                       className="login-input"
                       autoComplete="current-password"
                       value={password}
@@ -354,20 +320,20 @@ export default function LoginPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="rounded accent-pink-400"
-                      />
+                    <label
+                      htmlFor="remember"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Checkbox id="remember" />
                       <span className="text-gray-600 dark:text-gray-400">
-                        记住我
+                        {t.auth.rememberMe}
                       </span>
                     </label>
                     <Link
                       href="/forgot-password"
                       className="text-pink-500 hover:text-pink-600 dark:text-pink-400"
                     >
-                      忘记密码？
+                      {t.auth.forgotPasswordLink}
                     </Link>
                   </div>
                   <Button
@@ -376,7 +342,7 @@ export default function LoginPage() {
                     size="lg"
                     disabled={loading}
                   >
-                    {loading ? "登录中..." : "登录"}
+                    {loading ? t.auth.loggingIn : t.auth.login}
                   </Button>
                 </form>
               </TabsContent>
@@ -389,7 +355,7 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                  或
+                  {t.auth.or}
                 </span>
               </div>
             </div>
@@ -403,16 +369,16 @@ export default function LoginPage() {
                 disabled={loading}
               >
                 <Sparkles className="size-4 mr-2 text-pink-400" />
-                体验演示账号
+                {t.auth.tryDemo}
               </Button>
 
               <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                还没有账号？{" "}
+                {t.auth.noAccount}{" "}
                 <Link
                   href="/register"
                   className="text-pink-500 hover:text-pink-600 dark:text-pink-400"
                 >
-                  立即注册
+                  {t.auth.registerNow}
                 </Link>
               </p>
             </div>
@@ -422,7 +388,7 @@ export default function LoginPage() {
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="size-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  登录即表示您同意我们的服务条款和隐私政策。我们承诺保护您的隐私，仅存储必要的元数据信息。
+                  {t.auth.privacyNotice}
                 </p>
               </div>
             </div>

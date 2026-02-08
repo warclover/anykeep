@@ -69,6 +69,164 @@ import { useUiText } from "@/lib/i18n";
 
 type ViewVariant = "card" | "list" | "compact";
 
+// ──────────────────────────────────────────────────────────
+// 提取的子组件 Props 类型
+// ──────────────────────────────────────────────────────────
+
+interface ActionMenuProps {
+  className?: string;
+  variant?: "default" | "mobile";
+  bookmark: Bookmark &
+    Partial<BookmarkV42Fields> & {
+      folders?: { name: string } | null;
+    };
+  isSnapshotEnabled: boolean;
+  isDeleting: boolean;
+  onOpenOriginal: (e: React.MouseEvent) => void;
+  onToggleRead?: (e: React.MouseEvent) => void;
+  onToggleStarred?: (e: React.MouseEvent) => void;
+  onEdit?: (e: React.MouseEvent) => void;
+  onDelete?: (e: React.MouseEvent) => void;
+  t: ReturnType<typeof useUiText>;
+}
+
+interface SelectionCheckboxProps {
+  className?: string;
+  isSelected: boolean;
+}
+
+// ──────────────────────────────────────────────────────────
+// 提取的外部 memo 子组件（避免父组件渲染时重建引用）
+// ──────────────────────────────────────────────────────────
+
+/** 操作菜单组件 - 提取为外部 memo 组件避免不必要的重挂载 */
+const ActionMenu = memo(function ActionMenu({
+  className = "",
+  variant: menuVariant = "default",
+  bookmark,
+  isSnapshotEnabled,
+  isDeleting,
+  onOpenOriginal,
+  onToggleRead,
+  onToggleStarred,
+  onEdit,
+  onDelete,
+  t,
+}: ActionMenuProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="secondary"
+          size="icon"
+          className={cn(
+            "h-8 w-8 bg-white/95 hover:bg-white dark:bg-gray-800/95 dark:hover:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-600",
+            menuVariant === "mobile" && "h-9 w-9",
+            className,
+          )}
+        >
+          <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={onOpenOriginal}>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          {t.bookmark.openOriginal}
+        </DropdownMenuItem>
+        {/* TTS 语音朗读 */}
+        {bookmark.ai_summary && (
+          <TTSPlayerButton
+            bookmarkId={bookmark.id}
+            variant="menu-item"
+            disabled={!bookmark.ai_summary}
+          />
+        )}
+        {/* V4.2.1: 快照功能入口 */}
+        {isSnapshotEnabled && (
+          <SnapshotMenuItem
+            bookmarkId={bookmark.id}
+            bookmarkUrl={bookmark.url}
+            hasSnapshot={(bookmark as { has_snapshot?: boolean }).has_snapshot}
+            snapshotStatus={
+              (bookmark as { snapshot_status?: string }).snapshot_status as
+                | "pending"
+                | "processing"
+                | "completed"
+                | "failed"
+                | null
+            }
+          />
+        )}
+        {onToggleRead && (
+          <DropdownMenuItem onClick={onToggleRead}>
+            {bookmark.is_read ? (
+              <>
+                <Circle className="mr-2 h-4 w-4" />
+                {t.bookmark.markAsUnread}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {t.bookmark.markAsRead}
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
+        {onToggleStarred && (
+          <DropdownMenuItem onClick={onToggleStarred}>
+            {bookmark.is_starred ? (
+              <>
+                <Star className="mr-2 h-4 w-4 fill-yellow-400 text-yellow-400" />
+                {t.bookmark.removeStar}
+              </>
+            ) : (
+              <>
+                <Star className="mr-2 h-4 w-4" />
+                {t.bookmark.addStar}
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
+        {onEdit && (
+          <DropdownMenuItem onClick={onEdit}>
+            <Edit className="mr-2 h-4 w-4" />
+            {t.common.edit}
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem
+            onClick={onDelete}
+            className="text-red-600 dark:text-red-400"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isDeleting ? t.bookmark.deleting : t.common.delete}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+});
+
+/** 选择复选框组件 - 提取为外部 memo 组件避免不必要的重挂载 */
+const SelectionCheckbox = memo(function SelectionCheckbox({
+  className = "",
+  isSelected,
+}: SelectionCheckboxProps) {
+  return (
+    <div
+      className={cn(
+        "w-6 h-6 rounded border-2 flex items-center justify-center transition-colors",
+        isSelected
+          ? "bg-blue-500 border-blue-500"
+          : "bg-white/90 border-gray-300 dark:bg-gray-800/90 dark:border-gray-600",
+        className,
+      )}
+    >
+      {isSelected && <Check className="w-4 h-4 text-white" />}
+    </div>
+  );
+});
+
 /**
  * BookmarkCard 组件属性
  *
@@ -271,120 +429,18 @@ export const BookmarkCard = memo(function BookmarkCard({
     onToggleStarred?.(bookmark.id, !bookmark.is_starred);
   };
 
-  // 操作菜单组件（复用）
-  const ActionMenu = ({
-    className = "",
-    variant: menuVariant = "default",
-  }: {
-    className?: string;
-    variant?: "default" | "mobile";
-  }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="secondary"
-          size="icon"
-          className={cn(
-            "h-8 w-8 bg-white/95 hover:bg-white dark:bg-gray-800/95 dark:hover:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-600",
-            menuVariant === "mobile" && "h-9 w-9",
-            className,
-          )}
-        >
-          <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleOpenOriginal}>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          {t.bookmark.openOriginal}
-        </DropdownMenuItem>
-        {/* TTS 语音朗读 */}
-        {bookmark.ai_summary && (
-          <TTSPlayerButton
-            bookmarkId={bookmark.id}
-            variant="menu-item"
-            disabled={!bookmark.ai_summary}
-          />
-        )}
-        {/* V4.2.1: 快照功能入口 */}
-        {isSnapshotEnabled && (
-          <SnapshotMenuItem
-            bookmarkId={bookmark.id}
-            bookmarkUrl={bookmark.url}
-            hasSnapshot={(bookmark as { has_snapshot?: boolean }).has_snapshot}
-            snapshotStatus={
-              (bookmark as { snapshot_status?: string }).snapshot_status as
-                | "pending"
-                | "processing"
-                | "completed"
-                | "failed"
-                | null
-            }
-          />
-        )}
-        {onToggleRead && (
-          <DropdownMenuItem onClick={handleToggleRead}>
-            {bookmark.is_read ? (
-              <>
-                <Circle className="mr-2 h-4 w-4" />
-                {t.bookmark.markAsUnread}
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                {t.bookmark.markAsRead}
-              </>
-            )}
-          </DropdownMenuItem>
-        )}
-        {onToggleStarred && (
-          <DropdownMenuItem onClick={handleToggleStarred}>
-            {bookmark.is_starred ? (
-              <>
-                <Star className="mr-2 h-4 w-4 fill-yellow-400 text-yellow-400" />
-                {t.bookmark.removeStar}
-              </>
-            ) : (
-              <>
-                <Star className="mr-2 h-4 w-4" />
-                {t.bookmark.addStar}
-              </>
-            )}
-          </DropdownMenuItem>
-        )}
-        {onEdit && (
-          <DropdownMenuItem onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" />
-            {t.common.edit}
-          </DropdownMenuItem>
-        )}
-        {onDelete && (
-          <DropdownMenuItem
-            onClick={handleDelete}
-            className="text-red-600 dark:text-red-400"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? t.bookmark.deleting : t.common.delete}
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  // 选择复选框组件（复用）
-  const SelectionCheckbox = ({ className = "" }: { className?: string }) => (
-    <div
-      className={cn(
-        "w-6 h-6 rounded border-2 flex items-center justify-center transition-colors",
-        isSelected
-          ? "bg-blue-500 border-blue-500"
-          : "bg-white/90 border-gray-300 dark:bg-gray-800/90 dark:border-gray-600",
-        className,
-      )}
-    >
-      {isSelected && <Check className="w-4 h-4 text-white" />}
-    </div>
-  );
+  // ActionMenu 共用 props（传递给外部 memo 组件）
+  const actionMenuProps = {
+    bookmark,
+    isSnapshotEnabled,
+    isDeleting,
+    onOpenOriginal: handleOpenOriginal,
+    onToggleRead: onToggleRead ? handleToggleRead : undefined,
+    onToggleStarred: onToggleStarred ? handleToggleStarred : undefined,
+    onEdit: onEdit ? handleEdit : undefined,
+    onDelete: onDelete ? handleDelete : undefined,
+    t,
+  } satisfies Omit<ActionMenuProps, "className" | "variant">;
 
   // V4.2.24: 增强预加载 - 预加载路由 JS + 数据（带防抖）
   // 鼠标悬停 150ms 后触发，避免快速划过时的请求风暴
@@ -396,11 +452,11 @@ export const BookmarkCard = memo(function BookmarkCard({
     // 防抖 150ms
     prefetchTimerRef.current = setTimeout(() => {
       // 1. 预加载详情页 JS 和路由
-      router.prefetch(`/bookmark/${bookmark.id}`);
+      router.prefetch(bookmarkHref);
       // 2. 预加载自定义标签数据（TanStack Query 会自动去重）
       prefetchCustomUsageTags(queryClient);
     }, 150);
-  }, [bookmark.id, router, queryClient]);
+  }, [router, queryClient, bookmarkHref]);
 
   // 鼠标离开时取消预加载
   const handlePrefetchCancel = useCallback(() => {
@@ -410,19 +466,28 @@ export const BookmarkCard = memo(function BookmarkCard({
     }
   }, []);
 
-  // 通用的卡片/列表点击处理（使用程序化导航确保可靠性）
+  // 书签详情页 URL
+  const bookmarkHref = `/bookmark/${bookmark.id}`;
+
+  // 通用的卡片/列表点击处理（语义化 <a> 标签 + 程序化导航）
   const handleItemClick = (e: React.MouseEvent) => {
-    // 如果点击的是按钮或链接，不处理（让按钮/链接自己处理）
+    // 如果点击的是按钮或内嵌链接，不处理（让按钮/链接自己处理）
     const target = e.target as HTMLElement;
+    const closestInteractive = target.closest(
+      "button, [data-radix-collection-item]",
+    );
+    // 排除外层 <a> 自身，只拦截内嵌的交互元素
+    const closestAnchor = target.closest("a");
     if (
       target.tagName === "BUTTON" ||
-      target.tagName === "A" ||
-      target.closest("button") ||
-      target.closest("a") ||
-      target.closest("[data-radix-collection-item]") // Dropdown menu items
+      closestInteractive ||
+      (closestAnchor && closestAnchor !== e.currentTarget)
     ) {
       return;
     }
+
+    // 阻止 <a> 的默认导航行为
+    e.preventDefault();
 
     if (isSelectionMode) {
       handleToggleSelect(e);
@@ -431,32 +496,25 @@ export const BookmarkCard = memo(function BookmarkCard({
 
     // 使用 Next.js router 进行客户端导航
     // NavigationContext 已支持非主页面（activePage = null），不会被拦截
-    router.push(`/bookmark/${bookmark.id}`);
+    router.push(bookmarkHref);
   };
 
   // 紧凑列表视图（compact）
   if (variant === "compact") {
     return (
-      <div
+      <a
+        href={bookmarkHref}
         onClick={handleItemClick}
         onMouseEnter={handlePrefetch}
         onMouseLeave={handlePrefetchCancel}
         className={cn(
-          "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group",
+          "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow cursor-pointer group no-underline text-inherit",
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
-        role="link"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleItemClick(e as unknown as React.MouseEvent);
-          }
-        }}
       >
         {/* 选择复选框 */}
-        {isSelectionMode && <SelectionCheckbox />}
+        {isSelectionMode && <SelectionCheckbox isSelected={isSelected} />}
 
         {/* 平台标识 */}
         <PlatformBadge platform={bookmark.platform ?? "UNKNOWN"} size="sm" />
@@ -532,29 +590,22 @@ export const BookmarkCard = memo(function BookmarkCard({
         {/* 操作按钮 - 移动端始终显示，桌面端弱显示+悬停强调 */}
         {!isSelectionMode && (
           <div className="flex-shrink-0 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
-            <ActionMenu />
+            <ActionMenu {...actionMenuProps} />
           </div>
         )}
-      </div>
+      </a>
     );
   }
 
   // 列表视图（list）- 移动端垂直布局，桌面端水平布局
   if (variant === "list") {
     return (
-      <div
+      <a
+        href={bookmarkHref}
         onClick={handleItemClick}
         onMouseEnter={handlePrefetch}
         onMouseLeave={handlePrefetchCancel}
-        className="block cursor-pointer"
-        role="link"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleItemClick(e as unknown as React.MouseEvent);
-          }
-        }}
+        className="block cursor-pointer no-underline text-inherit"
       >
         <Card
           className={cn(
@@ -571,6 +622,8 @@ export const BookmarkCard = memo(function BookmarkCard({
               <img
                 src={coverImage}
                 alt={bookmark.title ?? ""}
+                width={400}
+                height={170}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -587,13 +640,13 @@ export const BookmarkCard = memo(function BookmarkCard({
             {/* 选择复选框 - 移动端右上角 */}
             {isSelectionMode && (
               <div className="absolute top-2 right-2">
-                <SelectionCheckbox />
+                <SelectionCheckbox isSelected={isSelected} />
               </div>
             )}
             {/* 操作按钮 - 移动端右上角 */}
             {!isSelectionMode && (
               <div className="absolute top-2 right-2">
-                <ActionMenu variant="mobile" />
+                <ActionMenu {...actionMenuProps} variant="mobile" />
               </div>
             )}
           </div>
@@ -601,7 +654,7 @@ export const BookmarkCard = memo(function BookmarkCard({
           {/* 桌面端：选择复选框 */}
           {isSelectionMode && (
             <div className="hidden sm:flex items-center px-3">
-              <SelectionCheckbox />
+              <SelectionCheckbox isSelected={isSelected} />
             </div>
           )}
 
@@ -612,6 +665,8 @@ export const BookmarkCard = memo(function BookmarkCard({
               <img
                 src={coverImage}
                 alt={bookmark.title ?? ""}
+                width={192}
+                height={82}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -770,30 +825,23 @@ export const BookmarkCard = memo(function BookmarkCard({
           {/* 桌面端：操作按钮 - 弱显示+悬停强调 */}
           {!isSelectionMode && (
             <div className="hidden sm:flex items-center px-3 opacity-60 group-hover:opacity-100 transition-opacity">
-              <ActionMenu />
+              <ActionMenu {...actionMenuProps} />
             </div>
           )}
         </Card>
-      </div>
+      </a>
     );
   }
 
   // 卡片视图（card，默认 - 瀑布流样式）
-  // 完全使用 div + onClick 替代 Link，确保点击事件可靠触发
+  // 使用语义化 <a> 标签，确保可访问性和 SEO
   return (
-    <div
+    <a
+      href={bookmarkHref}
       onClick={handleItemClick}
       onMouseEnter={handlePrefetch}
       onMouseLeave={handlePrefetchCancel}
-      className="block h-full cursor-pointer"
-      role="link"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleItemClick(e as unknown as React.MouseEvent);
-        }
-      }}
+      className="block h-full cursor-pointer no-underline text-inherit"
     >
       <Card
         className={cn(
@@ -808,6 +856,8 @@ export const BookmarkCard = memo(function BookmarkCard({
           <img
             src={coverImage}
             alt={bookmark.title ?? ""}
+            width={400}
+            height={170}
             className="w-full h-full object-cover card-cover-top card-cover-zoom"
             loading="lazy"
             decoding="async"
@@ -851,14 +901,14 @@ export const BookmarkCard = memo(function BookmarkCard({
           {/* 批量选择模式：复选框 */}
           {isSelectionMode && (
             <div className="absolute top-2 right-2">
-              <SelectionCheckbox />
+              <SelectionCheckbox isSelected={isSelected} />
             </div>
           )}
 
           {/* 正常模式：操作按钮 - 移动端始终显示，桌面端悬停显示 */}
           {!isSelectionMode && !bookmark.is_locked && (
             <div className="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-              <ActionMenu variant="mobile" />
+              <ActionMenu {...actionMenuProps} variant="mobile" />
             </div>
           )}
         </div>
@@ -1047,6 +1097,6 @@ export const BookmarkCard = memo(function BookmarkCard({
           }}
         />
       </Card>
-    </div>
+    </a>
   );
 }, arePropsEqual);

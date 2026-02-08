@@ -30,7 +30,14 @@
     "collapse": "收起",
     "none": "无",
     "other": "其他",
-    "total": "共 {count} 项"
+    "total": "共 {count} 项",
+    "user": "用户",
+    "usedQuota": "已用 {used} / {total} 条",
+    "loggingOut": "退出中...",
+    "logoutSuccess": "已退出登录",
+    "logoutFailed": "退出失败",
+    "logoutRetry": "请稍后重试",
+    "toggleTheme": "切换主题"
   },
   "nav": {
     "home": "首页",
@@ -88,14 +95,21 @@
     "switchToLightMode": "切换到浅色模式",
     "switchToDarkMode": "切换到深色模式",
     "version": "智能收藏管理",
-    "system": "系统"
+    "system": "系统",
+    "more": "更多",
+    "manualCreate": "手动创建",
+    "aiAssistant": "AI 助理",
+    "collapseSidebar": "折叠侧边栏",
+    "expandSidebar": "展开侧边栏"
   },
   "navGroup": {
     "contentCenter": "内容中心",
     "organizeTools": "整理工具",
     "learningCenter": "学习中心",
     "insightCenter": "洞察中心",
-    "devTools": "开发者工具"
+    "devTools": "开发者工具",
+    "myContent": "我的内容",
+    "smartTools": "智能工具"
   },
   "bookmark": {
     "title": "收藏",
@@ -335,7 +349,9 @@
       "shareAnalytics": "分享使用数据",
       "shareAnalyticsDesc": "帮助我们改进产品（不包含个人隐私）",
       "accountActions": "账号管理",
-      "accountActionsDesc": "导出数据或删除账号"
+      "accountActionsDesc": "导出数据或删除账号",
+      "developerMode": "开发者模式",
+      "developerModeDesc": "启用后侧边栏将显示开发者工具（分类管理、RAG 监控、AI 调试等）"
     },
     "export": {
       "failed": "导出失败",
@@ -373,7 +389,39 @@
     "registerFailed": "注册失败",
     "invalidEmail": "邮箱格式不正确",
     "invalidPassword": "密码至少 8 个字符",
-    "passwordMismatch": "两次密码不一致"
+    "passwordMismatch": "两次密码不一致",
+    "welcomeBack": "欢迎回来",
+    "chooseLoginMethod": "选择你喜欢的方式登录 AnyKeep",
+    "phoneTab": "手机号",
+    "wechatTab": "微信",
+    "emailTab": "邮箱",
+    "comingSoon": "即将上线",
+    "phoneLabel": "手机号",
+    "phonePlaceholder": "请输入手机号",
+    "codeLabel": "验证码",
+    "codePlaceholder": "请输入验证码",
+    "getCode": "获取验证码",
+    "loggingIn": "登录中...",
+    "emailLabel": "邮箱地址",
+    "emailPlaceholder": "请输入邮箱地址",
+    "passwordLabel": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "forgotPasswordLink": "忘记密码？",
+    "remainingAttempts": "还可尝试 {count} 次",
+    "rateLimited": "登录受限",
+    "defaultLoginError": "邮箱或密码错误",
+    "networkError": "网络错误，请稍后重试",
+    "loginSuccessToast": "登录成功！",
+    "or": "或",
+    "tryDemo": "体验演示账号",
+    "noAccount": "还没有账号？",
+    "registerNow": "立即注册",
+    "privacyNotice": "登录即表示您同意我们的服务条款和隐私政策。我们承诺保护您的隐私，仅存储必要的元数据信息。",
+    "wechatScanTitle": "扫码登录",
+    "wechatScanDesc": "打开微信扫一扫，快速安全登录",
+    "wechatSimulate": "模拟微信登录",
+    "demoNotAvailable": "演示模式暂未开放",
+    "demoNotAvailableDesc": "请使用邮箱注册体验完整功能"
   },
   "error": {
     "title": "出错了",
@@ -390,5 +438,13 @@
     "title": "暂无内容",
     "description": "这里什么都没有",
     "action": "去添加"
+  },
+  "emptyState": {
+    "title": "开始你的智能收藏之旅",
+    "description": "通过以下方式快速添加你的第一个收藏",
+    "importBrowser": "导入浏览器书签",
+    "createManual": "手动添加收藏",
+    "quickAdd": "粘贴链接快速添加",
+    "tip": "你也可以在手机上通过系统分享菜单直接收藏"
   }
 }
