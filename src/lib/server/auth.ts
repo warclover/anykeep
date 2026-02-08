@@ -12,13 +12,20 @@
  * - UUID 格式验证防止 header 注入攻击
  * - 依赖 Middleware 预验证 (x-user-verified 标志)
  * - 不信任客户端传入的 header (仅由 Middleware 设置)
+ *
+ * V4.2.31: 统一认证入口，消除各页面重复的认证回退逻辑
+ * - 新增 getAuthenticatedUserIdWithFallback: 带 session 回退的认证（解决登录后同步延迟）
+ * - 新增 getAuthenticatedUserIdFromCookies: 从 cookies 读取（RSC payload 场景）
+ * - 导出 UUID_REGEX 供外部复用
  */
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
-/** UUID 正则表达式 (RFC 4122) */
-const UUID_REGEX =
+/** UUID 正则表达式 (RFC 4122) - 统一导出，各页面不再重复定义 */
+export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -46,6 +53,86 @@ export async function getAuthenticatedUserId(): Promise<string> {
   }
 
   return userId;
+}
+
+/**
+ * 获取当前用户 ID（带 session 回退机制）
+ *
+ * 优先从 Middleware header 读取（快速路径 ~1ms），
+ * 如果失败则回退到 getSession()（慢速路径 ~500ms）。
+ * 解决登录后首次请求时 session 同步延迟的问题。
+ *
+ * @returns 用户 ID 或 null（如果未认证）
+ *
+ * @example
+ * ```ts
+ * async function getData() {
+ *   const userId = await getAuthenticatedUserIdWithFallback();
+ *   if (!userId) return { error: "请先登录" };
+ * }
+ * ```
+ */
+export async function getAuthenticatedUserIdWithFallback(): Promise<
+  string | null
+> {
+  const headersList = await headers();
+  const userId = headersList.get("x-user-id");
+  const isVerified = headersList.get("x-user-verified") === "true";
+
+  if (isVerified && userId && UUID_REGEX.test(userId)) {
+    return userId;
+  }
+
+  // 回退机制: header 验证失败时，尝试直接获取 session
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      logger.debug(
+        { userId: session.user.id },
+        "[Auth] Header fallback to getSession",
+      );
+      return session.user.id;
+    }
+  } catch (error) {
+    logger.error({ error }, "[Auth] Session fallback failed");
+  }
+
+  return null;
+}
+
+/**
+ * 获取当前用户 ID（从 cookies 读取，适用于 RSC payload 场景）
+ *
+ * 某些场景（如 cache() 内部）需要从 cookies 而非 headers 读取。
+ * 带 session 回退机制。
+ *
+ * @returns 用户 ID 或 null（如果未认证）
+ */
+export async function getAuthenticatedUserIdFromCookies(): Promise<
+  string | null
+> {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("x-user-id")?.value;
+  const isVerified = cookieStore.get("x-user-verified")?.value === "true";
+
+  if (isVerified && userId && UUID_REGEX.test(userId)) {
+    return userId;
+  }
+
+  // 回退机制
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+  } catch (error) {
+    logger.error({ error }, "[Auth] Cookie fallback failed");
+    return null;
+  }
 }
 
 /**

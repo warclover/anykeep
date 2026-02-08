@@ -18,11 +18,12 @@
 
 import { Suspense, cache } from "react";
 import { unstable_cache } from "next/cache";
-import { cookies } from "next/headers";
 import { HomePageClientLayered } from "@/components/home/home-page-client-layered";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
+import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
+import { logger } from "@/lib/logger";
 import HomeLoading from "./loading";
 import type { Bookmark, Platform } from "@/types/supabase";
 import { mergeWithDefaults } from "@/types/user-settings";
@@ -30,10 +31,6 @@ import type { UserSettings } from "@/types/user-settings";
 
 // 动态渲染（用户特定数据）
 export const dynamic = "force-dynamic";
-
-/** UUID 正则表达式 */
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type BookmarkWithFolder = Bookmark & {
   folders?: { name: string } | null;
@@ -54,13 +51,14 @@ const getCachedUserSettings = unstable_cache(
         .single()) as unknown as { data: { settings: unknown } | null };
 
       return mergeWithDefaults(data?.settings as Partial<UserSettings> | null);
-    } catch {
+    } catch (error) {
+      logger.error({ error }, "[Home] Failed to get user settings");
       return mergeWithDefaults(null);
     }
   },
   ["user-settings"],
   {
-    revalidate: 300, // 5 分钟缓存
+    revalidate: 60, // 1 分钟缓存，缩短以确保设置变更及时生效
     tags: ["user-settings"],
   },
 );
@@ -72,17 +70,15 @@ const getCachedUserSettings = unstable_cache(
  */
 const getUserSettings = cache(async (): Promise<UserSettings> => {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("x-user-id")?.value;
-    const isVerified = cookieStore.get("x-user-verified")?.value === "true";
-
-    if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
+    const userId = await getAuthenticatedUserIdFromCookies();
+    if (!userId) {
       return mergeWithDefaults(null);
     }
 
     // V4.2.30: 使用持久化缓存获取用户设置
     return getCachedUserSettings(userId);
-  } catch {
+  } catch (error) {
+    logger.error({ error }, "[Home] Failed to resolve user for settings");
     return mergeWithDefaults(null);
   }
 });
@@ -104,26 +100,13 @@ const getInitialBookmarks = cache(
     const startTime = performance.now();
 
     try {
-      // V5.5: 从 cookies 读取 Middleware 注入的用户信息
-      const cookieStore = await cookies();
-      let userId = cookieStore.get("x-user-id")?.value;
-      const isVerified = cookieStore.get("x-user-verified")?.value === "true";
-
-      const _headerTime = performance.now() - startTime;
+      // V4.2.31: 使用统一认证函数（带 session 回退）
+      const userId = await getAuthenticatedUserIdFromCookies();
+      if (!userId) {
+        return { bookmarks: [], error: "请先登录" };
+      }
 
       const supabase = await createClient();
-
-      // V4.2.28: 回退机制 - 当 header 验证失败时，尝试直接获取 session
-      // 这解决了登录后首次请求时 session 同步延迟的问题
-      if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session?.user?.id) {
-          return { bookmarks: [], error: "请先登录" };
-        }
-        userId = session.user.id;
-      }
       const clientTime = performance.now() - startTime;
 
       let query = supabase

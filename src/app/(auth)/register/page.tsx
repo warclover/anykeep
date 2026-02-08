@@ -7,9 +7,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import {
+  validatePassword,
+  validatePasswordMatch,
+} from "@/lib/password-validation";
 import { Sparkles, Mail, CheckCircle2, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +27,6 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
-  const _router = useRouter();
   const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,17 +39,19 @@ export default function RegisterPage() {
     setLoading(true);
 
     // 验证密码
-    if (password !== confirmPassword) {
+    const matchError = validatePasswordMatch(password, confirmPassword);
+    if (matchError) {
       toast.error("密码不一致", {
-        description: "两次输入的密码不一致",
+        description: matchError,
       });
       setLoading(false);
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("密码长度不足", {
-        description: "密码长度至少6位",
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      toast.error("密码不符合要求", {
+        description: passwordError,
       });
       setLoading(false);
       return;
@@ -59,7 +63,7 @@ export default function RegisterPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/home`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback?next=/home`,
         },
       });
 
@@ -74,7 +78,8 @@ export default function RegisterPage() {
       toast.success("注册成功！", {
         description: "请查收验证邮件",
       });
-    } catch {
+    } catch (error) {
+      console.error("[Register] Error:", error);
       toast.error("注册失败", {
         description: "请稍后重试",
       });
@@ -212,6 +217,7 @@ export default function RegisterPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -221,10 +227,11 @@ export default function RegisterPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="至少6位字符"
+                  placeholder="至少8位字符"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
               </div>
 
@@ -237,6 +244,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
               </div>
 
@@ -279,11 +287,17 @@ export default function RegisterPage() {
                 <CheckCircle2 className="size-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   注册即表示您同意我们的{" "}
-                  <Link href="#" className="text-purple-600 hover:underline">
+                  <Link
+                    href="/terms"
+                    className="text-purple-600 hover:underline"
+                  >
                     服务条款
                   </Link>{" "}
                   和{" "}
-                  <Link href="#" className="text-purple-600 hover:underline">
+                  <Link
+                    href="/privacy"
+                    className="text-purple-600 hover:underline"
+                  >
                     隐私政策
                   </Link>
                 </p>

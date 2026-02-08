@@ -5,7 +5,9 @@
  * V1.1.0: 使用统一权限检查函数，消除类型断言
  */
 
-import { unstable_noStore } from "next/cache";
+export const dynamic = "force-dynamic";
+
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { MdCollectionDetailClient } from "./page-client";
@@ -13,6 +15,13 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { checkMdCollectionAccess } from "@/features/md-collections/lib/permission-utils";
 import { logger } from "@/lib/logger";
 import type { MdCollection } from "@/features/md-collections";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Markdown 详情 - AnyKeep",
+    description: "查看 Markdown 文档详情",
+  };
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -81,9 +90,6 @@ async function checkUserAccess(): Promise<boolean> {
 }
 
 export default async function MdCollectionDetailPage({ params }: PageProps) {
-  // 禁用缓存
-  unstable_noStore();
-
   // 解析参数
   const resolvedParams = await params;
   const id = parseInt(resolvedParams.id, 10);

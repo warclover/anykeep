@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/reset-password`,
       });
 
       if (error) {
@@ -56,7 +56,8 @@ export default function ForgotPasswordPage() {
       toast.success("邮件已发送！", {
         description: "请查收密码重置邮件",
       });
-    } catch {
+    } catch (error) {
+      console.error("[ForgotPassword] Error:", error);
       toast.error("发送失败", {
         description: "请稍后重试",
       });
@@ -170,6 +171,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
             </div>

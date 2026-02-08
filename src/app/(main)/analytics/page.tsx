@@ -1,6 +1,5 @@
 // 标记为动态路由，禁用所有缓存
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 /**
  * 数据统计页面 - 服务端组件
@@ -12,14 +11,11 @@ export const revalidate = 0;
  * V4.2.28: 添加回退机制，解决登录后 session 同步延迟问题
  */
 
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { AnalyticsPageClient } from "@/components/analytics/analytics-page-client";
 import { getAnalyticsData } from "@/lib/analytics";
-
-/** UUID 正则表达式 (RFC 4122) */
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { getAuthenticatedUserIdWithFallback } from "@/lib/server/auth";
+import { logger } from "@/lib/logger";
 
 // 默认空数据
 const EMPTY_ANALYTICS_DATA = {
@@ -57,7 +53,7 @@ async function fetchAnalyticsData(
     });
     return { data: analyticsData, error: null };
   } catch (err) {
-    console.error("[Analytics] Failed to load data:", err);
+    logger.error({ error: err }, "[Analytics] Failed to load data");
     return {
       data: EMPTY_ANALYTICS_DATA,
       error: "加载数据统计时出错，请稍后重试",
@@ -66,26 +62,13 @@ async function fetchAnalyticsData(
 }
 
 export default async function AnalyticsPage() {
-  // V4.2.28: 从 Middleware 注入的 header 获取预验证的 userId
-  const headersList = await headers();
-  let userId = headersList.get("x-user-id");
-  const isVerified = headersList.get("x-user-verified") === "true";
+  // V4.2.31: 使用统一认证函数（带 session 回退）
+  const userId = await getAuthenticatedUserIdWithFallback();
+  if (!userId) {
+    return <AnalyticsPageClient data={EMPTY_ANALYTICS_DATA} error="请先登录" />;
+  }
 
   const supabase = await createClient();
-
-  // V4.2.28: 回退机制 - 当 header 验证失败时，尝试直接获取 session
-  // 这解决了登录后首次请求时 session 同步延迟的问题
-  if (!isVerified || !userId || !UUID_REGEX.test(userId)) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
-      return (
-        <AnalyticsPageClient data={EMPTY_ANALYTICS_DATA} error="请先登录" />
-      );
-    }
-    userId = session.user.id;
-  }
 
   const { data: analyticsData, error } = await fetchAnalyticsData(
     supabase,

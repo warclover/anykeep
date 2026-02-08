@@ -30,7 +30,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -82,19 +81,8 @@ export default function LoginPage() {
         return;
       }
 
-      // 登录成功，需要刷新 Supabase 客户端会话
-      const supabase = createClient();
-      const { error: sessionError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (sessionError) {
-        toast.error("会话创建失败", {
-          description: sessionError.message,
-        });
-        return;
-      }
+      // 登录成功，通过 router.refresh() 同步服务端 session 到客户端
+      // V4.2.31: 移除双重 signInWithPassword 调用，避免密码在客户端内存中停留过久
 
       setRemainingAttempts(null);
       toast.success("登录成功！");
@@ -110,16 +98,10 @@ export default function LoginPage() {
   };
 
   const handleDemoLogin = async () => {
-    setLoading(true);
-
-    // 演示账号快速登录
-    setTimeout(() => {
-      toast.success("欢迎体验 AnyKeep！", {
-        description: "演示账号已登录",
-      });
-      setLoading(false);
-      router.push("/home");
-    }, 1500);
+    // TODO: 接入真实演示账号后启用
+    toast.info("演示模式暂未开放", {
+      description: "请使用邮箱注册体验完整功能",
+    });
   };
 
   return (
@@ -351,6 +333,7 @@ export default function LoginPage() {
                         type="email"
                         placeholder="请输入邮箱地址"
                         className="pl-10 login-input"
+                        autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -364,6 +347,7 @@ export default function LoginPage() {
                       type="password"
                       placeholder="请输入密码"
                       className="login-input"
+                      autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required

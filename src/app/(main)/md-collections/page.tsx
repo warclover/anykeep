@@ -10,7 +10,13 @@
  * V1.1.0: 使用统一权限检查函数，消除类型断言
  */
 
+import type { Metadata } from "next";
 import { Suspense, cache } from "react";
+
+export const metadata: Metadata = {
+  title: "Markdown 收藏 - AnyKeep",
+  description: "管理和浏览 Markdown 文档收藏",
+};
 import { cookies } from "next/headers";
 import { MdCollectionPageClient } from "./page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
