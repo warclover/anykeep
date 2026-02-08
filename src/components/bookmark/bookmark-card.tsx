@@ -429,6 +429,9 @@ export const BookmarkCard = memo(function BookmarkCard({
     onToggleStarred?.(bookmark.id, !bookmark.is_starred);
   };
 
+  // 书签详情页 URL
+  const bookmarkHref = `/bookmark/${bookmark.id}`;
+
   // ActionMenu 共用 props（传递给外部 memo 组件）
   const actionMenuProps = {
     bookmark,
@@ -465,9 +468,6 @@ export const BookmarkCard = memo(function BookmarkCard({
       prefetchTimerRef.current = null;
     }
   }, []);
-
-  // 书签详情页 URL
-  const bookmarkHref = `/bookmark/${bookmark.id}`;
 
   // 通用的卡片/列表点击处理（语义化 <a> 标签 + 程序化导航）
   const handleItemClick = (e: React.MouseEvent) => {
