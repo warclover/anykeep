@@ -7,8 +7,10 @@
  * - 移动对话框集成学习反馈
  * - V4.2.30: 乐观更新优化，移除 router.refresh() 提升性能
  * - V4.2.31: Phase 2.3.7 组件拆分，提取 Hook 和子组件
+ * - V5.6: P3 非首屏组件懒加载（对话框 + AI 组件 + 视觉分析）
+ * - V5.6: P4 快照状态服务端预取，消除客户端 useEffect 请求
  *
- * @version 1.3.0
+ * @version 1.4.0
  * @since 2025-12-11
  */
 
@@ -22,14 +24,8 @@ import { SourceBadge, inferSourceType } from "./source-badge";
 import type { SourceInfo } from "./source-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { EditBookmarkDialog } from "@/components/bookmark/edit-bookmark-dialog";
-import { MoveToFolderDialog } from "@/components/bookmark/move-to-folder-dialog";
 import { SummaryRenderer } from "@/components/bookmark/summary-renderer";
 import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
-import {
-  VisionInsights,
-  VisionAnalysisTrigger,
-} from "@/components/bookmark/vision-insights";
 import { RelatedBookmarksV2Lazy } from "@/components/bookmark/related-bookmarks-lazy";
 import { useVisionAnalysis } from "@/hooks/domain/ai";
 import type { BookmarkVisionData } from "@/types/vision";
@@ -50,23 +46,71 @@ import { lazy, Suspense } from "react";
 import { useWechatArticleFeature } from "@/lib/feature-flags";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
-import {
-  AIAssistantPanel,
-  AISmartSummary,
-  AIQuickActions,
-  AIRelatedContent,
-  AIBookmarkChat,
-} from "@/components/ai";
+// V5.6: 首屏必须的 AI 组件保持同步导入
+import { AISmartSummary } from "@/components/ai";
 import { useOptionalUser } from "@/contexts/user-context";
 // Phase 2.3.7: 拆分组件
 import { useDetailMutations } from "./hooks/use-detail-mutations";
 import { DetailActionBar } from "./detail-action-bar";
 import { DetailTagsEditor } from "./detail-tags-editor";
 import { DetailNotesEditor } from "./detail-notes-editor";
-// V4.2.3: 页面监控功能
-import { CreateMonitorDialog } from "@/components/monitor";
 
-// 懒加载微信文章区块组件
+// ============================================
+// V5.6 P3: 非首屏组件懒加载，减少初始 JS bundle 体积
+// ============================================
+
+// 对话框（用户点击才打开）
+const EditBookmarkDialog = lazy(() =>
+  import("@/components/bookmark/edit-bookmark-dialog").then((m) => ({
+    default: m.EditBookmarkDialog,
+  })),
+);
+const MoveToFolderDialog = lazy(() =>
+  import("@/components/bookmark/move-to-folder-dialog").then((m) => ({
+    default: m.MoveToFolderDialog,
+  })),
+);
+const CreateMonitorDialog = lazy(() =>
+  import("@/components/monitor").then((m) => ({
+    default: m.CreateMonitorDialog,
+  })),
+);
+
+// AI 组件（非首屏/可折叠/按需显示）
+const AIQuickActions = lazy(() =>
+  import("@/components/ai").then((m) => ({
+    default: m.AIQuickActions,
+  })),
+);
+const AIBookmarkChat = lazy(() =>
+  import("@/components/ai").then((m) => ({
+    default: m.AIBookmarkChat,
+  })),
+);
+const AIRelatedContent = lazy(() =>
+  import("@/components/ai").then((m) => ({
+    default: m.AIRelatedContent,
+  })),
+);
+const AIAssistantPanel = lazy(() =>
+  import("@/components/ai").then((m) => ({
+    default: m.AIAssistantPanel,
+  })),
+);
+
+// 视觉分析（条件渲染/可折叠）
+const VisionInsights = lazy(() =>
+  import("@/components/bookmark/vision-insights").then((m) => ({
+    default: m.VisionInsights,
+  })),
+);
+const VisionAnalysisTrigger = lazy(() =>
+  import("@/components/bookmark/vision-insights").then((m) => ({
+    default: m.VisionAnalysisTrigger,
+  })),
+);
+
+// 微信文章区块
 const WechatArticleSectionLazy = lazy(() =>
   import("@/components/wechat-article").then((m) => ({
     default: m.WechatArticleSection,
@@ -82,12 +126,15 @@ interface BookmarkDetailClientProps {
   folderPath?: Array<{ id: number; name: string }>;
   /** V4.2.22: SSR 预取的自定义用途标签，消除客户端加载延迟 */
   initialCustomUsageTags?: CustomUsageTag[];
+  /** V5.6 P4: 服务端预取的快照状态，消除客户端 useEffect 请求 */
+  initialHasSnapshot?: boolean;
 }
 
 export function BookmarkDetailClient({
   bookmark,
   folderPath = [],
   initialCustomUsageTags = [],
+  initialHasSnapshot = false,
 }: BookmarkDetailClientProps) {
   const router = useRouter();
   const platformConfig = getPlatformConfig(bookmark.platform ?? "UNKNOWN");
@@ -101,8 +148,9 @@ export function BookmarkDetailClient({
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showMonitorDialog, setShowMonitorDialog] = useState(false);
   // 文章快照状态
+  // V5.6 P4: 使用服务端预取的初始值，消除客户端 useEffect 请求
   const [isSnapshotting, setIsSnapshotting] = useState(false);
-  const [hasSnapshot, setHasSnapshot] = useState(false);
+  const [hasSnapshot, setHasSnapshot] = useState(initialHasSnapshot);
 
   // Phase 2.3.7: 使用提取的 mutations hook
   const {
@@ -190,25 +238,8 @@ export function BookmarkDetailClient({
   const isWechatPlatform = bookmark.platform === "WECHAT_OFFICIAL_ACCOUNT";
   const showWechatArticle = isWechatArticleEnabled && isWechatPlatform;
 
-  // 检查是否已有快照
-  useEffect(() => {
-    const checkSnapshot = async () => {
-      try {
-        const response = await fetch(
-          `/api/snapshots?bookmarkId=${bookmark.id}`,
-        );
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data?.id) {
-            setHasSnapshot(true);
-          }
-        }
-      } catch {
-        // 静默处理错误
-      }
-    };
-    checkSnapshot();
-  }, [bookmark.id]);
+  // V5.6 P4: checkSnapshot 已移至服务端预取（page.tsx Promise.all）
+  // 通过 initialHasSnapshot prop 传入，消除客户端额外网络请求
 
   // 创建文章快照
   const handleSnapshot = useCallback(async () => {
@@ -478,72 +509,84 @@ export function BookmarkDetailClient({
                 )
               )}
 
-              {/* AI 快捷操作（仅登录用户可见） */}
+              {/* AI 快捷操作（仅登录用户可见） V5.6: 懒加载 */}
               {userId && (
                 <>
-                  <AIQuickActions
-                    bookmarkId={bookmark.id}
-                    bookmarkTitle={bookmark.title ?? ""}
-                    currentTags={localUserTags ?? undefined}
-                    currentFolderId={bookmark.folder_id ?? undefined}
-                    onActionComplete={(action, result) => {
-                      // 根据操作类型更新本地状态
-                      if (action === "auto-tag" && result) {
-                        // 合并新标签
-                        const newTags = Array.isArray(result) ? result : [];
-                        setLocalUserTags((prev) => {
-                          const existing = prev ?? [];
-                          return [...new Set([...existing, ...newTags])];
-                        });
-                      }
-                    }}
-                  />
+                  <Suspense
+                    fallback={<Skeleton className="h-10 w-full rounded-lg" />}
+                  >
+                    <AIQuickActions
+                      bookmarkId={bookmark.id}
+                      bookmarkTitle={bookmark.title ?? ""}
+                      currentTags={localUserTags ?? undefined}
+                      currentFolderId={bookmark.folder_id ?? undefined}
+                      onActionComplete={(action, result) => {
+                        // 根据操作类型更新本地状态
+                        if (action === "auto-tag" && result) {
+                          // 合并新标签
+                          const newTags = Array.isArray(result) ? result : [];
+                          setLocalUserTags((prev) => {
+                            const existing = prev ?? [];
+                            return [...new Set([...existing, ...newTags])];
+                          });
+                        }
+                      }}
+                    />
+                  </Suspense>
                   <Separator />
                 </>
               )}
 
-              {/* AI 书签聊天（内联可折叠） */}
+              {/* AI 书签聊天（内联可折叠） V5.6: 懒加载 */}
               {userId && (
                 <>
-                  <AIBookmarkChat
-                    userId={userId}
-                    bookmarkId={bookmark.id}
-                    bookmarkTitle={bookmark.title ?? ""}
-                    bookmarkUrl={bookmark.url}
-                    defaultExpanded={false}
-                    onOpenFullChat={() => setShowAIPanel(true)}
-                  />
+                  <Suspense
+                    fallback={<Skeleton className="h-10 w-full rounded-lg" />}
+                  >
+                    <AIBookmarkChat
+                      userId={userId}
+                      bookmarkId={bookmark.id}
+                      bookmarkTitle={bookmark.title ?? ""}
+                      bookmarkUrl={bookmark.url}
+                      defaultExpanded={false}
+                      onOpenFullChat={() => setShowAIPanel(true)}
+                    />
+                  </Suspense>
                   <Separator />
                 </>
               )}
 
-              {/* V10.0新增：视觉洞察 */}
+              {/* V10.0新增：视觉洞察 V5.6: 懒加载 */}
               {/* 仅在客户端挂载后渲染，避免 Hydration 错误 */}
               {mounted && (visionData || bookmark.cover_url) && (
                 <>
                   <div>
-                    {visionData ? (
-                      <VisionInsights
-                        data={visionData}
-                        showHeader={true}
-                        defaultExpanded={true}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            视觉分析
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            使用 AI 分析图片内容，提取文字和视觉特征
-                          </p>
-                        </div>
-                        <VisionAnalysisTrigger
-                          isAnalyzing={isAnalyzingVision}
-                          onAnalyze={() => analyzeVision(bookmark.id)}
+                    <Suspense
+                      fallback={<Skeleton className="h-20 w-full rounded-lg" />}
+                    >
+                      {visionData ? (
+                        <VisionInsights
+                          data={visionData}
+                          showHeader={true}
+                          defaultExpanded={true}
                         />
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              视觉分析
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              使用 AI 分析图片内容，提取文字和视觉特征
+                            </p>
+                          </div>
+                          <VisionAnalysisTrigger
+                            isAnalyzing={isAnalyzingVision}
+                            onAnalyze={() => analyzeVision(bookmark.id)}
+                          />
+                        </div>
+                      )}
+                    </Suspense>
                   </div>
                   <Separator />
                 </>
@@ -591,16 +634,20 @@ export function BookmarkDetailClient({
                 minStrength={0.3}
               />
 
-              {/* AI 相关内容推荐（基于向量相似度） */}
+              {/* AI 相关内容推荐（基于向量相似度） V5.6: 懒加载 */}
               {userId && (
-                <AIRelatedContent
-                  bookmarkId={bookmark.id}
-                  bookmarkTitle={bookmark.title ?? ""}
-                  maxItems={5}
-                  onBookmarkClick={(relatedId) => {
-                    router.push(`/bookmark/${relatedId}`);
-                  }}
-                />
+                <Suspense
+                  fallback={<Skeleton className="h-20 w-full rounded-lg" />}
+                >
+                  <AIRelatedContent
+                    bookmarkId={bookmark.id}
+                    bookmarkTitle={bookmark.title ?? ""}
+                    maxItems={5}
+                    onBookmarkClick={(relatedId) => {
+                      router.push(`/bookmark/${relatedId}`);
+                    }}
+                  />
+                </Suspense>
               )}
 
               {/* V4.2.1: 网页快照（微信文章不显示，使用专用微信快照组件） */}
@@ -649,53 +696,61 @@ export function BookmarkDetailClient({
         </div>
       </div>
 
-      {/* 编辑收藏对话框 */}
-      <EditBookmarkDialog
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        bookmark={bookmark}
-      />
-
-      {/* 移动到文件夹对话框 - V4.2: 传递学习所需的来源信息 */}
-      <MoveToFolderDialog
-        open={showMoveDialog}
-        onOpenChange={setShowMoveDialog}
-        bookmark={{
-          ...bookmark,
-          // V4.2: 传递学习所需的额外信息
-          // V4.2.30: 使用本地状态 localUserTags
-          title: bookmark.title ?? "",
-          tags: localUserTags || bookmark.ai_tags || undefined,
-          source_id: bookmark.source_id || sourceInfo?.sourceId || undefined,
-          source_name:
-            bookmark.source_name || sourceInfo?.sourceName || undefined,
-        }}
-        enableLearning={true}
-      />
-
-      {/* 创建监控对话框 */}
-      {userId && (
-        <CreateMonitorDialog
-          open={showMonitorDialog}
-          onOpenChange={setShowMonitorDialog}
-          bookmark={{
-            id: bookmark.id,
-            title: bookmark.title ?? "",
-            url: bookmark.url,
-          }}
+      {/* 编辑收藏对话框 V5.6: 懒加载 */}
+      <Suspense fallback={null}>
+        <EditBookmarkDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          bookmark={bookmark}
         />
+      </Suspense>
+
+      {/* 移动到文件夹对话框 - V4.2: 传递学习所需的来源信息 V5.6: 懒加载 */}
+      <Suspense fallback={null}>
+        <MoveToFolderDialog
+          open={showMoveDialog}
+          onOpenChange={setShowMoveDialog}
+          bookmark={{
+            ...bookmark,
+            // V4.2: 传递学习所需的额外信息
+            // V4.2.30: 使用本地状态 localUserTags
+            title: bookmark.title ?? "",
+            tags: localUserTags || bookmark.ai_tags || undefined,
+            source_id: bookmark.source_id || sourceInfo?.sourceId || undefined,
+            source_name:
+              bookmark.source_name || sourceInfo?.sourceName || undefined,
+          }}
+          enableLearning={true}
+        />
+      </Suspense>
+
+      {/* 创建监控对话框 V5.6: 懒加载 */}
+      {userId && (
+        <Suspense fallback={null}>
+          <CreateMonitorDialog
+            open={showMonitorDialog}
+            onOpenChange={setShowMonitorDialog}
+            bookmark={{
+              id: bookmark.id,
+              title: bookmark.title ?? "",
+              url: bookmark.url,
+            }}
+          />
+        </Suspense>
       )}
 
-      {/* AI 助手面板 */}
+      {/* AI 助手面板 V5.6: 懒加载 */}
       {userId && (
-        <AIAssistantPanel
-          open={showAIPanel}
-          onOpenChange={setShowAIPanel}
-          userId={userId}
-          bookmarkIds={[bookmark.id]}
-          title="AI 知识助手"
-          description={`关于「${(bookmark.title ?? "").slice(0, 20)}${bookmark.title && bookmark.title.length > 20 ? "..." : ""}」`}
-        />
+        <Suspense fallback={null}>
+          <AIAssistantPanel
+            open={showAIPanel}
+            onOpenChange={setShowAIPanel}
+            userId={userId}
+            bookmarkIds={[bookmark.id]}
+            title="AI 知识助手"
+            description={`关于「${(bookmark.title ?? "").slice(0, 20)}${bookmark.title && bookmark.title.length > 20 ? "..." : ""}」`}
+          />
+        </Suspense>
       )}
     </div>
   );
