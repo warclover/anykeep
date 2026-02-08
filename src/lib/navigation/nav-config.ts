@@ -66,6 +66,8 @@ export interface NavGroupConfig {
   items: NavItemConfig[];
   /** 是否需要开发者模式 */
   requireDevMode?: boolean;
+  /** 桌面端侧边栏分组默认是否折叠 */
+  defaultCollapsed?: boolean;
 }
 
 // ==================== 导航分组配置 ====================
@@ -74,8 +76,9 @@ export interface NavGroupConfig {
  * 我的内容
  */
 const myContentGroup: NavGroupConfig = {
-  id: "content",
+  id: "myContent",
   title: "navGroup.myContent",
+  defaultCollapsed: false,
   items: [
     {
       name: "nav.myBookmarks",
@@ -123,8 +126,9 @@ const myContentGroup: NavGroupConfig = {
  * 智能工具
  */
 const smartToolsGroup: NavGroupConfig = {
-  id: "content",
+  id: "smartTools",
   title: "navGroup.smartTools",
+  defaultCollapsed: false,
   items: [
     {
       name: "nav.inbox",
@@ -192,8 +196,9 @@ const smartToolsGroup: NavGroupConfig = {
  * 洞察与通知
  */
 const insightGroup: NavGroupConfig = {
-  id: "content",
+  id: "insight",
   title: "navGroup.insightCenter",
+  defaultCollapsed: true,
   items: [
     {
       name: "nav.aiHub",
@@ -252,9 +257,10 @@ const systemGroup: NavGroupConfig = {
  * 开发者工具（需要开发者模式开启）
  */
 const devToolsGroup: NavGroupConfig = {
-  id: "system",
+  id: "devTools",
   title: "navGroup.devTools",
   requireDevMode: true,
+  defaultCollapsed: true,
   items: [
     {
       name: "nav.classificationManager",

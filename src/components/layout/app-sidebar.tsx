@@ -2,12 +2,12 @@
  * 应用侧边栏 - 分组导航版本
  * 支持折叠/展开、悬停自动展开、锁定功能
  *
- * 导航结构：
- * - 内容中心：我的收藏、我的搜索、我的分类、我的标签、我的笔记
- * - 整理工具：等待分类、智能列表、批量操作、内容导出、整理大师、链接检测
- * - 学习中心：知识回顾、知识萃取、知识工坊
- * - 洞察中心：数据分析、活动日志、消息通知
- * - 系统：设置、开发者工具
+ * 导航结构（五色配色方案）：
+ * - 我的内容（粉红）：我的收藏、我的搜索、我的文件夹、我的标签、我的笔记、我的音频
+ * - 智能工具（紫色）：收件箱、整理中心、主题合成、知识工坊、批量操作、数据中心
+ * - 洞察与通知（天蓝）：AI中心、数据分析、活动日志、消息通知
+ * - 系统（灰色）：设置、垃圾箱
+ * - 开发者工具（石板灰）：分类管理器、RAG仪表盘、文件夹健康、AI调试
  *
  * V5.3 性能优化 (2026-02-01):
  * - P2-3.4: 使用 React.memo 避免不必要的重渲染
@@ -21,7 +21,7 @@
 import { useCallback, useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { PanelLeftClose, PanelLeft, Trash2 } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Trash2, ChevronDown } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
@@ -160,7 +160,12 @@ const NavItem = memo(
 
 // ==================== 糖果色配色 ====================
 
-type GroupColorKey = "content" | "system";
+type GroupColorKey =
+  | "myContent"
+  | "smartTools"
+  | "insight"
+  | "system"
+  | "devTools";
 
 interface GroupColorScheme {
   active: string;
@@ -169,23 +174,74 @@ interface GroupColorScheme {
 }
 
 /**
- * 双色配色方案（糖果粉 + 中性灰）
- * - content: 所有功能分组统一使用糖果粉红色
- * - system: 系统/开发者工具使用中性灰
+ * 五色配色方案
+ * - myContent: 粉红色（我的内容，温馨亲切）
+ * - smartTools: 紫色（智能工具，科技感）
+ * - insight: 天蓝色（洞察分析，数据感）
+ * - system: 灰色（系统设置，中性）
+ * - devTools: 石板灰（开发者工具，专业）
  */
 const groupCandyColors: Record<GroupColorKey, GroupColorScheme> = {
-  // 糖果粉红 - 统一用于所有功能导航项
-  content: {
+  // 粉红色 - 我的内容
+  myContent: {
     active: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
     icon: "text-pink-500 dark:text-pink-400",
     hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
   },
-  // 中性灰 - 系统与工具类
+  // 紫色 - 智能工具
+  smartTools: {
+    active:
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    icon: "text-purple-600 dark:text-purple-400",
+    hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
+  },
+  // 天蓝色 - 洞察与通知
+  insight: {
+    active: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+    icon: "text-cyan-500 dark:text-cyan-400",
+    hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
+  },
+  // 灰色 - 系统
   system: {
     active: "bg-gray-200 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300",
     icon: "text-gray-500 dark:text-gray-400",
     hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
   },
+  // 石板灰 - 开发者工具
+  devTools: {
+    active:
+      "bg-slate-200 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
+    icon: "text-slate-600 dark:text-slate-400",
+    hover: "hover:bg-gray-100 dark:hover:bg-gray-800",
+  },
+};
+
+/**
+ * 获取分组标题文字颜色
+ */
+const getGroupTitleColor = (colorKey: GroupColorKey): string => {
+  const colorMap: Record<GroupColorKey, string> = {
+    myContent: "text-pink-500 dark:text-pink-400",
+    smartTools: "text-purple-600 dark:text-purple-400",
+    insight: "text-cyan-500 dark:text-cyan-400",
+    system: "text-gray-500 dark:text-gray-400",
+    devTools: "text-slate-600 dark:text-slate-400",
+  };
+  return colorMap[colorKey] || colorMap.system;
+};
+
+/**
+ * 获取分组左侧彩色竖条颜色
+ */
+const getGroupBorderColor = (colorKey: GroupColorKey): string => {
+  const colorMap: Record<GroupColorKey, string> = {
+    myContent: "bg-pink-400 dark:bg-pink-500",
+    smartTools: "bg-purple-500 dark:bg-purple-400",
+    insight: "bg-cyan-400 dark:bg-cyan-500",
+    system: "bg-gray-400 dark:bg-gray-500",
+    devTools: "bg-slate-500 dark:bg-slate-400",
+  };
+  return colorMap[colorKey] || colorMap.system;
 };
 
 // ==================== 组件 ====================
@@ -221,6 +277,51 @@ export const AppSidebar = memo(function AppSidebar() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 必要的 SSR 挂载检测模式
     setIsMounted(true);
   }, []);
+
+  // 分组折叠状态（localStorage 持久化）
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored = localStorage.getItem("sidebar-collapsed-groups");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // 持久化折叠状态到 localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        "sidebar-collapsed-groups",
+        JSON.stringify(collapsedGroups),
+      );
+    } catch {
+      // 忽略存储错误
+    }
+  }, [collapsedGroups]);
+
+  // 切换分组折叠状态
+  const toggleGroupCollapse = useCallback((groupId: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  }, []);
+
+  // 检查分组是否折叠（优先用户设置，fallback 到 defaultCollapsed）
+  const isGroupCollapsed = useCallback(
+    (group: NavGroupConfig): boolean => {
+      if (!isMounted) return group.defaultCollapsed ?? false;
+      if (collapsedGroups[group.id] !== undefined)
+        return collapsedGroups[group.id];
+      return group.defaultCollapsed ?? false;
+    },
+    [collapsedGroups, isMounted],
+  );
 
   // 侧边栏状态
   const {
@@ -309,7 +410,7 @@ export const AppSidebar = memo(function AppSidebar() {
     const isActive = isLinkActive(item.href, item.pageId);
     const showUnreadBadge = item.badge === "unread" && unreadCount > 0;
     const displayName = getDisplayName(item.name);
-    const colors = groupColor || groupCandyColors.content;
+    const colors = groupColor || groupCandyColors.myContent;
 
     return (
       <NavItem
@@ -329,16 +430,49 @@ export const AppSidebar = memo(function AppSidebar() {
   };
 
   /**
-   * 渲染分组标题
+   * 渲染分组标题（支持折叠/展开 + 彩色竖条指示器）
    */
-  const renderGroupTitle = (title: string, color: string) => {
+  const renderGroupTitle = (
+    group: NavGroupConfig,
+    titleColor: string,
+    borderColor: string,
+    itemCount: number,
+  ) => {
     if (!isVisuallyExpanded) return null;
+
+    const collapsed = isGroupCollapsed(group);
+
     return (
-      <div className="px-3 mb-2">
-        <p className={cn("text-base font-semibold uppercase", color)}>
-          {title}
+      <button
+        onClick={() => toggleGroupCollapse(group.id)}
+        className="w-full px-3 mb-1.5 flex items-center gap-2 group/header hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded-lg py-1.5 transition-colors"
+      >
+        {/* 彩色左侧竖条指示器 */}
+        <div className={cn("w-1 h-4 rounded-full shrink-0", borderColor)} />
+
+        {/* 分组标题 */}
+        <p
+          className={cn(
+            "text-sm font-semibold uppercase flex-1 text-left tracking-wide",
+            titleColor,
+          )}
+        >
+          {getDisplayName(group.title)}
         </p>
-      </div>
+
+        {/* 项目数量徽章 */}
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          {itemCount}
+        </span>
+
+        {/* 折叠/展开箭头 */}
+        <ChevronDown
+          className={cn(
+            "size-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200",
+            collapsed && "-rotate-90",
+          )}
+        />
+      </button>
     );
   };
 
@@ -409,7 +543,7 @@ export const AppSidebar = memo(function AppSidebar() {
           </div>
 
           {/* 主导航区域 - 数据驱动渲染（从统一导航配置） */}
-          <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide px-2 pb-4">
+          <nav className="flex-1 space-y-3 overflow-y-auto scrollbar-hide px-2 pb-4">
             {NAV_GROUPS.filter(
               (group) => !group.requireDevMode || isDeveloperMode,
             ).map((group) => {
@@ -418,16 +552,28 @@ export const AppSidebar = memo(function AppSidebar() {
 
               const colorKey = group.id as GroupColorKey;
               const colors =
-                groupCandyColors[colorKey] || groupCandyColors.content;
-              const titleColor =
-                colorKey === "system"
-                  ? "text-gray-400 dark:text-gray-500"
-                  : "text-purple-500 dark:text-purple-400";
+                groupCandyColors[colorKey] || groupCandyColors.myContent;
+              const titleColor = getGroupTitleColor(colorKey);
+              const borderColor = getGroupBorderColor(colorKey);
+              const collapsed = isGroupCollapsed(group);
 
               return (
-                <div key={group.title}>
-                  {renderGroupTitle(getDisplayName(group.title), titleColor)}
-                  <div className="space-y-1">
+                <div key={group.id}>
+                  {renderGroupTitle(
+                    group,
+                    titleColor,
+                    borderColor,
+                    items.length,
+                  )}
+                  {/* 折叠动画容器 */}
+                  <div
+                    className={cn(
+                      "space-y-1 overflow-hidden transition-all duration-300 ease-smooth",
+                      collapsed
+                        ? "max-h-0 opacity-0"
+                        : "max-h-[1000px] opacity-100",
+                    )}
+                  >
                     {items.map((item) => renderNavItem(item, colors))}
                   </div>
                 </div>

@@ -20,7 +20,7 @@ export default {
     "bg-yellow-400",
     "bg-slate-400",
     "bg-zinc-400",
-    // 侧边栏糖果色 - 内容中心（粉红色）
+    // 侧边栏糖果色 - 我的内容（粉红色）
     "bg-pink-50",
     "bg-pink-100",
     "bg-pink-900/20",
@@ -29,7 +29,7 @@ export default {
     "text-pink-700",
     "text-pink-300",
     "text-pink-400",
-    // 侧边栏糖果色 - 整理工具（天蓝色）
+    // 侧边栏糖果色 - 洞察与通知（天蓝色）
     "bg-cyan-50",
     "bg-cyan-100",
     "bg-cyan-900/20",
@@ -38,7 +38,7 @@ export default {
     "text-cyan-700",
     "text-cyan-300",
     "text-cyan-400",
-    // 侧边栏糖果色 - 学习中心（紫色）
+    // 侧边栏糖果色 - 智能工具（紫色）
     "bg-purple-50",
     "bg-purple-100",
     "bg-purple-900/20",
@@ -47,7 +47,7 @@ export default {
     "text-purple-700",
     "text-purple-300",
     "text-purple-400",
-    // 侧边栏糖果色 - 洞察中心（玫瑰色）
+    // 侧边栏糖果色 - 洞察中心（玫瑰色，备用）
     "bg-rose-50",
     "bg-rose-100",
     "bg-rose-900/20",
@@ -56,7 +56,7 @@ export default {
     "text-rose-700",
     "text-rose-300",
     "text-rose-400",
-    // 侧边栏糖果色 - 系统（石板灰）
+    // 侧边栏糖果色 - 开发者工具（石板灰）
     "bg-slate-100",
     "bg-slate-200",
     "bg-slate-800/30",
@@ -65,6 +65,14 @@ export default {
     "text-slate-700",
     "text-slate-300",
     "text-slate-400",
+    // 侧边栏分组竖条指示器（动态背景色）
+    "bg-pink-500",
+    "bg-purple-500",
+    "bg-cyan-400",
+    "bg-cyan-500",
+    "bg-gray-400",
+    "bg-gray-500",
+    "bg-slate-500",
   ],
   theme: {
     extend: {
