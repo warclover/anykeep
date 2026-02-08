@@ -13,6 +13,8 @@ import {
   getGroupAnchorId,
   type SettingsGroup,
 } from "./settings-config";
+import { useUiText } from "@/lib/i18n";
+import { getNestedValue } from "@/lib/i18n/cache";
 
 interface SettingsSidebarProps {
   activeGroupId: string;
@@ -23,6 +25,10 @@ export function SettingsSidebar({
   activeGroupId,
   onGroupClick,
 }: SettingsSidebarProps) {
+  const t = useUiText();
+  const resolveKey = (key: string) =>
+    getNestedValue<string>(t as unknown as Record<string, unknown>, key) ?? key;
+
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set([activeGroupId]),
   );
@@ -81,22 +87,24 @@ export function SettingsSidebar({
                       : "text-gray-600 dark:text-gray-400",
                   )}
                 >
-                  {group.label}
+                  {resolveKey(group.label)}
                 </span>
                 {group.items.length > 1 && (
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={-1}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleGroup(group.id);
                     }}
-                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-pointer"
                   >
                     {isExpanded ? (
                       <ChevronDown className="size-3.5 text-gray-400" />
                     ) : (
                       <ChevronRight className="size-3.5 text-gray-400" />
                     )}
-                  </button>
+                  </span>
                 )}
               </button>
 
@@ -120,7 +128,7 @@ export function SettingsSidebar({
                       }}
                       className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     >
-                      {item.label}
+                      {resolveKey(item.label)}
                     </button>
                   ))}
                 </div>

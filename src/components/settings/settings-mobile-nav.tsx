@@ -8,12 +8,18 @@
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import { SETTINGS_GROUPS, type SettingsGroup } from "./settings-config";
+import { useUiText } from "@/lib/i18n";
+import { getNestedValue } from "@/lib/i18n/cache";
 
 interface SettingsMobileNavProps {
   onGroupSelect: (groupId: string) => void;
 }
 
 export function SettingsMobileNav({ onGroupSelect }: SettingsMobileNavProps) {
+  const t = useUiText();
+  const resolveKey = (key: string) =>
+    getNestedValue<string>(t as unknown as Record<string, unknown>, key) ?? key;
+
   return (
     <div className="lg:hidden space-y-2">
       {SETTINGS_GROUPS.map((group) => {
@@ -40,10 +46,10 @@ export function SettingsMobileNav({ onGroupSelect }: SettingsMobileNavProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 dark:text-white truncate">
-                {group.label}
+                {resolveKey(group.label)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {group.description}
+                {resolveKey(group.description)}
               </p>
             </div>
             <ChevronRight className="size-5 text-gray-400 flex-shrink-0" />
@@ -64,6 +70,9 @@ export function SettingsMobileHeader({
   onBack,
 }: SettingsMobileHeaderProps) {
   const Icon = group.icon;
+  const t = useUiText();
+  const resolveKey = (key: string) =>
+    getNestedValue<string>(t as unknown as Record<string, unknown>, key) ?? key;
 
   return (
     <div className="lg:hidden flex items-center gap-3 mb-4">
@@ -76,10 +85,10 @@ export function SettingsMobileHeader({
       <Icon className={cn("size-5", group.iconColor)} />
       <div>
         <h3 className="font-medium text-gray-900 dark:text-white">
-          {group.label}
+          {resolveKey(group.label)}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {group.description}
+          {resolveKey(group.description)}
         </p>
       </div>
     </div>
