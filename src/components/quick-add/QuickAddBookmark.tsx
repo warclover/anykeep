@@ -23,7 +23,6 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 // Inline components
 import { QuickAddInput } from "./inline/QuickAddInput";
 import { QuickAddPreview, QuickAddError } from "./inline/QuickAddPreview";
-import { QuickAddSuccess } from "./inline/QuickAddSuccess";
 
 // Drawer (will be implemented later)
 import { DetailDrawer } from "./drawer/DetailDrawer";
@@ -161,8 +160,11 @@ export function QuickAddBookmark({
       // API 返回格式为 { success: true, data: bookmark }
       const newBookmark = responseData.data;
 
-      // Show success state
-      actions.showSuccess("已收藏！");
+      // V4.3.0: 吸入动效已包含成功反馈（图标弹跳发光），跳过旧 success 态
+      // 延迟 reset 让弹跳发光动画有时间展示（弹跳 700ms + 发光 1200ms）
+      setTimeout(() => {
+        actions.reset();
+      }, 1200);
 
       // Mark URL as processed to prevent auto-paste repeat
       if (extractedUrl) {
@@ -212,12 +214,6 @@ export function QuickAddBookmark({
     targetRef: containerRef,
   });
 
-  // Handle success dismiss
-  const handleSuccessDismiss = useCallback(() => {
-    setHasSubmitError(false); // V4.2.21: 重置错误状态
-    actions.reset();
-  }, [actions]);
-
   // Handle retry on error
   const handleRetry = useCallback(() => {
     if (extractedUrl) {
@@ -263,15 +259,6 @@ export function QuickAddBookmark({
             error={metadataError || "发生错误"}
             onRetry={handleRetry}
             onCancel={actions.handleCancel}
-          />
-        );
-
-      case "success":
-        return (
-          <QuickAddSuccess
-            message="已收藏！"
-            folderName={folderId ? undefined : "待整理"}
-            onDismiss={handleSuccessDismiss}
           />
         );
 

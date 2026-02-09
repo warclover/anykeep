@@ -247,15 +247,16 @@ export const AppHeader = memo(function AppHeader() {
             <span className="text-lg md:text-xl font-bold">AnyKeep</span>
           </div>
 
-          {/* 快速添加区域（ml 与第一行平台筛选相同） */}
-          <div className="flex flex-1 items-center gap-2 sm:ml-4 lg:ml-20">
+          {/* 快速添加区域（向左靠拢，略小于第一行平台筛选） */}
+          <div className="flex flex-1 items-center gap-2 sm:ml-2 lg:ml-10">
             <div className="flex-1 min-w-0 max-w-2xl">
               <QuickAddBookmark />
             </div>
 
-            {/* 手动创建按钮 - 主操作（保持渐变突出） */}
+            {/* 手动创建按钮 - 主操作（粉红描边，无底色） */}
             <Button
-              className="shrink-0 h-8 px-3 text-sm bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-sm hover:shadow-md hover:shadow-pink-200/50 transition-all duration-200"
+              variant="outline"
+              className="shrink-0 h-8 px-3 text-sm border-2 border-pink-400 text-pink-600 bg-transparent hover:bg-pink-50 hover:border-pink-500 dark:text-pink-400 dark:border-pink-500 dark:hover:bg-pink-950/30 dark:hover:border-pink-400 transition-all duration-200"
               onClick={handleOpenCreatePanel}
             >
               <Plus className="size-3.5 mr-1" />

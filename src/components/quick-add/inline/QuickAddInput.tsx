@@ -142,13 +142,13 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           "relative flex items-center gap-2 w-full h-8 px-3",
           "rounded-full border-2 transition-all duration-200",
 
-          // Idle state - 醒目的虚线边框和渐变背景
+          // Idle state - 糖果粉色虚线边框和渐变背景
           isIdle && [
-            "border-dashed border-purple-400",
-            "bg-gradient-to-r from-purple-100 via-purple-50/30 to-blue-100",
-            "shadow-sm shadow-purple-200",
-            "hover:border-purple-500 hover:shadow-md hover:shadow-purple-300/50",
-            "hover:bg-gradient-to-r hover:from-purple-200/70 hover:via-purple-100/40 hover:to-blue-200/70",
+            "border-dashed border-pink-300",
+            "bg-gradient-to-r from-pink-100/80 via-rose-50/40 to-purple-100/60",
+            "shadow-sm shadow-pink-200",
+            "hover:border-pink-400 hover:shadow-md hover:shadow-pink-300/50",
+            "hover:bg-gradient-to-r hover:from-pink-200/70 hover:via-rose-100/50 hover:to-purple-200/60",
             "cursor-text",
           ],
 
