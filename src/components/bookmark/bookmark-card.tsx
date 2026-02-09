@@ -597,7 +597,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     );
   }
 
-  // 列表视图（list）- 移动端垂直布局，桌面端水平布局
+  // 列表视图（list）- 统一水平布局（左图右文），响应式调整缩略图尺寸
   if (variant === "list") {
     return (
       <a
@@ -609,71 +609,35 @@ export const BookmarkCard = memo(function BookmarkCard({
       >
         <Card
           className={cn(
-            "flex flex-col sm:flex-row hover:shadow-md transition-shadow cursor-pointer group overflow-hidden",
+            "flex flex-row hover:shadow-md transition-shadow cursor-pointer group overflow-hidden",
             isDeleting && "opacity-50 pointer-events-none",
             isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
           )}
         >
-          {/* 移动端：顶部区域（封面 + 选择框 + 操作按钮） */}
-          <div className="relative sm:hidden">
-            {/* 封面图 - 移动端全宽，2.35:1 宽幅比例 */}
-            <div className="aspect-[2.35/1]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={coverImage}
-                alt={bookmark.title ?? ""}
-                width={400}
-                height={170}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
-                onError={handleImageError}
-              />
-            </div>
-            {/* 平台标识 */}
-            <div className="absolute bottom-2 left-2">
-              <PlatformBadge
-                platform={bookmark.platform ?? "UNKNOWN"}
-                size="sm"
-              />
-            </div>
-            {/* 选择复选框 - 移动端右上角 */}
-            {isSelectionMode && (
-              <div className="absolute top-2 right-2">
-                <SelectionCheckbox isSelected={isSelected} />
-              </div>
-            )}
-            {/* 操作按钮 - 移动端右上角 */}
-            {!isSelectionMode && (
-              <div className="absolute top-2 right-2">
-                <ActionMenu {...actionMenuProps} variant="mobile" />
-              </div>
-            )}
-          </div>
-
-          {/* 桌面端：选择复选框 */}
+          {/* 选择复选框 */}
           {isSelectionMode && (
-            <div className="hidden sm:flex items-center px-3">
+            <div className="flex items-center pl-2 sm:pl-3">
               <SelectionCheckbox isSelected={isSelected} />
             </div>
           )}
 
-          {/* 桌面端：缩略图，2.35:1 宽幅比例 */}
-          <div className="relative hidden sm:block w-32 md:w-48 flex-shrink-0">
-            <div className="aspect-[2.35/1]">
+          {/* 缩略图：移动端 80×80 正方形，桌面端保持宽幅比例 */}
+          <div className="relative w-20 sm:w-32 md:w-48 flex-shrink-0">
+            <div className="aspect-square sm:aspect-[2.35/1] h-full sm:h-auto">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImage}
                 alt={bookmark.title ?? ""}
                 width={192}
-                height={82}
+                height={192}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
                 onError={handleImageError}
               />
             </div>
-            <div className="absolute bottom-2 left-2">
+            {/* 平台标识：移动端隐藏（空间不足），桌面端左下角 */}
+            <div className="absolute bottom-1 left-1 hidden sm:block">
               <PlatformBadge
                 platform={bookmark.platform ?? "UNKNOWN"}
                 size="sm"
@@ -683,31 +647,41 @@ export const BookmarkCard = memo(function BookmarkCard({
           </div>
 
           {/* 内容区域 */}
-          <div className="flex-1 p-3 sm:p-3 md:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex-1 p-2 sm:p-3 md:p-4 flex flex-col justify-between min-w-0">
             <div>
-              <h3
-                className={cn(
-                  "font-semibold line-clamp-2 sm:line-clamp-1 mb-1 text-sm sm:text-base",
-                  titleLoading
-                    ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
-                    : "text-gray-900 dark:text-white",
-                )}
-              >
-                {bookmark.title ?? ""}
-              </h3>
+              {/* 标题行：移动端含平台图标 */}
+              <div className="flex items-start gap-1.5 mb-0.5">
+                {/* 移动端内联平台图标（替代缩略图上的 Badge） */}
+                <div className="flex-shrink-0 mt-0.5 sm:hidden">
+                  <PlatformBadge
+                    platform={bookmark.platform ?? "UNKNOWN"}
+                    size="sm"
+                  />
+                </div>
+                <h3
+                  className={cn(
+                    "font-semibold line-clamp-1 text-sm sm:text-base flex-1",
+                    titleLoading
+                      ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
+                      : "text-gray-900 dark:text-white",
+                  )}
+                >
+                  {bookmark.title ?? ""}
+                </h3>
+              </div>
               {(() => {
                 const displaySummary = getDisplaySummary(bookmark.ai_summary);
                 return displaySummary ? (
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-1 sm:line-clamp-2">
                     {displaySummary}
                   </p>
                 ) : null;
               })()}
             </div>
 
-            <div className="flex items-center justify-between gap-2 mt-2">
+            <div className="flex items-center justify-between gap-2 mt-1 sm:mt-2">
               {/* 左侧：标签和评级 */}
-              <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <div className="flex items-center gap-1 sm:gap-2 flex-wrap min-w-0">
                 {/* V6.0新增：评级显示（List视图） */}
                 <BookmarkRatingDisplay
                   rating={bookmark.rating ?? 0}
@@ -721,7 +695,9 @@ export const BookmarkCard = memo(function BookmarkCard({
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 cursor-help flex-shrink-0">
                         <Sparkles className="h-3 w-3 animate-pulse" />
-                        <span>{t.bookmark.aiOrganizing}</span>
+                        <span className="hidden sm:inline">
+                          {t.bookmark.aiOrganizing}
+                        </span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[200px]">
@@ -807,9 +783,8 @@ export const BookmarkCard = memo(function BookmarkCard({
               </div>
 
               {/* 右侧：元信息 */}
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                {/* list 视图：简洁显示来源/作者 */}
-                <span className="truncate max-w-[80px] sm:max-w-none">
+              <div className="flex items-center gap-1 sm:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                <span className="truncate max-w-[60px] sm:max-w-none">
                   {bookmark.source_name || bookmark.author || t.common.other}
                 </span>
                 <span>·</span>
@@ -822,9 +797,9 @@ export const BookmarkCard = memo(function BookmarkCard({
             </div>
           </div>
 
-          {/* 桌面端：操作按钮 - 弱显示+悬停强调 */}
+          {/* 操作按钮：移动端始终可见，桌面端悬停强调 */}
           {!isSelectionMode && (
-            <div className="hidden sm:flex items-center px-3 opacity-60 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center px-1 sm:px-3 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
               <ActionMenu {...actionMenuProps} />
             </div>
           )}

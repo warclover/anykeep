@@ -306,13 +306,13 @@ export function VirtualBookmarkList({
   );
 
   // 根据视图模式计算估算项高度（优化 Virtuoso 渲染性能）
-  // compact: ~64px, list: ~120px, card: 动态高度（不使用固定值）
+  // compact: ~64px, list: ~80px（水平布局）, card: 动态高度（不使用固定值）
   const estimatedItemSize = useMemo(() => {
     switch (viewMode) {
       case "compact":
         return 72; // 64px 内容 + 8px 间距
       case "list":
-        return 136; // 120px 内容 + 16px 间距
+        return 96; // 80px 内容（水平布局） + 16px 间距
       default:
         return undefined; // card 视图使用动态高度
     }
