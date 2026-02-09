@@ -235,12 +235,15 @@ export function FolderCombobox({
           sideOffset={4}
           container={containerNode}
         >
-          <Command shouldFilter={false}>
+          <Command
+            shouldFilter={false}
+            className="[&_[data-slot=command-input-wrapper]]:outline-none [&_[data-slot=command-input-wrapper]]:ring-0"
+          >
             <CommandInput
               placeholder="搜索文件夹..."
               value={searchQuery}
               onValueChange={setSearchQuery}
-              className="text-base sm:text-sm"
+              className="text-base sm:text-sm outline-none ring-0"
             />
             <CommandList className="max-h-[200px] sm:max-h-[240px]">
               <CommandEmpty>未找到匹配的文件夹</CommandEmpty>
