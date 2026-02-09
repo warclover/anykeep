@@ -73,6 +73,9 @@ export default {
     "bg-gray-400",
     "bg-gray-500",
     "bg-slate-500",
+    // 粉色主题渐变色
+    "from-pink-400",
+    "to-rose-500",
   ],
   theme: {
     extend: {

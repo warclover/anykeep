@@ -16,8 +16,9 @@ import type { SnapshotType } from "@/lib/snapshot/snapshot.types";
  * - blue: 知性蓝（默认）- 专业稳重，适合知识管理
  * - purple: 活力紫 - 创意灵感，激发想象力
  * - orange: 温暖橙 - 高效能量，提升专注力
+ * - pink: 糖果粉 - 甜美活泼，充满少女心
  */
-export type ColorTheme = "blue" | "purple" | "orange";
+export type ColorTheme = "blue" | "purple" | "orange" | "pink";
 
 /**
  * 外观设置

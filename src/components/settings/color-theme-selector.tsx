@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useColorTheme, COLOR_THEME_INFO } from "@/hooks/core";
 import type { ColorTheme } from "@/types/user-settings";
 
-const THEMES: ColorTheme[] = ["blue", "purple", "orange"];
+const THEMES: ColorTheme[] = ["blue", "purple", "orange", "pink"];
 
 interface ColorThemeSelectorProps {
   /** 自定义类名 */
@@ -28,7 +28,7 @@ export function ColorThemeSelector({ className }: ColorThemeSelectorProps) {
   // 加载完成前显示骨架屏
   if (!isLoaded) {
     return (
-      <div className={cn("grid grid-cols-3 gap-3", className)}>
+      <div className={cn("grid grid-cols-4 gap-3", className)}>
         {THEMES.map((id) => (
           <div
             key={id}
@@ -44,7 +44,7 @@ export function ColorThemeSelector({ className }: ColorThemeSelectorProps) {
   }
 
   return (
-    <div className={cn("grid grid-cols-3 gap-3", className)}>
+    <div className={cn("grid grid-cols-4 gap-3", className)}>
       {THEMES.map((themeId) => {
         const info = COLOR_THEME_INFO[themeId];
         const isSelected = colorTheme === themeId;

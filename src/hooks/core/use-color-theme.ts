@@ -15,7 +15,7 @@ import type { ColorTheme } from "@/types/user-settings";
 
 const STORAGE_KEY = "anykeep-color-theme";
 const DEFAULT_THEME: ColorTheme = "blue";
-const VALID_THEMES: ColorTheme[] = ["blue", "purple", "orange"];
+const VALID_THEMES: ColorTheme[] = ["blue", "purple", "orange", "pink"];
 
 export interface UseColorThemeReturn {
   /** 当前颜色主题 */
@@ -149,6 +149,12 @@ export const COLOR_THEME_INFO: Record<
     gradient: "from-orange-500 to-orange-400",
     primaryColor: "#f97316",
   },
+  pink: {
+    name: "糖果粉",
+    description: "甜美活泼，充满少女心",
+    gradient: "from-pink-400 to-rose-500",
+    primaryColor: "#ff3366",
+  },
 };
 
 /**
@@ -159,7 +165,7 @@ export const COLOR_THEME_INIT_SCRIPT = `
 (function() {
   try {
     var theme = localStorage.getItem('${STORAGE_KEY}');
-    if (theme && ['blue', 'purple', 'orange'].includes(theme)) {
+    if (theme && ['blue', 'purple', 'orange', 'pink'].includes(theme)) {
       document.documentElement.setAttribute('data-color-theme', theme);
     } else {
       document.documentElement.setAttribute('data-color-theme', '${DEFAULT_THEME}');

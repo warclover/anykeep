@@ -129,6 +129,23 @@
   --sidebar-primary: 25 95% 60%;
 }
 
+/* === 糖果粉主题 === */
+:root[data-color-theme="pink"],
+[data-color-theme="pink"] {
+  --primary: 344 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 344 100% 60%;
+  --sidebar-primary: 344 100% 60%;
+}
+
+.dark[data-color-theme="pink"],
+[data-color-theme="pink"].dark {
+  --primary: 344 100% 68%;
+  --primary-foreground: 344 100% 10%;
+  --ring: 344 100% 50%;
+  --sidebar-primary: 344 100% 68%;
+}
+
 /* ============================================
  * 间距系统 - 4px 基准
  * V4.2.25 UI 升级 - 统一间距规范
