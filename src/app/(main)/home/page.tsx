@@ -124,11 +124,16 @@ const getInitialBookmarks = cache(
       if (folder === "trash") {
         query = query.eq("is_in_trash", true);
       } else if (folder === "invalid") {
-        query = query.eq("is_invalid", true).eq("is_in_trash", false);
+        query = query
+          .eq("is_invalid", true)
+          .or("is_in_trash.eq.false,is_in_trash.is.null");
       } else if (folder === "high-value") {
-        query = query.eq("rating", 5).eq("is_in_trash", false);
+        query = query
+          .eq("rating", 5)
+          .or("is_in_trash.eq.false,is_in_trash.is.null");
       } else {
-        query = query.eq("is_in_trash", false);
+        // 兼容 is_in_trash 为 NULL 的情况（与 API GET 保持一致）
+        query = query.or("is_in_trash.eq.false,is_in_trash.is.null");
       }
 
       // 平台筛选

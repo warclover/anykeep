@@ -194,6 +194,7 @@ export const createBookmarkTool: Tool<
           user_tags: params.tags || [],
           is_starred: params.isStarred || false,
           is_read: false,
+          is_in_trash: false,
           status: params.title ? "COMPLETED" : "PENDING", // 如果没有标题，标记为待处理
           platform,
           created_at: now,

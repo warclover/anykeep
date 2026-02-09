@@ -856,6 +856,7 @@ export async function POST(request: NextRequest) {
       word_count: wordCount || null,
       image_count: imageCount || null,
       status: "PROCESSING", // 标记为处理中（AI 内容异步生成中）
+      is_in_trash: false,
     };
 
     // 10. 插入收藏记录
