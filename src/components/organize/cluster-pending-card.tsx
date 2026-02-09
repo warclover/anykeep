@@ -103,7 +103,7 @@ export function ClusterPendingCard({
     if (onClick) {
       onClick();
     } else {
-      router.push("/organize/clustering");
+      router.push("/inbox");
     }
   };
 

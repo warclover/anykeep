@@ -166,7 +166,7 @@ export function ClusterStatsTab() {
               </p>
             </div>
           )}
-          <Button onClick={() => router.push("/organize/clustering")}>
+          <Button onClick={() => router.push("/inbox")}>
             {LABELS.goToCluster}
           </Button>
         </CardContent>
