@@ -49,9 +49,9 @@ export const ConsensusSection = memo(function ConsensusSection({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
+      <Card className="border-l-4 border-green-400 overflow-hidden">
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+          <CardHeader className="cursor-pointer bg-green-50/80 dark:bg-green-950/30 hover:bg-green-100/80 dark:hover:bg-green-900/30 transition-colors">
             <CardTitle className="flex items-center gap-2 text-lg">
               {isOpen ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -68,7 +68,7 @@ export const ConsensusSection = memo(function ConsensusSection({
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="space-y-4 pt-0">
+          <CardContent className="space-y-4 pt-4">
             {items.map((item, index) => (
               <div
                 key={index}

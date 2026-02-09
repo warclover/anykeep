@@ -321,7 +321,7 @@ export function SynthesisDetailPageClient({
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-6 space-y-6">
+      <div className="container max-w-7xl py-6 space-y-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-8 w-8" />
           <Skeleton className="h-8 w-64" />
@@ -334,7 +334,7 @@ export function SynthesisDetailPageClient({
 
   if (error || !report) {
     return (
-      <div className="container max-w-4xl py-6">
+      <div className="container max-w-7xl py-6">
         <div className="text-center py-12">
           <p className="text-destructive mb-4">加载失败，请重试</p>
           <Button variant="outline" onClick={() => refetch()}>
@@ -347,7 +347,7 @@ export function SynthesisDetailPageClient({
   }
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6 h-full overflow-auto">
+    <div className="container max-w-7xl py-6 space-y-6 h-full overflow-auto">
       {/* 顶部导航 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

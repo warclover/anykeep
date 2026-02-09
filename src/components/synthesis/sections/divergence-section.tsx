@@ -49,9 +49,9 @@ export const DivergenceSection = memo(function DivergenceSection({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
+      <Card className="border-l-4 border-amber-400 overflow-hidden">
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+          <CardHeader className="cursor-pointer bg-amber-50/80 dark:bg-amber-950/30 hover:bg-amber-100/80 dark:hover:bg-amber-900/30 transition-colors">
             <CardTitle className="flex items-center gap-2 text-lg">
               {isOpen ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -68,10 +68,10 @@ export const DivergenceSection = memo(function DivergenceSection({
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="space-y-6 pt-0">
+          <CardContent className="space-y-6 pt-4">
             {items.map((item, index) => (
               <div key={index} className="space-y-3">
-                <h4 className="font-medium text-sm">{item.topic}</h4>
+                <h4 className="text-sm">{item.topic}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* 观点 A */}
                   <div className="border rounded-lg p-3 bg-muted/30">
@@ -111,8 +111,11 @@ export const DivergenceSection = memo(function DivergenceSection({
                   </div>
                 </div>
                 {/* AI 分析 */}
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs text-muted-foreground italic">
+                <div className="bg-muted/40 rounded-lg p-3 border-l-2 border-amber-300 dark:border-amber-600">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground/70">
+                      💡 分析：
+                    </span>
                     {item.analysis}
                   </p>
                 </div>
