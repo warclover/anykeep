@@ -428,12 +428,7 @@ export function ConversationListCompact({
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={onToggle}
-            >
+            <Button variant="ghost" size="icon" onClick={onToggle}>
               <History className="h-4 w-4" />
             </Button>
           </TooltipTrigger>

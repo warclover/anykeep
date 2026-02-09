@@ -81,7 +81,7 @@ function FontSettingsPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+        <Button variant="ghost" size="icon">
           <Settings2 className="size-4" />
         </Button>
       </PopoverTrigger>
@@ -98,8 +98,7 @@ function FontSettingsPopover({
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon"
                 onClick={() => onFontSizeChange(settings.fontSize - 2)}
                 disabled={settings.fontSize <= 12}
               >
@@ -115,8 +114,7 @@ function FontSettingsPopover({
               />
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon"
                 onClick={() => onFontSizeChange(settings.fontSize + 2)}
                 disabled={settings.fontSize >= 24}
               >
@@ -166,7 +164,7 @@ function TocPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+        <Button variant="ghost" size="icon">
           <List className="size-4" />
         </Button>
       </PopoverTrigger>
@@ -240,9 +238,7 @@ export function ReaderToolbar({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs text-muted-foreground w-8">
-            {progress}%
-          </span>
+          <span className="text-xs text-muted-foreground w-8">{progress}%</span>
         </div>
       )}
 
@@ -260,12 +256,7 @@ export function ReaderToolbar({
 
       {/* 复制全文 */}
       {onCopyText && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={handleCopy}
-        >
+        <Button variant="ghost" size="icon" onClick={handleCopy}>
           {copied ? (
             <Check className="size-4 text-green-500" />
           ) : (
