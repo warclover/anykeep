@@ -162,7 +162,11 @@ export const createBookmarkSchema = z.object({
       VALIDATION.TOO_LONG("描述", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
     )
     .optional(),
-  folderId: z.coerce.number().int().positive().optional(),
+  folderId: z.preprocess(
+    (val) =>
+      val === null || val === undefined || val === "" ? undefined : val,
+    z.coerce.number().int().positive().optional(),
+  ),
   userTags: tagsArraySchema.optional(),
   notes: z
     .string()
@@ -172,12 +176,10 @@ export const createBookmarkSchema = z.object({
       VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
     )
     .optional(),
-  coverUrl: z
-    .string()
-    .trim()
-    .url(VALIDATION.INVALID_FORMAT("封面图 URL"))
-    .optional()
-    .or(z.literal("")),
+  coverUrl: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.string().trim().url(VALIDATION.INVALID_FORMAT("封面图 URL")).optional(),
+  ),
   // 来源和作者信息（从元数据自动获取）
   sourceName: z
     .string()
@@ -192,8 +194,16 @@ export const createBookmarkSchema = z.object({
     .optional()
     .or(z.literal("")),
   // 内容统计（从元数据自动获取）
-  wordCount: z.coerce.number().int().nonnegative().optional(),
-  imageCount: z.coerce.number().int().nonnegative().optional(),
+  wordCount: z.preprocess(
+    (val) =>
+      val === null || val === undefined || val === "" ? undefined : val,
+    z.coerce.number().int().nonnegative().optional(),
+  ),
+  imageCount: z.preprocess(
+    (val) =>
+      val === null || val === undefined || val === "" ? undefined : val,
+    z.coerce.number().int().nonnegative().optional(),
+  ),
   // 发布时间（从元数据自动获取，ISO 8601 格式）
   publishTime: z
     .string()

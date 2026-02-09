@@ -142,6 +142,11 @@ export function useNotificationCount(): UseNotificationCountReturn {
     staleTime: 30 * 1000, // 30 秒缓存
     refetchInterval: 60 * 1000, // 每分钟刷新
     refetchOnWindowFocus: true,
+    // 网络错误退避策略：限制重试次数，防止连接断开时无限重试刷屏
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // 查询失败时暂停轮询，恢复连接后自动恢复
+    refetchIntervalInBackground: false,
   });
 
   // ==================== 通知列表查询 ====================
@@ -207,6 +212,9 @@ export function useNotificationCount(): UseNotificationCountReturn {
     },
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+    // 网络错误退避策略：与计数查询保持一致
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // ==================== 标记已读 ====================
