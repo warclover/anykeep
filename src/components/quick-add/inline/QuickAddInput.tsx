@@ -8,7 +8,7 @@
  */
 
 import { forwardRef, useCallback, useEffect, useRef } from "react";
-import { Link2, Loader2 } from "lucide-react";
+import { Link2, FolderHeart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClipboardPaste, isValidUrl } from "../hooks/useClipboardPaste";
 import type { QuickAddMode } from "../hooks/useQuickAddState";
@@ -171,12 +171,12 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
         <div
           className={cn(
             "flex-shrink-0 transition-colors duration-200",
-            isIdle && "text-purple-500",
-            (isFocused || isLoading) && "text-purple-600",
+            isIdle && "text-pink-400",
+            (isFocused || isLoading) && "text-pink-500",
           )}
         >
           {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <FolderHeart className="w-4 h-4 animate-absorb-target-pulse" />
           ) : (
             <Link2 className="w-4 h-4" />
           )}
@@ -204,10 +204,17 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           )}
         />
 
-        {/* Loading indicator text */}
+        {/* Loading indicator - 与收藏按钮保持一致的形态 */}
         {isLoading && (
-          <span className="text-xs text-purple-500 animate-pulse">
-            获取中...
+          <span
+            className={cn(
+              "flex items-center gap-1.5 h-7 px-3 rounded-full",
+              "text-xs font-medium text-pink-500",
+              "animate-absorb-target-pulse",
+            )}
+          >
+            <FolderHeart className="w-4 h-4" />
+            获取中
           </span>
         )}
       </div>

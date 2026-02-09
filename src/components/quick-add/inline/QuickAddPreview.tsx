@@ -253,8 +253,8 @@ export function QuickAddPreview({
             // 吸入完成：弹跳发光
             isAbsorbed && "animate-absorb-bounce animate-absorb-glow",
 
-            // 提交中：降低透明度
-            isSubmitting && "opacity-70 cursor-not-allowed",
+            // 提交中：脉动动效（与获取中一致）
+            isSubmitting && "animate-absorb-target-pulse cursor-not-allowed",
             !isSubmitting && "hover:scale-105",
           )}
           onClick={() => {
@@ -266,7 +266,7 @@ export function QuickAddPreview({
         >
           {isSubmitting ? (
             <>
-              <FolderHeart className="w-5 h-5 animate-absorb-target-pulse" />
+              <FolderHeart className="w-5 h-5" />
               保存中
             </>
           ) : (
