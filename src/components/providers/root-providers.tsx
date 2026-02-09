@@ -197,7 +197,7 @@ export function RootProviders({ children }: RootProvidersProps) {
             )}
           </NavigationProviders>
           {/* 全局组件（在 Provider 树内但不影响嵌套结构） */}
-          <Toaster position="top-center" offset={60} />
+          <Toaster position="bottom-right" />
           {/* FeedbackFloatingButton 已移至 FloatingActionMenu 统一管理 */}
           <ServiceWorkerRegister />
           {/* Web Vitals 性能监控 */}

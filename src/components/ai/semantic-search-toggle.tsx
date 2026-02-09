@@ -169,4 +169,48 @@ export function SearchModeToggleGroup({
   );
 }
 
+/**
+ * 搜索模式内嵌切换（嵌入搜索框右侧的紧凑版）
+ *
+ * 只显示两个按钮，无描述文案，适合放在 Input 内部
+ */
+export function InlineSearchModeToggle({
+  mode,
+  onModeChange,
+  disabled = false,
+  className,
+}: SemanticSearchToggleProps) {
+  const aiEnabled = isAIMode(mode);
+
+  return (
+    <div className={cn("flex rounded-md border p-0.5 bg-muted/30", className)}>
+      <Button
+        variant={!aiEnabled ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onModeChange("keyword")}
+        disabled={disabled}
+        className="h-7 px-2 gap-1 text-xs"
+        type="button"
+      >
+        <Search className="size-3.5" />
+        <span>普通</span>
+      </Button>
+      <Button
+        variant={aiEnabled ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onModeChange("hybrid")}
+        disabled={disabled}
+        className={cn(
+          "h-7 px-2 gap-1 text-xs",
+          aiEnabled && "bg-purple-600 hover:bg-purple-700 text-white",
+        )}
+        type="button"
+      >
+        <Sparkles className="size-3.5" />
+        <span>AI</span>
+      </Button>
+    </div>
+  );
+}
+
 export default SemanticSearchToggle;

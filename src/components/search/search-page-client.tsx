@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { SearchResultCard } from "@/components/search/search-result-card";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
-  SemanticSearchToggle,
+  InlineSearchModeToggle,
   AISearchSuggestions,
   AISearchEnhanced,
   type SearchMode,
@@ -87,7 +87,6 @@ export function SearchPageClient({
     }
     return [];
   });
-  const [showHistory, setShowHistory] = useState(false);
   // V4.3.0: 控制 AI 搜索建议显示
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -149,7 +148,6 @@ export function SearchPageClient({
     },
     onClosePopup: () => {
       setShowSuggestions(false);
-      setShowHistory(false);
     },
   });
 
@@ -314,7 +312,6 @@ export function SearchPageClient({
     if (!searchQuery.trim()) return;
 
     saveToHistory(searchQuery);
-    setShowHistory(false);
 
     // 更新 URL
     const params = new URLSearchParams();
@@ -376,25 +373,22 @@ export function SearchPageClient({
           {/* 空状态标题区域 - 仅在无搜索时显示 */}
           {!hasQuery && (
             <div className="flex flex-col items-center text-center mb-6 pt-4">
-              {/* 紫色大图标 */}
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20 rounded-full flex items-center justify-center mb-4">
-                <Search className="size-10 text-purple-500 dark:text-purple-400" />
+              {/* 紫色图标 - 缩小尺寸突出搜索框焦点 */}
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20 rounded-full flex items-center justify-center mb-3">
+                <Search className="size-7 text-purple-500 dark:text-purple-400" />
               </div>
               {/* 标题 */}
               <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
                 开始搜索你的收藏
               </h2>
-              {/* 副标题 */}
+              {/* 副标题 - 合并为单行，消除信息冗余 */}
               <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md">
-                输入关键词搜索标题、作者或摘要，或点击下方热门标签快速开始
-              </p>
-              <p className="text-purple-500 dark:text-purple-400 text-sm mt-1">
-                在你的收藏中搜索内容，支持 AI 语义搜索
+                搜索标题、作者或摘要，支持 AI 语义匹配
               </p>
             </div>
           )}
 
-          {/* 大搜索框 */}
+          {/* 搜索框 + AI 切换一体化 */}
           <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
             <Input
@@ -403,7 +397,6 @@ export function SearchPageClient({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                setShowHistory(true);
                 setShowSuggestions(true);
                 setIsInputFocused(true);
               }}
@@ -411,25 +404,31 @@ export function SearchPageClient({
                 // 延迟关闭，允许点击建议
                 setTimeout(() => {
                   setShowSuggestions(false);
-                  setShowHistory(false);
                   setIsInputFocused(false);
                 }, 200);
               }}
               placeholder="搜索标题、作者、摘要..."
-              className="pl-12 pr-4 h-14 text-base"
+              className="pl-12 pr-[10.5rem] h-14 text-base"
             />
-            {query && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-              >
-                <X className="size-4" />
-              </Button>
-            )}
+            {/* 右侧操作区：清除按钮 + AI 切换 */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {query && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setQuery("")}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
+              <InlineSearchModeToggle
+                mode={searchMode}
+                onModeChange={handleSearchModeChange}
+              />
+            </div>
 
-            {/* V4.3.0: AI 搜索建议（下拉面板） */}
+            {/* V4.3.0: AI 搜��建议（下拉面板） */}
             <AISearchSuggestions
               query={query}
               onSuggestionSelect={handleSuggestionSelect}
@@ -438,22 +437,15 @@ export function SearchPageClient({
             />
           </div>
 
-          {/* V4.3.0: AI 语义搜索开关（使用 SemanticSearchToggle 组件） */}
-          <SemanticSearchToggle
-            mode={searchMode}
-            onModeChange={handleSearchModeChange}
-            className="mb-4"
-          />
-
-          {/* V4.4.2: 键盘快捷键提示 */}
+          {/* V4.4.2: 键盘快捷键提示 — 仅桌面端显示 */}
           <SearchKeyboardHints
             shortcuts={shortcuts}
             visible={!hasQuery}
-            className="mb-6"
+            className="mb-6 hidden md:flex"
           />
 
-          {/* 搜索历史（仅在聚焦且有历史时显示） */}
-          {showHistory && searchHistory.length > 0 && !hasQuery && (
+          {/* 搜索历史 — 空状态下默认展示，降低冷启动感 */}
+          {searchHistory.length > 0 && !hasQuery && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -490,7 +482,7 @@ export function SearchPageClient({
 
         {/* 搜索结果 */}
         {hasQuery && (
-          <div className="max-w-7xl mx-auto mt-8">
+          <div className="max-w-4xl mx-auto mt-8">
             {isClientSearching ? (
               // V4.2.17: 客户端搜索加载状态
               <div className="flex flex-col items-center justify-center py-16">

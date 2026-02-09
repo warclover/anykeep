@@ -83,6 +83,7 @@ export { AIQuickActions, type AIQuickActionsProps } from "./ai-quick-actions";
 export {
   SemanticSearchToggle,
   SearchModeToggleGroup,
+  InlineSearchModeToggle,
   type SemanticSearchToggleProps,
   type SearchMode,
 } from "./semantic-search-toggle";
