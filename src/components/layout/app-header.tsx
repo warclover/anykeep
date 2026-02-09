@@ -263,11 +263,11 @@ export const AppHeader = memo(function AppHeader() {
               {t.mobileMenu.manualCreate}
             </Button>
 
-            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 次要操作 */}
+            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 次要操作（边框宽度与手动创建一致） */}
             {!isBrowserPlatform && !currentFolder && homeContext && (
               <Button
                 variant="outline"
-                className="shrink-0 h-8 px-3 text-sm text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
+                className="shrink-0 h-8 px-3 text-sm border-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
                 onClick={handleOpenFilterPanel}
               >
                 <Filter className="size-3.5 mr-1" />
@@ -275,11 +275,11 @@ export const AppHeader = memo(function AppHeader() {
               </Button>
             )}
 
-            {/* AI 助理按钮 - 次要操作 */}
+            {/* AI 助理按钮 - 次要操作（边框宽度与手动创建一致） */}
             {homeContext && (
               <Button
                 variant="outline"
-                className="shrink-0 h-8 px-3 text-sm text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
+                className="shrink-0 h-8 px-3 text-sm border-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
                 onClick={() => homeContext.aiPanel.toggleAIPanel()}
               >
                 <Sparkles className="size-3.5 mr-1" />
