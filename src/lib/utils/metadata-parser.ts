@@ -56,23 +56,65 @@ export function parseHTMLMetadata(html: string, url: string): WebMetadata {
 }
 
 /**
+ * 标题最大长度（与 DB VARCHAR(500) 和 Zod 验证保持一致）
+ */
+const TITLE_MAX_LENGTH = 500;
+
+/**
  * 提取页面标题
- * 优先级：og:title > twitter:title > <title>
+ * 优先级：og:title > twitter:title > 微信 msg_title > <title>
+ *
+ * 微信反爬时 og:title / twitter:title 均不返回，
+ * 需要从 JS 变量 msg_title 降级提取，并截断超长标题防止验证失败
  */
 function extractTitle(html: string): string {
   // 1. Open Graph title
   const ogTitle = extractMetaContent(html, "og:title", "property");
-  if (ogTitle) return cleanText(ogTitle);
+  if (ogTitle) return truncateTitle(cleanText(ogTitle));
 
   // 2. Twitter title
   const twitterTitle = extractMetaContent(html, "twitter:title", "name");
-  if (twitterTitle) return cleanText(twitterTitle);
+  if (twitterTitle) return truncateTitle(cleanText(twitterTitle));
 
-  // 3. HTML <title>
+  // 3. 微信公众号降级：从 JS 变量 var msg_title = "..." 提取
+  const wechatTitle = extractWechatJsTitle(html);
+  if (wechatTitle) return truncateTitle(cleanText(wechatTitle));
+
+  // 4. HTML <title>
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (titleMatch) return cleanText(titleMatch[1]);
+  if (titleMatch) return truncateTitle(cleanText(titleMatch[1]));
 
   return "";
+}
+
+/**
+ * 从微信公众号文章 HTML 中提取标题（降级方案）
+ * 微信反爬时 og:title 不返回，但标题通常嵌入在 JS 变量中：
+ * - var msg_title = "文章标题";
+ * - var title = "文章标题";（部分旧版页面）
+ */
+function extractWechatJsTitle(html: string): string {
+  const patterns = [
+    /var\s+msg_title\s*=\s*['"]([^'"]+)['"]/,
+    /var\s+title\s*=\s*['"]([^'"]{1,500})['"]/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1] && match[1].trim().length > 0) {
+      return match[1].trim();
+    }
+  }
+
+  return "";
+}
+
+/**
+ * 截断超长标题，防止超出 DB / Zod 验证限制
+ */
+function truncateTitle(title: string): string {
+  if (title.length <= TITLE_MAX_LENGTH) return title;
+  return title.substring(0, TITLE_MAX_LENGTH - 1) + "…";
 }
 
 /**
@@ -97,7 +139,7 @@ function extractDescription(html: string): string {
 
 /**
  * 提取封面图片
- * 优先级：og:image > twitter:image > 页面内第一张大图
+ * 优先级：og:image > twitter:image > twitter:image:src > 微信 msg_cdn_url > 空
  */
 function extractCoverImage(html: string, baseUrl: string): string {
   // 1. Open Graph image
@@ -111,6 +153,38 @@ function extractCoverImage(html: string, baseUrl: string): string {
   // 3. Twitter image:src (备用)
   const twitterImageSrc = extractMetaContent(html, "twitter:image:src", "name");
   if (twitterImageSrc) return resolveUrl(twitterImageSrc, baseUrl);
+
+  // 4. 微信公众号文章降级方案：从 JS 变量 msg_cdn_url 提取封面
+  //    微信对服务端 fetch 做了反爬处理，og:image 可能不返回，
+  //    但封面图 URL 通常嵌入在 var msg_cdn_url = "..." 中
+  const wechatCover = extractWechatCdnCoverUrl(html);
+  if (wechatCover) return resolveUrl(wechatCover, baseUrl);
+
+  return "";
+}
+
+/**
+ * 从微信公众号文章 HTML 中提取封面图 URL（降级方案）
+ * 微信文章页面在服务端 fetch 时可能不返回 og:image meta 标签，
+ * 但封面图 URL 通常嵌入在以下 JS 变量中：
+ * - var msg_cdn_url = "http://mmbiz.qpic.cn/...";
+ * - var cdn_url_1_1 = "http://mmbiz.qpic.cn/...";（1:1 裁切版）
+ * - var cdn_url = "http://mmbiz.qpic.cn/...";
+ */
+function extractWechatCdnCoverUrl(html: string): string {
+  // 优先提取 msg_cdn_url（原始封面）
+  const patterns = [
+    /var\s+msg_cdn_url\s*=\s*"([^"]+)"/,
+    /var\s+cdn_url_1_1\s*=\s*"([^"]+)"/,
+    /var\s+cdn_url\s*=\s*"([^"]+)"/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1] && match[1].length > 0) {
+      return match[1];
+    }
+  }
 
   return "";
 }

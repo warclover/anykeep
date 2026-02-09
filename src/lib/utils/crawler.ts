@@ -25,6 +25,66 @@ export interface CrawlResult {
 }
 
 /**
+ * 从微信公众号文章 HTML 中提取封面图 URL（降级方案）
+ * 微信文章页面在服务端 fetch 时可能不返回 og:image meta 标签，
+ * 但封面图 URL 通常嵌入在 JS 变量中：
+ * - var msg_cdn_url = "http://mmbiz.qpic.cn/...";
+ * - var cdn_url_1_1 = "http://mmbiz.qpic.cn/...";（1:1 裁切版）
+ * - var cdn_url = "http://mmbiz.qpic.cn/...";
+ */
+function extractWechatCdnCoverUrl(html: string): string | undefined {
+  const patterns = [
+    /var\s+msg_cdn_url\s*=\s*"([^"]+)"/,
+    /var\s+cdn_url_1_1\s*=\s*"([^"]+)"/,
+    /var\s+cdn_url\s*=\s*"([^"]+)"/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1] && match[1].length > 0) {
+      return decodeHtmlEntities(match[1]);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * 标题最大长度（与 DB VARCHAR(500) 和 Zod 验证保持一致）
+ */
+const TITLE_MAX_LENGTH = 500;
+
+/**
+ * 从微信公众号文章 HTML 中提取标题（降级方案）
+ * 微信反爬时 og:title 不返回，但标题通常嵌入在 JS 变量中：
+ * - var msg_title = "文章标题";
+ * - var title = "文章标题";（部分旧版页面）
+ */
+function extractWechatJsTitle(html: string): string | undefined {
+  const patterns = [
+    /var\s+msg_title\s*=\s*['"]([^'"]+)['"]/,
+    /var\s+title\s*=\s*['"]([^'"]{1,500})['"]/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match[1] && match[1].trim().length > 0) {
+      return decodeHtmlEntities(match[1].trim());
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * 截断超长标题，防止超出 DB / Zod 验证限制
+ */
+function truncateTitle(title: string): string {
+  if (title.length <= TITLE_MAX_LENGTH) return title;
+  return title.substring(0, TITLE_MAX_LENGTH - 1) + "…";
+}
+
+/**
  * 从 HTML 中提取 meta 标签内容
  */
 function extractMetaTag(html: string, name: string): string | undefined {
@@ -89,11 +149,15 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
   const html = await fetchPage(url);
 
   // 提取标题
-  const title =
+  // 微信反爬时 og:title / twitter:title 均不返回，
+  // 需要从 JS 变量 msg_title 降级提取，并截断超长标题防止验证失败
+  const title = truncateTitle(
     extractMetaTag(html, "og:title") ||
-    extractMetaTag(html, "twitter:title") ||
-    extractTitle(html) ||
-    "未知标题";
+      extractMetaTag(html, "twitter:title") ||
+      extractWechatJsTitle(html) ||
+      extractTitle(html) ||
+      "未知标题",
+  );
 
   // 分别提取公众号名称和文章作者
   const { sourceName, author } = extractWechatSourceAndAuthor(html);
@@ -102,8 +166,12 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
   const publishTime = extractWechatPublishTime(html);
 
   // 提取封面
+  // 微信对服务端 fetch 做了反爬处理，og:image 可能不返回，
+  // 降级从 JS 变量 msg_cdn_url / cdn_url_1_1 / cdn_url 中提取
   const coverUrl =
-    extractMetaTag(html, "og:image") || extractMetaTag(html, "twitter:image");
+    extractMetaTag(html, "og:image") ||
+    extractMetaTag(html, "twitter:image") ||
+    extractWechatCdnCoverUrl(html);
 
   // 提取描述
   const description =

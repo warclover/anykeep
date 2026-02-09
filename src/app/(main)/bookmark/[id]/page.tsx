@@ -1,5 +1,6 @@
-// 标记为动态路由
-export const dynamic = "force-dynamic";
+// V5.7: 移除 force-dynamic，页面已通过 cookies() 自动标记为动态渲染
+// Next.js 会根据 getAuthenticatedUserIdFromCookies 中的 cookies() 调用自动选择动态模式
+// 移除后可保留路由段缓存（Router Cache），减少重复导航的开销
 
 /**
  * 收藏详情页面
