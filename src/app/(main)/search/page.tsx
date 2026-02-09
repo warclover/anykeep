@@ -5,7 +5,7 @@
 
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUserId } from "@/lib/server/auth";
+import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { SearchPageClient } from "@/components/search/search-page-client";
 import { HotTagsSection } from "@/components/search/hot-tags-section";
 import { HotTagsSkeleton } from "@/components/search/hot-tags-skeleton";
@@ -30,8 +30,12 @@ interface SearchPageProps {
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
-  const userId = await getAuthenticatedUserId();
+  // 从 Middleware 预验证的 cookies 获取用户 ID（兼容页面路由）
+  const userId = await getAuthenticatedUserIdFromCookies();
+  if (!userId) {
+    const { redirect } = await import("next/navigation");
+    redirect("/login");
+  }
   const supabase = await createClient();
 
   // 如果有搜索关键词，验证并执行搜索

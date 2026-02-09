@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUserId } from "@/lib/server/auth";
+import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { TagsPageClient } from "@/components/tags/tags-page-client";
 
 export interface TagWithCount {
@@ -17,8 +17,12 @@ export interface TagWithCount {
 }
 
 export default async function TagsPage() {
-  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
-  const userId = await getAuthenticatedUserId();
+  // 从 Middleware 预验证的 cookies 获取用户 ID（兼容页面路由）
+  const userId = await getAuthenticatedUserIdFromCookies();
+  if (!userId) {
+    const { redirect } = await import("next/navigation");
+    redirect("/login");
+  }
   const supabase = await createClient();
 
   // 获取所有收藏的标签

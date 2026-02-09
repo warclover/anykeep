@@ -7,15 +7,19 @@ export const dynamic = "force-dynamic";
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUserId } from "@/lib/server/auth";
+import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
 import type { FolderWithStats } from "@/types/domain";
 
 export default async function FoldersPage() {
-  // 从 Middleware 预验证的 header 获取用户 ID（无网络请求）
-  const userId = await getAuthenticatedUserId();
+  // 从 Middleware 预验证的 cookies 获取用户 ID（兼容页面路由）
+  const userId = await getAuthenticatedUserIdFromCookies();
+  if (!userId) {
+    const { redirect } = await import("next/navigation");
+    redirect("/login");
+  }
   const supabase = await createClient();
 
   // 获取用户的所有文件夹
