@@ -38,23 +38,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Folder as FolderType } from "@/types/supabase";
-
-/**
- * 树形文件夹节点类型
- */
-interface FolderTreeNode extends FolderType {
-  children: FolderTreeNode[];
-}
-
-/**
- * 扁平化文件夹项（带层级信息）
- */
-interface FlattenedFolder {
-  id: number;
-  name: string;
-  level: number; // 层级深度（0 为根节点）
-}
+import type { FolderTreeNode } from "@/types/supabase";
+import { flattenFolderTree, getIndentedName } from "@/lib/utils/folder-tree";
 
 interface MoveToFolderDialogProps {
   open: boolean;
@@ -108,44 +93,6 @@ export function MoveToFolderDialog({
       setSelectedFolderId(bookmark.folder_id?.toString() || "none");
     }
   }, [open, bookmark.folder_id]);
-
-  /**
-   * 递归扁平化文件夹树，添加层级信息
-   */
-  const flattenFolderTree = (
-    nodes: FolderTreeNode[],
-    level: number = 0,
-  ): FlattenedFolder[] => {
-    const result: FlattenedFolder[] = [];
-
-    for (const node of nodes) {
-      // 跳过系统文件夹（INBOX 等）
-      if (node.is_system) {
-        continue;
-      }
-
-      result.push({
-        id: node.id,
-        name: node.name,
-        level,
-      });
-
-      // 递归处理子文件夹
-      if (node.children && node.children.length > 0) {
-        result.push(...flattenFolderTree(node.children, level + 1));
-      }
-    }
-
-    return result;
-  };
-
-  /**
-   * 生成带缩进的文件夹名称
-   */
-  const getIndentedName = (folder: FlattenedFolder): string => {
-    const indent = "　".repeat(folder.level); // 使用全角空格缩进
-    return `${indent}${folder.name}`;
-  };
 
   /**
    * 提交移动操作

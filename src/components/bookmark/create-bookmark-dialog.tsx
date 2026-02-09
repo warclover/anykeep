@@ -36,13 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FolderCombobox } from "./folder-combobox";
 import { createBookmarkSchema } from "@/lib/validation";
 import { extractUrlFromShareText } from "@/lib/utils/url-extractor";
 import {
@@ -841,21 +835,14 @@ export function CreateBookmarkDialog({
                     <Label htmlFor="folder" className="text-gray-600">
                       文件夹
                     </Label>
-                    <Select value={folderId} onValueChange={setFolderId}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="选择文件夹（可选）" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {folders.map((folder) => (
-                          <SelectItem
-                            key={folder.id}
-                            value={folder.id.toString()}
-                          >
-                            {folder.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FolderCombobox
+                      value={folderId}
+                      onValueChange={setFolderId}
+                      folders={folders}
+                      placeholder="选择文件夹（可选）"
+                      allowClear={false}
+                      triggerClassName="bg-white"
+                    />
                   </div>
                 )}
 

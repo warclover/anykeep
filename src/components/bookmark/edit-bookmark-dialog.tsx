@@ -23,13 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FolderCombobox } from "./folder-combobox";
 import { updateBookmarkSchema } from "@/lib/validation";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { UsageTagSelector } from "./usage-tag-selector";
@@ -235,19 +229,14 @@ export function EditBookmarkDialog({
           {folders.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="folder">文件夹</Label>
-              <Select value={folderId} onValueChange={setFolderId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择文件夹（可选）" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">无文件夹</SelectItem>
-                  {folders.map((folder) => (
-                    <SelectItem key={folder.id} value={folder.id.toString()}>
-                      {folder.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FolderCombobox
+                value={folderId}
+                onValueChange={setFolderId}
+                folders={folders}
+                placeholder="选择文件夹（可选）"
+                allowClear={true}
+                clearLabel="无文件夹"
+              />
             </div>
           )}
 
