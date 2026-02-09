@@ -126,7 +126,7 @@ export const AppHeader = memo(function AppHeader() {
 
         {/* Logo */}
         <Link href="/home" className="flex items-center space-x-2 shrink-0">
-          <span className="text-lg md:text-xl font-bold text-purple-600 dark:text-purple-400">
+          <span className="text-lg md:text-xl font-bold text-pink-600 dark:text-pink-400">
             AnyKeep
           </span>
         </Link>

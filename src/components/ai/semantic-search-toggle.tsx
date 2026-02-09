@@ -118,7 +118,7 @@ export function SemanticSearchToggle({
           disabled={disabled}
           className={cn(
             "h-7 px-2.5 gap-1.5 text-xs",
-            aiEnabled && "bg-purple-600 hover:bg-purple-700 text-white",
+            aiEnabled && "bg-pink-600 hover:bg-pink-700 text-white",
           )}
         >
           <Sparkles className="size-3.5" />
@@ -159,7 +159,7 @@ export function SearchModeToggleGroup({
         disabled={disabled}
         className={cn(
           "flex-1 h-8 gap-1.5",
-          aiEnabled && "bg-purple-600 hover:bg-purple-700 text-white",
+          aiEnabled && "bg-pink-600 hover:bg-pink-700 text-white",
         )}
       >
         <Sparkles className="size-4" />
@@ -202,7 +202,7 @@ export function InlineSearchModeToggle({
         disabled={disabled}
         className={cn(
           "h-7 px-2 gap-1 text-xs",
-          aiEnabled && "bg-purple-600 hover:bg-purple-700 text-white",
+          aiEnabled && "bg-pink-600 hover:bg-pink-700 text-white",
         )}
         type="button"
       >

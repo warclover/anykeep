@@ -403,7 +403,7 @@ export function InboxPageClient({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
               <Inbox className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -423,7 +423,7 @@ export function InboxPageClient({
                 size="sm"
                 onClick={handleOneClickOrganize}
                 disabled={isOrganizing || isRefreshing}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
               >
                 <Wand2
                   className={cn(

@@ -111,7 +111,7 @@ export function ClusterAnalysisBanner({
           <div className="flex items-start justify-between gap-4">
             {/* 图标和文字 */}
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br from-purple-500 to-indigo-500">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br from-pink-500 to-rose-500">
                 <Sparkles className="w-5 h-5 text-white animate-pulse" />
               </div>
 
