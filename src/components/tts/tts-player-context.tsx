@@ -404,14 +404,41 @@ export function TTSPlayerProvider({ children }: { children: ReactNode }) {
 // ============================================
 
 /**
+ * 安全降级的默认值
+ * 当 DeferredProviders 尚未挂载时，返回空操作避免页面崩溃
+ */
+const FALLBACK_CONTEXT: TTSPlayerContextValue = {
+  state: {
+    state: "idle",
+    progress: 0,
+    currentTime: 0,
+    duration: 0,
+    speed: 1.0,
+    error: null,
+    bookmarkTitle: null,
+    currentBookmarkId: null,
+  },
+  controls: {
+    play: async () => {},
+    pause: () => {},
+    resume: () => {},
+    stop: () => {},
+    setSpeed: () => {},
+    seek: () => {},
+    isPlayingBookmark: () => false,
+  },
+};
+
+/**
  * 使用 TTS 播放器
+ *
+ * 安全降级：TTSPlayerProvider 位于 DeferredProviders 中（延迟 500-2000ms 加载），
+ * 首屏渲染期间 Provider 可能尚未就绪，此时返回空操作默认值而非崩溃。
  */
 export function useTTSPlayerContext() {
   const context = useContext(TTSPlayerContext);
   if (!context) {
-    throw new Error(
-      "useTTSPlayerContext must be used within TTSPlayerProvider",
-    );
+    return FALLBACK_CONTEXT;
   }
   return context;
 }

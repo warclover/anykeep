@@ -71,9 +71,9 @@ function DialogContent({
           为缺少显式 DialogDescription 的对话框提供隐藏的默认描述
           解决 Radix UI 无障碍警告: "Missing Description or aria-describedby={undefined}"
         */}
-        <VisuallyHidden asChild>
+        <VisuallyHidden.Root asChild>
           <DialogPrimitive.Description>对话框内容</DialogPrimitive.Description>
-        </VisuallyHidden>
+        </VisuallyHidden.Root>
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
