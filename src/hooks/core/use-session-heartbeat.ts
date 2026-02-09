@@ -68,6 +68,8 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
   const lastRefreshTimestampRef = useRef<number>(0);
   /** V4.2.32: AbortController 用于取消进行中的请求 */
   const abortControllerRef = useRef<AbortController | null>(null);
+  /** V4.2.33: 标记 Auth SDK 是否已完成初始化（INITIAL_SESSION 已触发） */
+  const isAuthReadyRef = useRef(false);
 
   /**
    * 广播会话状态变更到其他 Tab
@@ -100,6 +102,8 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
    * V4.2.32: 添加 AbortController 支持，防止组件卸载时的内存泄漏
    */
   const triggerSessionRefresh = useCallback(async () => {
+    // V4.2.33: Auth SDK 未完成初始化时跳过，避免竞态 Failed to fetch
+    if (!isAuthReadyRef.current) return;
     if (isCheckingRef.current) return;
     isCheckingRef.current = true;
 
@@ -224,6 +228,10 @@ export function useSessionHeartbeat(options: UseSessionHeartbeatOptions = {}) {
           // 初始会话或登录，记录时间戳
           if (session) {
             lastRefreshTimestampRef.current = timestamp;
+          }
+          // V4.2.33: 标记 Auth SDK 已就绪，允许后续 getUser() 调用
+          if (!isAuthReadyRef.current) {
+            isAuthReadyRef.current = true;
           }
           break;
       }
