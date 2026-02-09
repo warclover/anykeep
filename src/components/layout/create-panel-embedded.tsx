@@ -30,13 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FolderCombobox } from "@/components/bookmark/folder-combobox";
 import { createBookmarkSchema } from "@/lib/validation";
 import { extractUrlFromShareText } from "@/lib/utils/url-extractor";
 import { UsageTagSelector } from "@/components/bookmark/usage-tag-selector";
@@ -587,21 +581,14 @@ export function CreatePanelEmbedded({
                     <Label className="text-xs text-gray-600">
                       {TEXT.FOLDER_LABEL}
                     </Label>
-                    <Select value={folderId} onValueChange={setFolderId}>
-                      <SelectTrigger className="bg-white text-sm h-9">
-                        <SelectValue placeholder={TEXT.FOLDER_PLACEHOLDER} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {folders.map((folder) => (
-                          <SelectItem
-                            key={folder.id}
-                            value={folder.id.toString()}
-                          >
-                            {folder.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FolderCombobox
+                      value={folderId}
+                      onValueChange={setFolderId}
+                      folders={folders}
+                      placeholder={TEXT.FOLDER_PLACEHOLDER}
+                      allowClear={false}
+                      triggerClassName="bg-white text-sm h-9"
+                    />
                   </div>
                 )}
 

@@ -110,6 +110,9 @@ export function FolderCombobox({
   triggerClassName,
   enableRecent = true,
 }: FolderComboboxProps) {
+  const [containerNode, setContainerNode] = useState<HTMLDivElement | null>(
+    null,
+  );
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { getRecent, addRecent } = useRecentFolders();
@@ -208,87 +211,90 @@ export function FolderCombobox({
   const hasSearch = searchQuery.trim().length > 0;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "w-full justify-between font-normal h-9",
-            !displayLabel && "text-muted-foreground",
-            triggerClassName,
-          )}
-          disabled={disabled}
+    <div ref={setContainerNode} className="relative">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "w-full justify-between font-normal h-9",
+              !displayLabel && "text-muted-foreground",
+              triggerClassName,
+            )}
+            disabled={disabled}
+          >
+            <span className="truncate">{displayLabel || placeholder}</span>
+            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[--radix-popover-trigger-width] p-0"
+          align="start"
+          sideOffset={4}
+          container={containerNode}
         >
-          <span className="truncate">{displayLabel || placeholder}</span>
-          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
-        align="start"
-        sideOffset={4}
-      >
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="搜索文件夹..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            className="text-base sm:text-sm"
-          />
-          <CommandList className="max-h-[200px] sm:max-h-[240px]">
-            <CommandEmpty>未找到匹配的文件夹</CommandEmpty>
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="搜索文件夹..."
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              className="text-base sm:text-sm"
+            />
+            <CommandList className="max-h-[200px] sm:max-h-[240px]">
+              <CommandEmpty>未找到匹配的文件夹</CommandEmpty>
 
-            {/* 清除选项 */}
-            {allowClear && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    value="__clear__"
-                    onSelect={handleClear}
-                    className="min-h-[44px]"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <X className="size-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground">
-                        {clearLabel}
-                      </span>
-                    </div>
-                    {!value && (
-                      <Check className="ml-auto size-4 text-primary shrink-0" />
-                    )}
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {/* 最近使用（仅在无搜索词时显示） */}
-            {!hasSearch && recentFolders.length > 0 && (
-              <>
-                <CommandGroup heading="最近使用">
-                  {recentFolders.map((folder) =>
-                    renderFolderItem(folder, "recent-", false),
-                  )}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {/* 文件夹列表 */}
-            <CommandGroup heading={hasSearch ? "搜索结果" : "全部文件夹"}>
-              {filteredList.map((folder) =>
-                renderFolderItem(
-                  folder,
-                  "",
-                  hasSearch && matchedIds.has(folder.id),
-                ),
+              {/* 清除选项 */}
+              {allowClear && (
+                <>
+                  <CommandGroup>
+                    <CommandItem
+                      value="__clear__"
+                      onSelect={handleClear}
+                      className="min-h-[44px]"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <X className="size-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground">
+                          {clearLabel}
+                        </span>
+                      </div>
+                      {!value && (
+                        <Check className="ml-auto size-4 text-primary shrink-0" />
+                      )}
+                    </CommandItem>
+                  </CommandGroup>
+                  <CommandSeparator />
+                </>
               )}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+
+              {/* 最近使用（仅在无搜索词时显示） */}
+              {!hasSearch && recentFolders.length > 0 && (
+                <>
+                  <CommandGroup heading="最近使用">
+                    {recentFolders.map((folder) =>
+                      renderFolderItem(folder, "recent-", false),
+                    )}
+                  </CommandGroup>
+                  <CommandSeparator />
+                </>
+              )}
+
+              {/* 文件夹列表 */}
+              <CommandGroup heading={hasSearch ? "搜索结果" : "全部文件夹"}>
+                {filteredList.map((folder) =>
+                  renderFolderItem(
+                    folder,
+                    "",
+                    hasSearch && matchedIds.has(folder.id),
+                  ),
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

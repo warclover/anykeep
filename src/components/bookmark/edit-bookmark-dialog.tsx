@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
+import { useFolders } from "@/hooks/data";
 import {
   Dialog,
   DialogContent,
@@ -43,11 +44,17 @@ export function EditBookmarkDialog({
   open,
   onOpenChange,
   bookmark,
-  folders = [],
+  folders: foldersProp = [],
 }: EditBookmarkDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 当外部未传入 folders 时，内部自动获取（仅在对话框打开时请求）
+  const { folders: fetchedFolders = [] } = useFolders({
+    enabled: open && foldersProp.length === 0,
+  });
+  const folders = foldersProp.length > 0 ? foldersProp : fetchedFolders;
 
   // 表单状态
   const [title, setTitle] = useState(bookmark.title ?? "");
