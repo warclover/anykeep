@@ -93,6 +93,8 @@
     "systemMessages": "System messages",
     "appSettings": "App settings",
     "deletedContent": "Deleted content",
+    "healthDiagnosis": "Bookmark health diagnosis",
+    "aiLearningHub": "AI learning management",
     "switchToLightMode": "Switch to light mode",
     "switchToDarkMode": "Switch to dark mode",
     "version": "Smart bookmark manager",

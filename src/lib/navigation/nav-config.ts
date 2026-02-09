@@ -31,6 +31,7 @@ import {
   Download,
   Share2,
   LinkIcon,
+  GraduationCap,
 } from "lucide-react";
 import type { PageId } from "@/contexts/navigation-context";
 
@@ -154,6 +155,18 @@ const smartToolsGroup: NavGroupConfig = {
       icon: Sparkles,
       isPro: true,
       description: "mobileMenu.aiReportGeneration",
+    },
+    {
+      name: "nav.healthCheck",
+      href: "/health",
+      icon: HeartPulse,
+      description: "mobileMenu.healthDiagnosis",
+    },
+    {
+      name: "nav.learningHub",
+      href: "/learning-hub",
+      icon: GraduationCap,
+      description: "mobileMenu.aiLearningHub",
     },
     {
       name: "nav.batch",

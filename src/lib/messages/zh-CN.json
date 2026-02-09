@@ -93,6 +93,8 @@
     "systemMessages": "系统消息",
     "appSettings": "应用设置",
     "deletedContent": "已删除内容",
+    "healthDiagnosis": "收藏健康诊断",
+    "aiLearningHub": "AI 学习管理",
     "switchToLightMode": "切换到浅色模式",
     "switchToDarkMode": "切换到深色模式",
     "version": "智能收藏管理",
