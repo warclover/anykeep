@@ -289,8 +289,8 @@ export function PendingConfirmationsSection({
     });
   };
 
-  // 如果没有待确认消息，不显示
-  if (!isLoading && messages.length === 0) {
+  // 数据就绪前或没有待确认消息时，不渲染任何 UI（后台静默加载）
+  if (isLoading || messages.length === 0) {
     return null;
   }
 
