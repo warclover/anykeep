@@ -1,10 +1,14 @@
 /**
  * 重复内容 Tab 组件
+ *
+ * 支持单组操作和跨组批量操作：
+ * - 单组：RadioGroup 选择保留项 → 「保留选中，删除其他」
+ * - 批量：Checkbox 选中多组 → 「批量清理」（按 AI 推荐自动保留）
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Copy,
   Trash2,
@@ -12,12 +16,14 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -36,12 +42,25 @@ const TAB_TEXT = {
   actions: {
     keepSelected: "保留选中，删除其他",
     ignoreGroup: "忽略此组",
+    selectAll: "全选",
+    deselectAll: "取消全选",
+    batchCleanup: "批量清理",
+    batchIgnore: "批量忽略",
+  },
+  batch: {
+    selectedCount: (n: number, total: number) => `已选 ${n} / ${total} 组`,
+    processing: (done: number, total: number) => `处理中 ${done}/${total}...`,
+    successResult: (success: number, failed: number) => {
+      if (failed === 0) return `已清理 ${success} 组重复内容`;
+      return `已清理 ${success} 组，${failed} 组失败`;
+    },
+    confirmTip: "将按 AI 推荐自动保留最佳项，删除其他重复项",
   },
   matchTypes: {
     exact_url: "完全相同",
     normalized_url: "URL 相似",
     semantic: "语义相似",
-  },
+  } as Record<string, string>,
 };
 
 // ============================================
@@ -50,10 +69,17 @@ const TAB_TEXT = {
 
 interface DuplicateGroupCardProps {
   group: DuplicateGroup;
+  checked: boolean;
+  onCheck: (groupId: string, checked: boolean) => void;
   onAction: (action: string, params: Record<string, unknown>) => Promise<void>;
 }
 
-function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
+function DuplicateGroupCard({
+  group,
+  checked,
+  onCheck,
+  onAction,
+}: DuplicateGroupCardProps) {
   const [selectedKeepId, setSelectedKeepId] = useState<string>(
     group.recommendedKeepId?.toString() || "",
   );
@@ -110,6 +136,11 @@ function DuplicateGroupCard({ group, onAction }: DuplicateGroupCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
+            <Checkbox
+              checked={checked}
+              onCheckedChange={(val) => onCheck(group.id, val as boolean)}
+              aria-label={`选中第 ${group.id} 组`}
+            />
             <Copy className="h-4 w-4 text-orange-500" />
             {group.items.length} 个重复项
           </CardTitle>
@@ -201,10 +232,17 @@ interface DuplicatesTabProps {
 
 export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
   const [page, setPage] = useState(1);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+
   const { groups, totalGroups, isLoading, error, refresh } =
     useDuplicates(page);
   const { fixDuplicates } = useHealthFix();
 
+  // 单组操作
   const handleAction = async (
     action: string,
     params: Record<string, unknown>,
@@ -220,6 +258,126 @@ export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
     refresh();
     onUpdate();
   };
+
+  // Checkbox 选中/取消
+  const handleCheck = useCallback((groupId: string, checked: boolean) => {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(groupId);
+      } else {
+        next.delete(groupId);
+      }
+      return next;
+    });
+  }, []);
+
+  // 全选/取消全选
+  const handleSelectAll = useCallback(() => {
+    if (selectedGroupIds.size === groups.length) {
+      setSelectedGroupIds(new Set());
+    } else {
+      setSelectedGroupIds(new Set(groups.map((g) => g.id)));
+    }
+  }, [selectedGroupIds.size, groups]);
+
+  // 批量清理：对选中的���按 AI 推荐逐组执行 keep_one
+  const handleBatchCleanup = useCallback(async () => {
+    const targetGroups = groups.filter((g) => selectedGroupIds.has(g.id));
+    if (targetGroups.length === 0) {
+      toast.error("请先选择要处理的组");
+      return;
+    }
+
+    // 检查是否所有组都有推荐保留项
+    const noRecommend = targetGroups.filter((g) => !g.recommendedKeepId);
+    if (noRecommend.length > 0) {
+      toast.error(`${noRecommend.length} 组缺少 AI 推荐，请手动处理这些组`);
+      return;
+    }
+
+    setIsBatchProcessing(true);
+    setBatchProgress({ done: 0, total: targetGroups.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const group of targetGroups) {
+      const keepId = group.recommendedKeepId!;
+      const deleteIds = group.items
+        .filter(
+          (item) => item.bookmarkId !== null && item.bookmarkId !== keepId,
+        )
+        .map((item) => item.bookmarkId as number);
+
+      if (deleteIds.length === 0) {
+        successCount++;
+        setBatchProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+        continue;
+      }
+
+      try {
+        await fixDuplicates("keep_one", {
+          keepBookmarkId: keepId,
+          deleteBookmarkIds: deleteIds,
+        });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+
+      setBatchProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+    }
+
+    setIsBatchProcessing(false);
+    setSelectedGroupIds(new Set());
+    refresh();
+    onUpdate();
+
+    const message = TAB_TEXT.batch.successResult(successCount, failCount);
+    if (failCount === 0) {
+      toast.success(message);
+    } else {
+      toast.warning(message);
+    }
+  }, [groups, selectedGroupIds, fixDuplicates, refresh, onUpdate]);
+
+  // 批量忽略
+  const handleBatchIgnore = useCallback(async () => {
+    const targetGroups = groups.filter((g) => selectedGroupIds.has(g.id));
+    if (targetGroups.length === 0) {
+      toast.error("请先选择要忽略的组");
+      return;
+    }
+
+    setIsBatchProcessing(true);
+    setBatchProgress({ done: 0, total: targetGroups.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const group of targetGroups) {
+      try {
+        await fixDuplicates("ignore_group", { groupId: group.id });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+
+      setBatchProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+    }
+
+    setIsBatchProcessing(false);
+    setSelectedGroupIds(new Set());
+    refresh();
+    onUpdate();
+
+    if (failCount === 0) {
+      toast.success(`已忽略 ${successCount} 组`);
+    } else {
+      toast.warning(`已忽略 ${successCount} 组，${failCount} 组失败`);
+    }
+  }, [groups, selectedGroupIds, fixDuplicates, refresh, onUpdate]);
 
   // 加载状态
   if (isLoading) {
@@ -257,11 +415,64 @@ export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
     );
   }
 
+  const allSelected = selectedGroupIds.size === groups.length;
+  const hasSelection = selectedGroupIds.size > 0;
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        共发现 {totalGroups} 组重复内容
-      </p>
+      {/* 操作栏 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSelectAll}>
+            {allSelected
+              ? TAB_TEXT.actions.deselectAll
+              : TAB_TEXT.actions.selectAll}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {TAB_TEXT.batch.selectedCount(selectedGroupIds.size, totalGroups)}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBatchIgnore}
+            disabled={!hasSelection || isBatchProcessing}
+          >
+            <EyeOff className="mr-1 h-4 w-4" />
+            {TAB_TEXT.actions.batchIgnore}
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleBatchCleanup}
+            disabled={!hasSelection || isBatchProcessing}
+            title={TAB_TEXT.batch.confirmTip}
+          >
+            {isBatchProcessing ? (
+              <>
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                {TAB_TEXT.batch.processing(
+                  batchProgress.done,
+                  batchProgress.total,
+                )}
+              </>
+            ) : (
+              <>
+                <Zap className="mr-1 h-4 w-4" />
+                {TAB_TEXT.actions.batchCleanup}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* 批量清理提示 */}
+      {hasSelection && !isBatchProcessing && (
+        <p className="text-xs text-muted-foreground">
+          {TAB_TEXT.batch.confirmTip}
+        </p>
+      )}
 
       {/* 重复组列表 */}
       <div className="space-y-4">
@@ -269,6 +480,8 @@ export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
           <DuplicateGroupCard
             key={group.id}
             group={group}
+            checked={selectedGroupIds.has(group.id)}
+            onCheck={handleCheck}
             onAction={handleAction}
           />
         ))}
