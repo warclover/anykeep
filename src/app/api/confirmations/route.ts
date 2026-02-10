@@ -10,7 +10,7 @@
  * @updated 2025-12-14 - 合并 /api/confirmations/batch 路由
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   successResponse,
   badRequestError,
@@ -30,12 +30,8 @@ import type { NextRequest } from "next/server";
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { user, error: authError } = await getCachedUser();
+    if (authError || !user) {
       return unauthorizedError("请先登录");
     }
 
@@ -95,12 +91,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { user, error: authError } = await getCachedUser();
+    if (authError || !user) {
       return unauthorizedError("请先登录");
     }
 

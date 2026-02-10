@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { CustomUsageTag, ProfileSettings, Json } from "@/types/supabase";
 import { logger } from "@/lib/logger";
@@ -40,18 +41,18 @@ export interface UserSettingsError {
 
 /**
  * 获取已认证的用户和 Supabase 客户端
+ * 使用 getCachedUser 优先本地 JWT 验证（~1-5ms），避免每次网络认证（~1000-2000ms）
  * @returns 成功时返回 supabase 客户端和用户，失败时返回错误
  */
 export async function getAuthenticatedUser(): Promise<AuthResult | AuthError> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { user, error: authError } = await getCachedUser();
 
   if (authError || !user) {
     return { success: false, error: "unauthorized" };
   }
+
+  // 认证通过后创建 Supabase 客户端用于数据操作
+  const supabase = await createClient();
 
   return { success: true, supabase, user };
 }
