@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { SaveToNoteButton } from "@/components/shared/save-to-note";
 import type { DeliverableData, DeliverableType } from "./types";
 import { clientLogger } from "@/lib/client-logger";
+import { deliverableToMarkdown } from "./deliverable-to-markdown";
 import { SearchResultsList } from "./search-results-list";
 import { ExtractionResultCard } from "./deliverables/extraction-result-card";
 import type {
@@ -133,12 +134,15 @@ export const AIDeliverableCard = memo(function AIDeliverableCard({
   );
 
   // 获取内容字符串（用于复制和保存）
+  // 将结构化 JSON 转为可读 Markdown，而非直接 JSON.stringify
   const contentString = useMemo(
     () =>
-      typeof deliverable.content === "string"
-        ? deliverable.content
-        : JSON.stringify(deliverable.content, null, 2),
-    [deliverable.content],
+      deliverableToMarkdown(
+        deliverable.content,
+        deliverable.type,
+        deliverable.metadata,
+      ),
+    [deliverable.content, deliverable.type, deliverable.metadata],
   );
 
   const handleCopy = async () => {
