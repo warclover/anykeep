@@ -3,7 +3,6 @@
 import * as React from "react";
 import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { VisuallyHidden } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -68,12 +67,19 @@ function DialogContent({
         {...props}
       >
         {/*
-          为缺少显式 DialogDescription 的对话框提供隐藏的默认描述
-          解决 Radix UI 无障碍警告: "Missing Description or aria-describedby={undefined}"
+          为缺少显式 DialogTitle / DialogDescription 的对话框提供隐藏的默认值
+          解决 Radix UI 无障碍警告:
+          - "DialogContent requires a DialogTitle for screen reader users"
+          - "Missing Description or aria-describedby={undefined}"
+          注意：DialogPrimitive.Title/Description 必须在外层，确保 id 正确渲染到 DOM，
+          VisuallyHidden 在内层仅负责视觉隐藏。
         */}
-        <VisuallyHidden.Root asChild>
-          <DialogPrimitive.Description>对话框内容</DialogPrimitive.Description>
-        </VisuallyHidden.Root>
+        <DialogPrimitive.Title className="sr-only">
+          对话框
+        </DialogPrimitive.Title>
+        <DialogPrimitive.Description className="sr-only">
+          对话框内容
+        </DialogPrimitive.Description>
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
