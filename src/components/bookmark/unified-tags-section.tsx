@@ -3,9 +3,9 @@
  * 将 AI 标签和用途标签整合到同一行显示
  *
  * 特性：
- * - AI 标签：只读显示，默认显示前 N 个，支持展开
- * - 用途标签：保持原有交互形式（显示全部预设+自定义标签）
- * - 响应式：AI 标签桌面端显示 3 个，移动端显示 2 个
+ * - AI 标签：只读显示，默认不折叠（全部展示），支持收起
+ * - 用途标签：单独一行，与 AI 左对齐，保持原有交互形式
+ * - 布局：AI 一行、用途一行，表头高度保持紧凑
  * - 统一样式：保持视觉一致性
  *
  * @version 1.1.0
@@ -83,7 +83,7 @@ export function UnifiedTagsSection({
   className,
 }: UnifiedTagsSectionProps) {
   // ==================== AI 标签状态 ====================
-  const [aiExpanded, setAiExpanded] = useState(false);
+  const [aiExpanded, setAiExpanded] = useState(true); // 默认不折叠，全部展示
 
   // ==================== 用途标签状态 ====================
   const [localSelectedTags, setLocalSelectedTags] =
@@ -344,19 +344,14 @@ export function UnifiedTagsSection({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-      {/* ==================== AI 标签区域 ==================== */}
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      {/* ==================== 行1：AI 标签（单独一行，左对齐） ==================== */}
       {hasAiTags && (
-        <>
-          {/* AI 标签前缀 */}
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center justify-center w-[2.5rem] px-0 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs flex-shrink-0 box-border">
             AI
           </span>
-
-          {/* AI 标签列表 */}
           {visibleAiTags.map(renderAiTag)}
-
-          {/* AI 标签折叠/展开按钮 */}
           {hiddenAiCount > 0 && (
             <button
               type="button"
@@ -377,22 +372,15 @@ export function UnifiedTagsSection({
               <ChevronUp className="size-3" />
             </button>
           )}
-
-          {/* 分隔符 */}
-          {hasUsageTags && (
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5 flex-shrink-0" />
-          )}
-        </>
+        </div>
       )}
 
-      {/* ==================== 用途标签区域 ==================== */}
+      {/* ==================== 行2：用途及其标签（单独一行，与 AI 左对齐） ==================== */}
       {hasUsageTags && (
-        <>
-          {/* 用途标签前缀 */}
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 font-medium text-xs flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center justify-center w-[2.5rem] px-0 py-0.5 rounded bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 font-medium text-xs flex-shrink-0 box-border">
             用途
           </span>
-
           {isLoading ? (
             <div className="flex items-center gap-2 text-gray-500 text-xs">
               <Loader2 className="size-3 animate-spin" />
@@ -400,7 +388,6 @@ export function UnifiedTagsSection({
             </div>
           ) : (
             <>
-              {/* 预设标签 */}
               {USAGE_TAG_PRESETS.map((preset) => {
                 const unifiedTag = allUsageTags.find(
                   (t) => t.value === preset.value,
@@ -409,13 +396,9 @@ export function UnifiedTagsSection({
                   ? renderUsageTagButton(unifiedTag.value)
                   : null;
               })}
-
-              {/* 分隔线（如果有自定义标签） */}
               {customTags.length > 0 && (
                 <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5 flex-shrink-0" />
               )}
-
-              {/* 自定义标签 */}
               {customTags.map((customTag) => {
                 const unifiedTag = allUsageTags.find(
                   (t) => t.value === customTag.value,
@@ -424,8 +407,6 @@ export function UnifiedTagsSection({
                   ? renderUsageTagButton(unifiedTag.value)
                   : null;
               })}
-
-              {/* 添加自定义标签按钮 */}
               <button
                 type="button"
                 onClick={() => setShowAddDialog(true)}
@@ -446,10 +427,9 @@ export function UnifiedTagsSection({
               </button>
             </>
           )}
-        </>
+        </div>
       )}
 
-      {/* 添加自定义标签弹窗 */}
       <AddCustomUsageTagDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
