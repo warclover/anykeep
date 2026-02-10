@@ -59,8 +59,12 @@ export function UsageTagFilter({
   const [isExpanded, setIsExpanded] = useState(initialTags.length > 0);
 
   // 判断当前页面
-  const pathname =
-    typeof window !== "undefined" ? window.location.pathname : "";
+  // ⚠️ 不要在渲染路径直接读取 window.location.pathname（SSR="" vs CSR=实际路径 → hydration 不匹配）
+  // 使用 useEffect 延迟读取，确保 SSR/CSR 初始值一致
+  const [pathname, setPathname] = useState("");
+  useEffect(() => {
+    setPathname(window.location.pathname);
+  }, []);
   const isHomePage = isClientNavEnabled
     ? activePage === "home"
     : pathname === "/home";

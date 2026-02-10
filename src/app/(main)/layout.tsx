@@ -27,7 +27,6 @@
 // UserProvider 已优化为非阻塞式加载
 
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import { AppHeader } from "@/components/layout/app-header";
 import { MainContent } from "@/components/main/main-content";
 import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
@@ -38,18 +37,13 @@ import {
   DesktopSidebar,
   MobileNav,
 } from "@/components/layout/responsive-layout-wrapper";
-
-// V5.2: 非关键组件懒加载，减少首屏 JS 体积
-// P3 优化: 移除 ssr: false，让 Next.js 自动处理 SSR 避免客户端导航时重新加载
-const LayoutAIPanel = dynamic(() =>
-  import("@/components/layout/layout-ai-panel").then(
-    (mod) => mod.LayoutAIPanel,
-  ),
-);
-
-const FloatingActionMenu = dynamic(() =>
-  import("@/components/fab").then((mod) => mod.FloatingActionMenu),
-);
+// V5.4: 直接导入替代 dynamic() — 在服务端组件中使用 next/dynamic 会导致
+// webpack 在 RSC payload 中产生异步模块标记（,1] 后缀），客户端 requireAsyncModule
+// 预加载解析失败 → hydration 崩溃 → 整个页面回退 CSR → Suspense 流式内容丢失。
+// 直接导入 "use client" 组件在服务端组件中是安全的，Next.js 自动处理边界，
+// 且 Suspense fallback={null} 已保证不会阻塞首屏渲染。
+import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
+import { FloatingActionMenu } from "@/components/fab";
 
 export default function MainLayout({
   children,

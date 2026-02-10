@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -215,6 +215,24 @@ export function MobileMenu() {
   // 国际化
   const t = useUiText();
 
+  // -------------------------------------------------------------------------
+  // Hydration 安全：延迟挂载 Radix Sheet
+  // -------------------------------------------------------------------------
+  // Radix Dialog 的 SheetTrigger (asChild + Slot) 在 SSR/CSR 产生多种属性不一致：
+  //   1. aria-controls: useId() 生成不同的随机 ID（React 18 已知问题）
+  //   2. data-slot: SSR="button" vs CSR="sheet-trigger"（Slot 合并差异）
+  //   3. className: size-11 md:size-9 vs size-9（tailwind-merge 合并差异）
+  // 任一不匹配都会触发 hydration 失败 → NotFoundErrorBoundary → webpack 级联崩溃。
+  //
+  // 方案：SSR 和 CSR 首次渲染��输出相同的纯 <Button>（不含 Radix），
+  // hydration 完成后通过 useEffect 切换到完整的 Sheet 组件。
+  // MobileMenu 本身是 lg:hidden 的移动端组件，延迟挂载不影响首屏体验。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // 使用 rAF 避免 react-hooks/set-state-in-effect 规则（同步 setState 触发级联渲染）
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
+
   // 获取翻译文本的辅助函数
   const getText = (key: string): string => {
     const parts = key.split(".");
@@ -238,6 +256,21 @@ export function MobileMenu() {
     }
     return pathname === href || (pathname?.startsWith(href + "/") ?? false);
   };
+
+  // SSR/CSR 首次渲染：输出相同的纯 Button（不含 Radix），确保 hydration 一致
+  if (!mounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden"
+        aria-label={getText("mobileMenu.openMenu")}
+        onClick={() => setMounted(true)}
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

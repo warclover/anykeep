@@ -1,12 +1,23 @@
 /**
- * 用户上下文 Provider (v3 TanStack Query 版)
+ * 用户上下文 Provider (v3.2 ErrorBoundary 降级版)
  *
  * 优化点：
  * 1. 使用 getSession() 替代 getUser()，避免网络请求（~1ms vs ~1000ms）
  * 2. Profile 使用 TanStack Query 异步加载，不阻塞首屏渲染
  * 3. 添加安全保障：401 错误检测、定期 token 检查
  *
- * @version 3.0.0 - 迁移到 TanStack Query
+ * v3.2 改进：
+ * - 使用 ErrorBoundary 替代 QueryClientContext 直接检测
+ * - 修复 ESM/CJS 双实例化导致 QueryClientContext 检测失效的问题
+ * - 当 QueryClientProvider 缺失时，useQuery 抛错被 ErrorBoundary 捕获，安全降级
+ *
+ * v3.1 已废弃：
+ * - React.useContext(QueryClientContext) 检测方案存在缺陷：
+ *   webpack 可能将 QueryClientProvider (ESM) 和 user-context (CJS) 解析为
+ *   不同模块实例，导致两个 createContext() 创建不同的 Context 对象，
+ *   检测永远返回 undefined，实际 useQuery 却正常工作
+ *
+ * @version 3.2.0
  * @see https://supabase.com/docs/reference/javascript/auth-getsession
  */
 
@@ -19,9 +30,11 @@ import {
   useState,
   useCallback,
   useRef,
+  Component,
   type ReactNode,
+  type ErrorInfo,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/supabase";
@@ -124,14 +137,121 @@ async function profileFetcher([, userId]: [
 // ============================================================================
 
 /**
- * 用户数据 Provider (v2 性能优化版)
+ * UserProvider 降级版本
+ *
+ * 当 QueryClientProvider 缺失时（例如 hydration 失败后 NotFoundErrorBoundary
+ * 重建组件树），提供安全的降级 Context 值，避免级联崩溃。
+ */
+function UserProviderFallback({ children }: UserProviderProps) {
+  const noopRefetch = useCallback(async () => {
+    // noop: fallback mode 下不执行实际 refetch
+  }, []);
+  return (
+    <UserContext.Provider
+      value={{
+        user: null,
+        profile: null,
+        isLoading: false,
+        isInitialized: false,
+        error: null,
+        refetch: noopRefetch,
+      }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+// ============================================================================
+// ErrorBoundary（内部用，捕获 useQuery 因缺少 QueryClient 的抛错）
+// ============================================================================
+
+interface QuerySafeBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+
+interface QuerySafeBoundaryState {
+  hasError: boolean;
+}
+
+/**
+ * QueryClient 安全边界
+ *
+ * 专门捕获 UserProviderInner 因 QueryClientProvider 缺失而抛出的错误。
+ *
+ * 为什么不用 React.useContext(QueryClientContext) 检测：
+ * webpack 在打包 ESM/CJS 混合模块时，可能为 @tanstack/react-query 创建
+ * 两个独立的模块实例（ESM: QueryClientProvider.js / CJS: QueryClientProvider.cjs），
+ * 各自调用 React.createContext() 生成不同的 Context 对象。
+ * QueryClientProvider 写入实例 A，但 useContext 读取实例 B → 永远返回 undefined。
+ *
+ * ErrorBoundary 方案完全绕过了这个问题：让 useQuery 自然执行，
+ * 如果 QueryClient 真的缺失就抛错，被 ErrorBoundary 捕获后降级。
+ */
+class QuerySafeBoundary extends Component<
+  QuerySafeBoundaryProps,
+  QuerySafeBoundaryState
+> {
+  constructor(props: QuerySafeBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): QuerySafeBoundaryState {
+    // 仅捕获 QueryClient 相关错误
+    if (
+      error.message?.includes("QueryClient") ||
+      error.message?.includes("QueryClientProvider")
+    ) {
+      return { hasError: true };
+    }
+    // 非 QueryClient 错误，继续向上传播
+    throw error;
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    clientLogger.warn(
+      { error: error.message, componentStack: errorInfo.componentStack },
+      "[UserProvider] QueryClientProvider not found, using fallback mode",
+    );
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * 用户数据 Provider (v3.2 ErrorBoundary 降级版)
  *
  * 核心优化：
  * - getSession() 从本地存储读取，无网络请求（~1ms）
- * - Profile 使用 SWR 异步加载，不阻塞首屏
+ * - Profile 使用 TanStack Query 异步加载，不阻塞首屏
  * - JWT 验证由 Middleware 在服务端完成
+ *
+ * v3.2 改进：
+ * - 使用 ErrorBoundary 替代 QueryClientContext 直接检测
+ * - 解决 ESM/CJS 双实例化导致检测失效的根本问题
+ * - 当 QueryClientProvider 缺失时，useQuery 抛错被捕获，安���降级
  */
 export function UserProvider({ children }: UserProviderProps) {
+  return (
+    <QuerySafeBoundary
+      fallback={<UserProviderFallback>{children}</UserProviderFallback>}
+    >
+      <UserProviderInner>{children}</UserProviderInner>
+    </QuerySafeBoundary>
+  );
+}
+
+/**
+ * UserProvider 内部实现（需要 QueryClientProvider 上下文）
+ */
+function UserProviderInner({ children }: UserProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,8 +308,6 @@ export function UserProvider({ children }: UserProviderProps) {
   // -------------------------------------------------------------------------
   // 2. Profile 异步加载（TanStack Query，不阻塞渲染）
   // -------------------------------------------------------------------------
-  const _queryClient = useQueryClient();
-
   const {
     data: profile,
     error: profileError,
@@ -197,7 +315,7 @@ export function UserProvider({ children }: UserProviderProps) {
     refetch: refetchProfile,
   } = useQuery({
     queryKey: profileKeys.byUserId(user?.id ?? ""),
-    queryFn: () => profileFetcher(["profile", user!.id]),
+    queryFn: () => profileFetcher(["profile", user?.id ?? ""]),
     enabled: !!user, // 仅在 user 存在时请求
     staleTime: 60000, // 60秒内不重新请求
     gcTime: 300000, // 5分钟缓存
