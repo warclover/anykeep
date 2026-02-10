@@ -447,40 +447,42 @@ export function SearchPageClient({
             className="mb-6 hidden md:flex"
           />
 
-          {/* 搜索历史 — 空状态下默认展示，降低冷启动感 */}
-          {searchHistory.length > 0 && !hasQuery && (
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <Clock className="size-4" />
-                  搜索历史
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearHistory}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  清空
-                </Button>
+          {/* 搜索历史 — 始终挂载，CSS 控制显隐，避免条件渲染破坏 Suspense 流式子树 */}
+          <div
+            className={
+              searchHistory.length > 0 && !hasQuery ? "mb-6" : "hidden"
+            }
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Clock className="size-4" />
+                搜索历史
               </div>
-              <div className="flex flex-wrap gap-2">
-                {searchHistory.map((item, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                    onClick={() => handleTagClick(item)}
-                  >
-                    {item}
-                  </Badge>
-                ))}
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearHistory}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                清空
+              </Button>
             </div>
-          )}
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.map((item, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleTagClick(item)}
+                >
+                  {item}
+                </Badge>
+              ))}
+            </div>
+          </div>
 
-          {/* 热门搜索（仅在无搜索结果时显示）- 使用 Suspense 流式渲染 */}
-          {!hasQuery && hotTagsSlot}
+          {/* 热门搜索（仅在无搜索结果时显示）- CSS 控制显隐，避免条件渲染破坏 Suspense 流式子树 */}
+          <div className={hasQuery ? "hidden" : undefined}>{hotTagsSlot}</div>
         </div>
 
         {/* 搜索结果 */}
