@@ -72,7 +72,7 @@ async function getInboxData(): Promise<{
 
     const { data: bookmarks, error: bookmarksError } = await bookmarksQuery
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(10);
 
     if (bookmarksError) {
       return {

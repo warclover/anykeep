@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Inbox,
@@ -204,7 +204,10 @@ export function InboxPageClient({
     items: cachedItems,
     isLoading: isItemsLoading,
     isFetching: isItemsFetching,
+    isFetchingNextPage,
+    hasNextPage,
     refresh: refreshItems,
+    fetchNextPage,
   } = useInboxItems(activeTab);
   const {
     // mode 已移除：TrustModeBanner 现在只使用布尔值
@@ -491,6 +494,9 @@ export function InboxPageClient({
               bookmarks={displayBookmarks}
               isLoading={isLoadingTab}
               isFetching={isItemsFetching}
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={hasNextPage}
+              onLoadMore={fetchNextPage}
               tabConfig={currentTabConfig}
               onDelete={handleBookmarkDelete}
             />
@@ -502,6 +508,9 @@ export function InboxPageClient({
           bookmarks={displayBookmarks}
           isLoading={isLoadingTab}
           isFetching={isItemsFetching}
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          onLoadMore={fetchNextPage}
           tabConfig={currentTabConfig}
           onDelete={handleBookmarkDelete}
         />
@@ -516,6 +525,9 @@ interface BookmarkListCardProps {
   bookmarks: BookmarkWithFolder[];
   isLoading: boolean;
   isFetching?: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
   tabConfig: { title: string; description: string };
   onDelete: (id: number) => void;
 }
@@ -524,10 +536,32 @@ function BookmarkListCard({
   bookmarks,
   isLoading,
   isFetching: _isFetching,
+  isFetchingNextPage = false,
+  hasNextPage = false,
+  onLoadMore,
   tabConfig,
   onDelete,
 }: BookmarkListCardProps) {
   const router = useRouter();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // IntersectionObserver：滚动到底部自动加载更多
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasNextPage || !onLoadMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
 
   if (isLoading) {
     return (
@@ -575,7 +609,8 @@ function BookmarkListCard({
             <CardTitle className="text-lg">{tabConfig.title}</CardTitle>
           </div>
           <span className="text-sm text-muted-foreground">
-            共 {bookmarks.length} 个
+            已加载 {bookmarks.length} 个
+            {hasNextPage ? "，向下滚动加载更多" : ""}
           </span>
         </div>
         <CardDescription>{tabConfig.description}</CardDescription>
@@ -590,6 +625,34 @@ function BookmarkListCard({
             />
           ))}
         </div>
+
+        {/* 加载更多触发区域 */}
+        {hasNextPage && (
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isFetchingNextPage ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                加载中...
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLoadMore}
+                className="text-muted-foreground"
+              >
+                加载更多
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* 已全部加载提示 */}
+        {!hasNextPage && bookmarks.length > 0 && (
+          <p className="text-center text-xs text-muted-foreground pt-4">
+            已加载全部 {bookmarks.length} 个书签
+          </p>
+        )}
       </CardContent>
     </Card>
   );
