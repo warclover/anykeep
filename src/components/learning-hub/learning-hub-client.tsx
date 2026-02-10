@@ -152,36 +152,32 @@ function StatsCard({
 }) {
   return (
     <Card className="border">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className={cn("p-2 rounded-lg", color)}>
-            <Icon className="size-5 text-white" />
-          </div>
-          {trend && (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "text-xs",
-                trend.isUp
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-              )}
-            >
-              {trend.isUp ? "↑" : "↓"} {trend.value}%
-            </Badge>
-          )}
+      <CardContent className="flex items-center gap-2.5 px-3 py-2">
+        <div className={cn("p-1.5 rounded-md shrink-0", color)}>
+          <Icon className="size-3.5 text-white" />
         </div>
-        <div className="mt-3">
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-baseline gap-1 min-w-0">
+          <span className="text-lg font-bold text-gray-900 dark:text-white leading-none">
             {value}
-            {unit && (
-              <span className="text-sm font-normal text-gray-500 ml-1">
-                {unit}
-              </span>
-            )}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+          </span>
+          {unit && <span className="text-xs text-gray-500">{unit}</span>}
+          <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">
+            {label}
+          </span>
         </div>
+        {trend && (
+          <Badge
+            variant="secondary"
+            className={cn(
+              "text-[10px] px-1.5 py-0 h-4 ml-auto shrink-0",
+              trend.isUp
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+            )}
+          >
+            {trend.isUp ? "↑" : "↓"} {trend.value}%
+          </Badge>
+        )}
       </CardContent>
     </Card>
   );
