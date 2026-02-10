@@ -80,8 +80,9 @@ browser-extension/.output/
 snapshot_*.sql
 nul
 
-# Playwright screenshots
+# Playwright
 .playwright-mcp/
+.auth/
 
 # Environment backups
 .env.local.backup
