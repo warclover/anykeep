@@ -201,23 +201,21 @@ function SkillActionCard({
       )}
       onClick={onAction}
     >
-      <CardHeader className={cn("pb-2", skill.bgColor)}>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-white dark:bg-gray-900 shadow-sm">
-            <Icon className={cn("size-5", skill.color)} />
+      <CardHeader className={cn("py-2 px-4", skill.bgColor)}>
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-white dark:bg-gray-900 shadow-sm">
+            <Icon className={cn("size-4", skill.color)} />
           </div>
-          <CardTitle className="text-base font-semibold">
-            {skill.name}
-          </CardTitle>
+          <CardTitle className="text-sm font-semibold">{skill.name}</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+      <CardContent className="pt-2 pb-3 px-4">
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2 min-h-[2lh]">
           {skill.description}
         </p>
         <Button
           size="sm"
-          className="w-full"
+          className="w-full h-7 text-xs"
           onClick={(e) => {
             e.stopPropagation();
             onAction();
