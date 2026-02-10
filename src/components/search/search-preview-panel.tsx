@@ -117,14 +117,15 @@ export const SearchPreviewPanel = memo(function SearchPreviewPanel({
     PLATFORM_COLORS[bookmark.platform?.toLowerCase() || "browser"] ||
     PLATFORM_COLORS.browser;
 
-  // 格式化日期
-  const formatDate = (date: string | Date) => {
+  // 格式化日期（使用确定性格式，避免 SSR/CSR 环境差异导致 hydration error）
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return "未知日期";
     const d = new Date(date);
-    return d.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    if (isNaN(d.getTime())) return "未知日期";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}/${month}/${day}`;
   };
 
   // 计算阅读时间（假设每分钟 300 字）
@@ -175,7 +176,7 @@ export const SearchPreviewPanel = memo(function SearchPreviewPanel({
           </Badge>
           <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
             <Calendar className="size-3" />
-            {formatDate(bookmark.created_at || new Date())}
+            {formatDate(bookmark.created_at)}
           </span>
         </div>
 

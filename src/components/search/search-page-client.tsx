@@ -76,17 +76,8 @@ export function SearchPageClient({
     return "hybrid";
   });
   const aiMode = searchMode === "semantic" || searchMode === "hybrid";
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const history = localStorage.getItem(SEARCH_HISTORY_KEY);
-        return history ? JSON.parse(history) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // 初始化为空数组，确保 SSR/CSR 一致，避免 hydration mismatch
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   // V4.3.0: 控制 AI 搜索建议显示
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +113,18 @@ export function SearchPageClient({
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   // V4.4.2: 输入框聚焦状态
   const [isInputFocused, setIsInputFocused] = useState(false);
+
+  // 客户端挂载后从 localStorage 加载搜索历史（避免 SSR hydration mismatch）
+  useEffect(() => {
+    try {
+      const history = localStorage.getItem(SEARCH_HISTORY_KEY);
+      if (history) {
+        setSearchHistory(JSON.parse(history));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // 合并 SSR 结果和客户端获取的结果
   const searchResults = clientSearchResults ?? ssrSearchResults;
