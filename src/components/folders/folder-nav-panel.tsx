@@ -92,14 +92,14 @@ function NavItem({
   actionMenu,
 }: NavItemProps) {
   return (
-    <div className="group flex items-center">
+    <div className="group flex items-center min-w-0">
       <button
         onClick={onClick}
         role="treeitem"
         aria-selected={isSelected}
         aria-level={indent + 1}
         className={cn(
-          "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
+          "flex-1 min-w-0 flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors",
           "hover:bg-gray-100 dark:hover:bg-gray-800",
           isSelected && "bg-primary/10 text-primary font-medium",
           isSystem && !isSelected && "bg-blue-50/50 dark:bg-blue-900/10",
@@ -109,7 +109,7 @@ function NavItem({
         <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
           {icon}
         </span>
-        <span className="flex-1 text-left truncate">{label}</span>
+        <span className="flex-1 min-w-0 text-left truncate">{label}</span>
         {/* 热度指示器 */}
         {heat !== undefined && heat > 0 && (
           <FolderHeatIndicator heat={heat} size="sm" />
