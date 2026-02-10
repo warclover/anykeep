@@ -208,7 +208,8 @@ export async function POST(request: NextRequest) {
         if (deleteError) {
           result.errors.push(deleteError.message);
         } else {
-          // 更新问题状态
+          // 更新问题状态：整个组的所有书签（含被保留的）都标记为 resolved
+          const allBookmarkIds = [keepBookmarkId, ...deleteBookmarkIds];
           await supabase
             .from("health_check_cache")
             .update({
@@ -218,7 +219,7 @@ export async function POST(request: NextRequest) {
             })
             .eq("user_id", user.id)
             .eq("check_type", "duplicate")
-            .in("bookmark_id", deleteBookmarkIds);
+            .in("bookmark_id", allBookmarkIds);
 
           result.processed = deleteBookmarkIds.length;
         }
