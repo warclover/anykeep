@@ -43,7 +43,7 @@ export function ClusterAnalysisBanner({
   // 获取聚类统计
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch(API_CLASSIFICATION.inboxStats);
+      const response = await fetch(`${API_CLASSIFICATION.inbox}?type=stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data.data);

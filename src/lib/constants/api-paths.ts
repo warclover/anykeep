@@ -235,7 +235,11 @@ export const API_CLASSIFICATION = {
   classify: "/api/classification/v5/classify",
   /** 执行分类 - 旧版（备用） */
   classifyLegacy: "/api/classification/classify",
-  /** 聚类确认 */
+  /**
+   * @deprecated 使用 inbox POST/DELETE 代替
+   * POST /api/classification/inbox - 应用建议
+   * DELETE /api/classification/inbox - 拒绝建议
+   */
   clusterConfirm: "/api/classification/cluster-confirm",
   /** 确认列表 */
   confirmations: "/api/classification/confirmations",

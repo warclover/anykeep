@@ -66,19 +66,15 @@ export function ClusterSuggestionCard({
 
   const isProcessing = isConfirming || isRejecting;
 
-  // 确认建议
+  // 确认建议（使用统一的 inbox API）
   const handleConfirm = async () => {
     setIsConfirming(true);
     try {
-      const response = await fetch(API_CLASSIFICATION.clusterConfirm, {
+      const response = await fetch(API_CLASSIFICATION.inbox, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           suggestionId: suggestion.id,
-          customFolderName:
-            customName !== suggestion.suggestedFolderName
-              ? customName
-              : undefined,
         }),
       });
 
@@ -87,9 +83,11 @@ export function ClusterSuggestionCard({
         throw new Error(data.error?.message || "确认建议失败");
       }
 
-      const data = await response.json();
-      toast.success(data.data.message);
-      onConfirmed?.(data.data.folder.id, data.data.folder.name);
+      const folderName = customName || suggestion.suggestedFolderName;
+      toast.success(
+        `已创建「${folderName}」并归类 ${suggestion.bookmarkIds.length} 个书签`,
+      );
+      onConfirmed?.(suggestion.id, folderName);
     } catch (error) {
       const message = error instanceof Error ? error.message : "确认建议失败";
       toast.error(message);
@@ -98,11 +96,11 @@ export function ClusterSuggestionCard({
     }
   };
 
-  // 拒绝建议
+  // 拒绝建议（使用统一的 inbox API）
   const handleReject = async () => {
     setIsRejecting(true);
     try {
-      const response = await fetch(API_CLASSIFICATION.clusterConfirm, {
+      const response = await fetch(API_CLASSIFICATION.inbox, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

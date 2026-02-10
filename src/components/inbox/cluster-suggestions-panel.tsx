@@ -52,7 +52,9 @@ export function ClusterSuggestionsPanel({
   const loadSuggestions = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch(API_CLASSIFICATION.inboxSuggestions);
+      const response = await fetch(
+        `${API_CLASSIFICATION.inbox}?type=suggestions`,
+      );
 
       if (!response.ok) {
         throw new Error("加载聚类建议失败");
