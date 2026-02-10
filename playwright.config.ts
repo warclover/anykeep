@@ -37,6 +37,12 @@ export default defineConfig({
     navigationTimeout: 30000,
     /* 忽略 HTTPS 错误（本地测试用） */
     ignoreHTTPSErrors: true,
+    /* 绕过 CSP 限制 */
+    bypassCSP: true,
+    /* 禁用浏览器缓存 - 避免缓存导致页面加载异常 */
+    launchOptions: {
+      args: ["--disable-cache", "--disk-cache-size=0"],
+    },
   },
 
   /* 项目配置 - 只使用 Chromium */
