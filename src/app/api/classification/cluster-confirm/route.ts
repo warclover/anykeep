@@ -108,11 +108,13 @@ export async function POST(request: NextRequest) {
       return notFoundError("建议不存在或已处理");
     }
 
-    // 4. 检查是否是创建文件夹建议
-    // 兼容处理：默认动作为 create_folder（向后兼容旧数据）
+    // 4. 记录建议动作类型（所有类型均支持创建文件夹并归类）
     const suggestedAction = suggestion.suggested_action || "create_folder";
     if (suggestedAction !== "create_folder") {
-      return internalError("此建议类型不支持通过此 API 确认");
+      logger.info(
+        { suggestionId, suggestedAction },
+        "Processing non-create_folder suggestion via cluster-confirm API",
+      );
     }
 
     // 5. 创建文件夹
