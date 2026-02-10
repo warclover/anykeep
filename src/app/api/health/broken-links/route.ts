@@ -7,7 +7,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { BrokenLinkIssue } from "@/lib/ai-skills/skills/health-check/types";
 
@@ -147,10 +147,14 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // 软删除书签
-        const { error: deleteError } = await supabase
+        // 移入回收站（使用 serviceClient 绕过 RLS）
+        const serviceClient = await createServiceClient();
+        const { error: deleteError } = await serviceClient
           .from("bookmarks")
-          .update({ deleted_at: new Date().toISOString() })
+          .update({
+            is_in_trash: true,
+            trashed_at: new Date().toISOString(),
+          })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 

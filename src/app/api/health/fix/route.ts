@@ -6,7 +6,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   QuickFixRequest,
@@ -116,7 +116,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 执行修复
+    // 执行修复（使用 serviceClient 绕过 RLS 进行写操作）
+    const serviceClient = await createServiceClient();
 
     // 1. 处理失效链接
     if (strategy.brokenLinks !== "skip" && brokenLinkIssues.length > 0) {
@@ -127,9 +128,12 @@ export async function POST(request: NextRequest) {
       if (bookmarkIds.length === 0) {
         result.errors.push({ id: "broken_links", error: "没有有效的书签ID" });
       } else if (strategy.brokenLinks === "delete") {
-        const { error } = await supabase
+        const { error } = await serviceClient
           .from("bookmarks")
-          .update({ deleted_at: new Date().toISOString() })
+          .update({
+            is_in_trash: true,
+            trashed_at: new Date().toISOString(),
+          })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 
@@ -203,9 +207,12 @@ export async function POST(request: NextRequest) {
           .filter((id): id is number => id !== null);
 
         if (toDeleteIds.length > 0) {
-          const { error } = await supabase
+          const { error } = await serviceClient
             .from("bookmarks")
-            .update({ deleted_at: new Date().toISOString() })
+            .update({
+              is_in_trash: true,
+              trashed_at: new Date().toISOString(),
+            })
             .in("id", toDeleteIds)
             .eq("user_id", user.id);
 
@@ -241,9 +248,12 @@ export async function POST(request: NextRequest) {
       if (bookmarkIds.length === 0) {
         result.errors.push({ id: "stale", error: "没有有效的书签ID" });
       } else if (strategy.staleContent === "delete") {
-        const { error } = await supabase
+        const { error } = await serviceClient
           .from("bookmarks")
-          .update({ deleted_at: new Date().toISOString() })
+          .update({
+            is_in_trash: true,
+            trashed_at: new Date().toISOString(),
+          })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 
@@ -253,10 +263,13 @@ export async function POST(request: NextRequest) {
           result.deleted += bookmarkIds.length;
         }
       } else if (strategy.staleContent === "archive") {
-        // 使用软删除代替归档（bookmarks 表没有 is_archived 字段）
-        const { error } = await supabase
+        // 移入回收站代替归档
+        const { error } = await serviceClient
           .from("bookmarks")
-          .update({ deleted_at: new Date().toISOString() })
+          .update({
+            is_in_trash: true,
+            trashed_at: new Date().toISOString(),
+          })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 

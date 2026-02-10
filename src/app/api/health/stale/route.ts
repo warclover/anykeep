@@ -7,7 +7,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { staleContentDetector } from "@/lib/ai-skills/skills/health-check/detectors/stale-detector";
 import { HEALTH_CHECK_CONFIG } from "@/lib/ai-skills/skills/health-check/types";
@@ -131,10 +131,14 @@ export async function POST(request: NextRequest) {
             result.processed = bookmarkIds.length;
           }
         } else {
-          // 没有归档文件夹，使用软删除代替归档
-          const { error: archiveError } = await supabase
+          // 没有归档文件夹，移入回收站代替归档
+          const serviceClient = await createServiceClient();
+          const { error: archiveError } = await serviceClient
             .from("bookmarks")
-            .update({ deleted_at: new Date().toISOString() })
+            .update({
+              is_in_trash: true,
+              trashed_at: new Date().toISOString(),
+            })
             .in("id", bookmarkIds)
             .eq("user_id", user.id);
 
@@ -161,9 +165,13 @@ export async function POST(request: NextRequest) {
       }
 
       case "delete": {
-        const { error: deleteError } = await supabase
+        const serviceClient = await createServiceClient();
+        const { error: deleteError } = await serviceClient
           .from("bookmarks")
-          .update({ deleted_at: new Date().toISOString() })
+          .update({
+            is_in_trash: true,
+            trashed_at: new Date().toISOString(),
+          })
           .in("id", bookmarkIds)
           .eq("user_id", user.id);
 
