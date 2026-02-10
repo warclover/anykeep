@@ -1,14 +1,10 @@
 /**
  * 我的搜索页面 - 服务端组件
- * 优化：使用 Suspense 流式渲染热门标签，提升首屏加载速度
  */
 
-import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { SearchPageClient } from "@/components/search/search-page-client";
-import { HotTagsSection } from "@/components/search/hot-tags-section";
-import { HotTagsSkeleton } from "@/components/search/hot-tags-skeleton";
 import { searchQuerySchema } from "@/lib/validation";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import { searchBookmarksFulltext } from "@/lib/utils/fulltext-search";
@@ -87,13 +83,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     }
   }
 
-  // 热门标签使用 Suspense 流式渲染，不阻塞主页面
-  const hotTagsSlot = (
-    <Suspense fallback={<HotTagsSkeleton />}>
-      <HotTagsSection userId={userId} />
-    </Suspense>
-  );
-
   // V4.2.17: 确保 searchResults 是纯 JSON 可序列化的，避免 RSC hydration 问题
   // 通过 JSON.parse(JSON.stringify()) 强制序列化，移除任何非 JSON 兼容的值
   const serializedResults = JSON.parse(JSON.stringify(searchResults));
@@ -103,7 +92,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       initialQuery={params.q || ""}
       initialAIMode={params.ai === "true"}
       searchResults={serializedResults}
-      hotTagsSlot={hotTagsSlot}
       error={searchError}
     />
   );

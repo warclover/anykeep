@@ -7,15 +7,9 @@
 
 "use client";
 
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  type ReactNode,
-} from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, Clock, X, Loader2 } from "lucide-react";
+import { Search, Sparkles, Clock, X, Loader2, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,13 +41,13 @@ import { SearchKeyboardHints } from "./search-keyboard-hints";
 import { useSearchKeyboard } from "@/hooks/search/use-search-keyboard";
 import type { Bookmark } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
+import { createClient } from "@/lib/supabase/client";
+import { ANALYTICS } from "@/lib/constants/app";
 
 interface SearchPageClientProps {
   initialQuery: string;
   initialAIMode: boolean;
   searchResults: (Bookmark & { folders?: { name: string } | null })[];
-  /** 热门标签插槽 - 支持 Suspense 流式渲染 */
-  hotTagsSlot?: ReactNode;
   error?: string;
 }
 
@@ -64,7 +58,6 @@ export function SearchPageClient({
   initialQuery,
   initialAIMode,
   searchResults: ssrSearchResults,
-  hotTagsSlot,
   error: ssrError,
 }: SearchPageClientProps) {
   const router = useRouter();
@@ -78,6 +71,8 @@ export function SearchPageClient({
   const aiMode = searchMode === "semantic" || searchMode === "hybrid";
   // 初始化为空数组，确保 SSR/CSR 一致，避免 hydration mismatch
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  // 热门标签 — 客户端加载，与搜索历史模式一致
+  const [hotTags, setHotTags] = useState<string[]>([]);
   // V4.3.0: 控制 AI 搜索建议显示
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -124,6 +119,30 @@ export function SearchPageClient({
     } catch {
       // ignore
     }
+  }, []);
+
+  // 客户端挂载后从 Supabase RPC 加载热门标签（与搜索历史同模式，避免 Suspense hydration 问题）
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchHotTags() {
+      try {
+        const supabase = createClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = (await (supabase.rpc as any)("get_user_hot_tags", {
+          p_user_id: (await supabase.auth.getUser()).data.user?.id,
+          p_limit: ANALYTICS.TOP_TAGS_COUNT,
+        })) as { data: { tag: string; count: number }[] | null };
+        if (!cancelled && data) {
+          setHotTags(data.map((item) => item.tag));
+        }
+      } catch {
+        // ignore — 热门标签加载失败不影响核心功能
+      }
+    }
+    fetchHotTags();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // 合并 SSR 结果和客户端获取的结果
@@ -481,8 +500,25 @@ export function SearchPageClient({
             </div>
           </div>
 
-          {/* 热门搜索（仅在无搜索结果时显示）- CSS 控制显隐，避免条件渲染破坏 Suspense 流式子树 */}
-          <div className={hasQuery ? "hidden" : undefined}>{hotTagsSlot}</div>
+          {/* 热门标签 — 客户端加载，CSS 控制显隐，与搜索历史同模式 */}
+          <div className={hotTags.length > 0 && !hasQuery ? "mb-6" : "hidden"}>
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <Flame className="size-4 text-orange-500" />
+              热门标签
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {hotTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 text-sm"
+                  onClick={() => handleTagClick(tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* 搜索结果 */}
