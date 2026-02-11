@@ -198,19 +198,18 @@ export function AISmartSummary({
   const isEditing = status === "editing";
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn("overflow-hidden gap-2", className)}>
+      <CardHeader className="py-2 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center size-8 rounded-full bg-blue-100 dark:bg-blue-900/30">
               <FileText className="size-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <CardTitle className="text-base">AI 摘要</CardTitle>
-              <CardDescription className="text-xs">
-                智能生成的内容概述
-              </CardDescription>
-            </div>
+            <CardTitle className="text-sm font-medium">AI 摘要</CardTitle>
+            <span className="text-xs text-muted-foreground">·</span>
+            <CardDescription className="text-xs">
+              智能生成的内容概述
+            </CardDescription>
           </div>
 
           {/* 操作按钮 */}

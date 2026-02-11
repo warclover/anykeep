@@ -408,7 +408,7 @@ function StructuredSummaryRenderer({
           </h4>
         </div>
         <div className="border-l-4 border-blue-500 dark:border-blue-400 pl-3 py-2 bg-white/60 dark:bg-slate-800/50 rounded-r-lg">
-          <p className="text-[15px] text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+          <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
             {data.tldr}
           </p>
         </div>
@@ -431,7 +431,7 @@ function StructuredSummaryRenderer({
                 <span className="flex-shrink-0 flex items-center justify-center size-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium mt-0.5">
                   {i + 1}
                 </span>
-                <span className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                   {point}
                 </span>
               </li>
@@ -540,7 +540,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
           className,
         )}
       >
-        <p className="text-slate-700 dark:text-slate-300 leading-7">
+        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
           {summary}
         </p>
       </div>
@@ -556,7 +556,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
           className,
         )}
       >
-        <p className="text-slate-700 dark:text-slate-300 leading-7">
+        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
           {sections[0].content}
         </p>
       </div>
@@ -618,7 +618,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
                     <span className="flex-shrink-0 flex items-center justify-center size-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium mt-0.5">
                       {i + 1}
                     </span>
-                    <span className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                       {cleanItem}
                     </span>
                   </li>
@@ -633,7 +633,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
           return (
             <blockquote
               key={idx}
-              className="border-l-4 border-blue-400 dark:border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-r-lg text-slate-700 dark:text-slate-300 italic leading-relaxed"
+              className="border-l-4 border-blue-400 dark:border-blue-500 pl-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-r-lg text-sm text-slate-700 dark:text-slate-300 italic leading-relaxed"
             >
               {section.content}
             </blockquote>
@@ -655,7 +655,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
                 key={idx}
                 className="border-l-4 border-blue-500 dark:border-blue-400 pl-3 py-2 bg-white/60 dark:bg-slate-800/50 rounded-r-lg"
               >
-                <p className="text-[15px] text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                   {section.content}
                 </p>
               </div>
@@ -665,7 +665,7 @@ export function SummaryRenderer({ summary, className }: SummaryRendererProps) {
           return (
             <p
               key={idx}
-              className="text-slate-700 dark:text-slate-300 leading-7 ml-1"
+              className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed ml-1"
             >
               {section.content}
             </p>

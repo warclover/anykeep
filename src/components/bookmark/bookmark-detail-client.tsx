@@ -405,7 +405,7 @@ export function BookmarkDetailClient({
 
             <Separator className="my-0" />
 
-            <CardContent className="pt-1 space-y-5">
+            <CardContent className="pt-1 space-y-3">
               {/* AI 智能摘要（支持编辑和重新生成） V5.7: 懒加载 */}
               {userId ? (
                 <>
