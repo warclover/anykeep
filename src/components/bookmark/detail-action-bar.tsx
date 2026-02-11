@@ -1,39 +1,35 @@
 /**
  * Detail Action Bar Component
  *
- * 书签详情页的操作按钮栏，包含返回、打开原文、分享、编辑、移动、删除等操作。
+ * 书签详情页的操作按钮栏，包含返回、分享、AI助手、监控、编辑、移动、删除等操作。
+ * 「打开原文」「朗读」「快照」已下沉至 AISmartSummary 工具栏。
  *
- * @version 1.2.0
+ * @version 1.3.0
  * @since 2025-12-24 (Phase 2.3.7)
  * @updated 2025-12-28 - 添加页面监控按钮
+ * @updated 2026-02-11 - 打开原文/朗读/快照下沉至 AI 摘要工具栏
  */
 
 "use client";
 
 import {
   ArrowLeft,
-  ExternalLink,
   Edit,
   Trash2,
   FolderInput,
   Share2,
   Bot,
   Eye,
-  Camera,
-  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { TTSPlayerButton } from "@/components/tts";
 
 // ============================================
 // 类型定义
 // ============================================
 
 export interface DetailActionBarProps {
-  /** 书签 ID */
-  bookmarkId: number;
   /** 书签标题 */
   title: string;
   /** 书签 URL */
@@ -60,12 +56,6 @@ export interface DetailActionBarProps {
   onOpenAIPanel?: () => void;
   /** 添加监控回调 */
   onAddMonitor?: () => void;
-  /** 文章快照回调 */
-  onSnapshot?: () => void;
-  /** 是否正在获取快照 */
-  isSnapshotting?: boolean;
-  /** 是否已有快照 */
-  hasSnapshot?: boolean;
 }
 
 // ============================================
@@ -73,7 +63,6 @@ export interface DetailActionBarProps {
 // ============================================
 
 export function DetailActionBar({
-  bookmarkId,
   title,
   url,
   aiSummary,
@@ -87,15 +76,7 @@ export function DetailActionBar({
   onDelete,
   onOpenAIPanel,
   onAddMonitor,
-  onSnapshot,
-  isSnapshotting,
-  hasSnapshot,
 }: DetailActionBarProps) {
-  // 打开原文
-  const handleOpenOriginal = () => {
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
   // 分享
   const handleShare = async () => {
     const shareData = {
@@ -136,16 +117,6 @@ export function DetailActionBar({
         </Button>
 
         <Button
-          variant="outline"
-          size="sm"
-          onClick={handleOpenOriginal}
-          className="h-8"
-        >
-          <ExternalLink className="size-3.5" />
-          <span className="ml-1.5">打开原文</span>
-        </Button>
-
-        <Button
           variant="ghost"
           size="sm"
           onClick={handleShare}
@@ -166,11 +137,6 @@ export function DetailActionBar({
             <Bot className="size-3.5" />
             <span className="ml-1 hidden sm:inline">AI 助手</span>
           </Button>
-        )}
-
-        {/* TTS 语音朗读按钮 */}
-        {userId && aiSummary && (
-          <TTSPlayerButton bookmarkId={bookmarkId} variant="button" size="sm" />
         )}
 
         {/* 页面监控按钮 */}
@@ -211,31 +177,6 @@ export function DetailActionBar({
           <FolderInput className="size-3.5" />
           <span className="ml-1 hidden sm:inline">移动到</span>
         </Button>
-
-        {/* 文章快照按钮 */}
-        {userId && onSnapshot && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSnapshot}
-            disabled={isSnapshotting}
-            className={cn(
-              "h-8 px-2",
-              hasSnapshot
-                ? "text-green-600 dark:text-green-400"
-                : "text-primary hover:text-primary",
-            )}
-          >
-            {isSnapshotting ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Camera className="size-3.5" />
-            )}
-            <span className="ml-1 hidden sm:inline">
-              {isSnapshotting ? "获取中" : hasSnapshot ? "已快照" : "快照"}
-            </span>
-          </Button>
-        )}
       </div>
 
       {/* 右侧：删除按钮（危险操作分离） */}

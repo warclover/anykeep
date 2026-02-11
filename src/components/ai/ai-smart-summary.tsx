@@ -20,6 +20,8 @@ import {
   Sparkles,
   Copy,
   CheckCheck,
+  ExternalLink,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,12 +54,20 @@ export interface AISmartSummaryProps {
   existingSummary?: string | null;
   /** 书签标题（用于上下文） */
   bookmarkTitle?: string;
+  /** 书签 URL（用于打开原文） */
+  url?: string;
   /** 摘要更新回调 */
   onSummaryUpdate?: (summary: string) => void;
   /** 是否只读 */
   readonly?: boolean;
   /** 自定义类名 */
   className?: string;
+  /** 文章快照回调 */
+  onSnapshot?: () => void;
+  /** 是否正在获取快照 */
+  isSnapshotting?: boolean;
+  /** 是否已有快照 */
+  hasSnapshot?: boolean;
 }
 
 type SummaryStatus = "idle" | "generating" | "editing" | "saving";
@@ -70,9 +80,13 @@ export function AISmartSummary({
   bookmarkId,
   existingSummary,
   bookmarkTitle: _bookmarkTitle,
+  url,
   onSummaryUpdate,
   readonly = false,
   className,
+  onSnapshot,
+  isSnapshotting,
+  hasSnapshot,
 }: AISmartSummaryProps) {
   const [summary, setSummary] = useState(existingSummary || "");
   const [editedSummary, setEditedSummary] = useState("");
@@ -201,6 +215,27 @@ export function AISmartSummary({
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-1">
+            {/* 打开原文按钮 */}
+            {url && !isEditing && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() =>
+                        window.open(url, "_blank", "noopener,noreferrer")
+                      }
+                    >
+                      <ExternalLink className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>打开原文</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {/* TTS 朗读按钮 */}
             {hasSummary && !isEditing && (
               <TooltipProvider>
@@ -239,6 +274,41 @@ export function AISmartSummary({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>复制摘要</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* 文章快照按钮 */}
+            {onSnapshot && !isEditing && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "size-8",
+                        hasSnapshot
+                          ? "text-green-600 dark:text-green-400"
+                          : undefined,
+                      )}
+                      onClick={onSnapshot}
+                      disabled={isSnapshotting}
+                    >
+                      {isSnapshotting ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Camera className="size-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isSnapshotting
+                      ? "获取中"
+                      : hasSnapshot
+                        ? "已快照"
+                        : "快照"}
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}

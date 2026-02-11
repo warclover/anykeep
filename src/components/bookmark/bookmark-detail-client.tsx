@@ -383,7 +383,6 @@ export function BookmarkDetailClient({
 
                 {/* === 行3：操作栏 === */}
                 <DetailActionBar
-                  bookmarkId={bookmark.id}
                   title={bookmark.title ?? ""}
                   url={bookmark.url}
                   aiSummary={localSummary}
@@ -396,9 +395,6 @@ export function BookmarkDetailClient({
                   onDelete={handleDelete}
                   onOpenAIPanel={() => setShowAIPanel(true)}
                   onAddMonitor={() => setShowMonitorDialog(true)}
-                  onSnapshot={handleSnapshot}
-                  isSnapshotting={isSnapshotting}
-                  hasSnapshot={hasSnapshot}
                 />
               </div>
             </CardHeader>
@@ -416,10 +412,14 @@ export function BookmarkDetailClient({
                       bookmarkId={bookmark.id}
                       existingSummary={localSummary}
                       bookmarkTitle={bookmark.title ?? ""}
+                      url={bookmark.url}
                       onSummaryUpdate={(newSummary) =>
                         setLocalSummary(newSummary)
                       }
                       readonly={false}
+                      onSnapshot={handleSnapshot}
+                      isSnapshotting={isSnapshotting}
+                      hasSnapshot={hasSnapshot}
                     />
                   </Suspense>
                   <Separator />
