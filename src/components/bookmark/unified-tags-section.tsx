@@ -266,7 +266,14 @@ export function UnifiedTagsSection({
   const renderAiTag = (tag: string) => (
     <span
       key={tag}
-      className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs"
+      className={cn(
+        "inline-flex items-center rounded-full",
+        "border transition-all duration-200",
+        "px-2 py-0.5 text-xs font-medium",
+        "bg-pink-50 dark:bg-pink-900/20",
+        "border-pink-200 dark:border-pink-700",
+        "text-pink-600 dark:text-pink-300",
+      )}
     >
       {tag}
     </span>
@@ -348,8 +355,8 @@ export function UnifiedTagsSection({
       {/* ==================== 行1：AI 标签（单独一行，左对齐） ==================== */}
       {hasAiTags && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center justify-center w-[2.5rem] px-0 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs flex-shrink-0 box-border">
-            AI
+          <span className="inline-flex items-center justify-center w-[4.5rem] px-0 py-0.5 rounded bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-300 font-medium text-xs flex-shrink-0 box-border">
+            AI标签
           </span>
           {visibleAiTags.map(renderAiTag)}
           {hiddenAiCount > 0 && (
@@ -378,8 +385,8 @@ export function UnifiedTagsSection({
       {/* ==================== 行2：用途及其标签（单独一行，与 AI 左对齐） ==================== */}
       {hasUsageTags && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center justify-center w-[2.5rem] px-0 py-0.5 rounded bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 font-medium text-xs flex-shrink-0 box-border">
-            用途
+          <span className="inline-flex items-center justify-center w-[4.5rem] px-0 py-0.5 rounded bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 font-medium text-xs flex-shrink-0 box-border">
+            用途标签
           </span>
           {isLoading ? (
             <div className="flex items-center gap-2 text-gray-500 text-xs">

@@ -307,7 +307,7 @@ export function AIQuickActions({
       </CardHeader>
 
       <CardContent>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex gap-2">
           {QUICK_ACTIONS.map((action) => {
             const state = actionStates[action.id];
             const isSuccess = state?.status === "success";
@@ -320,7 +320,7 @@ export function AIQuickActions({
                     <Button
                       variant="outline"
                       className={cn(
-                        "h-auto py-3 px-3 flex flex-col items-center gap-1.5 transition-all",
+                        "h-auto py-2 px-2.5 flex-1 flex items-center gap-1.5 transition-all",
                         isSuccess &&
                           "border-green-500 bg-green-50 dark:bg-green-900/20",
                         isError &&
@@ -331,7 +331,7 @@ export function AIQuickActions({
                     >
                       <div
                         className={cn(
-                          "flex items-center justify-center size-8 rounded-full transition-colors",
+                          "flex items-center justify-center size-6 shrink-0 rounded-full transition-colors",
                           isSuccess
                             ? "bg-green-100 dark:bg-green-900/30"
                             : isError
@@ -341,7 +341,7 @@ export function AIQuickActions({
                       >
                         {getButtonIcon(action)}
                       </div>
-                      <span className="text-xs font-medium">
+                      <span className="text-xs font-medium whitespace-nowrap">
                         {action.label}
                       </span>
                     </Button>
