@@ -292,6 +292,10 @@ export function BookmarkDetailClient({
                   <div className="flex items-center justify-between gap-2 mt-1.5">
                     {/* 左侧：文件夹 · 来源 · 作者 · 时间 */}
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      {/* 收藏属性标签 */}
+                      <span className="inline-flex items-center justify-center w-[4.5rem] px-0 py-0.5 rounded bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700 text-cyan-600 dark:text-cyan-300 font-medium text-xs flex-shrink-0 box-border">
+                        收藏属性
+                      </span>
                       {/* 文件夹 */}
                       {bookmark.folders && folderPath.length > 0 && (
                         <>
