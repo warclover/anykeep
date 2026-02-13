@@ -109,8 +109,11 @@ export function DetailActionBar({
 
   return (
     <div className="flex items-center justify-between gap-2">
-      {/* 左侧：返回 + 主要操作 */}
+      {/* 左侧：收藏管理标签 + 返回 + 主要操作 */}
       <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center justify-center w-[4.5rem] px-0 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-600 dark:text-amber-300 font-medium text-xs flex-shrink-0 box-border">
+          收藏管理
+        </span>
         <Button variant="ghost" size="sm" onClick={onBack} className="h-8 px-2">
           <ArrowLeft className="size-4" />
           <span className="ml-1">返回</span>

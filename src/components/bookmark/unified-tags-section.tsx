@@ -270,9 +270,8 @@ export function UnifiedTagsSection({
         "inline-flex items-center rounded-full",
         "border transition-all duration-200",
         "px-2 py-0.5 text-xs font-medium",
-        "bg-pink-50 dark:bg-pink-900/20",
         "border-pink-200 dark:border-pink-700",
-        "text-pink-600 dark:text-pink-300",
+        "text-gray-600 dark:text-gray-300",
       )}
     >
       {tag}
@@ -306,8 +305,7 @@ export function UnifiedTagsSection({
                 tag.style.bgDark,
                 tag.style.borderLight,
                 tag.style.borderDark,
-                tag.style.textLight,
-                tag.style.textDark,
+                "text-gray-600 dark:text-gray-300",
                 "shadow-sm",
               ]
             : [

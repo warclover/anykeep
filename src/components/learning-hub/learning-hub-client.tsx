@@ -151,17 +151,17 @@ function StatsCard({
   trend?: { value: number; isUp: boolean };
 }) {
   return (
-    <Card className="border">
-      <CardContent className="flex items-center gap-2.5 px-3 py-2">
-        <div className={cn("p-1.5 rounded-md shrink-0", color)}>
-          <Icon className="size-3.5 text-white" />
+    <Card className="border h-[50px] flex flex-col justify-center !py-0 gap-0">
+      <CardContent className="flex items-center gap-1.5 px-2 py-0">
+        <div className={cn("p-0.5 rounded shrink-0", color)}>
+          <Icon className="size-2.5 text-white" />
         </div>
-        <div className="flex items-baseline gap-1 min-w-0">
-          <span className="text-lg font-bold text-gray-900 dark:text-white leading-none">
+        <div className="flex items-baseline gap-0.5 min-w-0">
+          <span className="text-xl font-bold text-gray-900 dark:text-white leading-none">
             {value}
           </span>
-          {unit && <span className="text-xs text-gray-500">{unit}</span>}
-          <span className="text-xs text-gray-500 dark:text-gray-400 ml-0.5">
+          {unit && <span className="text-sm text-gray-500">{unit}</span>}
+          <span className="text-[14px] text-gray-500 dark:text-gray-400 ml-0.5">
             {label}
           </span>
         </div>
@@ -169,7 +169,7 @@ function StatsCard({
           <Badge
             variant="secondary"
             className={cn(
-              "text-[10px] px-1.5 py-0 h-4 ml-auto shrink-0",
+              "text-[14px] px-1 py-0 h-[18px] ml-auto shrink-0",
               trend.isUp
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                 : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
@@ -201,21 +201,21 @@ function SkillActionCard({
       )}
       onClick={onAction}
     >
-      <CardHeader className={cn("py-2 px-4", skill.bgColor)}>
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-white dark:bg-gray-900 shadow-sm">
+      <CardHeader className={cn("py-1.5 px-3", skill.bgColor)}>
+        <div className="flex items-center gap-1.5">
+          <div className="p-1 rounded-md bg-white dark:bg-gray-900 shadow-sm">
             <Icon className={cn("size-4", skill.color)} />
           </div>
           <CardTitle className="text-sm font-semibold">{skill.name}</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="pt-2 pb-3 px-4">
-        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2 min-h-[2lh]">
+      <CardContent className="pt-1.5 pb-2 px-3">
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-1.5 line-clamp-2 min-h-[2lh]">
           {skill.description}
         </p>
         <Button
           size="sm"
-          className="w-full h-7 text-xs"
+          className="w-full h-6 text-xs"
           onClick={(e) => {
             e.stopPropagation();
             onAction();
@@ -308,27 +308,27 @@ export function LearningHubClient() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="container mx-auto p-4 lg:p-8 max-w-6xl space-y-8">
-          {/* 标题区域 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Link href="/home">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  <ArrowLeft className="h-4 w-4" />
-                  返回首页
-                </Button>
-              </Link>
+          {/* 标题区域：学习助手 + 返回首页（右对齐） */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <BookMarked className="size-8 text-amber-500" />
+                {LEARNING_HUB.TITLE}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                {LEARNING_HUB.DESCRIPTION}
+              </p>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <BookMarked className="size-8 text-amber-500" />
-              {LEARNING_HUB.TITLE}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              {LEARNING_HUB.DESCRIPTION}
-            </p>
+            <Link href="/home" className="shrink-0">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                返回首页
+              </Button>
+            </Link>
           </div>
 
           {/* 统计概览 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xl h-[50px]">
             <StatsCard
               label={LEARNING_HUB.STATS.READING_PROGRESS}
               value="80"
