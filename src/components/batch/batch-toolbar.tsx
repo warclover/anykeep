@@ -14,6 +14,7 @@ import {
   Loader2,
   Download,
   FileText,
+  FolderInput,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BATCH_TEXT } from "./constants";
@@ -35,6 +36,8 @@ interface BatchToolbarProps {
   onOpenSynthesisDialog?: () => void;
   /** 批量删除回调 */
   onBatchDelete?: () => void;
+  /** 打开移动对话框回调 */
+  onOpenMoveDialog?: () => void;
   /** 是否正在处理 */
   isProcessing?: boolean;
 }
@@ -51,6 +54,7 @@ export const BatchToolbar = memo(function BatchToolbar({
   onOpenExportDialog,
   onOpenSynthesisDialog,
   onBatchDelete,
+  onOpenMoveDialog,
   isProcessing = false,
 }: BatchToolbarProps) {
   const isAllSelected = selectedCount > 0 && selectedCount === totalCount;
@@ -117,6 +121,20 @@ export const BatchToolbar = memo(function BatchToolbar({
           >
             <FileText className="h-4 w-4 mr-1" />
             {BATCH_TEXT.SYNTHESIS}
+          </Button>
+        )}
+
+        {/* 移动到文件夹操作 */}
+        {onOpenMoveDialog && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenMoveDialog}
+            disabled={selectedCount === 0 || isProcessing}
+            className="h-8 px-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+          >
+            <FolderInput className="h-4 w-4 mr-1" />
+            移动
           </Button>
         )}
 

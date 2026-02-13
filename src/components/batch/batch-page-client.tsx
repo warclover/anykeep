@@ -19,6 +19,7 @@ import {
 import { BatchToolbar } from "./batch-toolbar";
 import { BatchBookmarkList } from "./batch-bookmark-list";
 import { BatchTagDialog } from "./batch-tag-dialog";
+import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { ExportDialogV2 } from "@/components/export";
 import {
   AlertDialog,
@@ -31,11 +32,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
+import { useAbortableFetch } from "@/hooks/core";
 import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
 import { BATCH_TEXT } from "./constants";
 import type { BatchTagsResult } from "@/lib/batch/validation";
 import type { BookmarkWithFolder } from "@/lib/export/types";
 import { clientLogger } from "@/lib/client-logger";
+import { toast } from "sonner";
 // 国际化
 import { useUiText } from "@/lib/i18n";
 
@@ -65,6 +68,7 @@ const SORT_OPTIONS = [
  */
 export function BatchPageClient() {
   const router = useRouter();
+  const { fetchWithAbort } = useAbortableFetch();
   // 国际化
   const t = useUiText();
 
@@ -84,6 +88,12 @@ export function BatchPageClient() {
 
   // 导出对话框
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+  // 移动对话框
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+
+  // 批量删除状态
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
   // 综述确认对话框
   const [isSynthesisDialogOpen, setIsSynthesisDialogOpen] = useState(false);
@@ -195,6 +205,47 @@ export function BatchPageClient() {
     return createSnapshot();
   }, [createSnapshot]);
 
+  // 批量删除（移入回收站）
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    // 确认对话框
+    const confirmed = window.confirm(
+      `确定要删除选中的 ${selectedIds.size} 条收藏吗？删除后可在回收站恢复。`,
+    );
+    if (!confirmed) return;
+
+    setIsBatchDeleting(true);
+
+    try {
+      const response = await fetchWithAbort("/api/v1/bookmarks/batch/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error?.message || "批量删除失败");
+      }
+
+      // 刷新页面数据
+      router.refresh();
+      deselectAll();
+      toast.success(`已删除 ${selectedIds.size} 条收藏`);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      clientLogger.error({ error }, "Batch delete error");
+      toast.error(error instanceof Error ? error.message : "批量删除失败");
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  }, [selectedIds, fetchWithAbort, router, deselectAll]);
+
   // 创建综述
   const handleCreateSynthesis = useCallback(async () => {
     if (selectedIds.size < 3) return;
@@ -305,6 +356,9 @@ export function BatchPageClient() {
           onOpenTagDialog={() => setIsTagDialogOpen(true)}
           onOpenExportDialog={() => setIsExportDialogOpen(true)}
           onOpenSynthesisDialog={() => setIsSynthesisDialogOpen(true)}
+          onBatchDelete={handleBatchDelete}
+          onOpenMoveDialog={() => setIsMoveDialogOpen(true)}
+          isProcessing={isBatchDeleting}
         />
       )}
 
@@ -360,6 +414,18 @@ export function BatchPageClient() {
         mode="selected"
         bookmarks={selectedBookmarks as BookmarkWithFolder[]}
         onSuccess={() => setIsExportDialogOpen(false)}
+      />
+
+      {/* 移动对话框 */}
+      <BatchMoveDialog
+        open={isMoveDialogOpen}
+        onOpenChange={setIsMoveDialogOpen}
+        selectedIds={selectedIds}
+        onSuccess={() => {
+          setIsMoveDialogOpen(false);
+          deselectAll();
+          router.refresh();
+        }}
       />
 
       {/* 综述确认对话框 */}
