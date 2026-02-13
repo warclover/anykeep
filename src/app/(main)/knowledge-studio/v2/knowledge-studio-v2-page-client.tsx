@@ -351,10 +351,12 @@ export function KnowledgeStudioV2PageClient() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">全部平台</SelectItem>
-                        <SelectItem value="wechat">微信公众号</SelectItem>
-                        <SelectItem value="bilibili">B站</SelectItem>
-                        <SelectItem value="zhihu">知乎</SelectItem>
-                        <SelectItem value="xiaohongshu">小红书</SelectItem>
+                        <SelectItem value="WECHAT_OFFICIAL_ACCOUNT">
+                          微信公众号
+                        </SelectItem>
+                        <SelectItem value="BILIBILI">B站</SelectItem>
+                        <SelectItem value="ZHIHU">知乎</SelectItem>
+                        <SelectItem value="XIAOHONGSHU">小红书</SelectItem>
                         <SelectItem value="browser">浏览器书签</SelectItem>
                       </SelectContent>
                     </Select>
