@@ -598,32 +598,34 @@ export function OutlineEditorV2({
         </CardHeader>
 
         <CardContent className="pt-0">
-          <ScrollArea style={{ maxHeight }}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              modifiers={[restrictToVerticalAxis]}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={flatNodes.map((n) => n.id)}
-                strategy={verticalListSortingStrategy}
+          <div className="relative" style={{ maxHeight, minHeight: 120 }}>
+            <ScrollArea className="h-full">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis]}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-0.5 pr-4">
-                  {renderNodes(outline.nodes)}
-                </div>
-              </SortableContext>
-
-              <DragOverlay>
-                {activeNode && (
-                  <div className="bg-accent rounded-lg p-2 shadow-lg opacity-90">
-                    <span className="font-medium">{activeNode.title}</span>
+                <SortableContext
+                  items={flatNodes.map((n) => n.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-0.5 pr-4">
+                    {renderNodes(outline.nodes)}
                   </div>
-                )}
-              </DragOverlay>
-            </DndContext>
-          </ScrollArea>
+                </SortableContext>
+
+                <DragOverlay>
+                  {activeNode && (
+                    <div className="bg-accent rounded-lg p-2 shadow-lg opacity-90">
+                      <span className="font-medium">{activeNode.title}</span>
+                    </div>
+                  )}
+                </DragOverlay>
+              </DndContext>
+            </ScrollArea>
+          </div>
         </CardContent>
 
         <CardFooter className="flex justify-between pt-4 border-t">
