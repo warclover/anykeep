@@ -1,19 +1,12 @@
 /**
- * 知识萃取列表页 - 服务端入口
- * 展示用户的所有知识萃取报告，支持搜索、筛选和排序
+ * 综述列表页 - 重定向到内容分析页
  *
- * @version 1.0.0
- * @since 2025-12-29
+ * @version 2.0.0
+ * @since 2026-02-13
  */
 
-import type { Metadata } from "next";
-import { SynthesisListPageClient } from "@/components/synthesis/synthesis-list-page-client";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "知识萃取 - AnyKeep",
-  description: "从多个书签中萃取知识精华，智能整合多来源知识",
-};
-
-export default function SynthesisListPage() {
-  return <SynthesisListPageClient />;
+export default function SynthesisPage() {
+  redirect("/content-analysis");
 }

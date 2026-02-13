@@ -1,6 +1,6 @@
 /**
  * 批量操作工具栏组件
- * 显示选中数量和批量操作按钮
+ * 显示选中数量和批���操作按钮
  */
 
 "use client";
@@ -13,7 +13,6 @@ import {
   X,
   Loader2,
   Download,
-  FileText,
   FolderInput,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,8 +31,6 @@ interface BatchToolbarProps {
   onOpenTagDialog: () => void;
   /** 打开导出对话框回调 */
   onOpenExportDialog?: () => void;
-  /** 打开综述对话框回调 */
-  onOpenSynthesisDialog?: () => void;
   /** 批量删除回调 */
   onBatchDelete?: () => void;
   /** 打开移动对话框回调 */
@@ -52,7 +49,6 @@ export const BatchToolbar = memo(function BatchToolbar({
   onClearSelection,
   onOpenTagDialog,
   onOpenExportDialog,
-  onOpenSynthesisDialog,
   onBatchDelete,
   onOpenMoveDialog,
   isProcessing = false,
@@ -104,23 +100,6 @@ export const BatchToolbar = memo(function BatchToolbar({
           >
             <Download className="h-4 w-4 mr-1" />
             {BATCH_TEXT.EXPORT}
-          </Button>
-        )}
-
-        {/* 生成综述操作 */}
-        {onOpenSynthesisDialog && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenSynthesisDialog}
-            disabled={selectedCount < 3 || isProcessing}
-            className="h-8 px-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-            title={
-              selectedCount < 3 ? "至少选择 3 个书签才能生成综述" : undefined
-            }
-          >
-            <FileText className="h-4 w-4 mr-1" />
-            {BATCH_TEXT.SYNTHESIS}
           </Button>
         )}
 

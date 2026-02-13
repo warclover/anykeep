@@ -144,10 +144,10 @@ const smartToolsGroup: NavGroupConfig = {
       visibility: "desktop",
     },
     {
-      name: "nav.synthesis",
-      href: "/synthesis",
+      name: "nav.contentAnalysis",
+      href: "/content-analysis",
       icon: FlaskConical,
-      description: "mobileMenu.themeExtraction",
+      description: "mobileMenu.contentAnalysis",
     },
     {
       name: "nav.draftStudio",

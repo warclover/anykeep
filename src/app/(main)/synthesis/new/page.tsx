@@ -1,20 +1,12 @@
 /**
- * 内容分析创建页 - 服务端入口
- * 单页完成书签选择和分析配置
+ * 内容分析创建页 - 重定向到新版
  *
- * @version 2.0.0
- * @since 2025-12-29
- * @updated 2026-01-30 - 简化为单页流程
+ * @version 3.0.0
+ * @since 2026-02-13
  */
 
-import type { Metadata } from "next";
-import { SynthesisQuickPageClient } from "@/components/synthesis/synthesis-quick-page-client";
-
-export const metadata: Metadata = {
-  title: "内��分析 - AnyKeep",
-  description: "选择多篇内容，AI 分析它们的共识、分歧与知识盲区",
-};
+import { redirect } from "next/navigation";
 
 export default function SynthesisNewPage() {
-  return <SynthesisQuickPageClient />;
+  redirect("/content-analysis/new");
 }
