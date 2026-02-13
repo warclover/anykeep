@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Activity,
   Link2Off,
@@ -22,6 +23,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { clientLogger } from "@/lib/client-logger";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -169,7 +171,8 @@ export function ContentHealthTab({ className }: ContentHealthTabProps) {
       });
       await refresh();
     } catch (err) {
-      console.error("Refresh failed:", err);
+      clientLogger.error({ err }, "Refresh failed");
+      toast.error("重新检测失败，请重试");
     } finally {
       setIsRefreshing(false);
     }
@@ -209,7 +212,7 @@ export function ContentHealthTab({ className }: ContentHealthTabProps) {
     return (
       <div className={cn("py-4 text-center", className)}>
         <p className="text-sm text-red-500 mb-2">{error}</p>
-        <Button variant="outline" size="sm" onClick={refresh}>
+        <Button variant="outline" size="sm" onClick={() => refresh()}>
           重试
         </Button>
       </div>

@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { SynthesisDepthMode, SynthesisOutputStyle } from "@/lib/synthesis";
 import { AdvancedSettingsPanel } from "@/components/synthesis/advanced-settings-panel";
 import { clientLogger } from "@/lib/client-logger";
@@ -179,6 +180,12 @@ export function ContentAnalysisCreateClient() {
   // 每页数量
   const PAGE_SIZE = 20;
 
+  // 防抖定时器 ref
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 标记是否为首次挂载
+  const isInitialMount = useRef(true);
+
   // 根据 Tab 设置数量限制
   const minCount = activeTab === "compare" ? 2 : 3;
   const maxCount = activeTab === "compare" ? 2 : Infinity;
@@ -226,16 +233,38 @@ export function ContentAnalysisCreateClient() {
     [searchQuery],
   );
 
-  // 初始加载
+  // 初始加载（仅首次挂载时执行）
   useEffect(() => {
     loadBookmarks(1);
-  }, [loadBookmarks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 空依赖数组，仅在挂载时执行
 
-  // 搜索时重置
+  // 搜索变化时防抖重新加载
   useEffect(() => {
-    setPage(1);
-    loadBookmarks(1);
-  }, [searchQuery, loadBookmarks]);
+    // 跳过首次挂载
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // 清除之前的定时器
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    // 设置新的防抖定时器（300ms）
+    searchDebounceRef.current = setTimeout(() => {
+      setPage(1);
+      loadBookmarks(1);
+    }, 300);
+
+    // 清理函数
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchQuery]); // 移除 loadBookmarks 依赖，通过闭包访问最新的函数
 
   // 加载更多
   const handleLoadMore = useCallback(() => {
@@ -304,13 +333,15 @@ export function ContentAnalysisCreateClient() {
       });
 
       if (!response.ok) {
-        throw new Error("创建失败");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || "创建失败");
       }
 
       const { data } = await response.json();
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
       clientLogger.error({ error }, "Create analysis error:");
+      toast.error("创建分析失败，请重试");
     } finally {
       setIsCreating(false);
     }

@@ -818,7 +818,6 @@ export function HomePageClient({
         onOpenBrowserImportDialog={openBrowserImportDialog}
         onOpenExportDialog={openExportDialog}
         onOpenTagDialog={() => setShowBatchTagDialog(true)}
-        onOpenSynthesisDialog={() => setShowSynthesisDialog(true)}
         isBrowserPlatform={isBrowserPlatform}
         isTrashFolder={isTrashFolder}
         isSnapshotEnabled={isSnapshotEnabled}
