@@ -1,6 +1,6 @@
 /**
- * 数据中心 Tab 切换组件
- * 管理导入/导出/分发三个功能区域的切换
+ * 导入导出 Tab 切换组件
+ * 管理导入/导出/分发/批量管理四个功能区域的切换
  *
  * @description 实现 Tab 懒加载，只有激活的 Tab 才会挂载和加载数据
  */
@@ -52,7 +52,7 @@ export function DataHubTabs({ children }: DataHubTabsProps) {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           {DATA_HUB_TABS.map(({ id, label, icon: Icon }) => (
             <TabsTrigger
               key={id}

@@ -1,6 +1,6 @@
 /**
  * 导入导出主客户端组件
- * 整合导入、导出、分发三大功能
+ * 整合导入、导出、分发、批量管理四大功能
  */
 
 "use client";
@@ -10,6 +10,7 @@ import { DataHubTabs } from "./data-hub-tabs";
 import { ImportTabContent } from "./import-tab-content";
 import { ExportTabContent } from "./export-tab-content";
 import { DistributeTabContent } from "./distribute-tab-content";
+import { BatchTabContent } from "./batch-tab-content";
 import { DataHubTabSkeleton } from "./data-hub-skeleton";
 
 export function DataHubPageClient() {
@@ -18,7 +19,7 @@ export function DataHubPageClient() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">导入导出</h1>
         <p className="text-muted-foreground">
-          管理数据导入、导出与分发到外部平台
+          管理数据导入、导出、分发与批量操作
         </p>
       </div>
 
@@ -27,6 +28,7 @@ export function DataHubPageClient() {
           <ImportTabContent />
           <ExportTabContent />
           <DistributeTabContent />
+          <BatchTabContent />
         </DataHubTabs>
       </Suspense>
     </div>

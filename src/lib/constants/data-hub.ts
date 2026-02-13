@@ -19,6 +19,7 @@ import {
   Mail,
   Rss,
   Webhook,
+  CheckSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,12 @@ export const DATA_HUB_TABS = [
     label: "分发",
     icon: Share2,
     description: "同步到外部平台",
+  },
+  {
+    id: "batch",
+    label: "批量管理",
+    icon: CheckSquare,
+    description: "批量选择、标签、移动、删除",
   },
 ] as const;
 

@@ -1,6 +1,8 @@
 /**
  * 批量操作页面客户端组件
  * 提供批量标签管理、删除、移动等操作
+ *
+ * @param embedded - 嵌入模式：隐藏页面标题和返回按钮，用于 Tab 嵌入
  */
 
 "use client";
@@ -53,10 +55,16 @@ const SORT_OPTIONS = [
   { value: "title_desc", i18nKey: "titleZA" },
 ] as const;
 
+// Props 类型定义
+interface BatchPageClientProps {
+  /** 嵌入模式：隐藏页面标题和返回按钮 */
+  embedded?: boolean;
+}
+
 /**
  * 批量操作页面客户端组件
  */
-export function BatchPageClient() {
+export function BatchPageClient({ embedded = false }: BatchPageClientProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   // 国际化
@@ -245,18 +253,26 @@ export function BatchPageClient() {
   }, [deselectAll]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
-      {/* 页面头部 */}
-      <header className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-950">
-        <div className="flex items-center gap-3">
-          <CheckSquare className="h-6 w-6 text-purple-500" />
-          <h1 className="text-xl font-semibold">{BATCH_TEXT.PAGE_TITLE}</h1>
-        </div>
-        <Button variant="outline" onClick={() => router.push("/home")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {BATCH_TEXT.BACK_TO_HOME}
-        </Button>
-      </header>
+    <div
+      className={
+        embedded
+          ? "flex flex-col h-[calc(100vh-180px)]"
+          : "flex flex-col h-[calc(100vh-56px)]"
+      }
+    >
+      {/* 页面头部 - 嵌入模式下隐藏 */}
+      {!embedded && (
+        <header className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-950">
+          <div className="flex items-center gap-3">
+            <CheckSquare className="h-6 w-6 text-purple-500" />
+            <h1 className="text-xl font-semibold">{BATCH_TEXT.PAGE_TITLE}</h1>
+          </div>
+          <Button variant="outline" onClick={() => router.push("/home")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {BATCH_TEXT.BACK_TO_HOME}
+          </Button>
+        </header>
+      )}
 
       {/* 筛选栏 */}
       <div className="px-6 py-3 border-b bg-gray-50 dark:bg-gray-900/50">
