@@ -14,7 +14,6 @@ import {
   Tags,
   FileText,
   Inbox,
-  CheckSquare,
   Database,
   FlaskConical,
   BarChart3,
@@ -157,23 +156,10 @@ const smartToolsGroup: NavGroupConfig = {
       description: "mobileMenu.aiReportGeneration",
     },
     {
-      name: "nav.healthCheck",
-      href: "/health",
-      icon: HeartPulse,
-      description: "mobileMenu.healthDiagnosis",
-    },
-    {
       name: "nav.learningHub",
       href: "/learning-hub",
       icon: GraduationCap,
       description: "mobileMenu.aiLearningHub",
-    },
-    {
-      name: "nav.batch",
-      href: "/batch",
-      icon: CheckSquare,
-      pageId: "batch",
-      description: "mobileMenu.batchManagement",
     },
     {
       name: "nav.dataCenter",

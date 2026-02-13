@@ -29,7 +29,7 @@ import { zhCN } from "date-fns/locale";
 
 const LABELS = {
   title: "智能聚类",
-  description: "基��内容相似度自动分组",
+  description: "基于内容相似度自动分组",
   emptyState: "暂无待聚类内容",
   pendingPrefix: "待处理",
   oldestPendingPrefix: "最早",

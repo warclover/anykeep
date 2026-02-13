@@ -1,22 +1,27 @@
 /**
  * 健康诊断面板组件
  *
- * 整合健康度评分和问题摘要列表，作为整理中心的右侧面板
+ * 整合文件夹健康和内容健康两大功能模块
+ * 作为整理中心的右侧面板
  *
- * @version 1.0.0
+ * @version 2.0.0 - 集成内容健康检测（原 /health 页面功能）
  * @since 2026-01-31
+ * @updated 2026-02-13
  */
 
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Sparkles, Loader2, FolderOpen, FileHeart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
 import { calculateTotalIssues } from "@/lib/organize/types";
 import { HealthScoreCard } from "./health-score-card";
+import { ContentHealthTab } from "./content-health-tab";
 import {
   IssueSummaryList,
   type IssueType,
@@ -29,12 +34,17 @@ import {
 
 interface HealthDiagnosisPanelProps {
   className?: string;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
   onViewAllIssues?: () => void;
   onIssueAction?: (type: IssueType, itemId: number, action: ActionType) => void;
   disabled?: boolean;
 }
+
+// ============================================================================
+// 常量
+// ============================================================================
+
+const TAB_FOLDER = "folder";
+const TAB_CONTENT = "content";
 
 // ============================================================================
 // 主组件
@@ -42,25 +52,22 @@ interface HealthDiagnosisPanelProps {
 
 export function HealthDiagnosisPanel({
   className,
-  collapsed: controlledCollapsed,
-  onToggleCollapse,
   onViewAllIssues,
   onIssueAction,
   disabled,
 }: HealthDiagnosisPanelProps) {
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const searchParams = useSearchParams();
+
+  // 从 URL 参数计算初始 Tab（支持从 /health 重定向）
+  const initialTab = useMemo(() => {
+    const tabParam = searchParams?.get("tab");
+    return tabParam === TAB_CONTENT ? TAB_CONTENT : TAB_FOLDER;
+  }, [searchParams]);
+
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
   const { analysis, isLoading, isAnalyzing, error, runAnalysis } =
     useLibrarianAnalysis();
-
-  // 支持受控和非受控模式
-  const isCollapsed = controlledCollapsed ?? internalCollapsed;
-  const handleToggle = () => {
-    if (onToggleCollapse) {
-      onToggleCollapse();
-    } else {
-      setInternalCollapsed(!internalCollapsed);
-    }
-  };
 
   // 加载状态
   if (isLoading) {
@@ -90,7 +97,7 @@ export function HealthDiagnosisPanel({
     );
   }
 
-  // 未分析状态
+  // 未分析状态（仅文件夹健康需要分析）
   if (!analysis) {
     return (
       <Card className={cn("", className)}>
@@ -120,52 +127,61 @@ export function HealthDiagnosisPanel({
   return (
     <Card className={cn("", className)}>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-5 w-5 text-purple-500" />
-            健康诊断
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleToggle}
-          >
-            {isCollapsed ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-5 w-5 text-purple-500" />
+          健康诊断
+        </CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* 健康度评分卡片 - 始终显示 */}
-        <HealthScoreCard
-          healthScore={analysis.healthScore}
-          totalIssues={totalIssues}
-          totalSuggestions={analysis.totalSuggestions}
-          analyzedAt={analysis.analyzedAt}
-          isAnalyzing={isAnalyzing}
-          onReanalyze={runAnalysis}
-          compact={isCollapsed}
-        />
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger
+              value={TAB_FOLDER}
+              className="text-xs gap-1.5 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900/30 dark:data-[state=active]:text-purple-300"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              文件夹健康
+            </TabsTrigger>
+            <TabsTrigger
+              value={TAB_CONTENT}
+              className="text-xs gap-1.5 data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 dark:data-[state=active]:bg-cyan-900/30 dark:data-[state=active]:text-cyan-300"
+            >
+              <FileHeart className="h-3.5 w-3.5" />
+              内容健康
+            </TabsTrigger>
+          </TabsList>
 
-        {/* 问题摘要列表 - 可折叠 */}
-        {!isCollapsed && (
-          <IssueSummaryList
-            duplicateFolders={analysis.duplicateFolders}
-            emptyFolders={analysis.emptyFolders}
-            oversizedFolders={analysis.oversizedFolders}
-            poorlyNamedFolders={analysis.poorlyNamedFolders}
-            missingCategories={analysis.missingCategories}
-            maxItemsPerCategory={2}
-            onViewAll={onViewAllIssues}
-            onAction={onIssueAction}
-            disabled={disabled}
-          />
-        )}
+          <TabsContent value={TAB_FOLDER} className="space-y-4 mt-0">
+            {/* 健康度评分卡片 */}
+            <HealthScoreCard
+              healthScore={analysis.healthScore}
+              totalIssues={totalIssues}
+              totalSuggestions={analysis.totalSuggestions}
+              analyzedAt={analysis.analyzedAt}
+              isAnalyzing={isAnalyzing}
+              onReanalyze={runAnalysis}
+              compact={false}
+            />
+
+            {/* 问题摘要列表 */}
+            <IssueSummaryList
+              duplicateFolders={analysis.duplicateFolders}
+              emptyFolders={analysis.emptyFolders}
+              oversizedFolders={analysis.oversizedFolders}
+              poorlyNamedFolders={analysis.poorlyNamedFolders}
+              missingCategories={analysis.missingCategories}
+              maxItemsPerCategory={2}
+              onViewAll={onViewAllIssues}
+              onAction={onIssueAction}
+              disabled={disabled}
+            />
+          </TabsContent>
+
+          <TabsContent value={TAB_CONTENT} className="mt-0">
+            <ContentHealthTab />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

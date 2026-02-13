@@ -29,7 +29,6 @@ import {
   FileText,
   // 整理工具
   Inbox,
-  CheckSquare,
   Download,
   // 学习中心
   FlaskConical,
@@ -142,12 +141,6 @@ const navigationGroups: NavGroup[] = [
         icon: Sparkles,
         description: "mobileMenu.aiReportGeneration",
         isPro: true,
-      },
-      {
-        name: "nav.batch",
-        href: "/batch",
-        icon: CheckSquare,
-        description: "mobileMenu.batchManagement",
       },
       {
         name: "nav.export",

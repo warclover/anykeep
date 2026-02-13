@@ -40,6 +40,7 @@
     "_backup",
     "backups",
     "已完成",
+    "docs/templates",
     "src/lib/classification/_deprecated_v3/**",
     "src/lib/classification/strategies/classic/**",
     "src/lib/fluid-agent/__tests__/**",
