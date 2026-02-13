@@ -3,9 +3,9 @@
  *
  * 展示整理中心的快速操作入口
  *
- * @version 1.1.0
+ * @version 2.0.0
  * @since 2026-01-10
- * @updated 2026-02-01 - 添加键盘可访问性支持
+ * @updated 2026-02-13 - 移除 ClusterPendingCard（功能已整合到 Tab）
  */
 
 "use client";
@@ -22,7 +22,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { QuickActionType } from "@/lib/organize/types";
-import { ClusterPendingCard } from "./cluster-pending-card";
 
 interface QuickActionGridProps {
   onAction: (actionType: QuickActionType) => void;
@@ -125,9 +124,6 @@ export function QuickActionGrid({ onAction, disabled }: QuickActionGridProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* 智能聚类卡片 - 有待处理时显示 */}
-      <ClusterPendingCard disabled={disabled} />
 
       {/* 快捷操作网格 */}
       <div className="grid grid-cols-2 gap-4" role="list" aria-label="快捷操作">

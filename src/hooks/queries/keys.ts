@@ -285,3 +285,15 @@ export const synthesisKeys = {
   highlights: (reportId: string) =>
     [...synthesisKeys.all, "highlights", reportId] as const,
 };
+
+/**
+ * Organize Query Keys (整理中心)
+ */
+export const organizeKeys = {
+  all: ["organize"] as const,
+  counts: () => [...organizeKeys.all, "counts"] as const,
+  /** Tab 书签列表 */
+  items: () => [...organizeKeys.all, "items"] as const,
+  /** 特定 Tab 的书签列表 */
+  itemsByTab: (tabId: string) => [...organizeKeys.items(), tabId] as const,
+};

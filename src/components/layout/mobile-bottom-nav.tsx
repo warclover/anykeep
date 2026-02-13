@@ -4,7 +4,7 @@
  * 导航结构：
  * - 收藏 (BookOpen) → /home
  * - 搜索 (Search) → /search
- * - 收件箱 (Inbox) → /inbox
+ * - 整理 (Sparkles) → /organize
  * - 更多 (MoreHorizontal) → 展开完整菜单 Sheet
  *
  * "更多" Sheet 复用 mobile-menu.tsx 的分组结构，
@@ -20,13 +20,12 @@ import { useTheme } from "next-themes";
 import {
   BookOpen,
   Search,
-  Inbox,
+  Sparkles,
   MoreHorizontal,
   Moon,
   Sun,
   Plus,
   X,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -108,12 +107,12 @@ export function MobileBottomNav() {
    */
   const hasUnread = unreadCount > 0;
 
-  // 收件箱的 href（暂时使用 /inbox 路由）
-  const inboxHref = "/inbox";
-  const isInboxActive = isClientNavEnabled
-    ? false // inbox 暂未在 Keep-Alive 中
-    : pathname === inboxHref ||
-      (pathname?.startsWith(inboxHref + "/") ?? false);
+  // 整理 Tab 的 href
+  const organizeHref = "/organize";
+  const isOrganizeActive = isClientNavEnabled
+    ? false // organize 暂未在 Keep-Alive 中
+    : pathname === organizeHref ||
+      (pathname?.startsWith(organizeHref + "/") ?? false);
 
   return (
     <>
@@ -189,29 +188,29 @@ export function MobileBottomNav() {
             );
           })()}
 
-          {/* 收件箱 Tab */}
+          {/* 整理 Tab */}
           <Link
-            href={inboxHref}
+            href={organizeHref}
             className={cn(
               "flex flex-col items-center justify-center gap-1 min-w-[60px] h-14 rounded-lg transition-colors",
-              isInboxActive
+              isOrganizeActive
                 ? "text-purple-600 dark:text-purple-400"
                 : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200",
             )}
           >
-            <Inbox
+            <Sparkles
               className={cn(
                 "size-5 transition-transform",
-                isInboxActive && "scale-110",
+                isOrganizeActive && "scale-110",
               )}
             />
             <span
               className={cn(
                 "text-xs font-medium",
-                isInboxActive && "font-semibold",
+                isOrganizeActive && "font-semibold",
               )}
             >
-              {getText("nav.inbox")}
+              {getText("nav.organize")}
             </span>
           </Link>
 

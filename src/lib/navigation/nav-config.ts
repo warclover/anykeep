@@ -13,7 +13,6 @@ import {
   FolderOpen,
   Tags,
   FileText,
-  Inbox,
   Database,
   FlaskConical,
   BarChart3,
@@ -131,16 +130,10 @@ const smartToolsGroup: NavGroupConfig = {
   defaultCollapsed: false,
   items: [
     {
-      name: "nav.inbox",
-      href: "/inbox",
-      icon: Inbox,
-      description: "mobileMenu.waitingClassification",
-    },
-    {
-      name: "nav.organizeCenter",
+      name: "nav.organize",
       href: "/organize",
       icon: Sparkles,
-      visibility: "desktop",
+      description: "mobileMenu.aiOrganize",
     },
     {
       name: "nav.contentAnalysis",
@@ -323,10 +316,10 @@ export function getMobileItems(group: NavGroupConfig): NavItemConfig[] {
 
 /**
  * 获取移动端 "更多" Sheet 中的导航分组
- * 排除底部 Tab 已覆盖的页面（收藏、搜索、收件箱）
+ * 排除底部 Tab 已覆盖的页面（收藏、搜索、整理）
  */
 export function getMobileMoreGroups(): NavGroupConfig[] {
-  const bottomTabHrefs = new Set(["/home", "/search", "/inbox"]);
+  const bottomTabHrefs = new Set(["/home", "/search", "/organize"]);
 
   return NAV_GROUPS.filter((g) => !g.requireDevMode) // 移动端不显示开发者工具
     .map((group) => ({
