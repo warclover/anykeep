@@ -130,7 +130,7 @@ const smartToolsGroup: NavGroupConfig = {
   defaultCollapsed: false,
   items: [
     {
-      name: "nav.organize",
+      name: "nav.organizeCenter",
       href: "/organize",
       icon: Sparkles,
       description: "mobileMenu.aiOrganize",

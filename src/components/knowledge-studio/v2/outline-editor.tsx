@@ -515,30 +515,34 @@ export function OutlineEditorV2({
     [flatNodes, activeId],
   );
 
-  // Render tree nodes recursively (plain function, not useCallback, to avoid recursive reference issue)
-  function renderNodes(nodes: OutlineNode[]): React.ReactNode {
-    return nodes.map((node) => {
-      const hasChildren = Boolean(node.children && node.children.length > 0);
-      const isExpanded = expanded[node.id] ?? false;
+  // Render tree nodes recursively
 
-      return (
-        <div key={node.id}>
-          <SortableTreeItem
-            node={node}
-            isExpanded={isExpanded}
-            hasChildren={hasChildren}
-            onToggleExpand={() => handleToggleExpand(node.id)}
-            onUpdate={(updates) => handleUpdateNode(node.id, updates)}
-            onDelete={() => setDeleteConfirm(node.id)}
-            disabled={readOnly}
-          />
-          {hasChildren && isExpanded && node.children && (
-            <div>{renderNodes(node.children)}</div>
-          )}
-        </div>
-      );
-    });
-  }
+  const renderNodes = useCallback(
+    function renderNodesImpl(nodes: OutlineNode[]): React.ReactNode {
+      return nodes.map((node) => {
+        const hasChildren = Boolean(node.children && node.children.length > 0);
+        const isExpanded = expanded[node.id] ?? false;
+
+        return (
+          <div key={node.id}>
+            <SortableTreeItem
+              node={node}
+              isExpanded={isExpanded}
+              hasChildren={hasChildren}
+              onToggleExpand={() => handleToggleExpand(node.id)}
+              onUpdate={(updates) => handleUpdateNode(node.id, updates)}
+              onDelete={() => setDeleteConfirm(node.id)}
+              disabled={readOnly}
+            />
+            {hasChildren && isExpanded && node.children && (
+              <div>{renderNodesImpl(node.children)}</div>
+            )}
+          </div>
+        );
+      });
+    },
+    [expanded, readOnly, handleToggleExpand, handleUpdateNode],
+  );
 
   return (
     <div className={cn("space-y-4", className)}>
