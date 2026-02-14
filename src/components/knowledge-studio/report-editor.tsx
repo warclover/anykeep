@@ -1,15 +1,14 @@
 "use client";
 
 /**
- * Report Editor - 报告编辑器
+ * Report Editor - 报告编辑器（纯内容展示）
+ * 工具栏功能已移至外层页面统一管理
  * @module components/knowledge-studio
  */
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -17,121 +16,29 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import {
-  Edit2,
-  Copy,
-  Download,
-  Share2,
-  FileText,
-  FileCode,
-  FileJson,
-  Scissors,
-  Loader2,
-} from "lucide-react";
+import { Edit2 } from "lucide-react";
 import type { SynthesisReport } from "@/lib/knowledge-studio/client";
-import { getBlueprintDisplayConfig } from "@/lib/knowledge-studio/blueprint/unified-display-config";
-import type { KSExportFormat } from "@/lib/knowledge-studio/export";
 import { ChatEditPanel } from "./chat-edit-panel";
 import { CitationCard } from "./citation-card";
 import type { ChatTurn, EditMode } from "@/lib/knowledge-studio/client";
 import { useChatEdit } from "@/hooks/domain/knowledge-studio/use-chat-edit";
 import { toast } from "sonner";
 import { AIMarkdown } from "@/components/ai/ai-markdown";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  countWords,
-  condenseContentStream,
-  CONDENSE_PRESETS,
-  type CondensePreset,
-} from "@/lib/knowledge-studio/refinement";
 
 interface ReportEditorProps {
   report: SynthesisReport;
   onUpdate?: (content: string) => void;
-  onExport?: (format: KSExportFormat) => void;
   className?: string;
 }
 
 export function ReportEditor({
   report,
   onUpdate,
-  onExport,
   className,
 }: ReportEditorProps) {
   const [editingParagraphIndex, setEditingParagraphIndex] = useState<
     number | null
   >(null);
-
-  const blueprintConfig = getBlueprintDisplayConfig(report.blueprintType);
-
-  // Phase 3.2: 字数统计
-  const wordCount = useMemo(() => countWords(report.content), [report.content]);
-
-  // Phase 3.2: 精简状态
-  const [condenseDialogOpen, setCondenseDialogOpen] = useState(false);
-  const [isCondensing, setIsCondensing] = useState(false);
-  const [condenseProgress, setCondenseProgress] = useState(0);
-  const [condensedPreview, setCondensedPreview] = useState<string>("");
-
-  // Phase 3.2: 处理精简
-  const handleCondense = useCallback(
-    async (preset: CondensePreset) => {
-      const targetWords = CONDENSE_PRESETS[preset].targetWords;
-
-      // 如果已经低于目标字数，无需精简
-      if (wordCount <= targetWords * 1.1) {
-        toast.info("当前内容已低于目标字数，无需精简");
-        return;
-      }
-
-      setIsCondensing(true);
-      setCondenseProgress(0);
-      setCondensedPreview("");
-
-      await condenseContentStream(
-        {
-          content: report.content,
-          targetWords,
-          contentType: "article",
-        },
-        {
-          onContent: (chunk) => {
-            setCondensedPreview((prev) => prev + chunk);
-          },
-          onProgress: (percent) => {
-            setCondenseProgress(percent);
-          },
-          onComplete: (result) => {
-            setIsCondensing(false);
-            onUpdate?.(result.condensedContent);
-            setCondenseDialogOpen(false);
-            toast.success(
-              `已精简至 ${result.finalWords.toLocaleString()} 字（压缩 ${Math.round((1 - result.compressionRatio) * 100)}%）`,
-            );
-          },
-          onError: (error) => {
-            setIsCondensing(false);
-            toast.error(`精简失败: ${error.message}`);
-          },
-        },
-      );
-    },
-    [report.content, wordCount, onUpdate],
-  );
 
   // 优化排版：不再分割段落，直接渲染完整内容以保持排版一致性
   // 这样 Markdown 结构不会被破坏，排版更加整齐
@@ -310,141 +217,8 @@ export function ReportEditor({
     }
   }, [editError]);
 
-  // Copy to clipboard
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(report.content);
-      toast.success("已复制到剪贴板");
-    } catch {
-      toast.error("复制失败，请重试");
-    }
-  }, [report.content]);
-
   return (
     <div className={cn("flex flex-col", className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between border-b p-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{blueprintConfig.icon}</span>
-          <div>
-            <h2 className="font-semibold">{report.title || "未命名报告"}</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">{blueprintConfig.name}</Badge>
-              <span>版本 {report.version}</span>
-              <span>·</span>
-              <span>{wordCount.toLocaleString()} 字</span>
-              <span>·</span>
-              <span>{report.citations.length} 个引用</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            <Copy className="mr-1 h-4 w-4" />
-            复制
-          </Button>
-
-          {/* Phase 3.2: 一键精简 */}
-          <Dialog
-            open={condenseDialogOpen}
-            onOpenChange={setCondenseDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Scissors className="mr-1 h-4 w-4" />
-                精简
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>一键精简内容</DialogTitle>
-                <DialogDescription>
-                  当前字数：{wordCount.toLocaleString()}{" "}
-                  字，选择目标字数进行精简
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-4">
-                {isCondensing ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">正在精简...</span>
-                    </div>
-                    <Progress value={condenseProgress} className="h-2" />
-                    {condensedPreview && (
-                      <div className="max-h-[200px] overflow-y-auto rounded border p-3 text-sm">
-                        <pre className="whitespace-pre-wrap">
-                          {condensedPreview.slice(0, 500)}...
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid gap-2">
-                    {(Object.keys(CONDENSE_PRESETS) as CondensePreset[]).map(
-                      (preset) => {
-                        const config = CONDENSE_PRESETS[preset];
-                        const isDisabled =
-                          wordCount <= config.targetWords * 1.1;
-                        return (
-                          <Button
-                            key={preset}
-                            variant="outline"
-                            className="justify-start h-auto py-3"
-                            disabled={isDisabled}
-                            onClick={() => handleCondense(preset)}
-                          >
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium">
-                                {config.label}（约{" "}
-                                {config.targetWords.toLocaleString()} 字）
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {config.description}
-                                {isDisabled && " · 已低于目标字数"}
-                              </span>
-                            </div>
-                          </Button>
-                        );
-                      },
-                    )}
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="mr-1 h-4 w-4" />
-                导出
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onExport?.("markdown")}>
-                <FileText className="mr-2 h-4 w-4" />
-                Markdown (.md)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExport?.("html")}>
-                <FileCode className="mr-2 h-4 w-4" />
-                HTML (.html)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExport?.("json")}>
-                <FileJson className="mr-2 h-4 w-4" />
-                JSON (.json)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <Share2 className="mr-1 h-4 w-4" />
-            分享
-          </Button>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex flex-1">
         {/* Report Content */}

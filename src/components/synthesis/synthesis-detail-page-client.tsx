@@ -36,23 +36,40 @@ import {
   Highlighter,
   Copy,
   Check,
+  Scissors,
+  Loader2,
+  FileCode,
+  FileJson,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useSynthesisDetail } from "@/hooks/synthesis/use-synthesis-detail";
 import { useSynthesisHighlights } from "@/hooks/synthesis/use-synthesis-highlights";
-import { SynthesisExportDialog } from "./synthesis-export-dialog";
 import { SynthesisShareDialog } from "./synthesis-share-dialog";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import { SynthesisQAPanel } from "./synthesis-qa-panel";
 import { SaveToNoteButton } from "@/components/shared/save-to-note";
+import {
+  condenseContentStream,
+  CONDENSE_PRESETS,
+  type CondensePreset,
+} from "@/lib/knowledge-studio/refinement";
 
 // 拆分后的组件
 import {
@@ -108,7 +125,6 @@ export function SynthesisDetailPageClient({
   } = useSynthesisDetail(reportId);
 
   // 对话框状态
-  const [showExportDialog, setShowExportDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -219,6 +235,12 @@ export function SynthesisDetailPageClient({
     }
   }, [report?.fullMarkdown]);
 
+  // Phase 3.2: 精简状态
+  const [condenseDialogOpen, setCondenseDialogOpen] = useState(false);
+  const [isCondensing, setIsCondensing] = useState(false);
+  const [condenseProgress, setCondenseProgress] = useState(0);
+  const [condensedPreview, setCondensedPreview] = useState<string>("");
+
   // 判断是否为知识工坊报告
   const isKnowledgeStudioReport = useMemo(() => {
     if (!report) return false;
@@ -229,6 +251,14 @@ export function SynthesisDetailPageClient({
       report.blueprintType &&
       (report.overview || report.fullMarkdown)
     );
+  }, [report]);
+
+  // Phase 3.2: 字数统计
+  const wordCount = useMemo(() => {
+    if (!report) return 0;
+    const content = report.fullMarkdown || report.overview || "";
+    // 简单的中英文字数统计
+    return content.replace(/\s/g, "").length;
   }, [report]);
 
   // 转换为 Knowledge Studio 报告类型
@@ -319,6 +349,58 @@ export function SynthesisDetailPageClient({
     [ksReport],
   );
 
+  // Phase 3.2: 处理精简
+  const handleCondense = useCallback(
+    async (preset: CondensePreset) => {
+      const targetWords = CONDENSE_PRESETS[preset].targetWords;
+      const content = report?.fullMarkdown || report?.overview || "";
+
+      if (!content) {
+        toast.error("暂无可精简的内容");
+        return;
+      }
+
+      // 如果已经低于目标字数，无需精简
+      if (wordCount <= targetWords * 1.1) {
+        toast.info("当前内容已低于目标字数，无需精简");
+        return;
+      }
+
+      setIsCondensing(true);
+      setCondenseProgress(0);
+      setCondensedPreview("");
+
+      await condenseContentStream(
+        {
+          content,
+          targetWords,
+          contentType: "article",
+        },
+        {
+          onContent: (chunk) => {
+            setCondensedPreview((prev) => prev + chunk);
+          },
+          onProgress: (percent) => {
+            setCondenseProgress(percent);
+          },
+          onComplete: (result) => {
+            setIsCondensing(false);
+            handleReportUpdate(result.condensedContent);
+            setCondenseDialogOpen(false);
+            toast.success(
+              `已精简至 ${result.finalWords.toLocaleString()} 字（压缩 ${Math.round((1 - result.compressionRatio) * 100)}%）`,
+            );
+          },
+          onError: (error) => {
+            setIsCondensing(false);
+            toast.error(`精简失败: ${error.message}`);
+          },
+        },
+      );
+    },
+    [report, wordCount, handleReportUpdate],
+  );
+
   if (isLoading) {
     return (
       <div className="container max-w-7xl py-6 space-y-6">
@@ -365,28 +447,94 @@ export function SynthesisDetailPageClient({
             </Badge>
           )}
           {/* 复制 Markdown 按钮 */}
-          {report.status === "completed" && report.fullMarkdown && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyMarkdown}
-                    disabled={isCopied}
-                  >
-                    {isCopied ? (
-                      <Check className="mr-2 h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="mr-2 h-4 w-4" />
-                    )}
-                    {isCopied ? "已复制" : "复制"}
+          {report.status === "completed" &&
+            (report.fullMarkdown || report.overview) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyMarkdown}
+                disabled={isCopied}
+              >
+                {isCopied ? (
+                  <Check className="mr-2 h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {isCopied ? "已复制" : "复制"}
+              </Button>
+            )}
+          {/* 精简按钮 */}
+          {report.status === "completed" &&
+            (report.fullMarkdown || report.overview) && (
+              <Dialog
+                open={condenseDialogOpen}
+                onOpenChange={setCondenseDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Scissors className="mr-2 h-4 w-4" />
+                    精简
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>复制完整 Markdown 内容</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>一键精简内容</DialogTitle>
+                    <DialogDescription>
+                      当前字数：{wordCount.toLocaleString()}{" "}
+                      字，选择目标字数进行精简
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3 py-4">
+                    {isCondensing ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">正在精简...</span>
+                        </div>
+                        <Progress value={condenseProgress} className="h-2" />
+                        {condensedPreview && (
+                          <div className="max-h-[200px] overflow-y-auto rounded border p-3 text-sm">
+                            <pre className="whitespace-pre-wrap">
+                              {condensedPreview.slice(0, 500)}...
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {(
+                          Object.keys(CONDENSE_PRESETS) as CondensePreset[]
+                        ).map((preset) => {
+                          const config = CONDENSE_PRESETS[preset];
+                          const isDisabled =
+                            wordCount <= config.targetWords * 1.1;
+                          return (
+                            <Button
+                              key={preset}
+                              variant="outline"
+                              className="justify-start h-auto py-3"
+                              disabled={isDisabled}
+                              onClick={() => handleCondense(preset)}
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">
+                                  {config.label}（约{" "}
+                                  {config.targetWords.toLocaleString()} 字）
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {config.description}
+                                  {isDisabled && " · 已低于目标字数"}
+                                </span>
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           {/* 保存到笔记按钮 */}
           {report.status === "completed" &&
             (report.fullMarkdown || report.overview) && (
@@ -398,14 +546,32 @@ export function SynthesisDetailPageClient({
                 className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
               />
             )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowExportDialog(true)}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            导出
-          </Button>
+          {/* 导出下拉菜单 */}
+          {report.status === "completed" && ksReport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" />
+                  导出
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("markdown")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Markdown (.md)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("html")}>
+                  <FileCode className="mr-2 h-4 w-4" />
+                  HTML (.html)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("json")}>
+                  <FileJson className="mr-2 h-4 w-4" />
+                  JSON (.json)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {/* 分享按钮 */}
           <Button
             variant="outline"
             size="sm"
@@ -486,11 +652,7 @@ export function SynthesisDetailPageClient({
           {/* 知识工坊报告 vs 主题合成器报告 */}
           {isKnowledgeStudioReport && ksReport ? (
             <div className="space-y-6">
-              <ReportEditor
-                report={ksReport}
-                onUpdate={handleReportUpdate}
-                onExport={handleExport}
-              />
+              <ReportEditor report={ksReport} onUpdate={handleReportUpdate} />
             </div>
           ) : (
             /* 主题合成器报告：显示四维内容 */
@@ -536,13 +698,6 @@ export function SynthesisDetailPageClient({
           />
         </>
       )}
-
-      {/* 导出对话框 */}
-      <SynthesisExportDialog
-        open={showExportDialog}
-        onOpenChange={setShowExportDialog}
-        report={report}
-      />
 
       {/* 分享对话框 */}
       <SynthesisShareDialog
