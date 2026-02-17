@@ -101,6 +101,10 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         id: "auto-snapshot",
         label: "settings.groups.content.items.autoSnapshot",
       },
+      {
+        id: "knowledge-studio",
+        label: "settings.groups.content.items.knowledgeStudio",
+      },
     ],
   },
   {

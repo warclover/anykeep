@@ -29,6 +29,22 @@ export interface AppearanceSettings {
 }
 
 /**
+ * 知识工坊 Briefing 模式 (P1-4)
+ * - off: 关闭（默认无干扰）
+ * - quick: 快速模式（2题）
+ * - detailed: 详细模式（全部题）
+ */
+export type BriefingMode = "off" | "quick" | "detailed";
+
+/**
+ * 知识工坊设置 (P1-4)
+ */
+export interface KnowledgeStudioSettings {
+  /** Briefing 偏好 (默认: 'off') */
+  briefingMode: BriefingMode;
+}
+
+/**
  * 自动快照设置 (P2-010)
  */
 export interface AutoSnapshotSettings {
@@ -80,7 +96,16 @@ export interface UserSettings {
   autoSnapshot?: AutoSnapshotSettings;
   /** 外观设置 (V4.2.25) */
   appearance?: AppearanceSettings;
+  /** 知识工坊设置 (P1-4) */
+  knowledgeStudio?: KnowledgeStudioSettings;
 }
+
+/**
+ * 默认知识工坊设置 (P1-4)
+ */
+export const DEFAULT_KNOWLEDGE_STUDIO_SETTINGS: KnowledgeStudioSettings = {
+  briefingMode: "off", // 默认无干扰模式
+};
 
 /**
  * 默认外观设置 (V4.2.25)
@@ -128,6 +153,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   },
   autoSnapshot: DEFAULT_AUTO_SNAPSHOT_SETTINGS,
   appearance: DEFAULT_APPEARANCE_SETTINGS,
+  knowledgeStudio: DEFAULT_KNOWLEDGE_STUDIO_SETTINGS,
 };
 
 /**
@@ -167,6 +193,10 @@ export function mergeWithDefaults(
     appearance: {
       ...DEFAULT_APPEARANCE_SETTINGS,
       ...(stored.appearance || {}),
+    },
+    knowledgeStudio: {
+      ...DEFAULT_KNOWLEDGE_STUDIO_SETTINGS,
+      ...(stored.knowledgeStudio || {}),
     },
   };
 }

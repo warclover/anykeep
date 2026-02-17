@@ -410,7 +410,8 @@
         "description": "Manage snapshot quota and auto-save rules",
         "items": {
           "snapshotQuota": "Snapshot Quota",
-          "autoSnapshot": "Auto Snapshot"
+          "autoSnapshot": "Auto Snapshot",
+          "knowledgeStudio": "Knowledge Studio"
         }
       },
       "platforms": {
