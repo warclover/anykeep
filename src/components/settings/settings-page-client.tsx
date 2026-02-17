@@ -24,6 +24,7 @@ import { ColorThemeSelector } from "./color-theme-selector";
 import { NotificationSettingsCard } from "@/components/messages";
 import { SnapshotQuotaSectionLazy } from "@/components/snapshot";
 import { AutoSnapshotSettings } from "./auto-snapshot-settings";
+import { KnowledgeStudioSettingsCard } from "./knowledge-studio-settings-card";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -431,6 +432,37 @@ export function SettingsPageClient({
             {/* 自动快照 */}
             <div id="settings-item-content-auto-snapshot">
               <AutoSnapshotSettings />
+            </div>
+
+            {/* 知识工坊 */}
+            <div id="settings-item-content-knowledge-studio">
+              <KnowledgeStudioSettingsCard
+                briefingMode={settings.knowledgeStudio?.briefingMode || "off"}
+                onUpdate={async (briefingMode) => {
+                  const { error } = await supabase
+                    .from("profiles")
+                    .update({
+                      settings: {
+                        ...settings,
+                        knowledgeStudio: {
+                          ...settings.knowledgeStudio,
+                          briefingMode,
+                        },
+                      },
+                    })
+                    .eq("id", user.id);
+
+                  if (error) throw error;
+
+                  setSettings((prev) => ({
+                    ...prev,
+                    knowledgeStudio: {
+                      ...prev.knowledgeStudio,
+                      briefingMode,
+                    },
+                  }));
+                }}
+              />
             </div>
           </SettingsGroupSection>
         );

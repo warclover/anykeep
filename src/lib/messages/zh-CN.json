@@ -412,7 +412,8 @@
         "description": "管理快照配额和自动保存规则",
         "items": {
           "snapshotQuota": "快照配额",
-          "autoSnapshot": "自动快照"
+          "autoSnapshot": "自动快照",
+          "knowledgeStudio": "知识工坊"
         }
       },
       "platforms": {
