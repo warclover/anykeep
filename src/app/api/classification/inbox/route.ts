@@ -38,10 +38,10 @@ type InboxQueryType = "analyze" | "suggestions" | "stats";
 
 /**
  * V4.2.15: API 超时配置
- * - 主分析操作不应超过 5 秒
+ * - 主分析操作不应超过 15 秒（考虑到数据库查询可能较慢）
  * - 超时后返回部分结果或错误
  */
-const API_TIMEOUT_MS = 5000;
+const API_TIMEOUT_MS = 15000;
 
 /**
  * V4.2.1: HTTP 缓存配置
@@ -111,10 +111,20 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
     logger.error(
-      { error: errorMessage },
+      { error: errorMessage, stack: errorStack },
       "GET /api/classification/inbox error",
     );
+
+    // 开发环境返回详细错误信息
+    if (process.env.NODE_ENV === "development") {
+      return internalError(`获取待整理数据失败: ${errorMessage}`, {
+        stack: errorStack,
+      });
+    }
+
     return internalError("获取待整理数据失败");
   }
 }
@@ -223,10 +233,18 @@ async function handleAnalyze() {
     });
   } catch (error) {
     const perfReport = monitor.getReport();
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    // 开发环境直接打印到控制台
+    if (process.env.NODE_ENV === "development") {
+      console.error("[Inbox analyze error]", errorMessage, errorStack);
+    }
+
     logger.error(
       {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        error: errorMessage,
+        stack: errorStack,
         performance: {
           totalMs: Math.round(perfReport.totalDuration),
           failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
@@ -234,6 +252,15 @@ async function handleAnalyze() {
       },
       "Inbox analyze error",
     );
+
+    // 开发环境返回详细错误信息
+    if (process.env.NODE_ENV === "development") {
+      return internalError(`分析待整理文件夹失败: ${errorMessage}`, {
+        stack: errorStack,
+        stage: perfReport.entries[perfReport.entries.length - 1]?.name,
+      });
+    }
+
     return internalError("分析待整理文件夹失败");
   }
 }

@@ -4,8 +4,9 @@
  * 展示 6 个 Tab：待处理、未读、高价值、已失效、最近、健康诊断
  * 支持计数徽章显示
  *
- * @version 1.0.0
+ * @version 1.1.0 - 更紧凑的样式
  * @since 2026-02-13
+ * @updated 2026-02-14
  */
 
 "use client";
@@ -16,7 +17,6 @@ import {
 } from "@/lib/constants/organize-tabs";
 import { useOrganizeCounts } from "@/hooks/data/use-organize-counts";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
 // ==================== 类型定义 ====================
@@ -58,46 +58,39 @@ export function OrganizeTabs({
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => onTabChange(value as OrganizeTabId)}
-      className={cn("w-full", className)}
-    >
-      <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-        {ORGANIZE_TABS.map((tab) => {
-          const Icon = tab.icon;
-          const count = getTabCount(tab.id);
-          const isActive = activeTab === tab.id;
+    <div className={cn("flex flex-wrap items-center gap-1", className)}>
+      {ORGANIZE_TABS.map((tab) => {
+        const count = getTabCount(tab.id);
+        const isActive = activeTab === tab.id;
 
-          return (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
-                "data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground data-[state=inactive]:hover:bg-muted",
-                tab.id === "health" &&
-                  "data-[state=active]:bg-purple-500 data-[state=active]:text-white",
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-              {count !== null && count > 0 && (
-                <Badge
-                  variant={isActive ? "secondary" : "outline"}
-                  className={cn(
-                    "ml-1 h-5 min-w-5 px-1.5 text-xs",
-                    isActive && "bg-white/20 text-white border-white/30",
-                  )}
-                >
-                  {count > 99 ? "99+" : count}
-                </Badge>
-              )}
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
-    </Tabs>
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
+              isActive
+                ? tab.id === "health"
+                  ? "bg-purple-500 text-white"
+                  : "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            <span>{tab.label}</span>
+            {count !== null && count > 0 && (
+              <Badge
+                variant={isActive ? "secondary" : "outline"}
+                className={cn(
+                  "h-4 min-w-4 px-1 text-[10px]",
+                  isActive && "bg-white/20 text-white border-white/30",
+                )}
+              >
+                {count > 99 ? "99+" : count}
+              </Badge>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }

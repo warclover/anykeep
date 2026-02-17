@@ -31,6 +31,10 @@ import {
   Hand,
   Settings,
   Bell,
+  Copy,
+  FolderOpen,
+  Tag,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,8 +50,6 @@ import { HealthDiagnosisPanel } from "./health-diagnosis-panel";
 import { IssueDetailDrawer } from "./issue-detail-drawer";
 import { ClusterSuggestionsPanel } from "@/components/inbox/cluster-suggestions-panel";
 import { OrganizationSuggestionsPanel } from "@/components/inbox/organization-suggestions-panel";
-import { ClusterAnalysisBanner } from "@/components/inbox/cluster-analysis-banner";
-import { InboxStatsCards } from "@/components/inbox/inbox-stats-cards";
 import { useTrustMode, useConfirmations } from "@/hooks/ui";
 import { useOrganizeCounts } from "@/hooks/data/use-organize-counts";
 import {
@@ -511,21 +513,24 @@ export function OrganizePageClient({
   // ==================== 渲染 ====================
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
-      {/* 页面标题 */}
+    <div className="container max-w-7xl py-4 space-y-4">
+      {/* 页面标题 - 精简为一行 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/home")}
+            className="text-muted-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-              整理
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              AI 智能整理，保持知识库整洁有序
-            </p>
-          </div>
+          <h1 className="text-base font-semibold text-gray-900 dark:text-white">
+            整理中心
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -538,7 +543,10 @@ export function OrganizePageClient({
               className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
             >
               <Wand2
-                className={cn("w-4 h-4 mr-2", isOrganizing && "animate-pulse")}
+                className={cn(
+                  "w-4 h-4 mr-1.5",
+                  isOrganizing && "animate-pulse",
+                )}
               />
               {isOrganizing ? "整理中..." : "一键整理"}
             </Button>
@@ -551,27 +559,15 @@ export function OrganizePageClient({
           >
             <RefreshCw
               className={cn(
-                "w-4 h-4 mr-2",
+                "w-4 h-4",
                 (isRefreshing || isLoadingTab) && "animate-spin",
               )}
             />
-            刷新
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/home")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回
           </Button>
         </div>
       </div>
 
-      {/* V4.2: AI 聚类分析状态横幅（仅待处理 Tab） */}
-      {showOrganizePanels && <ClusterAnalysisBanner className="mb-2" />}
-
-      {/* 托管模式提示横幅（仅待处理 Tab） */}
+      {/* 托管模式提示横幅 - 紧凑型（仅待处理 Tab） */}
       {showOrganizePanels && (
         <TrustModeBanner
           isFullAuto={isFullAuto}
@@ -584,13 +580,13 @@ export function OrganizePageClient({
         />
       )}
 
-      {/* Tab 切换器 */}
-      <OrganizeTabs activeTab={activeTab} onTabChange={handleTabChange} />
-
-      {/* 智能统计卡片（仅待处理 Tab 显示） */}
-      {showOrganizePanels && (
-        <InboxStatsCards stats={extendedStats} isLoading={isCountsLoading} />
-      )}
+      {/* Tab 切换器 + 智能统计（合并为一行，仅待处理 Tab） */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <OrganizeTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        {showOrganizePanels && (
+          <CompactStatsBar stats={extendedStats} isLoading={isCountsLoading} />
+        )}
+      </div>
 
       {/* 错误提示 */}
       {organizeError && state === "idle" && (
@@ -663,19 +659,28 @@ export function OrganizePageClient({
           </div>
         </div>
       ) : showOrganizePanels ? (
-        // 待处理 Tab：两栏布局（左侧建议 + 右侧书签）
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左侧：智能整理建议 */}
-          <div className="lg:col-span-1 order-2 lg:order-1 space-y-6">
+        // 待处理 Tab：左侧固定面板 + 右侧书签（3列）
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* 左侧：快捷操作 + AI 建议（固定宽度） */}
+          <div className="lg:col-span-1 order-2 lg:order-1 space-y-4">
+            {/* 快捷操作 - 紧凑版 */}
+            <QuickActionSidebar
+              onAction={handleOrganizeAction}
+              disabled={isExecuting}
+            />
+
+            {/* AI 智能分拣建议 */}
             <ClusterSuggestionsPanel onRefreshBookmarks={refreshBookmarks} />
+
+            {/* 智能整理建议 */}
             <OrganizationSuggestionsPanel
               availableFolders={availableFolders}
               onSuggestionApplied={handleSuggestionApplied}
             />
           </div>
 
-          {/* 右侧：书签列表 */}
-          <div className="lg:col-span-2 order-1 lg:order-2">
+          {/* 右侧：书签列表（3列） */}
+          <div className="lg:col-span-3 order-1 lg:order-2">
             <BookmarkListCard
               bookmarks={displayBookmarks}
               isLoading={isLoadingTab}
@@ -685,6 +690,7 @@ export function OrganizePageClient({
               onLoadMore={fetchNextPage}
               tabConfig={currentTabConfig}
               onDelete={handleBookmarkDelete}
+              columns={3}
             />
           </div>
         </div>
@@ -749,6 +755,8 @@ interface BookmarkListCardProps {
   onLoadMore?: () => void;
   tabConfig: { title: string; description: string };
   onDelete: (id: number) => void;
+  /** 列数，默认 2 */
+  columns?: 2 | 3;
 }
 
 function BookmarkListCard({
@@ -760,6 +768,7 @@ function BookmarkListCard({
   onLoadMore,
   tabConfig,
   onDelete,
+  columns = 2,
 }: BookmarkListCardProps) {
   const router = useRouter();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -809,21 +818,23 @@ function BookmarkListCard({
     );
   }
 
+  // 根据列数生成网格类名
+  const gridColsClass =
+    columns === 3
+      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+      : "grid grid-cols-1 md:grid-cols-2 gap-4";
+
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">{tabConfig.title}</h3>
-          <span className="text-sm text-muted-foreground">
-            已加载 {bookmarks.length} 个
-            {hasNextPage ? "，向下滚动加载更多" : ""}
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-sm">{tabConfig.title}</h3>
+          <span className="text-xs text-muted-foreground">
+            {bookmarks.length} 个{hasNextPage ? " · 继续滚动加载" : ""}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          {tabConfig.description}
-        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={gridColsClass}>
           {bookmarks.map((bookmark) => (
             <BookmarkCard
               key={bookmark.id}
@@ -977,6 +988,113 @@ function TrustModeBanner({
   }
 
   return null;
+}
+
+// ==================== 紧凑统计栏 ====================
+
+interface CompactStatsBarProps {
+  stats: ReturnType<typeof useOrganizeCounts>["extendedStats"];
+  isLoading: boolean;
+}
+
+function CompactStatsBar({ stats, isLoading }: CompactStatsBarProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 text-xs">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-5 w-16" />
+        ))}
+      </div>
+    );
+  }
+
+  const items = [
+    {
+      label: "待整理",
+      value: stats?.pending ?? 0,
+      color: "text-orange-600 dark:text-orange-400",
+    },
+    {
+      label: "处理中",
+      value: stats?.processing ?? 0,
+      color: "text-amber-600 dark:text-amber-400",
+    },
+    {
+      label: "高价值",
+      value: stats?.highValue ?? 0,
+      color: "text-emerald-600 dark:text-emerald-400",
+    },
+  ];
+
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-1">
+          <span className={cn("font-medium", item.color)}>{item.value}</span>
+          <span className="text-muted-foreground">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ==================== 快捷操作侧边栏（紧凑版） ====================
+
+interface QuickActionSidebarProps {
+  onAction: (actionType: QuickActionType) => void;
+  disabled?: boolean;
+}
+
+function QuickActionSidebar({ onAction, disabled }: QuickActionSidebarProps) {
+  return (
+    <Card className="p-3">
+      <div className="space-y-2">
+        {/* 主操作：一键整理 */}
+        <Button
+          size="sm"
+          className="w-full justify-start gap-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+          onClick={() => onAction("one-click")}
+          disabled={disabled}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>一键智能整理</span>
+        </Button>
+
+        {/* 快捷操作列表 */}
+        <div className="space-y-1">
+          {[
+            { id: "clean-duplicates" as const, icon: Copy, label: "清理重复" },
+            {
+              id: "smart-categorize" as const,
+              icon: FolderOpen,
+              label: "智能分类",
+            },
+            { id: "auto-tag" as const, icon: Tag, label: "自动打标签" },
+            {
+              id: "archive-stale" as const,
+              icon: Archive,
+              label: "归档旧内容",
+            },
+          ].map((action) => (
+            <button
+              key={action.id}
+              onClick={() => !disabled && onAction(action.id)}
+              disabled={disabled}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs",
+                "text-muted-foreground hover:text-foreground hover:bg-muted",
+                "transition-colors text-left",
+                disabled && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              <action.icon className="w-3.5 h-3.5" />
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 // ==================== 骨架屏 ====================

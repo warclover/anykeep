@@ -60,15 +60,21 @@ export function OrganizationSuggestionsPanel({
     try {
       setError(null);
       const response = await fetch(API_CLASSIFICATION.inbox);
-      if (!response.ok) {
-        throw new Error("Failed to load analysis");
-      }
       const data = await response.json();
+
+      if (!response.ok) {
+        // 提取服务器返回的错误信息
+        const errorMsg =
+          data?.error?.message || data?.error?.details || response.statusText;
+        throw new Error(errorMsg);
+      }
+
       setAnalysis(data.data);
     } catch (err) {
-      setError("加载整理建议失败");
+      const errorMsg = err instanceof Error ? err.message : "加载整理建议失败";
+      setError(errorMsg);
       clientLogger.error(
-        { error: err },
+        { error: errorMsg },
         "[OrganizationSuggestionsPanel] Failed to load analysis",
       );
     }

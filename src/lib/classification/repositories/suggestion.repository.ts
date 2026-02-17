@@ -18,20 +18,44 @@ export class SuggestionRepository {
 
   /**
    * Get pending suggestions for a user
+   * 优雅降级：如果表不存在返回空数组
    */
   async findPendingByUserId(userId: string): Promise<OrganizationSuggestion[]> {
-    const { data, error } = await this.supabase
-      .from("organization_suggestions")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await this.supabase
+        .from("organization_suggestions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      throw new Error(`Failed to fetch suggestions: ${error.message}`);
+      if (error) {
+        // 表不存在时返回空数组（优雅降级）
+        if (
+          error.code === "42P01" ||
+          error.message?.includes("does not exist")
+        ) {
+          console.info(
+            "[SuggestionRepository] organization_suggestions table does not exist, returning empty array",
+          );
+          return [];
+        }
+        throw new Error(`Failed to fetch suggestions: ${error.message}`);
+      }
+
+      return (data || []).map(this.mapToSuggestion);
+    } catch (error) {
+      // 捕获所有错误并优雅降级
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("does not exist")) {
+        console.info(
+          "[SuggestionRepository] organization_suggestions table does not exist, returning empty array",
+        );
+        return [];
+      }
+      throw error;
     }
-
-    return (data || []).map(this.mapToSuggestion);
   }
 
   /**

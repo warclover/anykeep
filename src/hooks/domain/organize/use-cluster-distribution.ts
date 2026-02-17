@@ -69,7 +69,8 @@ export function useClusterDistribution(): UseClusterDistributionReturn {
     queryFn: async (): Promise<ClusterDistributionItem[]> => {
       const supabase = createClient();
 
-      const { data, error } = await supabase.rpc(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc(
         "get_cluster_size_distribution",
       );
 
@@ -82,7 +83,14 @@ export function useClusterDistribution(): UseClusterDistributionReturn {
         return [];
       }
 
-      return data.map((item: Record<string, unknown>) => ({
+      // Type assertion: RPC 返回 Json 数组，需显式转换类型
+      return (
+        data as Array<{
+          size_range?: unknown;
+          cluster_count?: unknown;
+          label?: unknown;
+        }>
+      ).map((item) => ({
         size: String(item.size_range ?? ""),
         count: Number(item.cluster_count ?? 0),
         label: String(item.label ?? ""),

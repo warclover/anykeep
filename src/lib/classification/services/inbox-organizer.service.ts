@@ -101,10 +101,22 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     }
 
     // V4.2.1: 智能缓存检查 - 如果有 pending 建议且未过期，直接返回
-    const existingSuggestions = await monitor.measure(
-      "FetchExistingSuggestions",
-      () => this.suggestionRepo.findPendingByUserId(userId),
-    );
+    // 添加 try-catch 确保即使建议查询失败也能继续分析
+    let existingSuggestions: OrganizationSuggestion[] = [];
+    try {
+      existingSuggestions = await monitor.measure(
+        "FetchExistingSuggestions",
+        () => this.suggestionRepo.findPendingByUserId(userId),
+      );
+    } catch (error) {
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+        },
+        "Inbox Organizer: Failed to fetch existing suggestions, continuing with full analysis",
+      );
+    }
 
     if (existingSuggestions.length > 0) {
       const oldestSuggestion = existingSuggestions.reduce((oldest, s) =>
@@ -218,11 +230,12 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     // Cluster bookmarks (synchronous operation)
     const clusterStart = performance.now();
     const clusters = clusterBookmarks(
-      bookmarksWithEmbedding.map((b) => ({
-        id: b.id,
-        embedding: b.embedding!,
-        title: b.title,
-      })),
+      bookmarksWithEmbedding.map((b) => {
+        const embedding = b.embedding;
+        if (!embedding?.length)
+          throw new Error("Missing embedding for cluster");
+        return { id: b.id, embedding, title: b.title };
+      }),
       INBOX_ORGANIZE_TRIGGERS.CLUSTER_SIMILARITY,
       INBOX_ORGANIZE_TRIGGERS.MIN_CLUSTER_SIZE,
     );
@@ -373,6 +386,8 @@ export class InboxOrganizerService implements IInboxOrganizerService {
     const unmatchedBookmarks: BookmarkForClassification[] = [];
 
     for (const bookmark of newBookmarksWithEmbedding) {
+      const embedding = bookmark.embedding;
+      if (!embedding) continue;
       let matched = false;
 
       // 遍历现有建议，寻找最佳匹配
@@ -380,7 +395,7 @@ export class InboxOrganizerService implements IInboxOrganizerService {
         const centroid = lastState.suggestionCentroids.get(suggestion.id);
         if (!centroid) continue;
 
-        const similarity = cosineSimilarity(bookmark.embedding!, centroid);
+        const similarity = cosineSimilarity(embedding, centroid);
         if (similarity >= this.INCREMENTAL_MATCH_THRESHOLD) {
           // 找到匹配，记录需要更新的建议
           const existing = updatedSuggestions.get(suggestion.id) || {
