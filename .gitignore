@@ -73,6 +73,10 @@ browser-extension/node_modules/
 browser-extension/.output/
 .backups
 
+# Docs templates (snippet/template only, not for lint)
+docs/templates/hook-rpc-template.ts
+docs/templates/hook-template.ts
+
 # Backup and temporary files
 .backup/
 *.bak
