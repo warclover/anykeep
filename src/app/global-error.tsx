@@ -1,17 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { clientLogger } from "@/lib/client-logger";
 
 /**
  * 全局错误处理组件
  * 当根布局或其他顶级错误发生时显示
  * 必须是客户端组件，且必须包含完整的 html/body 结构
  *
- * 注意：Sentry 错误上报已禁用
- * 原因：@sentry/nextjs 的动态导入仍会导致 @sentry/node 和 @opentelemetry
- *       服务端代码被打包到客户端 bundle，引发 hydration 错误
- * 解决方案：使用单独的 Sentry 客户端配置（sentry.client.config.ts）处理错误上报
+ * 注意：仅使用 console 与内联逻辑，避免依赖其他模块导致 global-error 自身加载失败（500）
+ * Sentry 上报由 sentry.client.config.ts 全局配置处理
  */
 
 export default function GlobalError({
@@ -22,10 +19,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // 仅记录到日志，Sentry 上报由 sentry.client.config.ts 全局配置处理
-    clientLogger.error(
-      { error, digest: error.digest },
+    console.error(
       "[GlobalError] Global error occurred",
+      error?.message,
+      error?.digest,
     );
   }, [error]);
   return (

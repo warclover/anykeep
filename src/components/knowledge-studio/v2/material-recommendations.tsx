@@ -44,11 +44,20 @@ interface RecommendationsResponse {
   method: "semantic" | "recent";
 }
 
+/** 与生成 API 一致的素材格式，用于添加时一并传入以便合并计数 */
+export interface MaterialInputForAdd {
+  bookmarkId: string;
+  title: string;
+  content: string;
+  url: string;
+  platform?: string;
+}
+
 interface MaterialRecommendationsProps {
   /** 已选择的素材 ID 列表 */
   selectedMaterialIds: string[];
-  /** 添加素材到选择列表的回调 */
-  onAddMaterial: (materialId: string) => void;
+  /** 添加素材到选择列表的回调；第二参数为完整素材时，由父组件合并进 selectedMaterials 计数 */
+  onAddMaterial: (materialId: string, material?: MaterialInputForAdd) => void;
   /** 当前选择的最大数量 */
   maxSelection: number;
   /** 自定义样式类名 */
@@ -136,8 +145,14 @@ export function MaterialRecommendations({
   }, [selectedMaterialIds]);
 
   const handleAddMaterial = useCallback(
-    (materialId: string) => {
-      onAddMaterial(materialId);
+    (item: MaterialRecommendation) => {
+      onAddMaterial(item.bookmarkId, {
+        bookmarkId: item.bookmarkId,
+        title: item.title,
+        content: item.summary ?? "",
+        url: item.url,
+        platform: item.platform ?? undefined,
+      });
     },
     [onAddMaterial],
   );
@@ -308,7 +323,7 @@ export function MaterialRecommendations({
                     size="sm"
                     variant="outline"
                     className="h-7 px-2"
-                    onClick={() => handleAddMaterial(item.bookmarkId)}
+                    onClick={() => handleAddMaterial(item)}
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     {MATERIAL_RECOMMENDATIONS_TEXT.ADD_BUTTON}

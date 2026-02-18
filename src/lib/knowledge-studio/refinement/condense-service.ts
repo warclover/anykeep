@@ -7,9 +7,13 @@
 
 import { streamText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers/provider-router";
+import type { ProviderName } from "@/lib/ai-providers/types";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("condense-service");
+
+/** 精简功能使用的 Provider 优先级（与全局默认一致：deepseek 优先，阿里百炼云备选），不依赖健康状态避免断路器导致无可用 */
+const CONDENSE_PROVIDER_ORDER: ProviderName[] = ["deepseek", "aliyun-bailian"];
 
 // ============================================================
 // Types
@@ -212,56 +216,97 @@ export async function condenseContentStream(
   }
 
   try {
-    const model = aiProviderRouter.getModel("deepseek");
-    if (!model) {
-      throw new Error("无法获取 AI 模型");
-    }
+    // 按固定优先级尝试 getModel，不依赖 getAvailableProviders() 的健康过滤，避免断路器/未健康导致「没有可用的 AI 服务」
+    let lastError: Error | null = null;
+    const triedProviders: Array<{
+      name: ProviderName;
+      hasConfig: boolean;
+      gotModel: boolean;
+    }> = [];
 
-    const stream = await streamText({
-      model,
-      system: CONDENSE_SYSTEM_PROMPT,
-      prompt: buildCondenseUserPrompt(options),
-      // 严格限制输出 token：目标字数 * 1.2（中文 1 字约等于 1-1.5 tokens）
-      // 这确保模型无法生成超过目标字数太多的内容
-      maxOutputTokens: Math.ceil(targetWords * 1.2),
-      temperature: 0.3, // 较低温度确保稳定输出
-    });
+    for (const providerName of CONDENSE_PROVIDER_ORDER) {
+      const hasConfig = !!aiProviderRouter.getProviderConfig(providerName);
+      const model = aiProviderRouter.getModel(providerName);
+      triedProviders.push({
+        name: providerName,
+        hasConfig,
+        gotModel: !!model,
+      });
+      if (!model) {
+        logger.warn(
+          {
+            provider: providerName,
+            hasConfig,
+            hint: hasConfig
+              ? "getModel returned null (e.g. API key missing in getModel or creator error)"
+              : "Provider not registered: set DEEPSEEK_API_KEY or DASHSCOPE_API_KEY in .env.local and restart",
+          },
+          "Condense: provider skipped",
+        );
+        continue;
+      }
 
-    let condensedContent = "";
-    let lastProgressPercent = 0;
+      try {
+        const stream = await streamText({
+          model,
+          system: CONDENSE_SYSTEM_PROMPT,
+          prompt: buildCondenseUserPrompt(options),
+          maxOutputTokens: Math.ceil(targetWords * 1.2),
+          temperature: 0.3,
+        });
 
-    // 流式处理
-    for await (const textPart of stream.textStream) {
-      condensedContent += textPart;
-      callbacks.onContent?.(textPart);
+        let condensedContent = "";
+        let lastProgressPercent = 0;
 
-      // 更新进度（基于字数估算）
-      const currentWords = countWords(condensedContent);
-      const progressPercent = Math.min(
-        Math.round((currentWords / targetWords) * 100),
-        95,
-      );
+        for await (const textPart of stream.textStream) {
+          condensedContent += textPart;
+          callbacks.onContent?.(textPart);
 
-      if (progressPercent > lastProgressPercent) {
-        callbacks.onProgress?.(progressPercent);
-        lastProgressPercent = progressPercent;
+          const currentWords = countWords(condensedContent);
+          const progressPercent = Math.min(
+            Math.round((currentWords / targetWords) * 100),
+            95,
+          );
+
+          if (progressPercent > lastProgressPercent) {
+            callbacks.onProgress?.(progressPercent);
+            lastProgressPercent = progressPercent;
+          }
+        }
+
+        const finalWords = countWords(condensedContent);
+        const result: CondenseResult = {
+          condensedContent,
+          originalWords,
+          finalWords,
+          compressionRatio: finalWords / originalWords,
+        };
+
+        callbacks.onProgress?.(100);
+        callbacks.onComplete?.(result);
+
+        logger.info(
+          `Content condensation completed (provider: ${providerName}): originalWords=${originalWords}, finalWords=${finalWords}, compressionRatio=${Math.round(result.compressionRatio * 100)}%`,
+        );
+        return;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        logger.warn(
+          { provider: providerName, error: lastError.message },
+          "Condense failed with provider, trying next",
+        );
       }
     }
 
-    // 完成
-    const finalWords = countWords(condensedContent);
-    const result: CondenseResult = {
-      condensedContent,
-      originalWords,
-      finalWords,
-      compressionRatio: finalWords / originalWords,
-    };
-
-    callbacks.onProgress?.(100);
-    callbacks.onComplete?.(result);
-
-    logger.info(
-      `Content condensation completed: originalWords=${originalWords}, finalWords=${finalWords}, compressionRatio=${Math.round(result.compressionRatio * 100)}%`,
+    logger.warn(
+      { triedProviders, lastError: lastError?.message },
+      "Condense: no provider succeeded",
+    );
+    const envHint =
+      "请在项目根目录 .env.local 中配置 DEEPSEEK_API_KEY 或 DASHSCOPE_API_KEY 后重启开发服务器。";
+    throw (
+      lastError ??
+      new Error(`没有可用的 AI 服务。${envHint}（如 DeepSeek、阿里百炼）`)
     );
   } catch (error) {
     logger.error(`Content condensation failed: ${error}`);

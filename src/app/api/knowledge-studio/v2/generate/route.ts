@@ -305,6 +305,15 @@ export async function POST(request: NextRequest) {
               lastProgressTime = Date.now();
 
               // Execute blueprint stream (takes only context, input is in context.params)
+              logger.info(
+                {
+                  requestId,
+                  blueprintId,
+                  hasOutline: !!outline,
+                  materialsCount: materials.length,
+                },
+                "Starting blueprint executeStream (content phase will call AI model)",
+              );
               const resultStream = blueprint.executeStream(executionContext);
               let finalOutput = null;
               let contentBuffer = "";
@@ -348,6 +357,57 @@ export async function POST(request: NextRequest) {
                       requestId,
                     });
                     break;
+
+                  case "error":
+                    // 蓝图/内容生成器返回错误（如无可用 AI、配置错误）→ 转发并中止，避免静默返回 null
+                    const errMsg =
+                      (chunk.data as { message?: string })?.message ||
+                      "生成过程出错";
+                    logger.warn(
+                      { requestId, errMsg },
+                      "Blueprint yielded error chunk",
+                    );
+                    sendEvent({
+                      type: "error",
+                      data: {
+                        error: {
+                          code: "GENERATION_FAILED",
+                          message: errMsg,
+                          recoverable: true,
+                        },
+                      },
+                      timestamp: new Date().toISOString(),
+                      requestId,
+                    });
+                    throw new Error(errMsg);
+
+                  case "done":
+                    // 蓝图显式标记失败（如缺少大纲、内部异常）→ 转发并中止
+                    const doneData = chunk.data as {
+                      success?: boolean;
+                      summary?: string;
+                    };
+                    if (doneData.success === false) {
+                      const summary = doneData.summary || "生成失败";
+                      logger.warn(
+                        { requestId, summary },
+                        "Blueprint reported done(success=false)",
+                      );
+                      sendEvent({
+                        type: "error",
+                        data: {
+                          error: {
+                            code: "GENERATION_FAILED",
+                            message: summary,
+                            recoverable: true,
+                          },
+                        },
+                        timestamp: new Date().toISOString(),
+                        requestId,
+                      });
+                      throw new Error(summary);
+                    }
+                    break;
                 }
                 // Backpressure control: add small delay between chunks
                 await new Promise((resolve) =>
@@ -355,15 +415,34 @@ export async function POST(request: NextRequest) {
                 );
               }
 
+              // 避免保存空内容或字面量 "null"：无流式且无结构化输出时直接报错
+              const contentToSave =
+                contentBuffer ||
+                (finalOutput != null
+                  ? typeof finalOutput === "string"
+                    ? finalOutput
+                    : JSON.stringify(finalOutput, null, 2)
+                  : "");
+              const isInvalidContent =
+                !contentToSave ||
+                contentToSave === "null" ||
+                contentToSave.trim() === "";
+              if (isInvalidContent) {
+                throw new Error("生成未产生内容，请检查素材、大纲与网络后重试");
+              }
+
               return {
                 success: true,
-                content: contentBuffer || JSON.stringify(finalOutput),
+                content: contentToSave,
                 structuredOutput: finalOutput,
               };
             },
             {
               onSuccess: async (result, _reqId) => {
-                if (result.success && result.content) {
+                const content = result.success && result.content;
+                const skipSave =
+                  !content || content === "null" || content.trim() === "";
+                if (result.success && content && !skipSave) {
                   // Save report to database
                   type SynthesisReportInsert =
                     Database["public"]["Tables"]["synthesis_reports"]["Insert"];
@@ -417,12 +496,16 @@ export async function POST(request: NextRequest) {
           );
 
           if (quotaResult.success) {
-            // Send done event
+            // Send done event（附带总字数，避免流式未下发时客户端显示 0 字）
+            const totalContentLength =
+              (quotaResult.data as { content?: string } | undefined)?.content
+                ?.length ?? 0;
             sendEvent({
               type: "done",
               data: {
                 reportId: savedReportId,
                 message: "生成完成",
+                totalContentLength,
               },
               timestamp: new Date().toISOString(),
               requestId,

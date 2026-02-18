@@ -477,6 +477,13 @@ export abstract class EnhancedBlueprintEngine<
         yield* this.reportProgress("outline", 100, "大纲生成完成");
       }
 
+      // 无大纲时不得进入内容阶段，否则各蓝图会抛「缺少大纲」且易导致最终返回 null
+      if (!blueprintContext.outline) {
+        throw new Error(
+          "大纲生成未完成或未提供大纲，无法调用模型生成内容。请先生成或确认大纲后再生成。",
+        );
+      }
+
       // 阶段 3: 生成内容
       blueprintContext.stage = "content";
       yield* this.reportProgress("content", 0, "开始生成内容...");

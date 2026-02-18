@@ -283,10 +283,16 @@ export async function* generateContentStream(
       const estimatedChars = estimateTotalWords(options.outline) * 2; // 字数→字符数
       let lastProgressPercent = 10;
 
-      // 流式输出
+      // 流式输出（未进入此循环或循环为空 = 模型未产出内容，需排查 provider/outline/网络）
       for await (const chunk of stream.textStream) {
         fullContent += chunk;
         chunkCount++;
+        if (chunkCount === 1) {
+          logger.info(
+            { blueprintId: options.blueprintId, provider: providerName },
+            "First content chunk received from model",
+          );
+        }
 
         // 基于已生成字符数与预估字符数的比例计算进度（10% - 90%）
         const rawProgress = (fullContent.length / estimatedChars) * 80;
@@ -454,13 +460,20 @@ export async function* generateContentStream(
     "All providers failed for content generation",
   );
 
-  // 构建友好的错误消息
+  // 构建友好的错误消息（便于排查为何未调用模型）
   let friendlyMessage: string;
   if (rateLimitInfo.isRateLimit) {
     const retryMsg = rateLimitInfo.retryAfter
       ? `请等待 ${rateLimitInfo.retryAfter} 秒后重试`
       : "请稍后重试";
     friendlyMessage = `AI 服务繁忙（已尝试 ${attemptedProviders.join("、")}）。${retryMsg}`;
+  } else if (!lastError && attemptedProviders.length > 0) {
+    friendlyMessage =
+      "没有可用的 AI 模型（已尝试的 Provider 均未返回有效模型），请检查设置中的 API Key 与模型配置";
+    logger.warn(
+      { blueprintId: options.blueprintId, attemptedProviders },
+      "No provider returned valid model (getModel returned null for all)",
+    );
   } else {
     friendlyMessage = lastError?.message || "内容生成失败，请稍后重试";
   }

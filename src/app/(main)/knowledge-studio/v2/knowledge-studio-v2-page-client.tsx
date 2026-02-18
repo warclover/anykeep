@@ -12,7 +12,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -247,6 +247,9 @@ export function KnowledgeStudioV2PageClient() {
     return undefined;
   });
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  /** 从「AI 推荐」添加的素材（ID -> 完整素材），用于与 bookmarks 合并计数与生成 */
+  const [materialsFromRecommendations, setMaterialsFromRecommendations] =
+    useState<Record<string, MaterialInput>>({});
 
   // P0-1: 蓝图选择器展开/折叠状态
   const [isBlueprintExpanded, setIsBlueprintExpanded] = useState(true);
@@ -289,19 +292,22 @@ export function KnowledgeStudioV2PageClient() {
     [bookmarks],
   );
 
-  const selectedMaterials = useMemo<MaterialInput[]>(
-    () =>
-      bookmarks
-        .filter((b) => selectedMaterialIds.includes(String(b.id)))
-        .map((b) => ({
-          bookmarkId: String(b.id),
-          title: b.title || "无标题",
-          content: b.aiSummary || b.description || "",
-          url: b.url,
-          platform: b.platform || undefined,
-        })),
-    [bookmarks, selectedMaterialIds],
-  );
+  const selectedMaterials = useMemo<MaterialInput[]>(() => {
+    const fromBookmarks = bookmarks
+      .filter((b) => selectedMaterialIds.includes(String(b.id)))
+      .map((b) => ({
+        bookmarkId: String(b.id),
+        title: b.title || "无标题",
+        content: b.aiSummary || b.description || "",
+        url: b.url,
+        platform: b.platform || undefined,
+      }));
+    const fromRecommendations = selectedMaterialIds
+      .filter((id) => !fromBookmarks.some((m) => m.bookmarkId === id))
+      .map((id) => materialsFromRecommendations[id])
+      .filter(Boolean) as MaterialInput[];
+    return [...fromBookmarks, ...fromRecommendations];
+  }, [bookmarks, selectedMaterialIds, materialsFromRecommendations]);
 
   const selectedBlueprint = blueprints.find(
     (bp) => bp.blueprintId === selectedBlueprintId,
@@ -400,118 +406,24 @@ export function KnowledgeStudioV2PageClient() {
   }, []);
 
   const handleAddMaterial = useCallback(
-    (materialId: string) => {
+    (materialId: string, material?: MaterialInput) => {
       if (
         !selectedMaterialIds.includes(materialId) &&
         selectedMaterialIds.length < MATERIAL_LIMITS.HARD_MAX
       ) {
         setSelectedMaterialIds((prev) => [...prev, materialId]);
+        if (material) {
+          setMaterialsFromRecommendations((prev) => ({
+            ...prev,
+            [materialId]: material,
+          }));
+        }
       }
     },
     [selectedMaterialIds],
   );
 
-  const handleGenerate = useCallback(() => {
-    if (!selectedBlueprintId || selectedMaterials.length < 2) {
-      toast.error("请选择蓝图和至少 2 个素材");
-      return;
-    }
-    setCurrentStep("generating");
-    // 启动生成，传入大纲（如果有）
-    startGeneration(outline);
-  }, [selectedBlueprintId, selectedMaterials.length, outline, startGeneration]);
-
-  const handleUpgrade = useCallback(() => {
-    router.push("/pricing");
-  }, [router]);
-
-  /**
-   * P1-3: 生成大纲
-   */
-  const handleGenerateOutline = useCallback(async () => {
-    if (!selectedBlueprintId || selectedMaterials.length < 2) {
-      toast.error("请先选择蓝图和素材");
-      return;
-    }
-
-    setIsGeneratingOutline(true);
-    try {
-      const briefingContext: BriefingContext | undefined =
-        additionalRequirements
-          ? {
-              answers: [
-                { question: "补充说明", answer: additionalRequirements },
-              ],
-              answeredAt: new Date(),
-            }
-          : undefined;
-
-      const response = await fetch("/api/knowledge-studio/v2/outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blueprintId: selectedBlueprintId,
-          materials: selectedMaterials,
-          briefingContext,
-          targetLength: "medium",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("大纲生成失败");
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let parseErrors = 0;
-      let outlineValue: BlueprintOutline | undefined;
-      let received = false;
-
-      const parser = createSseJsonLineParser(
-        (data) => {
-          if (data?.type === "outline" && data?.data?.outline) {
-            outlineValue = data.data.outline as BlueprintOutline;
-            received = true;
-          } else if (data?.type === "error") {
-            throw new Error(data?.data?.error?.message || "大纲生成错误");
-          }
-        },
-        () => {
-          parseErrors++;
-          if (parseErrors >= SSE_PARSE_ERROR_THRESHOLD) {
-            throw new Error("数据流解析错误过多，请重试");
-          }
-        },
-      );
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        parser.push(decoder.decode(value, { stream: true }));
-        if (received) {
-          await reader.cancel();
-          break;
-        }
-      }
-      parser.flush();
-
-      if (outlineValue) {
-        setOutline(outlineValue);
-        setShowOutlineEditor(true);
-        toast.success("大纲生成完成");
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        toast.error(err.message || "大纲生成失败");
-      }
-    } finally {
-      setIsGeneratingOutline(false);
-    }
-  }, [selectedBlueprintId, selectedMaterials, additionalRequirements]);
-
-  // 开始生成
+  // 开始生成（定义在 handleGenerate 之前，避免 TDZ）
   const startGeneration = useCallback(
     async (outlineData?: BlueprintOutline) => {
       if (abortControllerRef.current) {
@@ -545,15 +457,15 @@ export function KnowledgeStudioV2PageClient() {
           abortControllerRef.current?.abort();
         }, SSE_REQUEST_TIMEOUT_MS);
 
-        const briefingContext: BriefingContext | undefined =
-          additionalRequirements
-            ? {
-                answers: [
-                  { question: "补充说明", answer: additionalRequirements },
-                ],
-                answeredAt: new Date(),
-              }
-            : undefined;
+        // v2 简化页不做 Briefing 问答流程，但部分蓝图启用了 Briefing：
+        // 若 briefingContext 缺失会提前 return（等待问答）导致不调用模型产出内容。
+        // 因此这里始终注入一个合法的 briefingContext（为空也可），并用 Record 结构承载补充说明。
+        const briefingContext: BriefingContext = {
+          answers: additionalRequirements
+            ? { 补充说明: additionalRequirements }
+            : {},
+          answeredAt: new Date(),
+        };
 
         const response = await fetch("/api/knowledge-studio/v2/generate", {
           method: "POST",
@@ -606,8 +518,12 @@ export function KnowledgeStudioV2PageClient() {
               case "structured_output":
                 setStructuredOutput(data.data?.structuredOutput);
                 break;
-              case "done":
-                setReportId(data.data?.reportId);
+              case "done": {
+                const reportIdFromDone = data.data?.reportId;
+                const totalContentLength =
+                  (data.data?.totalContentLength as number | undefined) ??
+                  contentBuffer.length;
+                setReportId(reportIdFromDone);
                 setCurrentStep("result");
                 generationCompleted = true;
 
@@ -623,10 +539,25 @@ export function KnowledgeStudioV2PageClient() {
 
                 playSuccess();
                 toast.success("生成完成！🎉", {
-                  description: `共 ${contentBuffer.length.toLocaleString()} 字`,
+                  description: `共 ${totalContentLength.toLocaleString()} 字`,
                   duration: 5000,
                 });
+                // 若服务端有内容但流式未下发，按 reportId 拉取报告内容填充
+                if (
+                  reportIdFromDone &&
+                  totalContentLength > 0 &&
+                  contentBuffer.length === 0
+                ) {
+                  fetch(`/api/knowledge-studio/reports/${reportIdFromDone}`)
+                    .then((res) => (res.ok ? res.json() : null))
+                    .then((json: { data?: { content?: string } } | null) => {
+                      if (json?.data?.content)
+                        setGeneratedContent(json.data.content);
+                    })
+                    .catch(() => {});
+                }
                 break;
+              }
               case "error":
                 throw new Error(data.data?.error?.message || "内容生成错误");
             }
@@ -714,6 +645,104 @@ export function KnowledgeStudioV2PageClient() {
       recordUsage,
     ],
   );
+
+  const handleGenerate = useCallback(() => {
+    if (!selectedBlueprintId || selectedMaterials.length < 2) {
+      toast.error("请选择蓝图和至少 2 个素材");
+      return;
+    }
+    setCurrentStep("generating");
+    // 启动生成，传入大纲（如果有）
+    startGeneration(outline);
+  }, [selectedBlueprintId, selectedMaterials.length, outline, startGeneration]);
+
+  const handleUpgrade = useCallback(() => {
+    router.push("/pricing");
+  }, [router]);
+
+  /**
+   * P1-3: 生成大纲
+   */
+  const handleGenerateOutline = useCallback(async () => {
+    if (!selectedBlueprintId || selectedMaterials.length < 2) {
+      toast.error("请先选择蓝图和素材");
+      return;
+    }
+
+    setIsGeneratingOutline(true);
+    try {
+      // 同上：大纲生成也需要绕过 Briefing 的“等待问答”分支
+      const briefingContext: BriefingContext = {
+        answers: additionalRequirements
+          ? { 补充说明: additionalRequirements }
+          : {},
+        answeredAt: new Date(),
+      };
+
+      const response = await fetch("/api/knowledge-studio/v2/outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blueprintId: selectedBlueprintId,
+          materials: selectedMaterials,
+          briefingContext,
+          targetLength: "medium",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("大纲生成失败");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let parseErrors = 0;
+      let outlineValue: BlueprintOutline | undefined;
+      let received = false;
+
+      const parser = createSseJsonLineParser(
+        (data) => {
+          if (data?.type === "outline" && data?.data?.outline) {
+            outlineValue = data.data.outline as BlueprintOutline;
+            received = true;
+          } else if (data?.type === "error") {
+            throw new Error(data?.data?.error?.message || "大纲生成错误");
+          }
+        },
+        () => {
+          parseErrors++;
+          if (parseErrors >= SSE_PARSE_ERROR_THRESHOLD) {
+            throw new Error("数据流解析错误过多，请重试");
+          }
+        },
+      );
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parser.push(decoder.decode(value, { stream: true }));
+        if (received) {
+          await reader.cancel();
+          break;
+        }
+      }
+      parser.flush();
+
+      if (outlineValue) {
+        setOutline(outlineValue);
+        setShowOutlineEditor(true);
+        toast.success("大纲生成完成");
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message || "大纲生成失败");
+      }
+    } finally {
+      setIsGeneratingOutline(false);
+    }
+  }, [selectedBlueprintId, selectedMaterials, additionalRequirements]);
 
   const handleCancelGeneration = useCallback(() => {
     generationAbortReasonRef.current = "user_cancel";
@@ -1686,6 +1715,7 @@ export function KnowledgeStudioV2PageClient() {
                   setStructuredOutput(null);
                   setReportId(undefined);
                   setCondensedContent("");
+                  setMaterialsFromRecommendations({});
                 }}
               >
                 重新生成

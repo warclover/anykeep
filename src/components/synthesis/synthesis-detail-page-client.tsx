@@ -66,7 +66,6 @@ import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import { SynthesisQAPanel } from "./synthesis-qa-panel";
 import { SaveToNoteButton } from "@/components/shared/save-to-note";
 import {
-  condenseContentStream,
   CONDENSE_PRESETS,
   type CondensePreset,
 } from "@/lib/knowledge-studio/refinement";
@@ -349,7 +348,7 @@ export function SynthesisDetailPageClient({
     [ksReport],
   );
 
-  // Phase 3.2: 处理精简
+  // Phase 3.2: 处理精简（走服务端 API，以便使用 process.env 的 API Key）
   const handleCondense = useCallback(
     async (preset: CondensePreset) => {
       const targetWords = CONDENSE_PRESETS[preset].targetWords;
@@ -360,7 +359,6 @@ export function SynthesisDetailPageClient({
         return;
       }
 
-      // 如果已经低于目标字数，无需精简
       if (wordCount <= targetWords * 1.1) {
         toast.info("当前内容已低于目标字数，无需精简");
         return;
@@ -370,33 +368,100 @@ export function SynthesisDetailPageClient({
       setCondenseProgress(0);
       setCondensedPreview("");
 
-      await condenseContentStream(
-        {
-          content,
-          targetWords,
-          contentType: "article",
-        },
-        {
-          onContent: (chunk) => {
-            setCondensedPreview((prev) => prev + chunk);
-          },
-          onProgress: (percent) => {
-            setCondenseProgress(percent);
-          },
-          onComplete: (result) => {
-            setIsCondensing(false);
-            handleReportUpdate(result.condensedContent);
+      try {
+        const res = await fetch("/api/knowledge-studio/v2/condense", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content,
+            targetWords,
+            preset,
+            contentType: "article",
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data?.error?.message || `请求失败: ${res.status}`;
+          toast.error(`精简失败: ${msg}`);
+          setIsCondensing(false);
+          return;
+        }
+
+        if (res.headers.get("content-type")?.includes("application/json")) {
+          const data = await res.json();
+          if (data.condensedContent != null) {
+            handleReportUpdate(data.condensedContent);
             setCondenseDialogOpen(false);
-            toast.success(
-              `已精简至 ${result.finalWords.toLocaleString()} 字（压缩 ${Math.round((1 - result.compressionRatio) * 100)}%）`,
-            );
-          },
-          onError: (error) => {
-            setIsCondensing(false);
-            toast.error(`精简失败: ${error.message}`);
-          },
-        },
-      );
+            toast.success("内容已在目标字数范围内，无需精简");
+          }
+          setIsCondensing(false);
+          return;
+        }
+
+        let accumulated = "";
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        if (!reader) {
+          toast.error("精简失败: 无法读取响应");
+          setIsCondensing(false);
+          return;
+        }
+
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const payload = JSON.parse(line.slice(6)) as {
+                type: string;
+                text?: string;
+                percent?: number;
+                originalWords?: number;
+                finalWords?: number;
+                compressionRatio?: number;
+                message?: string;
+              };
+              if (payload.type === "content" && payload.text != null) {
+                accumulated += payload.text;
+                setCondensedPreview(accumulated);
+              } else if (
+                payload.type === "progress" &&
+                payload.percent != null
+              ) {
+                setCondenseProgress(payload.percent);
+              } else if (payload.type === "done") {
+                setIsCondensing(false);
+                handleReportUpdate(accumulated);
+                setCondenseDialogOpen(false);
+                const ratio = payload.compressionRatio ?? 0;
+                toast.success(
+                  `已精简至 ${(payload.finalWords ?? 0).toLocaleString()} 字（压缩 ${Math.round((1 - ratio) * 100)}%）`,
+                );
+                return;
+              } else if (payload.type === "error") {
+                setIsCondensing(false);
+                toast.error(`精简失败: ${payload.message ?? "未知错误"}`);
+                return;
+              }
+            } catch {
+              // 忽略非 JSON 行
+            }
+          }
+        }
+        setIsCondensing(false);
+      } catch (err) {
+        clientLogger.error({ err }, "Condense API request failed");
+        setIsCondensing(false);
+        toast.error(
+          `精简失败: ${err instanceof Error ? err.message : "网络错误"}`,
+        );
+      }
     },
     [report, wordCount, handleReportUpdate],
   );
