@@ -76,6 +76,18 @@ export const MAX_DIVERGENCE_POINTS = 5;
 export const MAX_BLIND_SPOTS = 5;
 
 // ============================================
+// 列表查询字段（性能优化：排除大字段）
+// ============================================
+
+/**
+ * 综述列表查询字段
+ * 用于 GET /api/synthesis 列表接口，排除大字段以加快首屏加载
+ * 排除: full_markdown, embedding, content, citations, generation_metadata 等
+ */
+export const SYNTHESIS_LIST_FIELDS =
+  "id,user_id,title,source_type,source_id,source_bookmark_ids,depth_mode,output_style,overview,consensus,divergence,blind_spots,status,error_message,source_count,word_count,created_at,updated_at,completed_at";
+
+// ============================================
 // 分页配置
 // ============================================
 

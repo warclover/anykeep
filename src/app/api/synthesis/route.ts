@@ -29,6 +29,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   MIN_BOOKMARKS_COUNT,
+  SYNTHESIS_LIST_FIELDS,
 } from "@/lib/synthesis/constants";
 
 /** UUID 正则表达式 */
@@ -112,10 +113,10 @@ export async function GET(request: NextRequest) {
       ),
     };
 
-    // 构建查询
+    // 构建查询（列表仅查列表所需字段，排除 full_markdown/embedding/content 等大字段以加快加载）
     let dbQuery = supabase
       .from("synthesis_reports")
-      .select("*", { count: "exact" })
+      .select(SYNTHESIS_LIST_FIELDS, { count: "exact" })
       .eq("user_id", userId);
 
     // 筛选条件
