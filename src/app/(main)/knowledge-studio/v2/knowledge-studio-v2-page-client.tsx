@@ -603,7 +603,7 @@ export function KnowledgeStudioV2PageClient() {
           () => {
             sseParseErrorCount++;
             if (sseParseErrorCount >= SSE_PARSE_ERROR_THRESHOLD) {
-              throw new Error("数据流解析错误过多，请重试");
+              throw new Error(k("generateDataParseError"));
             }
           },
         );
@@ -620,7 +620,7 @@ export function KnowledgeStudioV2PageClient() {
         parser.flush();
 
         if (!generationCompleted) {
-          throw new Error("内容生成未完成，请重试");
+          throw new Error(k("generateIncomplete"));
         }
       } catch (err) {
         if (err instanceof Error) {
@@ -661,8 +661,8 @@ export function KnowledgeStudioV2PageClient() {
             playError();
 
             setError(err.message);
-            toast.error("生成失败", {
-              description: err.message || "请稍后重试",
+            toast.error(k("generateFailed"), {
+              description: err.message || k("generateRetryDesc"),
               duration: 5000,
             });
           }
@@ -686,7 +686,7 @@ export function KnowledgeStudioV2PageClient() {
 
   const handleGenerate = useCallback(() => {
     if (!selectedBlueprintId || selectedMaterials.length < 2) {
-      toast.error("请选择蓝图和至少 2 个素材");
+      toast.error(k("generateValidateStep"));
       return;
     }
     setCurrentStep("generating");
@@ -703,7 +703,7 @@ export function KnowledgeStudioV2PageClient() {
    */
   const handleGenerateOutline = useCallback(async () => {
     if (!selectedBlueprintId || selectedMaterials.length < 2) {
-      toast.error("请先选择蓝图和素材");
+      toast.error(k("outlineValidate"));
       return;
     }
 
@@ -729,7 +729,7 @@ export function KnowledgeStudioV2PageClient() {
       });
 
       if (!response.ok) {
-        throw new Error("大纲生成失败");
+        throw new Error(k("outlineFailed"));
       }
 
       const reader = response.body?.getReader();
@@ -746,13 +746,15 @@ export function KnowledgeStudioV2PageClient() {
             outlineValue = data.data.outline as BlueprintOutline;
             received = true;
           } else if (data?.type === "error") {
-            throw new Error(data?.data?.error?.message || "大纲生成错误");
+            throw new Error(
+              data?.data?.error?.message || k("outlineStreamError"),
+            );
           }
         },
         () => {
           parseErrors++;
           if (parseErrors >= SSE_PARSE_ERROR_THRESHOLD) {
-            throw new Error("数据流解析错误过多，请重试");
+            throw new Error(k("generateDataParseError"));
           }
         },
       );
@@ -771,11 +773,11 @@ export function KnowledgeStudioV2PageClient() {
       if (outlineValue) {
         setOutline(outlineValue);
         setShowOutlineEditor(true);
-        toast.success("大纲生成完成");
+        toast.success(k("outlineDone"));
       }
     } catch (err) {
       if (err instanceof Error) {
-        toast.error(err.message || "大纲生成失败");
+        toast.error(err.message || k("outlineError"));
       }
     } finally {
       setIsGeneratingOutline(false);
@@ -817,7 +819,7 @@ export function KnowledgeStudioV2PageClient() {
         });
 
         if (!response.ok) {
-          throw new Error("精简失败");
+          throw new Error(k("condenseFailed"));
         }
 
         const contentType = response.headers.get("Content-Type") || "";
@@ -862,7 +864,7 @@ export function KnowledgeStudioV2PageClient() {
                     break;
                   case "error":
                     await reader.cancel();
-                    throw new Error(data.message || "精简失败");
+                    throw new Error(data.message || k("condenseFailed"));
                 }
               } catch {
                 // Skip parse errors
@@ -872,7 +874,7 @@ export function KnowledgeStudioV2PageClient() {
         }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
-          toast.error(err.message || "精简失败");
+          toast.error(err.message || k("condenseFailed"));
         }
       } finally {
         setIsCondensing(false);
@@ -885,7 +887,7 @@ export function KnowledgeStudioV2PageClient() {
     if (!condensedContent) return;
     try {
       await navigator.clipboard.writeText(condensedContent);
-      toast.success("已复制到剪贴板");
+      toast.success(k("condensedCopied"));
     } catch {
       const textarea = document.createElement("textarea");
       textarea.value = condensedContent;
@@ -893,7 +895,7 @@ export function KnowledgeStudioV2PageClient() {
       textarea.select();
       document.execCommand("copy");
       document.body.removeChild(textarea);
-      toast.success("已复制到剪贴板");
+      toast.success(k("condensedCopied"));
     }
   }, [condensedContent]);
 
@@ -907,7 +909,7 @@ export function KnowledgeStudioV2PageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           blueprintType: selectedBlueprintId,
-          title: `${selectedBlueprint?.displayName || "内容"} (精简版)`,
+          title: `${selectedBlueprint?.displayName || k("generatedContentTitle")}${k("condenseSuffix")}`,
           content: condensedContent,
           sourceType: "condensed",
           generationMetadata: {
@@ -921,18 +923,18 @@ export function KnowledgeStudioV2PageClient() {
         }),
       });
 
-      if (!response.ok) throw new Error("保存失败");
+      if (!response.ok) throw new Error(k("saveFailed"));
 
       const data = await response.json();
-      toast.success("已保存精简版本", {
-        description: "可在「我的创作」中查看",
+      toast.success(k("condenseSaved"), {
+        description: k("condenseSavedDesc"),
         action: {
-          label: "查看",
+          label: k("condenseSavedView"),
           onClick: () => router.push(`/synthesis/${data.id}`),
         },
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存失败");
+      toast.error(err instanceof Error ? err.message : k("saveFailed"));
     } finally {
       setIsSavingCondensed(false);
     }
@@ -1001,12 +1003,14 @@ export function KnowledgeStudioV2PageClient() {
                     setIterationProgress(100);
                     setGeneratedContent(iteratedContent);
                     setCondensedContent("");
-                    toast.success("内容已优化完成");
+                    toast.success(k("iterateDone"));
                     await reader.cancel();
                     break;
                   case "error":
                     await reader.cancel();
-                    throw new Error(data.data?.message || "迭代失败");
+                    throw new Error(
+                      data.data?.message || k("iterateStreamError"),
+                    );
                 }
               } catch {
                 // Skip
@@ -1016,7 +1020,7 @@ export function KnowledgeStudioV2PageClient() {
         }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
-          toast.error(err.message || "优化失败");
+          toast.error(err.message || k("optimizeFailed"));
         }
       } finally {
         setIsIterating(false);
@@ -1434,7 +1438,7 @@ export function KnowledgeStudioV2PageClient() {
                             onChange={setOutline}
                             onConfirm={(confirmedOutline) => {
                               setOutline(confirmedOutline);
-                              toast.success("大纲已更新");
+                              toast.success(k("outlineUpdated"));
                             }}
                             isRegenerating={isGeneratingOutline}
                             onRegenerate={handleGenerateOutline}
@@ -1757,7 +1761,7 @@ export function KnowledgeStudioV2PageClient() {
               <StructuredOutputViewer
                 type={getOutputType()}
                 data={structuredOutput}
-                title={`${selectedBlueprint?.displayName} 输出`}
+                title={selectedBlueprint?.displayName ?? ""}
               />
             ) : (
               generatedContent && (
@@ -1794,7 +1798,7 @@ export function KnowledgeStudioV2PageClient() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={handleCopyCondensed}
-                              title="复制精简内容"
+                              title={k("copyCondensed")}
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -1804,7 +1808,7 @@ export function KnowledgeStudioV2PageClient() {
                               className="h-8 w-8"
                               onClick={handleSaveCondensed}
                               disabled={isSavingCondensed}
-                              title="保存为新报告"
+                              title={k("condenseSaved")}
                             >
                               {isSavingCondensed ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1876,7 +1880,9 @@ export function KnowledgeStudioV2PageClient() {
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
         content={exportContent || condensedContent || generatedContent || ""}
-        blueprintName={selectedBlueprint?.displayName || "内容"}
+        blueprintName={
+          selectedBlueprint?.displayName || k("generatedContentTitle")
+        }
       />
 
       <MultiPlatformDialog
