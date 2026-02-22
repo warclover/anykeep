@@ -295,7 +295,7 @@ export function BlueprintRecommendations({
         {hasPopular && (
           <RecommendationSection
             icon={<TrendingUp className="h-4 w-4" />}
-            title="热门蓝图"
+            title="热门模板"
             items={historyRecommendations.popular}
             onSelect={handleSelect}
             selectedId={selectedBlueprintId}

@@ -352,7 +352,7 @@ export function HistoryPageClient() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              使用相同蓝图开始新的生成
+                              使用相同模板开始新的生成
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>

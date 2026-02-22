@@ -122,7 +122,7 @@ export class NewsletterBlueprint extends EnhancedBlueprintEngine<NewsletterOutpu
   // ============================================================
 
   readonly blueprintId = "creator-newsletter";
-  readonly displayName = "周刊策展人";
+  readonly displayName = "周刊精选";
   readonly description = "将碎片内容整理为结构化周刊，保持一致性和专业性";
   readonly icon = "📰";
   readonly tier: BlueprintTier = "pro";

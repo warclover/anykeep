@@ -1503,7 +1503,14 @@ export function KnowledgeStudioV2PageClient() {
             <CardContent className="space-y-4">
               <Progress value={progress.percent} className="h-2" />
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>{progress.step}</span>
+                <span>
+                  {progress.message ||
+                    (progress.step === "preparing"
+                      ? k("progressStepPreparing")
+                      : progress.step === "generating"
+                        ? k("progressStepGenerating")
+                        : progress.step)}
+                </span>
                 <span>{progress.percent}%</span>
               </div>
 

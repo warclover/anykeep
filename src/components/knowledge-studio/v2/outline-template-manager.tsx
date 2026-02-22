@@ -168,11 +168,11 @@ export function OutlineTemplateManager({
             ) : (
               <ScrollArea className="h-[200px]">
                 <div className="space-y-2 pr-3">
-                  {/* 当前蓝图的模板 */}
+                  {/* 当前模板 */}
                   {templates.length > 0 && (
                     <>
                       <Label className="text-xs text-muted-foreground">
-                        当前蓝图模板
+                        当前模板
                       </Label>
                       {templates.map((template) => (
                         <TemplateItem
@@ -187,11 +187,11 @@ export function OutlineTemplateManager({
                     </>
                   )}
 
-                  {/* 其他蓝图的模板 */}
+                  {/* 其他模板 */}
                   {allTemplates.length > 0 && (
                     <>
                       <Label className="text-xs text-muted-foreground mt-3">
-                        其他蓝图模板
+                        其他模板
                       </Label>
                       {allTemplates.map((template) => (
                         <TemplateItem
@@ -223,7 +223,7 @@ export function OutlineTemplateManager({
                 maxLength={50}
               />
               <p className="text-xs text-muted-foreground">
-                保存后可在下次使用相同蓝图时快速加载
+                保存后可在下次使用相同模板时快速加载
               </p>
             </div>
             <Button

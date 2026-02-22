@@ -138,7 +138,7 @@ export function BlueprintQuotaWarning({
             ? KS_QUOTA.EXHAUSTED_MESSAGE
             : isInsufficient
               ? KS_QUOTA.WARNING_MESSAGE(remaining, creditsCost)
-              : `本月剩余 ${remaining} 点配额，该蓝图需要 ${creditsCost} 点`}
+              : `本月剩余 ${remaining} 点配额，该模板需要 ${creditsCost} 点`}
         </p>
         {membershipType === "free" && (
           <p className="text-xs text-gray-500">{KS_QUOTA.FREE_TRIAL_RESET}</p>

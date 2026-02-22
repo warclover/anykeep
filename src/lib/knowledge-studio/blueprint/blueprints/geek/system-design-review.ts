@@ -223,7 +223,7 @@ export class SystemDesignReviewBlueprint extends EnhancedBlueprintEngine<SystemD
   // ============================================================
 
   readonly blueprintId = "geek-system_design_review";
-  readonly displayName = "系统架构评审官";
+  readonly displayName = "架构评审";
   readonly description =
     "对系统架构设计文档进行专业评审，输出结构化评审报告（优势、风险、改进建议、评分）";
   readonly icon = "🏗️";

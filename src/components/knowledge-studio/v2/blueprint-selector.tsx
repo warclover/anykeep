@@ -13,6 +13,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useUiText, getNestedValue } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Lock, Check, Sparkles, Search, X } from "lucide-react";
 import {
@@ -92,14 +93,26 @@ const CATEGORY_CONFIG = {
 
 type CategoryKey = keyof typeof CATEGORY_CONFIG;
 
-/**
- * 层级标签
- */
-const TIER_LABELS: Record<BlueprintTier, string> = {
-  free: "免费",
-  pro: "Pro",
-  enterprise: "企业版",
-};
+const KS2_KEY = "knowledgeStudioV2";
+
+function useKs2Text() {
+  const t = useUiText();
+  return useCallback(
+    (key: string, params?: Record<string, string | number>) => {
+      const raw =
+        getNestedValue<string>(
+          t as unknown as Record<string, unknown>,
+          `${KS2_KEY}.${key}`,
+        ) ?? key;
+      if (!params) return raw;
+      return Object.entries(params).reduce(
+        (s, [pk, v]) => s.replace(new RegExp(`\\{${pk}\\}`, "g"), String(v)),
+        raw,
+      );
+    },
+    [t],
+  );
+}
 
 // ============================================================
 // Component
@@ -115,6 +128,15 @@ export function BlueprintSelectorV2({
   onUpgradeClick,
   isLoading = false,
 }: BlueprintSelectorV2Props) {
+  const k = useKs2Text();
+  const tierLabels: Record<BlueprintTier, string> = useMemo(
+    () => ({
+      free: k("tierFree"),
+      pro: k("tierPro"),
+      enterprise: k("tierEnterprise"),
+    }),
+    [k],
+  );
   const [selected, setSelected] = useState<string | undefined>(value);
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -247,7 +269,7 @@ export function BlueprintSelectorV2({
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="搜索蓝图..."
+            placeholder={k("searchTemplate")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-8"
@@ -268,17 +290,17 @@ export function BlueprintSelectorV2({
         <div className="text-center py-12 text-muted-foreground">
           {searchQuery ? (
             <>
-              <p>没有找到匹配 &quot;{searchQuery}&quot; 的蓝图</p>
+              <p>{k("noMatchTemplate", { query: searchQuery })}</p>
               <Button
                 variant="link"
                 onClick={handleClearSearch}
                 className="mt-2"
               >
-                清除搜索
+                {k("clearFilter")}
               </Button>
             </>
           ) : (
-            <p>该分类下暂无蓝图</p>
+            <p>{k("noTemplateInCategory")}</p>
           )}
         </div>
       ) : (
@@ -314,17 +336,17 @@ export function BlueprintSelectorV2({
                 <CardContent className="p-3">
                   {/* 顶部标记区域 */}
                   <div className="absolute right-2 top-2 flex items-center gap-1">
-                    {/* NEW 标签 */}
+                    {/* 新品标签 */}
                     {blueprint.isNew && (
                       <Badge
                         variant="secondary"
                         className="bg-green-500/10 text-green-600 text-[10px] px-1.5 py-0"
                       >
-                        NEW
+                        {k("badgeNew")}
                       </Badge>
                     )}
 
-                    {/* Pro/Enterprise 标签 */}
+                    {/* Pro/企业版 标签 */}
                     {blueprint.tier !== "free" && (
                       <Badge
                         variant="outline"
@@ -336,7 +358,7 @@ export function BlueprintSelectorV2({
                             "border-purple-500 text-purple-600",
                         )}
                       >
-                        {TIER_LABELS[blueprint.tier]}
+                        {tierLabels[blueprint.tier]}
                       </Badge>
                     )}
 
@@ -372,7 +394,7 @@ export function BlueprintSelectorV2({
                     {blueprint.briefingEnabled && (
                       <span className="flex items-center gap-0.5">
                         <Sparkles className="h-3 w-3" />
-                        Briefing
+                        {k("briefingLabel")}
                       </span>
                     )}
                     {blueprint.supportsOutline && (
@@ -402,16 +424,15 @@ export function BlueprintSelectorV2({
                   </span>{" "}
                   是{" "}
                   <span className="font-medium text-primary">
-                    {TIER_LABELS[lockedBlueprint.tier]}
+                    {tierLabels[lockedBlueprint.tier]}
                   </span>{" "}
-                  专属蓝图。
+                  {k("exclusiveTemplate")}。
                   <br />
                   <br />
                   {lockedBlueprint.description}
                   <br />
                   <br />
-                  {lockedBlueprint.upgradeMessage ||
-                    "升级后可解锁该蓝图及更多高级功能。"}
+                  {lockedBlueprint.upgradeMessage || k("upgradeUnlockTemplate")}
                 </>
               )}
             </DialogDescription>

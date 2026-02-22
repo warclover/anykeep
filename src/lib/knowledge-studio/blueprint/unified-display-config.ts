@@ -224,7 +224,7 @@ export function getBlueprintDisplayConfig(
 ): BlueprintDisplayConfig {
   if (!blueprintType) {
     return {
-      name: "未知蓝图",
+      name: "未知模板",
       description: "",
       icon: "📝",
       estimatedTime: "-",

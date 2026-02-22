@@ -124,7 +124,7 @@ export class ScriptwriterBlueprint extends EnhancedBlueprintEngine<ScriptwriterO
   // ============================================================
 
   readonly blueprintId = "creator-scriptwriter";
-  readonly displayName = "视频编剧";
+  readonly displayName = "视频脚本";
   readonly description =
     "将素材转换为专业分镜脚本，支持时间线可视化和多格式导出";
   readonly icon = "🎬";

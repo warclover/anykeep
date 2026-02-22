@@ -25,7 +25,7 @@ describe("BlueprintQuotaBar", () => {
     it("应该在 bar 模式下显示进度条", () => {
       render(<BlueprintQuotaBar used={5} limit={10} mode="bar" />);
       expect(screen.getByText("5 / 10")).toBeInTheDocument();
-      expect(screen.getByText("蓝图生成配额")).toBeInTheDocument();
+      expect(screen.getByText("模板生成配额")).toBeInTheDocument();
     });
 
     it("应该在 minimal 模式下只显示数字", () => {

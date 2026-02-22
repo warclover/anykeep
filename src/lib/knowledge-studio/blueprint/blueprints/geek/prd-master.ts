@@ -213,7 +213,7 @@ export class PrdMasterBlueprint extends EnhancedBlueprintEngine<PrdMasterOutput>
   // ============================================================
 
   readonly blueprintId = "geek-prd_master";
-  readonly displayName = "PRD大师";
+  readonly displayName = "产品需求文档";
   readonly description =
     "将需求草稿和竞品资料转换为结构化 PRD，包含用户故事、功能列表和验收标准";
   readonly icon = "📋";

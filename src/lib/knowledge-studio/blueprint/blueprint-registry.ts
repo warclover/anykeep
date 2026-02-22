@@ -317,7 +317,7 @@ export class BlueprintRegistry {
           canAccess: false,
           currentTier: userTier,
           requiredTier: "pro" as BlueprintTier,
-          upgradeMessage: "需要升级才能使用此蓝图",
+          upgradeMessage: "需要升级才能使用此模板",
         },
       };
     });
@@ -359,7 +359,7 @@ export class BlueprintRegistry {
       enterprise: "企业版",
     };
 
-    return `此蓝图需要 ${tierNames[requiredTier]} 会员。升级即可解锁更多高级功能！`;
+    return `此模板需要 ${tierNames[requiredTier]} 会员。升级即可解锁更多高级功能！`;
   }
 
   /**

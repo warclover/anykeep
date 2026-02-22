@@ -173,7 +173,7 @@ export class PitchNarrativeBlueprint extends EnhancedBlueprintEngine<PitchNarrat
   // ============================================================
 
   readonly blueprintId = "business-pitch_narrative";
-  readonly displayName = "故事线专家";
+  readonly displayName = "融资故事";
   readonly description =
     "将碎片想法整理为 BP 逐字稿，提供 10/5/3 分钟版本，每段标注时长";
   readonly icon = "🎤";

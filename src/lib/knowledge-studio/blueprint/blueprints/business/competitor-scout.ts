@@ -169,7 +169,7 @@ export class CompetitorScoutBlueprint extends EnhancedBlueprintEngine<Competitor
   // ============================================================
 
   readonly blueprintId = "business-competitor_scout";
-  readonly displayName = "竞品侦察兵";
+  readonly displayName = "竞品分析";
   readonly description =
     "根据竞品资料生成 SWOT 分析报告，支持多竞品对比和功能矩阵";
   readonly icon = "🔍";

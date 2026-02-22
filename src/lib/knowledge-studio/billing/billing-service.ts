@@ -47,7 +47,7 @@ export const USAGE_UNIT_PRICES: Record<UsageType, number> = {
 
 /** 使用类型描述 */
 const USAGE_TYPE_DESCRIPTIONS: Record<UsageType, string> = {
-  generation: "蓝图生成",
+  generation: "模板生成",
   chat_edit: "聊天式修改",
   ai_recommendation: "AI 推荐",
   export: "内容导出",

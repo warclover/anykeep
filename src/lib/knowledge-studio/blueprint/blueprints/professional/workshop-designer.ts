@@ -218,7 +218,7 @@ export class WorkshopDesignerBlueprint extends EnhancedBlueprintEngine<WorkshopD
   // ============================================================
 
   readonly blueprintId = "professional-workshop_designer";
-  readonly displayName = "课程设计师";
+  readonly displayName = "课程设计";
   readonly description =
     "将学习资料转换为工作坊/培训流程设计，包含时间线、活动设计、材料清单和讲师指南";
   readonly icon = "🎓";

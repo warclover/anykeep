@@ -196,7 +196,7 @@ export class LiteratureMatrixBlueprint extends EnhancedBlueprintEngine<Literatur
   // ============================================================
 
   readonly blueprintId = "professional-literature_matrix";
-  readonly displayName = "文献矩阵";
+  readonly displayName = "文献对比";
   readonly description =
     "将多篇学术论文转换为结构化综述矩阵，快速梳理研究脉络、识别研究缺口";
   readonly icon = "📚";

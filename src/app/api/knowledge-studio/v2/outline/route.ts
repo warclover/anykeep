@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify({
           error: {
             code: "BLUEPRINT_NOT_FOUND",
-            message: `蓝图 "${blueprintId}" 不存在`,
+            message: `模板 "${blueprintId}" 不存在`,
           },
         }),
         { status: 404, headers: { "Content-Type": "application/json" } },
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify({
           error: {
             code: "ACCESS_DENIED",
-            message: accessInfo?.upgradeMessage || "您没有权限使用此蓝图",
+            message: accessInfo?.upgradeMessage || "您没有权限使用此模板",
           },
         }),
         { status: 403, headers: { "Content-Type": "application/json" } },

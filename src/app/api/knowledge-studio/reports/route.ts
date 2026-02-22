@@ -18,7 +18,7 @@ const logger = createLogger("api:knowledge-studio:reports");
  * 支持 v1 类型（debater, blogger 等）和 v2 ID 格式（category-name，如 geek-arxiv_decoder）
  */
 const CreateReportSchema = z.object({
-  blueprintType: z.string().min(1, "蓝图类型不能为空"),
+  blueprintType: z.string().min(1, "模板类型不能为空"),
   title: z.string().min(1, "标题不能为空"),
   content: z.string().min(1, "内容不能为空"),
   citations: z

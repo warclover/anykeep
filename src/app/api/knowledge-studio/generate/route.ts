@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
           JSON.stringify({
             error: {
               code: "PRO_REQUIRED",
-              message: `${blueprintType} 蓝图为 Pro 功能，请升级会员`,
+              message: `${blueprintType} 模板为 Pro 功能，请升级会员`,
             },
           }),
           { status: 403, headers: { "Content-Type": "application/json" } },

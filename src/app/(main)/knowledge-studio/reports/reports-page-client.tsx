@@ -181,7 +181,7 @@ export function KnowledgeStudioReportsPageClient() {
               />
             </div>
 
-            {/* 蓝图筛选 */}
+            {/* 模板筛选 */}
             <Select
               value={blueprintFilter}
               onValueChange={(v) => setBlueprintFilter(v)}
@@ -191,14 +191,14 @@ export function KnowledgeStudioReportsPageClient() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部蓝图</SelectItem>
-                {/* V1 蓝图 */}
+                <SelectItem value="all">全部模板</SelectItem>
+                {/* V1 模板 */}
                 <SelectItem
                   value="__v1_header"
                   disabled
                   className="font-semibold text-xs uppercase text-muted-foreground"
                 >
-                  经典蓝图 (v1)
+                  经典模板 (v1)
                 </SelectItem>
                 {Object.entries(UNIFIED_BLUEPRINT_DISPLAY_CONFIG)
                   .filter(([, config]) => config.version === "v1")
@@ -220,10 +220,10 @@ export function KnowledgeStudioReportsPageClient() {
                             disabled
                             className="font-semibold text-xs uppercase text-muted-foreground"
                           >
-                            {category === "geek" && "极客蓝图"}
-                            {category === "creator" && "创作者蓝图"}
-                            {category === "business" && "商业蓝图"}
-                            {category === "professional" && "专业蓝图"}
+                            {category === "geek" && "极客模板"}
+                            {category === "creator" && "创作者模板"}
+                            {category === "business" && "商业模板"}
+                            {category === "professional" && "专业模板"}
                           </SelectItem>
                           {blueprints.map(({ id, config }) => (
                             <SelectItem key={id} value={id}>

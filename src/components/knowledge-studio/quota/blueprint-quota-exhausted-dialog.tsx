@@ -47,8 +47,8 @@ export interface BlueprintQuotaExhaustedDialogProps {
 // ============================================================================
 
 const PRO_BENEFITS = [
-  { icon: Sparkles, text: "无限蓝图生成" },
-  { icon: Zap, text: "所有高级蓝图模板" },
+  { icon: Sparkles, text: "无限模板生成" },
+  { icon: Zap, text: "所有高级模板" },
   { icon: Crown, text: "优先客户支持" },
 ];
 

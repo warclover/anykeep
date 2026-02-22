@@ -211,7 +211,7 @@ export class SeoPillarBlueprint extends EnhancedBlueprintEngine<SeoPillarOutput>
   // ============================================================
 
   readonly blueprintId = "professional-seo_pillar";
-  readonly displayName = "SEO霸屏专家";
+  readonly displayName = "SEO 文章";
   readonly description =
     "将碎片化内容转换为 Pillar-Cluster SEO 架构，规划长青内容策略、关键词布局和内部链接";
   readonly icon = "🔍";

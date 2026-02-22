@@ -186,7 +186,7 @@ export class TutorialArchitectBlueprint extends EnhancedBlueprintEngine<Tutorial
   // ============================================================
 
   readonly blueprintId = "geek-tutorial_architect";
-  readonly displayName = "技术教程架构师";
+  readonly displayName = "技术教程";
   readonly description =
     "将文档和问答素材转换为 MDX 格式技术教程，包含学习目标、分步指南、FAQ 和进阶资源";
   readonly icon = "📖";

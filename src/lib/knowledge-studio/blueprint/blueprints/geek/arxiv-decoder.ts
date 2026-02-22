@@ -117,7 +117,7 @@ export class ArxivDecoderBlueprint extends EnhancedBlueprintEngine<ArxivDecoderO
   // ============================================================
 
   readonly blueprintId = "geek-arxiv_decoder";
-  readonly displayName = "论文实战解码器";
+  readonly displayName = "论文解读";
   readonly description =
     "将 arXiv 论文和代码仓库转换为实战评测报告，帮助技术博主快速产出高质量内容";
   readonly icon = "📄";

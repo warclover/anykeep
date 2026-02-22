@@ -145,7 +145,7 @@ export class InterviewPrepBlueprint extends EnhancedBlueprintEngine<InterviewPre
   // ============================================================
 
   readonly blueprintId = "creator-interview_prep";
-  readonly displayName = "访谈准备官";
+  readonly displayName = "访谈提纲";
   readonly description = "根据嘉宾资料生成深度访谈提纲，问题按难度递进排列";
   readonly icon = "🎙️";
   readonly tier: BlueprintTier = "pro";

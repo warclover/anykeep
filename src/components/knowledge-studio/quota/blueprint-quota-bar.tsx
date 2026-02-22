@@ -142,7 +142,7 @@ export function BlueprintQuotaBar({
             <Zap className={cn("h-4 w-4", colors.icon)} />
           )}
           <span className="text-sm font-medium text-gray-700">
-            蓝图生成配额
+            模板生成配额
           </span>
         </div>
         <span className={cn("text-sm font-medium", colors.text)}>

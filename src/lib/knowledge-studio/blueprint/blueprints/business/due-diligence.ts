@@ -191,7 +191,7 @@ export class DueDiligenceBlueprint extends EnhancedBlueprintEngine<DueDiligenceO
   // ============================================================
 
   readonly blueprintId = "business-due_diligence";
-  readonly displayName = "尽调专家";
+  readonly displayName = "尽调报告";
   readonly description =
     "根据财报和新闻生成风险评估备忘录，标注红旗警示和来源引用";
   readonly icon = "📋";

@@ -568,7 +568,7 @@ export const KS_QUOTA = {
   WARNING_80: "配额使用已超过 80%",
   WARNING_95: "配额即将用尽",
   WARNING_MESSAGE: (remaining: number, required: number) =>
-    `当前剩余 ${remaining} 点配额，该蓝图需要 ${required} 点`,
+    `当前剩余 ${remaining} 点配额，该模板需要 ${required} 点`,
 
   // 用尽
   EXHAUSTED_TITLE: "本月免费额度已用完",
@@ -588,7 +588,7 @@ export const KS_QUOTA = {
   // 操作
   UPGRADE: "升级会员",
   UPGRADE_PRO: "升级到专业版",
-  UPGRADE_HINT: "解锁无限蓝图生成",
+  UPGRADE_HINT: "解锁无限模板生成",
   CLOSE: "关闭",
   VIEW_PLANS: "查看方案",
 } as const;

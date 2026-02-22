@@ -375,7 +375,7 @@ export class EnhancedBlueprintBillingService {
     if (remaining <= 0) {
       return "本月免费额度已用完，升级到专业版享受无限制使用";
     }
-    return `本月剩余 ${remaining} 点配额，该蓝图需要 ${required} 点，请升级会员或等待下月重置`;
+    return `本月剩余 ${remaining} 点配额，该模板需要 ${required} 点，请升级会员或等待下月重置`;
   }
 
   /**

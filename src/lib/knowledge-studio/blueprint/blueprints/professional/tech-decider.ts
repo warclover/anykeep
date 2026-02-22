@@ -205,7 +205,7 @@ export class TechDeciderBlueprint extends EnhancedBlueprintEngine<TechDeciderOut
   // ============================================================
 
   readonly blueprintId = "professional-tech_decider";
-  readonly displayName = "技术决策助手";
+  readonly displayName = "技术选型";
   readonly description =
     "将技术文章/博客转换为 ADR (Architecture Decision Record) 决策文档，助力技术选型与架构决策";
   readonly icon = "⚖️";
