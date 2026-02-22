@@ -14,6 +14,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { useUiText, getNestedValue } from "@/lib/i18n";
 import {
   Sparkles,
   CheckCircle2,
@@ -111,12 +112,12 @@ interface GenerationProgress {
 // Constants
 // ============================================================
 
-const WAITING_MESSAGES = [
-  "正在分析素材内容...",
-  "正在构建文章结构...",
-  "正在生成精彩内容...",
-  "AI 正在思考最佳表达...",
-  "即将完成，请稍候...",
+const WAITING_MESSAGE_KEYS = [
+  "waitingMsg1",
+  "waitingMsg2",
+  "waitingMsg3",
+  "waitingMsg4",
+  "waitingMsg5",
 ] as const;
 
 // ============================================================
@@ -159,7 +160,13 @@ function formatElapsedTime(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-function ElapsedTimeDisplay({ startTime }: { startTime: number }) {
+function ElapsedTimeDisplay({
+  startTime,
+  label,
+}: {
+  startTime: number;
+  label: (key: string, params?: Record<string, string | number>) => string;
+}) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -169,7 +176,9 @@ function ElapsedTimeDisplay({ startTime }: { startTime: number }) {
     return () => clearInterval(interval);
   }, [startTime]);
 
-  return <span>已用时 {formatElapsedTime(elapsed)}</span>;
+  return (
+    <span>{label("elapsedTime", { time: formatElapsedTime(elapsed) })}</span>
+  );
 }
 
 type SseJsonValue = unknown;
@@ -213,9 +222,31 @@ function createSseJsonLineParser(
 // Main Component
 // ============================================================
 
+const KS2_KEY = "knowledgeStudioV2";
+
+function useKs2Text() {
+  const t = useUiText();
+  return useCallback(
+    (key: string, params?: Record<string, string | number>) => {
+      const raw =
+        getNestedValue<string>(
+          t as unknown as Record<string, unknown>,
+          `${KS2_KEY}.${key}`,
+        ) ?? key;
+      if (!params) return raw;
+      return Object.entries(params).reduce(
+        (s, [pk, v]) => s.replace(new RegExp(`\\{${pk}\\}`, "g"), String(v)),
+        raw,
+      );
+    },
+    [t],
+  );
+}
+
 export function KnowledgeStudioV2PageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const k = useKs2Text();
   const {
     blueprints,
     userTier,
@@ -283,7 +314,7 @@ export function KnowledgeStudioV2PageClient() {
     () =>
       bookmarks.map((b) => ({
         id: String(b.id),
-        title: b.title || "无标题",
+        title: b.title || k("noTitle"),
         url: b.url,
         platform: b.platform || undefined,
         summary: b.aiSummary || undefined,
@@ -297,7 +328,7 @@ export function KnowledgeStudioV2PageClient() {
       .filter((b) => selectedMaterialIds.includes(String(b.id)))
       .map((b) => ({
         bookmarkId: String(b.id),
-        title: b.title || "无标题",
+        title: b.title || k("noTitle"),
         content: b.aiSummary || b.description || "",
         url: b.url,
         platform: b.platform || undefined,
@@ -359,6 +390,8 @@ export function KnowledgeStudioV2PageClient() {
 
   // 对话框
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  /** 导出时使用的内容（在打开导出对话框时设置，用于区分原文/精简版） */
+  const [exportContent, setExportContent] = useState("");
   const [isMultiPlatformDialogOpen, setIsMultiPlatformDialogOpen] =
     useState(false);
 
@@ -376,7 +409,7 @@ export function KnowledgeStudioV2PageClient() {
   useEffect(() => {
     if (isGenerating) {
       const interval = setInterval(() => {
-        setWaitingMessageIndex((i) => (i + 1) % WAITING_MESSAGES.length);
+        setWaitingMessageIndex((i) => (i + 1) % WAITING_MESSAGE_KEYS.length);
       }, 3000);
       return () => clearInterval(interval);
     } else {
@@ -433,7 +466,7 @@ export function KnowledgeStudioV2PageClient() {
       generationUsageRecordedRef.current = false;
 
       if (!selectedBlueprintId || selectedMaterials.length < 2) {
-        toast.error("请先选择蓝图和至少 2 个素材");
+        toast.error(k("generateValidate"));
         return;
       }
 
@@ -441,7 +474,7 @@ export function KnowledgeStudioV2PageClient() {
       setProgress({
         step: "preparing",
         percent: 0,
-        message: "准备生成...",
+        message: k("prepareGenerate"),
         generatedWords: 0,
       });
       setGeneratedContent("");
@@ -486,7 +519,8 @@ export function KnowledgeStudioV2PageClient() {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(
-            errorData.error?.message || `内容生成失败 (${response.status})`,
+            errorData.error?.message ||
+              k("generateDataError", { status: response.status }),
           );
         }
 
@@ -538,8 +572,10 @@ export function KnowledgeStudioV2PageClient() {
                 }
 
                 playSuccess();
-                toast.success("生成完成！🎉", {
-                  description: `共 ${totalContentLength.toLocaleString()} 字`,
+                toast.success(k("generateDone"), {
+                  description: k("generateDoneDesc", {
+                    count: totalContentLength.toLocaleString(),
+                  }),
                   duration: 5000,
                 });
                 // 若服务端有内容但流式未下发，按 reportId 拉取报告内容填充
@@ -559,7 +595,9 @@ export function KnowledgeStudioV2PageClient() {
                 break;
               }
               case "error":
-                throw new Error(data.data?.error?.message || "内容生成错误");
+                throw new Error(
+                  data.data?.error?.message || k("generateContentError"),
+                );
             }
           },
           () => {
@@ -604,9 +642,9 @@ export function KnowledgeStudioV2PageClient() {
 
             playError();
 
-            setError("请求超时，请检查网络连接后重试");
-            toast.error("生成超时", {
-              description: "请检查网络连接后重试",
+            setError(k("generateTimeoutError"));
+            toast.error(k("generateTimeout"), {
+              description: k("generateTimeoutDesc"),
               duration: 5000,
             });
           } else {
@@ -933,7 +971,7 @@ export function KnowledgeStudioV2PageClient() {
           signal: iterateAbortRef.current.signal,
         });
 
-        if (!response.ok) throw new Error("迭代失败");
+        if (!response.ok) throw new Error(k("iterateFailed"));
 
         const reader = response.body?.getReader();
         if (!reader) throw new Error("No response body");
@@ -1024,7 +1062,7 @@ export function KnowledgeStudioV2PageClient() {
       <div className="container max-w-6xl py-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
+          <AlertTitle>{k("loadFailed")}</AlertTitle>
           <AlertDescription>{blueprintError}</AlertDescription>
         </Alert>
       </div>
@@ -1036,7 +1074,7 @@ export function KnowledgeStudioV2PageClient() {
       <div className="container max-w-6xl py-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>错误</AlertTitle>
+          <AlertTitle>{k("errorTitle")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button
@@ -1047,7 +1085,7 @@ export function KnowledgeStudioV2PageClient() {
           }}
           className="mt-4"
         >
-          重试
+          {k("retryButton")}
         </Button>
       </div>
     );
@@ -1058,15 +1096,13 @@ export function KnowledgeStudioV2PageClient() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">知识工坊</h1>
+          <h1 className="text-2xl font-bold">{k("title")}</h1>
           <Badge variant="secondary" className="text-xs">
-            v2.0
+            {k("badgeV2")}
           </Badge>
         </div>
         {currentStep !== "result" && (
-          <p className="text-sm text-muted-foreground">
-            3 步完成：选蓝图 → 选素材 → 生成
-          </p>
+          <p className="text-sm text-muted-foreground">{k("stepsHint")}</p>
         )}
       </div>
 
@@ -1081,11 +1117,13 @@ export function KnowledgeStudioV2PageClient() {
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
                     1
                   </span>
-                  <CardTitle>选择蓝图</CardTitle>
+                  <CardTitle>{k("step1Title")}</CardTitle>
                   {selectedBlueprint && (
                     <Badge variant="outline" className="ml-2">
-                      已选: {selectedBlueprint.icon}{" "}
-                      {selectedBlueprint.displayName}
+                      {k("selectedBlueprint", {
+                        icon: selectedBlueprint.icon,
+                        name: selectedBlueprint.displayName,
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -1095,7 +1133,7 @@ export function KnowledgeStudioV2PageClient() {
                     size="sm"
                     onClick={() => setCurrentStep("blueprint")}
                   >
-                    修改
+                    {k("step1Change")}
                   </Button>
                 )}
               </div>
@@ -1123,12 +1161,12 @@ export function KnowledgeStudioV2PageClient() {
                     >
                       {isBlueprintExpanded ? (
                         <>
-                          收起全部蓝图
+                          {k("step1CollapseAll")}
                           <ChevronDown className="ml-2 h-4 w-4 rotate-180 transition-transform" />
                         </>
                       ) : (
                         <>
-                          查看更多蓝图
+                          {k("step1ExpandMore")}
                           <ChevronDown className="ml-2 h-4 w-4 transition-transform" />
                         </>
                       )}
@@ -1149,7 +1187,7 @@ export function KnowledgeStudioV2PageClient() {
                 {selectedBlueprintId && (
                   <div className="flex justify-end pt-2">
                     <Button onClick={() => setCurrentStep("materials")}>
-                      下一步：选择素材
+                      {k("step1Next")}
                     </Button>
                   </div>
                 )}
@@ -1166,7 +1204,7 @@ export function KnowledgeStudioV2PageClient() {
                 <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
                   2
                 </span>
-                <CardTitle>选择素材</CardTitle>
+                <CardTitle>{k("step2Title")}</CardTitle>
                 <Badge variant="secondary">
                   {selectedMaterialIds.length} / {MATERIAL_LIMITS.HARD_MAX}
                 </Badge>
@@ -1175,7 +1213,9 @@ export function KnowledgeStudioV2PageClient() {
             <CardContent className="space-y-4">
               {/* P2-6: AI 推荐优先显示 */}
               <div>
-                <h3 className="text-sm font-medium mb-3">AI 推荐素材</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  {k("step2AiRecommend")}
+                </h3>
                 <MaterialRecommendations
                   selectedMaterialIds={selectedMaterialIds}
                   onAddMaterial={handleAddMaterial}
@@ -1196,12 +1236,12 @@ export function KnowledgeStudioV2PageClient() {
                   >
                     {isManualSelectExpanded ? (
                       <>
-                        收起手动选择
+                        {k("step2CollapseManual")}
                         <ChevronDown className="ml-2 h-4 w-4 rotate-180 transition-transform" />
                       </>
                     ) : (
                       <>
-                        手动选择更多素材
+                        {k("step2ExpandManual")}
                         <ChevronDown className="ml-2 h-4 w-4 transition-transform" />
                       </>
                     )}
@@ -1218,17 +1258,27 @@ export function KnowledgeStudioV2PageClient() {
                         }
                       >
                         <SelectTrigger className="w-[140px]">
-                          <SelectValue placeholder="全部平台" />
+                          <SelectValue placeholder={k("allPlatforms")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">全部平台</SelectItem>
-                          <SelectItem value="WECHAT_OFFICIAL_ACCOUNT">
-                            微信公众号
+                          <SelectItem value="all">
+                            {k("allPlatforms")}
                           </SelectItem>
-                          <SelectItem value="BILIBILI">B站</SelectItem>
-                          <SelectItem value="ZHIHU">知乎</SelectItem>
-                          <SelectItem value="XIAOHONGSHU">小红书</SelectItem>
-                          <SelectItem value="browser">浏览器书签</SelectItem>
+                          <SelectItem value="WECHAT_OFFICIAL_ACCOUNT">
+                            {k("platformWechat")}
+                          </SelectItem>
+                          <SelectItem value="BILIBILI">
+                            {k("platformBilibili")}
+                          </SelectItem>
+                          <SelectItem value="ZHIHU">
+                            {k("platformZhihu")}
+                          </SelectItem>
+                          <SelectItem value="XIAOHONGSHU">
+                            {k("platformXiaohongshu")}
+                          </SelectItem>
+                          <SelectItem value="browser">
+                            {k("platformBrowser")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       {platformFilter && (
@@ -1237,22 +1287,22 @@ export function KnowledgeStudioV2PageClient() {
                           size="sm"
                           onClick={() => setPlatformFilter(null)}
                         >
-                          清除筛选
+                          {k("clearFilter")}
                         </Button>
                       )}
                     </div>
 
                     {isLoadingBookmarks ? (
                       <div className="py-12 text-center text-muted-foreground">
-                        加载中...
+                        {k("loading")}
                       </div>
                     ) : allMaterialsForSelector.length === 0 ? (
                       <div className="py-12 text-center">
                         <p className="text-muted-foreground mb-4">
-                          暂无收藏内容，请先添加一些收藏
+                          {k("noBookmarks")}
                         </p>
                         <Button asChild variant="outline">
-                          <a href="/home">去添加收藏</a>
+                          <a href="/home">{k("goAddBookmarks")}</a>
                         </Button>
                       </div>
                     ) : (
@@ -1288,7 +1338,7 @@ export function KnowledgeStudioV2PageClient() {
                         3
                       </span>
                       <CardTitle className="text-base">
-                        补充说明（可选）
+                        {k("step3Optional")}
                       </CardTitle>
                     </div>
                     <ChevronDown
@@ -1300,7 +1350,7 @@ export function KnowledgeStudioV2PageClient() {
               <CollapsibleContent>
                 <CardContent>
                   <Textarea
-                    placeholder="有什么特别要求吗？例如：需要偏向技术深度、适合新手阅读..."
+                    placeholder={k("step3Placeholder")}
                     value={additionalRequirements}
                     onChange={(e) => setAdditionalRequirements(e.target.value)}
                     className="min-h-[100px]"
@@ -1323,7 +1373,9 @@ export function KnowledgeStudioV2PageClient() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Settings2 className="h-5 w-5 text-muted-foreground" />
-                      <CardTitle className="text-base">高级选项</CardTitle>
+                      <CardTitle className="text-base">
+                        {k("advancedOptions")}
+                      </CardTitle>
                     </div>
                     <ChevronDown
                       className={`h-5 w-5 transition-transform ${isAdvancedExpanded ? "rotate-180" : ""}`}
@@ -1336,7 +1388,7 @@ export function KnowledgeStudioV2PageClient() {
                   {/* 平台风格 */}
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      平台风格
+                      {k("platformStyle")}
                     </label>
                     <PlatformStyleSelector
                       value={platformStyle}
@@ -1349,7 +1401,7 @@ export function KnowledgeStudioV2PageClient() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium block">
-                          内容大纲（可选）
+                          {k("outlineLabel")}
                         </label>
                         {!showOutlineEditor && (
                           <Button
@@ -1364,12 +1416,12 @@ export function KnowledgeStudioV2PageClient() {
                             {isGeneratingOutline ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                生成中...
+                                {k("outlineGenerating")}
                               </>
                             ) : (
                               <>
                                 <Sparkles className="mr-2 h-4 w-4" />
-                                生成大纲
+                                {k("outlineGenerate")}
                               </>
                             )}
                           </Button>
@@ -1391,8 +1443,7 @@ export function KnowledgeStudioV2PageClient() {
                       )}
                       {!showOutlineEditor && (
                         <p className="text-sm text-muted-foreground">
-                          点击&quot;生成大纲&quot;创建内容结构，或直接生成让 AI
-                          自动规划
+                          {k("outlineHint")}
                         </p>
                       )}
                     </div>
@@ -1413,7 +1464,7 @@ export function KnowledgeStudioV2PageClient() {
               className="px-8"
             >
               <Sparkles className="mr-2 h-5 w-5" />
-              一键生成
+              {k("generateButton")}
             </Button>
           </div>
         )}
@@ -1428,12 +1479,12 @@ export function KnowledgeStudioV2PageClient() {
                     <Sparkles
                       className={`h-5 w-5 ${prefersReducedMotion ? "" : "animate-pulse"}`}
                     />
-                    正在生成内容
+                    {k("generatingTitle")}
                   </CardTitle>
                   <p
                     className={`text-sm text-muted-foreground mt-1 ${prefersReducedMotion ? "" : "animate-pulse"}`}
                   >
-                    {WAITING_MESSAGES[waitingMessageIndex]}
+                    {k(WAITING_MESSAGE_KEYS[waitingMessageIndex])}
                   </p>
                 </div>
                 <Button
@@ -1441,7 +1492,7 @@ export function KnowledgeStudioV2PageClient() {
                   size="sm"
                   onClick={handleCancelGeneration}
                 >
-                  取消生成
+                  {k("cancelGenerate")}
                 </Button>
               </div>
             </CardHeader>
@@ -1456,14 +1507,19 @@ export function KnowledgeStudioV2PageClient() {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground border-t pt-3">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-4 w-4" />
-                    <ElapsedTimeDisplay startTime={generationStartTime} />
+                    <ElapsedTimeDisplay
+                      startTime={generationStartTime}
+                      label={k}
+                    />
                   </div>
                   {progress.generatedWords !== undefined &&
                     progress.generatedWords > 0 && (
                       <div className="flex items-center gap-1.5">
                         <FileText className="h-4 w-4" />
                         <span>
-                          已生成 {progress.generatedWords.toLocaleString()} 字
+                          {k("generatedWords", {
+                            count: progress.generatedWords.toLocaleString(),
+                          })}
                         </span>
                       </div>
                     )}
@@ -1486,57 +1542,132 @@ export function KnowledgeStudioV2PageClient() {
           <div className="space-y-6">
             <Alert>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <AlertTitle>生成完成</AlertTitle>
+              <AlertTitle>{k("resultDone")}</AlertTitle>
               <AlertDescription>
-                内容已成功生成并保存。
+                {k("resultSaved")}
                 {reportId && (
                   <Button
                     variant="link"
                     onClick={handleViewReport}
                     className="p-0 h-auto ml-1"
                   >
-                    查看完整草稿 →
+                    {k("viewFullDraft")}
                   </Button>
                 )}
               </AlertDescription>
             </Alert>
 
-            {/* 操作栏 */}
-            {generatedContent && !condensedContent && (
+            {/* 操作栏：有生成内容时始终显示，有精简版时区分原文/精简版复制与导出 */}
+            {generatedContent && (
               <Card>
                 <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="text-sm text-muted-foreground">
-                      当前内容约 {generatedContent.length.toLocaleString()} 字
+                      {condensedContent ? (
+                        <>
+                          {k("originalWords", {
+                            count: generatedContent.length.toLocaleString(),
+                          })}
+                          {" | "}
+                          {k("condensedWords", {
+                            count: condensedContent.length.toLocaleString(),
+                          })}
+                        </>
+                      ) : (
+                        <>
+                          {k("currentWords", {
+                            count: generatedContent.length.toLocaleString(),
+                          })}
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* 主操作 */}
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() =>
-                          navigator.clipboard
-                            .writeText(generatedContent)
-                            .then(() => toast.success("已复制到剪贴板"))
-                        }
-                      >
-                        <Copy className="mr-1.5 h-4 w-4" />
-                        复制
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setIsExportDialogOpen(true)}
-                      >
-                        <Download className="mr-1.5 h-4 w-4" />
-                        导出
-                      </Button>
+                      {condensedContent ? (
+                        <>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() =>
+                              navigator.clipboard
+                                .writeText(generatedContent)
+                                .then(() =>
+                                  toast.success(k("copyOriginalToast")),
+                                )
+                            }
+                          >
+                            <Copy className="mr-1.5 h-4 w-4" />
+                            {k("copyOriginal")}
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() =>
+                              navigator.clipboard
+                                .writeText(condensedContent)
+                                .then(() =>
+                                  toast.success(k("copyCondensedToast")),
+                                )
+                            }
+                          >
+                            <Copy className="mr-1.5 h-4 w-4" />
+                            {k("copyCondensed")}
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setExportContent(condensedContent);
+                              setIsExportDialogOpen(true);
+                            }}
+                          >
+                            <Download className="mr-1.5 h-4 w-4" />
+                            {k("exportCondensed")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setExportContent(generatedContent);
+                              setIsExportDialogOpen(true);
+                            }}
+                          >
+                            <Download className="mr-1.5 h-4 w-4" />
+                            {k("exportOriginal")}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() =>
+                              navigator.clipboard
+                                .writeText(generatedContent)
+                                .then(() => toast.success(k("copyToast")))
+                            }
+                          >
+                            <Copy className="mr-1.5 h-4 w-4" />
+                            {k("copy")}
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setExportContent(generatedContent);
+                              setIsExportDialogOpen(true);
+                            }}
+                          >
+                            <Download className="mr-1.5 h-4 w-4" />
+                            {k("export")}
+                          </Button>
+                        </>
+                      )}
 
                       {/* 更多操作 */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm">
-                            更多操作
+                            {k("moreActions")}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -1545,14 +1676,14 @@ export function KnowledgeStudioV2PageClient() {
                             disabled={isCondensing || isIterating}
                           >
                             <MessageSquare className="mr-2 h-4 w-4" />
-                            反馈优化
+                            {k("feedbackOptimize")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => setIsMultiPlatformDialogOpen(true)}
                             disabled={isCondensing || isIterating}
                           >
                             <Share2 className="mr-2 h-4 w-4" />
-                            一稿多发
+                            {k("multiPlatform")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
@@ -1580,7 +1711,7 @@ export function KnowledgeStudioV2PageClient() {
                             ) : (
                               <Volume2 className="mr-2 h-4 w-4" />
                             )}
-                            {isPlaying ? "暂停" : "朗读"}
+                            {isPlaying ? k("pause") : k("readAloud")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem>
@@ -1600,7 +1731,9 @@ export function KnowledgeStudioV2PageClient() {
                     <div className="mt-4 space-y-2">
                       <Progress value={condenseProgress} className="h-2" />
                       <div className="text-sm text-muted-foreground text-center">
-                        正在精简内容... {condenseProgress}%
+                        {k("condensingProgress", {
+                          percent: condenseProgress,
+                        })}
                       </div>
                     </div>
                   )}
@@ -1609,7 +1742,9 @@ export function KnowledgeStudioV2PageClient() {
                     <div className="mt-4 space-y-2">
                       <Progress value={iterationProgress} className="h-2" />
                       <div className="text-sm text-muted-foreground text-center">
-                        正在优化内容... {iterationProgress}%
+                        {k("iteratingProgress", {
+                          percent: iterationProgress,
+                        })}
                       </div>
                     </div>
                   )}
@@ -1630,7 +1765,7 @@ export function KnowledgeStudioV2PageClient() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      生成内容
+                      {k("generatedContentTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1640,14 +1775,14 @@ export function KnowledgeStudioV2PageClient() {
                           <TabsList>
                             <TabsTrigger value="condensed" className="gap-1.5">
                               <Scissors className="h-4 w-4" />
-                              精简版
+                              {k("condensedTab")}
                               <Badge variant="secondary" className="ml-1">
                                 {condensedContent.length.toLocaleString()} 字
                               </Badge>
                             </TabsTrigger>
                             <TabsTrigger value="original" className="gap-1.5">
                               <FileText className="h-4 w-4" />
-                              原文
+                              {k("originalTab")}
                               <Badge variant="secondary" className="ml-1">
                                 {generatedContent.length.toLocaleString()} 字
                               </Badge>
@@ -1718,10 +1853,10 @@ export function KnowledgeStudioV2PageClient() {
                   setMaterialsFromRecommendations({});
                 }}
               >
-                重新生成
+                {k("regenerate")}
               </Button>
               <Button onClick={handleViewReport} disabled={!reportId}>
-                查看完整草稿
+                {k("viewFullDraftButton")}
               </Button>
             </div>
           </div>
@@ -1740,7 +1875,7 @@ export function KnowledgeStudioV2PageClient() {
       <ExportResultDialog
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
-        content={condensedContent || generatedContent}
+        content={exportContent || condensedContent || generatedContent || ""}
         blueprintName={selectedBlueprint?.displayName || "内容"}
       />
 
