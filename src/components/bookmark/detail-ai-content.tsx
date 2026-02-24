@@ -22,14 +22,9 @@ import { hasVisionData } from "@/types/vision";
 import type { Bookmark } from "@/types/supabase";
 
 // AI 组件懒加载
-const AIQuickActions = lazy(() =>
-  import("@/components/ai").then((m) => ({
-    default: m.AIQuickActions,
-  })),
-);
-const AIBookmarkChat = lazy(() =>
-  import("@/components/ai").then((m) => ({
-    default: m.AIBookmarkChat,
+const AIBookmarkAssistant = lazy(() =>
+  import("@/components/ai/ai-bookmark-assistant").then((m) => ({
+    default: m.AIBookmarkAssistant,
   })),
 );
 const AIRelatedContent = lazy(() =>
@@ -64,7 +59,7 @@ export interface DetailAIContentProps {
 export function DetailAIContent({
   bookmark,
   userId,
-  localUserTags,
+  localUserTags: _localUserTags,
   setLocalUserTags,
   onOpenAIPanel,
 }: DetailAIContentProps) {
@@ -90,40 +85,30 @@ export function DetailAIContent({
 
   return (
     <>
-      {/* AI 快捷操作（仅登录用户可见） */}
+      {/* AI 助手（合并快捷操作 + 问答对话） */}
       {userId && (
         <>
-          <Suspense fallback={<Skeleton className="h-10 w-full rounded-lg" />}>
-            <AIQuickActions
+          <Suspense fallback={<Skeleton className="h-40 w-full rounded-lg" />}>
+            <AIBookmarkAssistant
+              userId={userId}
               bookmarkId={bookmark.id}
               bookmarkTitle={bookmark.title ?? ""}
-              currentTags={localUserTags ?? undefined}
-              currentFolderId={bookmark.folder_id ?? undefined}
+              bookmarkUrl={bookmark.url}
+              bookmarkSummary={bookmark.ai_summary}
+              bookmarkTags={bookmark.user_tags}
+              bookmarkPlatform={bookmark.platform}
               onActionComplete={(action, result) => {
                 if (action === "auto-tag" && result) {
-                  const newTags = Array.isArray(result) ? result : [];
+                  const tagResult = result as { newTags?: string[] };
+                  const newTags = Array.isArray(tagResult.newTags)
+                    ? tagResult.newTags
+                    : [];
                   setLocalUserTags((prev) => {
                     const existing = prev ?? [];
                     return [...new Set([...existing, ...newTags])];
                   });
                 }
               }}
-            />
-          </Suspense>
-          <Separator />
-        </>
-      )}
-
-      {/* AI 书签聊天（内联可折叠） */}
-      {userId && (
-        <>
-          <Suspense fallback={<Skeleton className="h-10 w-full rounded-lg" />}>
-            <AIBookmarkChat
-              userId={userId}
-              bookmarkId={bookmark.id}
-              bookmarkTitle={bookmark.title ?? ""}
-              bookmarkUrl={bookmark.url}
-              defaultExpanded={false}
               onOpenFullChat={onOpenAIPanel}
             />
           </Suspense>

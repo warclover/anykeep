@@ -78,6 +78,10 @@ export {
   type AIRelatedContentProps,
 } from "./ai-related-content";
 export { AIQuickActions, type AIQuickActionsProps } from "./ai-quick-actions";
+export {
+  AIBookmarkAssistant,
+  type AIBookmarkAssistantProps,
+} from "./ai-bookmark-assistant";
 
 // 搜索页组件
 export {

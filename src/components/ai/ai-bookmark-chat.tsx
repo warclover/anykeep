@@ -48,6 +48,12 @@ export interface AIBookmarkChatProps {
   bookmarkTitle: string;
   /** 书签 URL */
   bookmarkUrl?: string;
+  /** AI 生成的摘要 */
+  bookmarkSummary?: string | null;
+  /** 用户标签 */
+  bookmarkTags?: string[] | null;
+  /** 来源平台 */
+  bookmarkPlatform?: string | null;
   /** 自定义类名 */
   className?: string;
   /** 是否默认展开 */
@@ -99,13 +105,44 @@ const QUICK_ACTIONS: QuickAction[] = [
 // ============================================
 
 /**
- * AI 书签对话组件
+ * 将当前书签信息格式化为 AI 可读的上下文字符串
  */
+function buildBookmarkAttachmentContext(params: {
+  title: string;
+  url?: string | null;
+  summary?: string | null;
+  tags?: string[] | null;
+  platform?: string | null;
+}): string {
+  const lines: string[] = ["【当前浏览的书签】", `标题：${params.title}`];
+
+  if (params.url) {
+    lines.push(`链接：${params.url}`);
+  }
+  if (params.platform) {
+    lines.push(`来源平台：${params.platform}`);
+  }
+  if (params.tags && params.tags.length > 0) {
+    lines.push(`标签：${params.tags.join("、")}`);
+  }
+  if (params.summary) {
+    lines.push(`AI 摘要：${params.summary}`);
+  }
+
+  lines.push("");
+  lines.push("请基于以上书签信息回答用户的问题。");
+
+  return lines.join("\n");
+}
+
 export function AIBookmarkChat({
   userId: _userId,
   bookmarkId,
-  bookmarkTitle: _bookmarkTitle,
-  bookmarkUrl: _bookmarkUrl,
+  bookmarkTitle,
+  bookmarkUrl,
+  bookmarkSummary,
+  bookmarkTags,
+  bookmarkPlatform,
   className,
   defaultExpanded = false,
   onOpenFullChat,
@@ -132,6 +169,14 @@ export function AIBookmarkChat({
       abortControllerRef.current = new AbortController();
 
       try {
+        const attachmentContext = buildBookmarkAttachmentContext({
+          title: bookmarkTitle,
+          url: bookmarkUrl,
+          summary: bookmarkSummary,
+          tags: bookmarkTags,
+          platform: bookmarkPlatform,
+        });
+
         const res = await fetch("/api/agent/unified", {
           method: "POST",
           headers: {
@@ -140,6 +185,7 @@ export function AIBookmarkChat({
           body: JSON.stringify({
             message: message,
             bookmarkIds: [bookmarkId],
+            attachmentContext,
             options: {
               streaming: true,
               enableUnified: false,
@@ -203,7 +249,15 @@ export function AIBookmarkChat({
         abortControllerRef.current = null;
       }
     },
-    [bookmarkId, isLoading],
+    [
+      bookmarkId,
+      bookmarkTitle,
+      bookmarkUrl,
+      bookmarkSummary,
+      bookmarkTags,
+      bookmarkPlatform,
+      isLoading,
+    ],
   );
 
   /**

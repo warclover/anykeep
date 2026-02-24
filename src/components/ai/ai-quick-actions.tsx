@@ -20,6 +20,8 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  X,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,6 +95,15 @@ interface ActionState {
   message?: string;
 }
 
+/** 提取要点结果面板数据 */
+interface KeyPointsPanel {
+  tldr: string;
+  keyPoints: string[];
+  keywords: string[];
+  sentiment?: "positive" | "neutral" | "negative";
+  readingTime?: number;
+}
+
 // ============================================
 // 常量配置
 // ============================================
@@ -136,6 +147,12 @@ const QUICK_ACTIONS: QuickAction[] = [
 // 组件
 // ============================================
 
+const SENTIMENT_LABELS: Record<string, string> = {
+  positive: "正面",
+  neutral: "中性",
+  negative: "负面",
+};
+
 export function AIQuickActions({
   bookmarkId,
   bookmarkTitle: _bookmarkTitle,
@@ -147,6 +164,9 @@ export function AIQuickActions({
 }: AIQuickActionsProps) {
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>(
     {},
+  );
+  const [keyPointsPanel, setKeyPointsPanel] = useState<KeyPointsPanel | null>(
+    null,
   );
 
   /**
@@ -235,16 +255,28 @@ export function AIQuickActions({
           },
         }));
 
+        // 提取要点：展示结果面板，不自动重置
+        if (actionId === "extract-key") {
+          const keyData = result.data as ExtractKeyResult;
+          setKeyPointsPanel({
+            tldr: keyData.tldr,
+            keyPoints: keyData.keyPoints,
+            keywords: keyData.keywords,
+            sentiment: keyData.sentiment,
+            readingTime: keyData.readingTime,
+          });
+        } else {
+          // 其他操作 3 秒后重置
+          setTimeout(() => {
+            setActionStates((prev) => ({
+              ...prev,
+              [actionId]: { status: "idle" },
+            }));
+          }, 3000);
+        }
+
         // 回调
         onActionComplete?.(actionId, result.data, result.applied);
-
-        // 3 秒后重置状态
-        setTimeout(() => {
-          setActionStates((prev) => ({
-            ...prev,
-            [actionId]: { status: "idle" },
-          }));
-        }, 3000);
       } catch (err) {
         const message = err instanceof Error ? err.message : "操作失败";
 
@@ -369,6 +401,83 @@ export function AIQuickActions({
         <p className="text-xs text-muted-foreground text-center mt-3">
           点击按钮让 AI 自动处理
         </p>
+
+        {/* 提取要点结果面板 */}
+        {keyPointsPanel && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/10 p-3 space-y-3">
+            {/* 面板头部 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <FileText className="size-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  提取要点
+                </span>
+                {keyPointsPanel.readingTime && (
+                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <Clock className="size-3" />
+                    {keyPointsPanel.readingTime} 分钟
+                  </span>
+                )}
+                {keyPointsPanel.sentiment && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                    {SENTIMENT_LABELS[keyPointsPanel.sentiment]}
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setKeyPointsPanel(null);
+                  setActionStates((prev) => ({
+                    ...prev,
+                    "extract-key": { status: "idle" },
+                  }));
+                }}
+              >
+                <X className="size-3" />
+              </Button>
+            </div>
+
+            {/* 一句话总结 */}
+            {keyPointsPanel.tldr && (
+              <p className="text-xs text-foreground/80 italic border-l-2 border-amber-400 pl-2">
+                {keyPointsPanel.tldr}
+              </p>
+            )}
+
+            {/* 关键要点列表 */}
+            {keyPointsPanel.keyPoints.length > 0 && (
+              <ul className="space-y-1.5">
+                {keyPointsPanel.keyPoints.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-amber-200 dark:bg-amber-800/50 text-amber-700 dark:text-amber-400 font-medium">
+                      {i + 1}
+                    </span>
+                    <span className="text-foreground/80 leading-relaxed">
+                      {point}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* 关键词 */}
+            {keyPointsPanel.keywords.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1 border-t border-amber-200 dark:border-amber-800/50">
+                {keyPointsPanel.keywords.map((kw) => (
+                  <span
+                    key={kw}
+                    className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                  >
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
