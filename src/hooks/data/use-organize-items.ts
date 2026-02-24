@@ -82,7 +82,12 @@ async function fetchOrganizePage(
     if (filter.isRead === false) {
       query = query.eq("is_read", false);
     }
-    if (filter.qualityScoreGte) {
+    if (filter.qualityScoreGte !== undefined && filter.includeStarred) {
+      // 高价值：is_starred=true 或 quality_score >= threshold（二者满足其一即可）
+      query = query.or(
+        `is_starred.eq.true,quality_score.gte.${filter.qualityScoreGte}`,
+      );
+    } else if (filter.qualityScoreGte !== undefined) {
       query = query.gte("quality_score", filter.qualityScoreGte);
     }
     if (filter.linkStatus) {

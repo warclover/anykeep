@@ -767,15 +767,24 @@ export function ContentAnalysisListClient() {
           className="w-full"
         >
           <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="compare" className="gap-1.5">
+            <TabsTrigger
+              value="compare"
+              className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+            >
               <GitCompare className="h-4 w-4" />
               对比分析
             </TabsTrigger>
-            <TabsTrigger value="synthesis" className="gap-1.5">
+            <TabsTrigger
+              value="synthesis"
+              className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+            >
               <Layers className="h-4 w-4" />
               主题综述
             </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5">
+            <TabsTrigger
+              value="history"
+              className="gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground"
+            >
               <History className="h-4 w-4" />
               历史记录
             </TabsTrigger>

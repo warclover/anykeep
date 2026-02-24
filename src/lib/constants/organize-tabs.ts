@@ -43,6 +43,11 @@ export interface OrganizeTabFilter {
   qualityScoreGte?: number;
   linkStatus?: string;
   createdAfter?: string;
+  /**
+   * 是否同时包含 is_starred=true 的书签（用 OR 逻辑与其他条件合并）
+   * 高价值 tab 使用：is_starred=true OR quality_score >= threshold
+   */
+  includeStarred?: boolean;
 }
 
 export interface OrganizeTab {
@@ -79,9 +84,9 @@ export const ORGANIZE_TABS: OrganizeTab[] = [
     id: "high-value",
     label: "高价值",
     icon: Star,
-    description: "质量评分较高的书签",
+    description: "已标记或质量评分较高的书签",
     isBookmarkTab: true,
-    getFilter: () => ({ qualityScoreGte: 0.7 }),
+    getFilter: () => ({ qualityScoreGte: 0.7, includeStarred: true }),
   },
   {
     id: "broken",

@@ -50,6 +50,7 @@ async function fetchAnalyticsData(
       includeComparison: true,
       includeAIStats: true,
       includeSkillsStats: true,
+      topTagsCount: 15,
     });
     return { data: analyticsData, error: null };
   } catch (err) {

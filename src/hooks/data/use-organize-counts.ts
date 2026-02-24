@@ -129,7 +129,7 @@ async function fetchOrganizeCountsFallback(
   const [pending, unread, highValue, broken, recent] = await Promise.all([
     baseQuery().is("folder_id", null),
     baseQuery().eq("is_read", false),
-    baseQuery().gte("quality_score", 0.7),
+    baseQuery().or("is_starred.eq.true,quality_score.gte.0.7"),
     baseQuery().eq("link_status", "broken"),
     baseQuery().gte(
       "created_at",

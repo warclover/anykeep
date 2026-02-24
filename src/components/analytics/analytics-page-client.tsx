@@ -223,8 +223,8 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <CardContent className="py-1 px-4 sm:py-1 sm:px-5">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div
             className={`w-10 h-10 sm:w-12 sm:h-12 ${iconBgClass} rounded-lg flex items-center justify-center`}
           >
@@ -609,6 +609,74 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
               </CardContent>
             </Card>
 
+            {/* 热门标签排行 & 分类历史 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {tagData.length > 0 && (
+                <Card className="h-full flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="size-5 text-orange-600 dark:text-orange-400" />
+                      热门标签 TOP 15
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col px-2 sm:px-6 min-h-0">
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={tagData}
+                          layout="vertical"
+                          margin={{ left: 0, right: 10, top: 4, bottom: 4 }}
+                          barSize={14}
+                          barCategoryGap="20%"
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="stroke-gray-200 dark:stroke-gray-700"
+                          />
+                          <XAxis
+                            type="number"
+                            className="text-xs text-gray-500 dark:text-gray-400"
+                          />
+                          <YAxis
+                            dataKey="tag"
+                            type="category"
+                            width={76}
+                            tick={{ fontSize: 11 }}
+                            className="text-xs text-gray-500 dark:text-gray-400"
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {payload[0].payload.tag}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                      {payload[0].value} 次使用
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar
+                            dataKey="count"
+                            fill="#f97316"
+                            radius={[0, 4, 4, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 分类建议历史 */}
+              <ClassificationHistoryCard />
+            </div>
+
             {/* 平台分布 & 文件夹分布 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 平台分布饼图 */}
@@ -764,70 +832,6 @@ export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {
                 </CardContent>
               </Card>
             )}
-
-            {/* 热门标签排行 & 分类历史 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {tagData.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="size-5 text-orange-600 dark:text-orange-400" />
-                      热门标签 TOP 10
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-2 sm:px-6">
-                    <ResponsiveContainer width="100%" height={350}>
-                      <BarChart
-                        data={tagData}
-                        layout="vertical"
-                        margin={{ left: 0, right: 10 }}
-                      >
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          className="stroke-gray-200 dark:stroke-gray-700"
-                        />
-                        <XAxis
-                          type="number"
-                          className="text-xs text-gray-500 dark:text-gray-400"
-                        />
-                        <YAxis
-                          dataKey="tag"
-                          type="category"
-                          width={70}
-                          tick={{ fontSize: 11 }}
-                          className="text-xs text-gray-500 dark:text-gray-400"
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {payload[0].payload.tag}
-                                  </p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {payload[0].value} 次使用
-                                  </p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar
-                          dataKey="count"
-                          fill="#f97316"
-                          radius={[0, 4, 4, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* 分类建议历史 */}
-              <ClassificationHistoryCard />
-            </div>
           </div>
         ) : (
           // 无数据空状态
