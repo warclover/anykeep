@@ -1,13 +1,15 @@
 /**
- * V4.1 简化分类服务
+ * V5.0 简化分类服务
  *
  * 核心设计：
  * 1. 统一向量搜索（profile + name embedding）
  * 2. 标签增强（+5%~+15%）
  * 3. 单阈值决策（70%）
  * 4. AI 选择题模式
+ * 5. 统一命名规则（使用 naming-rules.ts）
  *
- * @version 4.1
+ * @version 5.0
+ * @since 2026-02-25 统一命名规则优化
  * @description 务实优化版，解决冷启动问题，提升分类准确率
  */
 
@@ -27,6 +29,11 @@ import { generateWithAI } from "@/lib/ai-generator";
 import { logger } from "@/lib/logger";
 import { eventBus, ClassificationEvents } from "@/lib/shared/event-bus";
 import { RECENT_FOLDER_DEDUP } from "@/lib/classification/constants/limits";
+import { FOLDER_NAMING_RULES } from "@/lib/classification/constants/naming-rules";
+import {
+  sanitizeFolderName,
+  generateFallbackName,
+} from "@/lib/classification/utils/folder-name-sanitizer";
 
 // ═══════════════════════════════════════════════════════════════
 // 常量定义
@@ -50,28 +57,11 @@ const AI_CREATE_CONFIDENCE = 85;
 /** AI 创建失败时的回退置信度 */
 const AI_CREATE_FALLBACK_CONFIDENCE = 70;
 
-/** 标题截取长度（用于日志和回退名称） */
-const TITLE_TRUNCATE_LENGTH = 6;
-
 /** 日志中标题最大显示长度（隐私保护） */
 const LOG_TITLE_MAX_LENGTH = 30;
 
-/** 默认文件夹名称（回退值） */
-const DEFAULT_FOLDER_NAME = "新收藏";
-
 /** 待整理文件夹名称 */
 const INBOX_FOLDER_NAME = "待整理";
-
-/** 文件夹名称黑名单 */
-const FOLDER_NAME_BLACKLIST = [
-  "内容分类",
-  "待整理",
-  "收藏夹",
-  "默认",
-  "其他",
-  "未分类",
-  "杂项",
-];
 
 /** Prompt 输入最大长度（防止注入） */
 const PROMPT_INPUT_MAX_LENGTH = 200;
@@ -523,7 +513,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
 
   /**
    * AI 创建新文件夹
-   * Phase 2: 注入近期文件夹名，引导 AI 在同主题时复用已有名称而非创建新名
+   * V5.0: 使用统一的命名规则和清洗管道
    */
   private async aiCreateFolder(
     userId: string,
@@ -535,27 +525,26 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
     const safeTags = sanitizeTags(bookmark.tags);
     const safeSummary = sanitizePromptInput(bookmark.summary, 300);
 
-    // Phase 2: 获取近期文件夹名，并行执行不阻塞主流程
+    // 获取近期文件夹名，用于引导 AI 复用已有名称
     const recentFolderNames = await this.getRecentFolderNames(userId);
 
     const recentFoldersSection =
       recentFolderNames.length > 0
         ? `
+
 【近期已有文件夹】（${RECENT_FOLDER_DEDUP.WINDOW_HOURS}小时内创建）：${recentFolderNames.join("、")}
 重要：若当前书签内容与上述某个文件夹主题一致，请直接返回该文件夹名称，不要创造新名称。`
         : "";
 
-    const prompt = `根据以下书签内容，生成一个简洁的文件夹名称（2-6个中文字或英文单词）：
+    // 使用统一的 Prompt 模板
+    const prompt = `根据以下书签内容，生成一个简洁的文件夹名称。
+
+${FOLDER_NAMING_RULES}
 
 标题：${safeTitle}
 ${safeSummary ? `摘要：${safeSummary}` : ""}
 标签：${safeTags.length > 0 ? safeTags.join("、") : "无"}
 ${recentFoldersSection}
-要求：
-1. 名称简洁明了，能概括内容主题
-2. 2-6 个字
-3. 不要使用"内容分类"、"待整理"、"收藏夹"等无意义名称
-4. 优先使用具体的领域词汇（如"前端开发"、"投资理财"、"健康养生"）
 
 只返回文件夹名称，不要其他说明。`;
 
@@ -565,23 +554,33 @@ ${recentFoldersSection}
         temperature: 0.3,
       });
 
-      const cleanedName = folderName.trim().replace(/["""'']/g, "");
+      const rawName = folderName.trim().replace(/["""'']/g, "");
+
+      // 使用统一的清洗管道
+      const sanitization = sanitizeFolderName(rawName, {
+        tags: bookmark.tags || [],
+        title: bookmark.title,
+        strictMode: true,
+      });
+
+      const finalName = sanitization.name;
       const executionTime = Math.round(performance.now() - startTime);
 
-      // 黑名单检查
-      const isBlacklisted = FOLDER_NAME_BLACKLIST.some(
-        (word) =>
-          cleanedName.includes(word) || cleanedName.toLowerCase() === word,
-      );
+      // 记录清洗结果
+      if (sanitization.usedFallback || sanitization.wasSanitized) {
+        logger.info(
+          {
+            title: this.truncateTitle(bookmark.title),
+            originalName: rawName,
+            sanitizedName: finalName,
+            appliedRules: sanitization.appliedRules,
+            usedFallback: sanitization.usedFallback,
+          },
+          "[SimpleClassification] Folder name sanitized",
+        );
+      }
 
-      // 使用统一的安全回退逻辑
-      const safeFallback = this.getSafeFallbackName(bookmark);
-      const finalName = isBlacklisted
-        ? safeFallback
-        : cleanedName || safeFallback;
-
-      // Phase 2: 检查 AI 返回的名称是否与近期文件夹完全一致
-      // 若 AI 正确复用了已有名称，则匹配到该文件夹 ID，让上层直接归入而不新建
+      // 检查 AI 返回的名称是否与近期文件夹完全一致
       const matchedRecentFolder =
         recentFolderNames.length > 0
           ? await this.findExistingFolderByName(userId, finalName)
@@ -615,8 +614,8 @@ ${recentFoldersSection}
         {
           title: this.truncateTitle(bookmark.title),
           suggestedFolder: finalName,
-          originalSuggestion: cleanedName,
-          wasBlacklisted: isBlacklisted,
+          originalSuggestion: rawName,
+          wasSanitized: sanitization.wasSanitized,
         },
         "[SimpleClassification] AI created folder suggestion",
       );
@@ -641,8 +640,11 @@ ${recentFoldersSection}
         "[SimpleClassification] AI folder creation failed",
       );
 
-      // AI 失败时使用统一的安全回退逻辑
-      const fallbackName = this.getSafeFallbackName(bookmark);
+      // 使用统一的回退策略
+      const fallbackName = generateFallbackName(
+        bookmark.tags || [],
+        bookmark.title || "",
+      );
       return {
         folderId: null,
         folderName: fallbackName,
@@ -741,19 +743,7 @@ ${recentFoldersSection}
   }
 
   /**
-   * 获取安全回退文件夹名称
-   * 优先级：标签[0] → 标题前N字 → 默认值
-   */
-  private getSafeFallbackName(bookmark: SimpleBookmarkInput): string {
-    return (
-      bookmark.tags?.[0] ||
-      bookmark.title?.slice(0, TITLE_TRUNCATE_LENGTH).trim() ||
-      DEFAULT_FOLDER_NAME
-    );
-  }
-
-  /**
-   * Phase 2: 根据精确名称查找现有文件夹，用于判断 AI 是否复用了已有名称
+   * 根据精确名称查找现有文件夹，用于判断 AI 是否复用了已有名称
    * 返回 null 表示未找到（需要新建）
    */
   private async findExistingFolderByName(

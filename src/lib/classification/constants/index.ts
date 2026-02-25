@@ -13,3 +13,4 @@
 export * from "./limits";
 export * from "./interest-domains";
 export * from "./universal-categories";
+export * from "./naming-rules";

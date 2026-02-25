@@ -1,16 +1,24 @@
 /**
- * V4.0 文件夹命名优化 Prompt
+ * V5.0 文件夹命名优化 Prompt
  *
- * 目标："信达雅"的文件夹命名
- * - 信：准确反映文件夹内容
- * - 达：简洁易懂，符合用户习惯
- * - 雅：风格统一，美观大方
+ * 目标："人类化"的文件夹命名
+ * - 像给朋友介绍你的收藏夹一样命名
+ * - 用户看到名称时，1 秒内能想到里面存的是什么
  *
  * 核心功能：
  * 1. Few-Shot 学习用户命名风格
  * 2. 语义去重检测
  * 3. 中文/英文双语支持
+ * 4. 统一命名规则（使用 naming-rules.ts 常量）
+ *
+ * @version 5.0.0
+ * @since 2026-02-25
  */
+
+import {
+  FOLDER_NAMING_RULES,
+  getGranularityHint,
+} from "../constants/naming-rules";
 
 // ============================================================================
 // 类型定义
@@ -37,6 +45,9 @@ export interface NamingContext {
     name: string;
     bookmarkCount: number;
   }>;
+
+  /** 用户现有文件夹总数（用于颗粒度判断） */
+  folderCount?: number;
 
   /** 通用分类匹配结果 */
   categoryMatch?: {
@@ -98,7 +109,9 @@ export interface DeduplicationResponse {
 // ============================================================================
 
 /**
- * 命名优化系统提示词
+ * 命名优化系统提示词（V5.0）
+ *
+ * 使用统一的 FOLDER_NAMING_RULES 常量
  */
 export const NAMING_SYSTEM_PROMPT = `你是一位专业的文件夹命名专家，擅长：
 - 分析用户的命名风格和习惯
@@ -106,35 +119,27 @@ export const NAMING_SYSTEM_PROMPT = `你是一位专业的文件夹命名专家�
 - 保持命名风格的一致性
 - 支持中英文双语命名
 
-命名原则：
-1. 简洁：2-6 个字/词为宜，最长不超过 10 个字
-2. 准确：反映文件夹主要内容
-3. 一致：与用户现有风格保持统一
-4. 区分：与现有文件夹有明确区分
-5. 禁忌：严禁使用"内容分类与标签管理"、"待整理"、"未命名"等泛指名称`;
+${FOLDER_NAMING_RULES}`;
 
 /**
- * 构建命名优化 Prompt（Few-Shot）
+ * 构建命名优化 Prompt（V5.0 - 使用统一规则）
  */
 export function buildNamingPrompt(context: NamingContext): string {
   const styleSection = buildStyleSection(context.existingFolders);
   const contentSection = buildContentSection(context);
+  const granularityHint = context.folderCount
+    ? `\n${getGranularityHint(context.folderCount)}`
+    : "";
 
   return `${styleSection}
 
 ${contentSection}
+${granularityHint}
 
 ## 任务
 请为新内容生成一个符合用户风格的文件夹名称。
 
-### 分析步骤
-1. **风格识别**：用户偏好什么命名风格？（如：简短中文、英文缩写、领域+类型）
-2. **内容理解**：新书签的核心主题是什么？
-3. **名称生成**：生成 2-3 个候选名称（必须避开禁忌词）
-4. **最优选择**：选择最符合风格且最准确的名称
-
-### 禁忌词检测
-在生成名称前，请自我检查：生成的名称是否包含"内容分类"、"标签管理"、"助手"等词？如果是，请立即更换为具体的主题名称（如"前端开发"、"效率工具"等）。
+${FOLDER_NAMING_RULES}
 
 ### 输出格式
 \`\`\`json
