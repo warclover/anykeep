@@ -40,6 +40,7 @@ import type {
   LockStatusMap,
   FolderSelection,
 } from "@/components/folders/types";
+import type { Folder as FolderType } from "@/types/supabase";
 
 // ==================== 组件 Props ====================
 
@@ -322,6 +323,39 @@ export function FoldersPageClient({
     [],
   );
 
+  // 文件夹创建后的乐观更新
+  const handleFolderCreated = useCallback((newFolder: FolderType) => {
+    // 将 Folder 转换为 FolderWithStats 格式
+    const folderWithStats: FolderWithStats = {
+      ...newFolder,
+      source: newFolder.source ?? null,
+      system_type: newFolder.system_type ?? null,
+      is_system: newFolder.is_system ?? false,
+      is_archived: newFolder.is_archived ?? false,
+      ai_generation_source: newFolder.ai_generation_source ?? null,
+      crystal_birth_time: newFolder.crystal_birth_time ?? null,
+      is_ai_generated: newFolder.is_ai_generated ?? null,
+      is_naming_pending: newFolder.is_naming_pending ?? null,
+      origin_bookmark_ids: newFolder.origin_bookmark_ids ?? null,
+      // 新创建的文件夹统计为 0
+      bookmark_count: 0,
+      today_count: 0,
+      is_locked: false,
+    };
+
+    // 立即更新本地状态（乐观更新）
+    setLocalFolders((prev) => {
+      // 避免重复添加（防止 router.refresh 后重复）
+      if (prev.some((f) => f.id === newFolder.id)) {
+        return prev;
+      }
+      // 新文件夹添加到列表开头（按创建时间倒序）
+      return [folderWithStats, ...prev];
+    });
+
+    clearFoldersCache();
+  }, []);
+
   // 文件夹合并后的乐观更新
   const handleFolderMerged = useCallback(
     (sourceFolderId: number, targetFolderId: number, movedCount: number) => {
@@ -474,6 +508,7 @@ export function FoldersPageClient({
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
           folders={localFolders}
+          onSuccess={handleFolderCreated}
         />
       </div>
     );
@@ -562,6 +597,7 @@ export function FoldersPageClient({
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
           folders={localFolders}
+          onSuccess={handleFolderCreated}
         />
 
         {/* AI 助手面板 */}

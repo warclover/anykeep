@@ -37,6 +37,8 @@ interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   folders?: Folder[]; // 可选的父文件夹列表
+  /** 创建成功后的回调，参数为新创建的文件夹数据 */
+  onSuccess?: (folder: Folder) => void;
 }
 
 // 预设颜色
@@ -53,6 +55,7 @@ export function CreateFolderDialog({
   open,
   onOpenChange,
   folders = [],
+  onSuccess,
 }: CreateFolderDialogProps) {
   const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
@@ -110,6 +113,11 @@ export function CreateFolderDialog({
       // 清除文件夹缓存，确保页面数据同步
       if (user?.id) {
         folderCacheInvalidation.onFolderCreate(user.id);
+      }
+
+      // 立即通知父组件更新状态（乐观更新）
+      if (data.data && onSuccess) {
+        onSuccess(data.data as Folder);
       }
 
       // P0-6 修复：先重置表单状态，再关闭对话框
