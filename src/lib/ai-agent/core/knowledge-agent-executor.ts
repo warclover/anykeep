@@ -49,7 +49,7 @@ export const DEFAULT_EXECUTE_OPTIONS: Required<AgentExecuteOptions> = {
   streaming: true,
   maxToolRounds: 5,
   temperature: 0.7,
-  maxTokens: 2048,
+  maxTokens: 4096, // 增加到 4096，避免较长回复被截断
   timeout: 60000,
   signal: undefined as unknown as AbortSignal,
 };

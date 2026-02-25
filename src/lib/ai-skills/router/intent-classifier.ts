@@ -118,9 +118,18 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "complex",
     weight: 90,
   },
+  // 阅读计划规则（更具体，权重更高）
+  // 匹配：帮我制定阅读计划、执行阅读计划、阅读计划等
   {
-    pattern:
-      /学习路径|学习计划|学习规划|阅读.{0,2}(计划|安排|规划)|读书.{0,2}计划/,
+    pattern: /阅读计划|读书计划|每日阅读/,
+    type: "learn",
+    subType: "plan",
+    complexity: "medium",
+    weight: 88,
+  },
+  // 学习路径规则（较通用，权重较低）
+  {
+    pattern: /学习路径|学习计划|学习规划/,
     type: "learn",
     subType: "path",
     complexity: "complex",

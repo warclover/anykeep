@@ -75,7 +75,7 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     type: "learn",
     subType: "plan",
     pattern: "阅读计划|读书计划|每日阅读",
-    weight: 80,
+    weight: 88,
     complexity: "medium",
     description: "制定阅读计划",
   },
