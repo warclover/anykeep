@@ -22,11 +22,11 @@ interface FeatureConfig {
 
 /**
  * MD 收藏功能配置
- * - FREE: 不可用
+ * - FREE: 可用（限制 50 条）
  * - PRO: 无限制
  */
 const FEATURE_CONFIG: Record<MembershipType, FeatureConfig> = {
-  FREE: { enabled: false, limit: 0 },
+  FREE: { enabled: true, limit: 50 },
   PRO: { enabled: true, limit: -1 },
 };
 

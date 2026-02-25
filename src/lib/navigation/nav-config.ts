@@ -110,7 +110,6 @@ const myContentGroup: NavGroupConfig = {
       name: "nav.myNotes",
       href: "/md-collections",
       icon: FileText,
-      isPro: true,
       description: "mobileMenu.markdownNotes",
     },
     {

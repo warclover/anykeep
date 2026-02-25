@@ -298,8 +298,8 @@ export async function checkMdCollectionAccess(
     }
 
     const membershipType = normalizeMembershipType(profile?.membership_type);
-    const hasAccess =
-      membershipType === "PRO" || membershipType === "ENTERPRISE";
+    // 所有用户都可以访问 MD 收藏功能（包括 FREE 用户）
+    const hasAccess = true;
 
     return {
       hasAccess,
