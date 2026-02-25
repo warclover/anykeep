@@ -193,12 +193,6 @@ const insightGroup: NavGroupConfig = {
   defaultCollapsed: true,
   items: [
     {
-      name: "nav.aiHub",
-      href: "/ai-hub",
-      icon: Zap,
-      visibility: "desktop",
-    },
-    {
       name: "nav.analytics",
       href: "/analytics",
       icon: BarChart3,
@@ -229,6 +223,12 @@ const systemGroup: NavGroupConfig = {
   id: "system",
   title: "mobileMenu.system",
   items: [
+    {
+      name: "nav.aiHub",
+      href: "/ai-hub",
+      icon: Zap,
+      visibility: "desktop",
+    },
     {
       name: "nav.settings",
       href: "/settings",
