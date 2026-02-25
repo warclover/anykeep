@@ -33,11 +33,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUiText } from "@/lib/i18n";
+import { useOptionalUser } from "@/contexts/user-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const t = useUiText();
+  const userContext = useOptionalUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,10 +87,11 @@ export default function LoginPage() {
         return;
       }
 
-      // 登录成功，通过 router.refresh() 同步服务端 session 到客户端
-      // V4.2.31: 移除双重 signInWithPassword 调用，避免密码在客户端内存中停留过久
-
+      // 登录成功：先将服务端写入的新 session 同步到客户端 UserContext，再导航
+      // 背景：/api/auth/login 通过服务端 signInWithPassword 写入 cookie，但客户端
+      //       onAuthStateChange 不感知此操作，需要手动调用 refreshSession() 触发同步
       setRemainingAttempts(null);
+      await userContext?.refreshSession();
       toast.success(t.auth.loginSuccessToast);
       router.push("/home");
       router.refresh();

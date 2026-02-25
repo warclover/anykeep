@@ -58,6 +58,14 @@ interface UserContextValue {
   error: string | null;
   /** 手动刷新 Profile */
   refetch: () => Promise<void>;
+  /**
+   * 强制从 cookie 重新同步 session（服务端登录后使用）
+   *
+   * 服务端 API 路由登录（/api/auth/login）通过 Set-Cookie 写入新 session，
+   * 但客户端 onAuthStateChange 不感知服务端操作。
+   * 调用此方法可让 createBrowserClient 从 cookie 重读新 session 并更新 UserContext。
+   */
+  refreshSession: () => Promise<void>;
 }
 
 interface UserProviderProps {
@@ -155,6 +163,7 @@ function UserProviderFallback({ children }: UserProviderProps) {
         isInitialized: false,
         error: null,
         refetch: noopRefetch,
+        refreshSession: noopRefetch,
       }}
     >
       {children}
@@ -395,6 +404,19 @@ function UserProviderInner({ children }: UserProviderProps) {
   }, [refetchProfile]);
 
   // -------------------------------------------------------------------------
+  // 5b. 强制从 cookie 重新同步 session
+  // 用于服务端 API 路由登录后，将新 session 同步到客户端 UserContext
+  // -------------------------------------------------------------------------
+  const refreshSession = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+    setIsInitialized(true);
+  }, []);
+
+  // -------------------------------------------------------------------------
   // 6. 计算最终错误状态（避免 effect 中同步 setState）
   // -------------------------------------------------------------------------
   const finalError =
@@ -417,6 +439,7 @@ function UserProviderInner({ children }: UserProviderProps) {
         isInitialized,
         error: finalError,
         refetch,
+        refreshSession,
       }}
     >
       {children}
