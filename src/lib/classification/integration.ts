@@ -27,7 +27,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
 // 导入提取的模块
-import { updateFolderProfileAfterClassification as updateFolderProfile } from "./folder-profile-manager";
+import {
+  updateFolderProfileAfterClassification as updateFolderProfile,
+  initializeFolderNameProfile,
+} from "./folder-profile-manager";
 import { updateBookmarkClassificationStatus } from "./classification-status";
 import { createSimpleClassificationService } from "./services/simple-classification.service";
 
@@ -890,18 +893,112 @@ export async function classifyBookmarkV2(
 
       // High confidence - auto-create folder
       if (result.confidence >= AUTO_CLASSIFY_THRESHOLD) {
+        // Phase 1: 创建前先用 AutoCreateEvaluatorService 检查是否存在近期同主题文件夹，
+        // 避免短时间内同一主题被拆分为多个文件夹
+        const { AutoCreateEvaluatorService } = await import(
+          "./services/advanced/auto-create-evaluator.service"
+        );
+        const evaluator = new AutoCreateEvaluatorService(supabase);
+        const evaluation = await evaluator.evaluate(
+          userId,
+          result.folderName,
+          result.confidence,
+          tags,
+        );
+
+        // Phase 1: 若 evaluator 发现近期已有同主题文件夹，归入已有文件夹，不新建
+        if (!evaluation.shouldCreate && evaluation.similarFolder) {
+          const existingFolderId = evaluation.similarFolder.id;
+          const existingFolderName = evaluation.similarFolder.name;
+
+          const { error: dedupMoveError } = await supabase
+            .from("bookmarks")
+            .update({
+              folder_id: existingFolderId,
+              pending_cluster: false,
+              pending_since: null,
+              cluster_id: null,
+              cluster_confidence: null,
+            })
+            .eq("id", bookmarkId)
+            .eq("user_id", userId);
+
+          if (!dedupMoveError) {
+            logger.info(
+              {
+                bookmarkId,
+                folderId: existingFolderId,
+                folderName: existingFolderName,
+                originalName: result.folderName,
+                reason: evaluation.rejectReason,
+              },
+              "Classification V2: Deduplicated - assigned to existing recent folder",
+            );
+
+            await updateBookmarkClassificationStatus(
+              supabase,
+              bookmarkId,
+              userId,
+              CLASSIFICATION_STATUS.CLASSIFIED,
+              {
+                folder_id: existingFolderId,
+                folder_name: existingFolderName,
+                confidence: result.confidence,
+                method: "dedup-recent",
+                action: "suggest_new",
+                reason: evaluation.rejectReason || "归入近期同主题文件夹",
+              },
+            );
+
+            // 更新归入文件夹的 profile（异步，不阻塞返回）
+            updateFolderProfile(existingFolderId, userId).catch((err) => {
+              logger.warn(
+                { error: err, folderId: existingFolderId },
+                "Classification V2: Folder profile update failed after dedup (non-blocking)",
+              );
+            });
+
+            return {
+              classified: true,
+              folderId: existingFolderId,
+              folderName: existingFolderName,
+              confidence: result.confidence,
+              action: "suggest_new",
+            };
+          }
+        }
+
+        // 使用 evaluator 可能标准化后的名称（如匹配到通用分类）
+        const folderNameToCreate =
+          evaluation.recommendedName || result.folderName;
+
         // Create new folder
         const { data: newFolder, error: createError } = await supabase
           .from("folders")
           .insert({
             user_id: userId,
-            name: result.folderName,
+            name: folderNameToCreate,
             sort_order: 0,
           })
           .select("id")
           .single();
 
         if (!createError && newFolder) {
+          // Phase 3: 新建后同步初始化 name_embedding，缩短冷启动窗口，
+          // 使紧接着的同主题收藏能立即命中此文件夹（按方案改为 await）
+          try {
+            await initializeFolderNameProfile(
+              newFolder.id,
+              folderNameToCreate,
+              userId,
+            );
+          } catch (profileErr: unknown) {
+            logger.warn(
+              { error: profileErr, folderId: newFolder.id },
+              "Classification V2: initializeFolderNameProfile failed (non-blocking)",
+            );
+          }
+
           // Move bookmark to new folder and clear pending cluster status
           // Note: pending_cluster, pending_since, cluster_id, cluster_confidence 是 V4.2 新增字段
           const { error: moveError } = await supabase
@@ -922,7 +1019,7 @@ export async function classifyBookmarkV2(
               {
                 bookmarkId,
                 folderId: newFolder.id,
-                folderName: result.folderName,
+                folderName: folderNameToCreate,
                 confidence: result.confidence,
               },
               "Classification V2: Created new folder and classified",
@@ -936,7 +1033,7 @@ export async function classifyBookmarkV2(
               CLASSIFICATION_STATUS.CLASSIFIED,
               {
                 folder_id: newFolder.id,
-                folder_name: result.folderName,
+                folder_name: folderNameToCreate,
                 confidence: result.confidence,
                 method: "auto-create",
                 action: "suggest_new",
@@ -947,7 +1044,7 @@ export async function classifyBookmarkV2(
             return {
               classified: true,
               folderId: newFolder.id,
-              folderName: result.folderName,
+              folderName: folderNameToCreate,
               confidence: result.confidence,
               action: "suggest_new",
             };

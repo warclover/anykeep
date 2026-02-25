@@ -59,6 +59,35 @@ export const FOLDER_LIMITS = {
 } as const;
 
 /**
+ * 近期文件夹防重复创建配置
+ *
+ * 用户短时间内收藏同主题内容时，避免因名称表述不同而创建多个文件夹。
+ * 对"近期"创建的文件夹使用比全局更宽松的相似度阈值。
+ */
+export const RECENT_FOLDER_DEDUP = {
+  /**
+   * 近期文件夹时间窗口（小时）
+   * 在此窗口内创建的文件夹，视为"近期"，使用更宽松的相似度阈值
+   */
+  WINDOW_HOURS: 24,
+  /**
+   * 近期文件夹名称相似度阈值
+   * 低于全局 0.8，对「一人公司」「个人创业」等字面略有差异的名称也能触发合并
+   */
+  NAME_SIMILARITY_THRESHOLD: 0.65,
+  /**
+   * 近期文件夹语义相似度阈值（余弦相似度，用于 embedding 比对）
+   * 当 name_embedding 可用时启用；否则降级到名称相似度
+   */
+  SEMANTIC_SIMILARITY_THRESHOLD: 0.72,
+  /**
+   * 近期文件夹注入 AI Prompt 的最大数量
+   * 避免 Prompt 过长
+   */
+  MAX_PROMPT_FOLDERS: 8,
+} as const;
+
+/**
  * Inbox organization triggers
  */
 export const INBOX_ORGANIZE_TRIGGERS = {

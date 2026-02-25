@@ -15,8 +15,12 @@ import {
   type UniversalCategory,
 } from "../../constants/universal-categories";
 import { FEATURE_FLAGS } from "../../config/feature-flags";
-import { FOLDER_LIMITS } from "@/lib/classification/constants/limits";
+import {
+  FOLDER_LIMITS,
+  RECENT_FOLDER_DEDUP,
+} from "@/lib/classification/constants/limits";
 import { logger } from "@/lib/logger";
+import { generateEmbedding } from "@/lib/utils/embedding-generator";
 
 // ============================================================================
 // 类型定义
@@ -181,7 +185,113 @@ export class AutoCreateEvaluatorService {
         });
       }
 
-      // 4. 检查名称相似度（避免重复）
+      // 4a. 检查近期文件夹名称相似度（宽松阈值，防止短时间同主题重复建文件夹）
+      const recentFolders = await this.getRecentlyCreatedFolders(userId);
+      if (recentFolders.length > 0) {
+        const recentMatch = this.findSimilarFolder(proposedName, recentFolders);
+        if (
+          recentMatch &&
+          recentMatch.similarity >=
+            RECENT_FOLDER_DEDUP.NAME_SIMILARITY_THRESHOLD
+        ) {
+          logger.info(
+            {
+              proposedName,
+              matchedFolder: recentMatch.name,
+              similarity: recentMatch.similarity,
+              threshold: RECENT_FOLDER_DEDUP.NAME_SIMILARITY_THRESHOLD,
+            },
+            "AutoCreateEvaluator: Recent folder match found, skipping creation",
+          );
+          return this.buildResult({
+            shouldCreate: false,
+            shouldSuggest: false,
+            recommendedName: recentMatch.name,
+            rejectReason: `近期已有同主题文件夹「${recentMatch.name}」`,
+            similarFolder: recentMatch,
+            details: {
+              originalName: proposedName,
+              totalFolders: existingFolders.length,
+              todayCreated,
+              nameSimilarity: recentMatch.similarity,
+            },
+          });
+        }
+
+        // 4a-semantic. 近期文件夹语义相似度（embedding ≥0.72），名称字面不同但主题相同时合并
+        try {
+          const recentWithEmbedding =
+            await this.getRecentFoldersWithNameEmbedding(userId);
+          if (recentWithEmbedding.length > 0) {
+            const proposedEmbedding = await generateEmbedding(proposedName);
+            if (
+              proposedEmbedding &&
+              proposedEmbedding.length ===
+                recentWithEmbedding[0].nameEmbedding.length
+            ) {
+              let bestSemantic: {
+                id: number;
+                name: string;
+                similarity: number;
+              } | null = null;
+              for (const folder of recentWithEmbedding) {
+                const sim = this.cosineSimilarity(
+                  proposedEmbedding,
+                  folder.nameEmbedding,
+                );
+                if (
+                  sim >= RECENT_FOLDER_DEDUP.SEMANTIC_SIMILARITY_THRESHOLD &&
+                  (!bestSemantic || sim > bestSemantic.similarity)
+                ) {
+                  bestSemantic = {
+                    id: folder.id,
+                    name: folder.name,
+                    similarity: sim,
+                  };
+                }
+              }
+              if (bestSemantic) {
+                logger.info(
+                  {
+                    proposedName,
+                    matchedFolder: bestSemantic.name,
+                    semanticSimilarity: bestSemantic.similarity,
+                    threshold:
+                      RECENT_FOLDER_DEDUP.SEMANTIC_SIMILARITY_THRESHOLD,
+                  },
+                  "AutoCreateEvaluator: Recent folder semantic match found, skipping creation",
+                );
+                return this.buildResult({
+                  shouldCreate: false,
+                  shouldSuggest: false,
+                  recommendedName: bestSemantic.name,
+                  rejectReason: `近期已有同主题文件夹「${bestSemantic.name}」（语义相似）`,
+                  similarFolder: bestSemantic,
+                  details: {
+                    originalName: proposedName,
+                    totalFolders: existingFolders.length,
+                    todayCreated,
+                    nameSimilarity: bestSemantic.similarity,
+                  },
+                });
+              }
+            }
+          }
+        } catch (semanticErr) {
+          logger.warn(
+            {
+              error:
+                semanticErr instanceof Error
+                  ? semanticErr.message
+                  : String(semanticErr),
+              proposedName,
+            },
+            "AutoCreateEvaluator: Semantic similarity check failed, continuing with name-only",
+          );
+        }
+      }
+
+      // 4b. 检查名称相似度（避免重复，全局阈值 0.8）
       const similarFolder = this.findSimilarFolder(
         proposedName,
         existingFolders,
@@ -347,6 +457,108 @@ export class AutoCreateEvaluatorService {
     }
 
     return (data || []) as ExistingFolder[];
+  }
+
+  /**
+   * 获取近期（WINDOW_HOURS 小时内）自动创建的文件夹
+   * 用于宽松相似度阈值检查，避免短时间内同主题重复建文件夹
+   */
+  private async getRecentlyCreatedFolders(
+    userId: string,
+  ): Promise<ExistingFolder[]> {
+    const windowMs = RECENT_FOLDER_DEDUP.WINDOW_HOURS * 60 * 60 * 1000;
+    const since = new Date(Date.now() - windowMs).toISOString();
+
+    const { data, error } = await this.supabase
+      .from("folders")
+      .select("id, name")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .eq("is_system", false)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      logger.warn(
+        { error: error.message, userId },
+        "AutoCreateEvaluator: Failed to fetch recent folders, skipping recent check",
+      );
+      return [];
+    }
+
+    return (data || []) as ExistingFolder[];
+  }
+
+  /**
+   * 获取近期文件夹及其 name_embedding（用于语义相似度）
+   * 仅返回有 name_embedding 的文件夹
+   */
+  private async getRecentFoldersWithNameEmbedding(
+    userId: string,
+  ): Promise<{ id: number; name: string; nameEmbedding: number[] }[]> {
+    const recent = await this.getRecentlyCreatedFolders(userId);
+    if (recent.length === 0) return [];
+
+    const ids = recent.map((f) => f.id);
+    const { data: profiles, error } = await this.supabase
+      .from("folder_profiles")
+      .select("folder_id, name_embedding")
+      .in("folder_id", ids)
+      .not("name_embedding", "is", null);
+
+    if (error || !profiles?.length) return [];
+
+    const embeddingByFolderId = new Map<number, number[]>();
+    for (const row of profiles) {
+      const vec = this.parseEmbedding(row.name_embedding);
+      if (vec && vec.length > 0) {
+        embeddingByFolderId.set(row.folder_id, vec);
+      }
+    }
+
+    return recent
+      .filter((f) => embeddingByFolderId.has(f.id))
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        nameEmbedding: embeddingByFolderId.get(f.id)!,
+      }));
+  }
+
+  /** 解析 DB 返回的 vector（可能是 string "[1,2,3]" 或已解析的 number[]） */
+  private parseEmbedding(value: unknown): number[] | null {
+    if (Array.isArray(value)) {
+      return value.every((x) => typeof x === "number")
+        ? (value as number[])
+        : null;
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        return Array.isArray(parsed) &&
+          parsed.every((x) => typeof x === "number")
+          ? (parsed as number[])
+          : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /** 余弦相似度 [0, 1] */
+  private cosineSimilarity(a: number[], b: number[]): number {
+    if (a.length !== b.length || a.length === 0) return 0;
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    const denom = Math.sqrt(normA) * Math.sqrt(normB);
+    return denom === 0 ? 0 : Math.max(0, Math.min(1, dot / denom));
   }
 
   /**

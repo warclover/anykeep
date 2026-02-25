@@ -56,6 +56,14 @@ jest.mock("@/lib/shared/event-bus", () => ({
   },
 }));
 
+jest.mock("@/lib/classification/constants/limits", () => ({
+  ...jest.requireActual("@/lib/classification/constants/limits"),
+  RECENT_FOLDER_DEDUP: {
+    WINDOW_HOURS: 24,
+    MAX_PROMPT_FOLDERS: 8,
+  },
+}));
+
 // ============================================================================
 // Test Utilities
 // ============================================================================
@@ -285,6 +293,74 @@ describe("SimpleClassificationService", () => {
 
         expect(result.action).toBe("suggest_create");
         expect(result.folderId).toBeNull();
+      });
+
+      it("Phase2: when AI returns name matching existing folder, should classify into that folder", async () => {
+        const fromChain = (cols: string) => {
+          if (cols === "name") {
+            return {
+              eq: () => ({
+                is: () => ({
+                  eq: () => ({
+                    gte: () => ({
+                      order: () => ({
+                        limit: () =>
+                          Promise.resolve({
+                            data: [{ name: "一人公司" }],
+                            error: null,
+                          }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          if (cols === "id, name") {
+            return {
+              eq: () => ({
+                eq: () => ({
+                  is: () => ({
+                    eq: () => ({
+                      limit: () => ({
+                        single: () =>
+                          Promise.resolve({
+                            data: { id: 1, name: "一人公司" },
+                            error: null,
+                          }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          return {
+            eq: () => ({
+              is: () => ({
+                eq: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          };
+        };
+        mockSupabase = {
+          rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+          from: jest.fn().mockReturnValue({ select: fromChain }),
+        } as unknown as SupabaseClient<Database>;
+        service = new SimpleClassificationService(mockSupabase, {
+          enableAICreate: true,
+        });
+        mockGenerateWithAI.mockResolvedValue("一人公司");
+
+        const bookmark = createSampleBookmark({
+          title: "OPC 创业心得",
+          tags: ["OPC", "一人公司"],
+        });
+        const result = await service.classify(userId, bookmark);
+
+        expect(result.action).toBe("classify");
+        expect(result.folderId).toBe(1);
+        expect(result.folderName).toBe("一人公司");
       });
 
       it("should return inbox when no candidates and AI disabled", async () => {

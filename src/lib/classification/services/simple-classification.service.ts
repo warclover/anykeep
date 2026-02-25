@@ -26,6 +26,7 @@ import {
 import { generateWithAI } from "@/lib/ai-generator";
 import { logger } from "@/lib/logger";
 import { eventBus, ClassificationEvents } from "@/lib/shared/event-bus";
+import { RECENT_FOLDER_DEDUP } from "@/lib/classification/constants/limits";
 
 // ═══════════════════════════════════════════════════════════════
 // 常量定义
@@ -522,6 +523,7 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
 
   /**
    * AI 创建新文件夹
+   * Phase 2: 注入近期文件夹名，引导 AI 在同主题时复用已有名称而非创建新名
    */
   private async aiCreateFolder(
     userId: string,
@@ -533,12 +535,22 @@ ${candidates.map((c, i) => `${i + 1}. ${c.folderName} (当前匹配度: ${c.scor
     const safeTags = sanitizeTags(bookmark.tags);
     const safeSummary = sanitizePromptInput(bookmark.summary, 300);
 
+    // Phase 2: 获取近期文件夹名，并行执行不阻塞主流程
+    const recentFolderNames = await this.getRecentFolderNames(userId);
+
+    const recentFoldersSection =
+      recentFolderNames.length > 0
+        ? `
+【近期已有文件夹】（${RECENT_FOLDER_DEDUP.WINDOW_HOURS}小时内创建）：${recentFolderNames.join("、")}
+重要：若当前书签内容与上述某个文件夹主题一致，请直接返回该文件夹名称，不要创造新名称。`
+        : "";
+
     const prompt = `根据以下书签内容，生成一个简洁的文件夹名称（2-6个中文字或英文单词）：
 
 标题：${safeTitle}
 ${safeSummary ? `摘要：${safeSummary}` : ""}
 标签：${safeTags.length > 0 ? safeTags.join("、") : "无"}
-
+${recentFoldersSection}
 要求：
 1. 名称简洁明了，能概括内容主题
 2. 2-6 个字
@@ -567,6 +579,37 @@ ${safeSummary ? `摘要：${safeSummary}` : ""}
       const finalName = isBlacklisted
         ? safeFallback
         : cleanedName || safeFallback;
+
+      // Phase 2: 检查 AI 返回的名称是否与近期文件夹完全一致
+      // 若 AI 正确复用了已有名称，则匹配到该文件夹 ID，让上层直接归入而不新建
+      const matchedRecentFolder =
+        recentFolderNames.length > 0
+          ? await this.findExistingFolderByName(userId, finalName)
+          : null;
+
+      if (matchedRecentFolder) {
+        logger.info(
+          {
+            title: this.truncateTitle(bookmark.title),
+            suggestedFolder: finalName,
+            matchedFolderId: matchedRecentFolder.id,
+          },
+          "[SimpleClassification] AI reused existing recent folder name",
+        );
+
+        const result: SimpleClassificationResult = {
+          folderId: matchedRecentFolder.id,
+          folderName: finalName,
+          confidence: AI_CREATE_CONFIDENCE,
+          action: "classify",
+          reason: `AI 复用近期文件夹: ${finalName}`,
+          executionTime,
+          matchType: "ai_select",
+        };
+
+        this.emitClassificationEvent(userId, bookmark.id, result);
+        return result;
+      }
 
       logger.info(
         {
@@ -707,6 +750,65 @@ ${safeSummary ? `摘要：${safeSummary}` : ""}
       bookmark.title?.slice(0, TITLE_TRUNCATE_LENGTH).trim() ||
       DEFAULT_FOLDER_NAME
     );
+  }
+
+  /**
+   * Phase 2: 根据精确名称查找现有文件夹，用于判断 AI 是否复用了已有名称
+   * 返回 null 表示未找到（需要新建）
+   */
+  private async findExistingFolderByName(
+    userId: string,
+    name: string,
+  ): Promise<{ id: number; name: string } | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from("folders")
+        .select("id, name")
+        .eq("user_id", userId)
+        .eq("name", name)
+        .is("deleted_at", null)
+        .eq("is_system", false)
+        .limit(1)
+        .single();
+
+      if (error || !data) return null;
+      return data as { id: number; name: string };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Phase 2: 获取近期（WINDOW_HOURS 内）创建的文件夹名列表
+   * 用于注入 AI 命名 Prompt，引导 AI 在同主题时复用已有名称
+   */
+  private async getRecentFolderNames(userId: string): Promise<string[]> {
+    try {
+      const windowMs = RECENT_FOLDER_DEDUP.WINDOW_HOURS * 60 * 60 * 1000;
+      const since = new Date(Date.now() - windowMs).toISOString();
+
+      const { data, error } = await this.supabase
+        .from("folders")
+        .select("name")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .eq("is_system", false)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(RECENT_FOLDER_DEDUP.MAX_PROMPT_FOLDERS);
+
+      if (error) {
+        logger.warn(
+          { error: error.message, userId },
+          "[SimpleClassification] Failed to fetch recent folders for prompt",
+        );
+        return [];
+      }
+
+      return (data || []).map((f) => f.name).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 }
 
