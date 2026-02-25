@@ -174,7 +174,7 @@ export function useSaveToNote(
       // 如果内容看起来像 JSON，尝试解析并格式化
       const trimmed = content.trim();
 
-      // 检测是否为 JSON 数组或对象
+      // 1. 检测纯 JSON 数组或对象
       if (
         (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
         (trimmed.startsWith("{") && trimmed.endsWith("}"))
@@ -187,8 +187,56 @@ export function useSaveToNote(
             return formatObjectToMarkdown(parsed);
           }
         } catch {
+          // JSON 解析失败，继续尝试其他格式
+        }
+      }
+
+      // 2. 检测 Markdown 代码块中的 JSON
+      // 优先匹配 ```json 代码块，然后尝试匹配普通代码块
+      let result = trimmed;
+      let hasChanges = false;
+
+      // 先处理 ```json 代码块
+      const jsonBlockRegex = /```json\s*\n([\s\S]*?)```/g;
+      let match;
+      while ((match = jsonBlockRegex.exec(trimmed)) !== null) {
+        const jsonContent = match[1].trim();
+        try {
+          const parsed = JSON.parse(jsonContent);
+          if (typeof parsed === "object" && parsed !== null) {
+            hasChanges = true;
+            const formattedContent = formatObjectToMarkdown(parsed);
+            result = result.replace(match[0], formattedContent);
+          }
+        } catch {
           // JSON 解析失败，保持原样
         }
+      }
+
+      // 再处理普通代码块（```但不带语言标识或不是json）
+      const codeBlockRegex = /```\s*\n([\s\S]*?)```/g;
+      while ((match = codeBlockRegex.exec(result)) !== null) {
+        const blockContent = match[1].trim();
+        // 检查是否看起来像 JSON
+        if (
+          (blockContent.startsWith("{") && blockContent.endsWith("}")) ||
+          (blockContent.startsWith("[") && blockContent.endsWith("]"))
+        ) {
+          try {
+            const parsed = JSON.parse(blockContent);
+            if (typeof parsed === "object" && parsed !== null) {
+              hasChanges = true;
+              const formattedContent = formatObjectToMarkdown(parsed);
+              result = result.replace(match[0], formattedContent);
+            }
+          } catch {
+            // 不是有效的 JSON，保持原样
+          }
+        }
+      }
+
+      if (hasChanges) {
+        return result;
       }
 
       return content;

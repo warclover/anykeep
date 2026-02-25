@@ -570,7 +570,7 @@ function InternalReader({
     <FocusModeContainer
       className={cn("relative h-full flex flex-col overflow-hidden", className)}
     >
-      {/* 位置恢复提示 - 浮动在顶部 */}
+      {/* 位置恢复提示 - 已禁用弹窗 */}
       <PositionRestorePrompt
         savedPosition={savedPosition}
         onRestore={() => {
@@ -578,6 +578,7 @@ function InternalReader({
           clearPosition();
         }}
         onStartOver={clearPosition}
+        autoShow={false}
       />
 
       {/* 顶部工具栏 - 固定不滚动 */}
