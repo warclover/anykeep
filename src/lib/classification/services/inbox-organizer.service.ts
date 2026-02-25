@@ -524,35 +524,82 @@ export class InboxOrganizerService implements IInboxOrganizerService {
         suggestion.targetFolderId,
       );
 
-      // Update folder profile
-      await this.folderProfileRepo.computeProfile(suggestion.targetFolderId);
+      // Update folder profile (non-blocking)
+      try {
+        await this.folderProfileRepo.computeProfile(suggestion.targetFolderId);
+      } catch (profileError) {
+        logger.warn(
+          { error: profileError, folderId: suggestion.targetFolderId },
+          "Failed to compute folder profile, continuing",
+        );
+      }
     } else if (suggestion.suggestionType === "create_new") {
       if (!suggestion.suggestedFolderName) {
         throw new Error("Folder name not specified");
       }
 
-      // Create new folder
-      const { data: newFolder, error } = await this.supabase
+      // V4.2.16: 检查是否已存在同名文件夹（去重检查）
+      const { data: existingFolder } = await this.supabase
         .from("folders")
-        .insert({
-          user_id: userId,
-          name: suggestion.suggestedFolderName,
-          is_system: false,
-          source: "clustering",
-        })
-        .select("id")
-        .single();
+        .select("id, name")
+        .eq("user_id", userId)
+        .eq("name", suggestion.suggestedFolderName)
+        .is("deleted_at", null)
+        .maybeSingle();
 
-      if (error) {
-        throw new Error(`Failed to create folder: ${error.message}`);
+      let targetFolderId: number;
+
+      if (existingFolder) {
+        // 同名文件夹已存在，复用该文件夹
+        targetFolderId = existingFolder.id;
+        logger.info(
+          {
+            userId,
+            suggestionId,
+            existingFolderId: targetFolderId,
+            folderName: suggestion.suggestedFolderName,
+            action: "reuse_existing_folder",
+          },
+          "Inbox Organizer: Reusing existing folder instead of creating new",
+        );
+      } else {
+        // 创建新文件夹
+        const { data: newFolder, error } = await this.supabase
+          .from("folders")
+          .insert({
+            user_id: userId,
+            name: suggestion.suggestedFolderName,
+            is_system: false,
+            source: "clustering",
+          })
+          .select("id")
+          .single();
+
+        if (error) {
+          logger.error(
+            { error, userId, folderName: suggestion.suggestedFolderName },
+            "Failed to create folder",
+          );
+          throw new Error(`Failed to create folder: ${error.message}`);
+        }
+
+        targetFolderId = newFolder.id;
+
+        // Compute profile for new folder
+        try {
+          await this.folderProfileRepo.computeProfile(targetFolderId);
+        } catch (profileError) {
+          // Profile computation failure should not block the operation
+          logger.warn(
+            { error: profileError, folderId: targetFolderId },
+            "Failed to compute folder profile, continuing",
+          );
+        }
       }
 
-      // Move bookmarks to new folder
+      // Move bookmarks to target folder
       const bookmarkRepo = new BookmarkRepository(this.supabase, userId);
-      await bookmarkRepo.moveToFolder(suggestion.bookmarkIds, newFolder.id);
-
-      // Compute profile for new folder
-      await this.folderProfileRepo.computeProfile(newFolder.id);
+      await bookmarkRepo.moveToFolder(suggestion.bookmarkIds, targetFolderId);
     }
 
     // Mark suggestion as accepted
