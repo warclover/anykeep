@@ -66,7 +66,7 @@
     "learningHub": "学习中心",
     "synthesis": "对比分析",
     "contentAnalysis": "内容分析",
-    "draftStudio": "草稿工坊",
+    "draftStudio": "写作助手",
     "aiHub": "AI 能力中心",
     "analytics": "数据统计",
     "activityLog": "分类日志",
@@ -413,7 +413,7 @@
         "items": {
           "snapshotQuota": "快照配额",
           "autoSnapshot": "自动快照",
-          "knowledgeStudio": "知识工坊"
+          "knowledgeStudio": "写作助手"
         }
       },
       "platforms": {
@@ -525,7 +525,7 @@
     "tip": "你也可以在手机上通过系统分享菜单直接收藏"
   },
   "knowledgeStudioV2": {
-    "title": "知识工坊",
+    "title": "写作助手",
     "badgeV2": "v2.0",
     "stepsHint": "3 步完成：选模板 → 选素材 → 生成",
     "step1Title": "选择模板",

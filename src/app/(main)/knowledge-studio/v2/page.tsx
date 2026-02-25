@@ -12,7 +12,7 @@ import { Suspense } from "react";
 import { KnowledgeStudioV2PageClient } from "./knowledge-studio-v2-page-client";
 
 export const metadata = {
-  title: "知识工坊 Beta | AnyKeep",
+  title: "写作助手 | AnyKeep",
   description: "使用增强蓝图生成专业内容",
 };
 
