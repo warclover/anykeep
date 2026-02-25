@@ -223,12 +223,14 @@ const systemGroup: NavGroupConfig = {
   id: "system",
   title: "mobileMenu.system",
   items: [
-    {
-      name: "nav.aiHub",
-      href: "/ai-hub",
-      icon: Zap,
-      visibility: "desktop",
-    },
+    // AI 能力中心已隐藏 - 对普通用户无实际价值
+    // AI 能力已通过整理中心、AI 对话等入口自然暴露
+    // {
+    //   name: "nav.aiHub",
+    //   href: "/ai-hub",
+    //   icon: Zap,
+    //   visibility: "desktop",
+    // },
     {
       name: "nav.settings",
       href: "/settings",
