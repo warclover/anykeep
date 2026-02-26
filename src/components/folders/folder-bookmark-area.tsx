@@ -15,7 +15,6 @@ import {
   List,
   ListCollapse,
   Plus,
-  Sparkles,
   Loader2,
   FolderOpen,
 } from "lucide-react";
@@ -332,9 +331,8 @@ export function FolderBookmarkArea({
                 variant="outline"
                 size="sm"
                 onClick={onOpenAIAssistant}
-                className="hidden lg:flex gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
+                className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
               >
-                <Sparkles className="size-4" />
                 AI 助手
               </Button>
             )}
