@@ -151,7 +151,7 @@ export const HomeToolbar = memo(function HomeToolbar({
                   key={platform.id}
                   onClick={() => onPlatformChange(platform.value)}
                   className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
+                    "px-3 py-1 text-[10px] font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
                     isActive
                       ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700",
@@ -170,7 +170,7 @@ export const HomeToolbar = memo(function HomeToolbar({
                 onClick={onFlipCardToggle}
                 title="翻转卡片"
                 className={cn(
-                  "px-2.5 py-1 h-auto text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0",
+                  "px-2.5 py-1 h-auto text-[10px] font-medium rounded-full whitespace-nowrap flex-shrink-0",
                   enableFlipCard
                     ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
                     : "border-gray-200 dark:border-gray-700",
