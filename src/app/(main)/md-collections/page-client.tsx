@@ -271,7 +271,7 @@ export function MdCollectionPageClient({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            MD 收藏
+            我的笔记
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             收藏和管理你的 Markdown 内容
