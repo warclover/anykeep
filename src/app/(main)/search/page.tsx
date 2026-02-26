@@ -93,6 +93,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       initialAIMode={params.ai === "true"}
       searchResults={serializedResults}
       error={searchError}
+      userId={userId}
     />
   );
 }

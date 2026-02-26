@@ -49,16 +49,15 @@ interface SearchPageClientProps {
   initialAIMode: boolean;
   searchResults: (Bookmark & { folders?: { name: string } | null })[];
   error?: string;
+  userId: string;
 }
-
-const SEARCH_HISTORY_KEY = "anykeep_search_history";
-const MAX_HISTORY = 10;
 
 export function SearchPageClient({
   initialQuery,
   initialAIMode,
   searchResults: ssrSearchResults,
   error: ssrError,
+  userId,
 }: SearchPageClientProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -109,16 +108,32 @@ export function SearchPageClient({
   // V4.4.2: 输入框聚焦状态
   const [isInputFocused, setIsInputFocused] = useState(false);
 
-  // 客户端挂载后从 localStorage 加载搜索历史（避免 SSR hydration mismatch）
+  // 客户端挂载后从服务端 API 加载搜索历史（按用户隔离）
   useEffect(() => {
-    try {
-      const history = localStorage.getItem(SEARCH_HISTORY_KEY);
-      if (history) {
-        setSearchHistory(JSON.parse(history));
+    let cancelled = false;
+    async function fetchHistory() {
+      try {
+        const response = await fetch(
+          "/api/search/history?type=recent&limit=10",
+        );
+        if (!cancelled && response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.recentSearches) {
+            setSearchHistory(
+              data.data.recentSearches.map(
+                (item: { query: string }) => item.query,
+              ),
+            );
+          }
+        }
+      } catch {
+        // ignore — 历史加载失败不影响核心功能
       }
-    } catch {
-      // ignore
     }
+    fetchHistory();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // 客户端挂载后从 Supabase RPC 加载热门标签（与搜索历史同模式，避免 Suspense hydration 问题）
@@ -310,30 +325,27 @@ export function SearchPageClient({
     }
   };
 
-  // 保存搜索历史
-  const saveToHistory = (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
-
-    const newHistory = [
-      searchQuery,
-      ...searchHistory.filter((item) => item !== searchQuery),
-    ].slice(0, MAX_HISTORY);
-
-    setSearchHistory(newHistory);
-    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
-  };
-
   // 清空搜索历史
-  const clearHistory = () => {
+  const clearHistory = async () => {
     setSearchHistory([]);
-    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    try {
+      await fetch("/api/search/history", { method: "DELETE" });
+    } catch {
+      // ignore — 清空 API 失败不影响本地状态已重置
+    }
   };
 
-  // 执行搜索
+  // 执行搜索（历史由 /api/search 服务端自动记录）
   const handleSearch = (searchQuery: string) => {
     if (!searchQuery.trim()) return;
 
-    saveToHistory(searchQuery);
+    // 乐观更新本地历史列表，避免需要重新 fetch
+    setSearchHistory((prev) =>
+      [searchQuery, ...prev.filter((item) => item !== searchQuery)].slice(
+        0,
+        10,
+      ),
+    );
 
     // 更新 URL
     const params = new URLSearchParams();
@@ -456,6 +468,7 @@ export function SearchPageClient({
               onSuggestionSelect={handleSuggestionSelect}
               onClearHistory={clearHistory}
               visible={showSuggestions}
+              userId={userId}
             />
           </div>
 

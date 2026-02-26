@@ -99,46 +99,22 @@ export function AISearchSuggestions({
   const [hotKeywords, setHotKeywords] = useState<HotKeywordFromAPI[]>([]);
   const [_loading, setLoading] = useState(false);
 
-  // 从 API 加载搜索历史和热门关键词
+  // 从 API 加载搜索历史和热门关键词（仅当有 userId 时，确保用户隔离）
   useEffect(() => {
+    if (!userId) return;
+
     const loadHistory = async () => {
-      let loadedFromApi = false;
-
-      // 1. 如果有用户 ID，尝试从 API 加载
-      if (userId) {
-        try {
-          const response = await fetch("/api/search/history?type=all&limit=10");
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setSearchHistory(data.data.recentSearches || []);
-              setHotKeywords(data.data.hotKeywords || []);
-              loadedFromApi = true;
-            }
-          }
-        } catch {
-          // API 失败，将回退到本地存储
-        }
-      }
-
-      // 2. 如果未从 API 加载（无用户或 API 失败），使用本地存储
-      if (!loadedFromApi) {
-        const history = localStorage.getItem("search_history");
-        if (history) {
-          try {
-            const localHistory = JSON.parse(history).slice(0, 5);
-            setSearchHistory(
-              localHistory.map((q: string, i: number) => ({
-                id: `local-${i}`,
-                query: q,
-                resultCount: 0,
-                createdAt: new Date().toISOString(),
-              })),
-            );
-          } catch {
-            setSearchHistory([]);
+      try {
+        const response = await fetch("/api/search/history?type=all&limit=10");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setSearchHistory(data.data.recentSearches || []);
+            setHotKeywords(data.data.hotKeywords || []);
           }
         }
+      } catch {
+        // ignore — 加载失败不影响核心搜索功能
       }
     };
 
@@ -245,33 +221,15 @@ export function AISearchSuggestions({
   const handleSelect = useCallback(
     (suggestion: SearchSuggestion) => {
       onSuggestionSelect(suggestion.text);
-
-      // 更新本地存储（作为回退）
-      const localHistory = localStorage.getItem("search_history");
-      const history = localHistory ? JSON.parse(localHistory) : [];
-      const newHistory = [
-        suggestion.text,
-        ...history.filter((h: string) => h !== suggestion.text),
-      ].slice(0, 10);
-      localStorage.setItem("search_history", JSON.stringify(newHistory));
     },
     [onSuggestionSelect],
   );
 
   /**
-   * 清除历史（调用 API）
+   * 清除历史（委托给父组件处理 API 调用）
    */
   const handleClearHistory = useCallback(async () => {
-    try {
-      // 清空服务端历史
-      await fetch("/api/search/history", { method: "DELETE" });
-    } catch {
-      // 忽略 API 错误
-    }
-
-    // 清空本地状态和存储
     setSearchHistory([]);
-    localStorage.removeItem("search_history");
     onClearHistory?.();
   }, [onClearHistory]);
 
@@ -282,22 +240,13 @@ export function AISearchSuggestions({
     async (item: RecentSearchFromAPI, e: React.MouseEvent) => {
       e.stopPropagation();
 
-      try {
-        // 删除服务端记录
-        await fetch(`/api/search/history?id=${item.id}`, { method: "DELETE" });
-      } catch {
-        // 忽略 API 错误
-      }
-
-      // 更新本地状态
+      // 乐观更新本地状态
       setSearchHistory((prev) => prev.filter((h) => h.id !== item.id));
 
-      // 更新本地存储
-      const localHistory = localStorage.getItem("search_history");
-      if (localHistory) {
-        const history = JSON.parse(localHistory);
-        const newHistory = history.filter((h: string) => h !== item.query);
-        localStorage.setItem("search_history", JSON.stringify(newHistory));
+      try {
+        await fetch(`/api/search/history?id=${item.id}`, { method: "DELETE" });
+      } catch {
+        // ignore — 乐观更新已生效，API 失败不影响 UI
       }
     },
     [],
