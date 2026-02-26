@@ -2,7 +2,7 @@
  * 首页顶部工具栏
  *
  * 外露高频操作：视图切换 + 布局模式 + 排序
- * 响应式：lg+ 显示完整工具栏，md 仅显示排序，sm 隐藏（使用三点菜单）
+ * 响应式：lg+ 显示完整工具栏（含布局），md 仅显示视图+排序，sm 隐藏
  */
 
 "use client";
@@ -12,14 +12,12 @@ import {
   LayoutGrid,
   List,
   AlignJustify,
-  ArrowUpDown,
   Sparkles,
   Rows3,
   Columns3,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -148,33 +146,40 @@ export function HeaderToolbar() {
 
   return (
     <div className="hidden md:flex items-center gap-1">
-      {/* 视图切换 ToggleGroup - 仅 lg+ 且非浏览器平台显示 */}
+      {/* 视图切换 Dropdown - 仅非浏览器平台显示 */}
       {!isBrowserPlatform && (
-        <ToggleGroup
-          type="single"
-          value={viewMode}
-          onValueChange={handleViewModeChange}
-          className="hidden lg:flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5"
-        >
-          {viewOptions.map((option) => {
-            const Icon = option.icon;
-            const isActive = viewMode === option.value;
-            return (
-              <ToggleGroupItem
-                key={option.value}
-                value={option.value}
-                aria-label={option.label}
-                className={`size-7 rounded-sm p-0 data-[state=on]:bg-white dark:data-[state=on]:bg-gray-700 data-[state=on]:shadow-sm transition-colors ${
-                  isActive
-                    ? "text-pink-600 dark:text-pink-400"
-                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                <Icon className="size-4" />
-              </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="视图"
+            >
+              视图
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-28">
+            {viewOptions.map((option) => {
+              const Icon = option.icon;
+              return (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => handleViewModeChange(option.value)}
+                  className="justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="size-3.5" />
+                    {option.label}
+                  </span>
+                  {viewMode === option.value && (
+                    <Check className="size-4 text-pink-500" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {/* 布局模式 Dropdown - 仅卡片视图 + 非浏览器平台 + lg+ 显示 */}
@@ -184,11 +189,10 @@ export function HeaderToolbar() {
             <Button
               variant="ghost"
               size="sm"
-              className="hidden lg:flex h-7 gap-1 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="hidden lg:flex h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               aria-label="布局模式"
             >
-              <Sparkles className="size-3.5" />
-              <span>布局</span>
+              布局
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-28">
@@ -220,11 +224,10 @@ export function HeaderToolbar() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="排序"
           >
-            <ArrowUpDown className="size-3.5" />
-            <span className="hidden lg:inline">排序</span>
+            排序
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-36">

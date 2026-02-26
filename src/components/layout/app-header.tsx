@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Moon, Sun, Search, Plus, Sparkles, Filter } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -140,32 +140,32 @@ export const AppHeader = memo(function AppHeader() {
             </div>
 
             <Button
-              variant="outline"
-              className="shrink-0 h-8 px-3 text-xs border-2 border-pink-400 text-pink-600 bg-transparent hover:bg-pink-50 hover:border-pink-500 dark:text-pink-400 dark:border-pink-500 dark:hover:bg-pink-950/30 dark:hover:border-pink-400 transition-all duration-200"
+              variant="ghost"
+              size="sm"
+              className="shrink-0 h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={handleOpenCreatePanel}
             >
-              <Plus className="size-3.5 mr-1" />
               {t.mobileMenu.manualCreate}
             </Button>
 
             {!isBrowserPlatform && !currentFolder && homeContext && (
               <Button
-                variant="outline"
-                className="shrink-0 h-8 px-3 text-xs border-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={handleOpenFilterPanel}
               >
-                <Filter className="size-3.5 mr-1" />
                 {t.nav.usageFilter}
               </Button>
             )}
 
             {homeContext && (
               <Button
-                variant="outline"
-                className="shrink-0 h-8 px-3 text-xs border-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={() => homeContext.aiPanel.toggleAIPanel()}
               >
-                <Sparkles className="size-3.5 mr-1" />
                 {t.mobileMenu.aiAssistant}
               </Button>
             )}
@@ -178,18 +178,6 @@ export const AppHeader = memo(function AppHeader() {
 
         {/* 右侧操作区 */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
-          {/* 搜索按钮 - 使用 Link + Button asChild 启用预取并保持样式一致 */}
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="hidden sm:flex"
-          >
-            <Link href="/search" aria-label={t.common.search} prefetch={true}>
-              <Search className="h-5 w-5" />
-            </Link>
-          </Button>
-
           {/* 首页工具栏（视图切换 + 排序） */}
           <HeaderToolbar />
 
