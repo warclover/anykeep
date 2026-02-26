@@ -7,13 +7,15 @@
  * - 搜索筛选
  * - 删除管理
  *
- * @version 1.0.0
- * @since 2026-01-08
+ * 数据隔离：通过 /api/audio-library 获取当前登录用户的专属语音记录
+ *
+ * @version 2.0.0
+ * @since 2026-02-26
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Volume2,
   Search,
@@ -24,6 +26,9 @@ import {
   Calendar,
   Clock,
   Mic,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -32,10 +37,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TIME_CONSTANTS } from "@/lib/ui/common-styles";
-import {
-  MOCK_AUDIO_HISTORY,
-  type AudioItem,
-} from "@/lib/mocks/audio-library.mock";
+import type { AudioHistoryItem } from "@/app/api/audio-library/route";
 
 // ============================================
 // 常量定义
@@ -64,20 +66,20 @@ const AUDIO_LIBRARY = {
 
 interface GroupedAudio {
   label: string;
-  items: AudioItem[];
+  items: AudioHistoryItem[];
 }
 
 // ============================================
 // 辅助函数
 // ============================================
 
-function groupByDate(items: AudioItem[]): GroupedAudio[] {
+function groupByDate(items: AudioHistoryItem[]): GroupedAudio[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - TIME_CONSTANTS.ONE_DAY_MS);
   const weekAgo = new Date(today.getTime() - TIME_CONSTANTS.ONE_WEEK_MS);
 
-  const groups: Record<string, AudioItem[]> = {
+  const groups: Record<string, AudioHistoryItem[]> = {
     today: [],
     yesterday: [],
     thisWeek: [],
@@ -85,10 +87,11 @@ function groupByDate(items: AudioItem[]): GroupedAudio[] {
   };
 
   items.forEach((item) => {
+    const createdAt = new Date(item.createdAt);
     const itemDate = new Date(
-      item.createdAt.getFullYear(),
-      item.createdAt.getMonth(),
-      item.createdAt.getDate(),
+      createdAt.getFullYear(),
+      createdAt.getMonth(),
+      createdAt.getDate(),
     );
 
     if (itemDate.getTime() === today.getTime()) {
@@ -103,36 +106,32 @@ function groupByDate(items: AudioItem[]): GroupedAudio[] {
   });
 
   const result: GroupedAudio[] = [];
-  if (groups.today.length > 0) {
+  if (groups.today.length > 0)
     result.push({
       label: AUDIO_LIBRARY.DATE_GROUPS.TODAY,
       items: groups.today,
     });
-  }
-  if (groups.yesterday.length > 0) {
+  if (groups.yesterday.length > 0)
     result.push({
       label: AUDIO_LIBRARY.DATE_GROUPS.YESTERDAY,
       items: groups.yesterday,
     });
-  }
-  if (groups.thisWeek.length > 0) {
+  if (groups.thisWeek.length > 0)
     result.push({
       label: AUDIO_LIBRARY.DATE_GROUPS.THIS_WEEK,
       items: groups.thisWeek,
     });
-  }
-  if (groups.earlier.length > 0) {
+  if (groups.earlier.length > 0)
     result.push({
       label: AUDIO_LIBRARY.DATE_GROUPS.EARLIER,
       items: groups.earlier,
     });
-  }
 
   return result;
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString("zh-CN", {
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -147,11 +146,13 @@ function AudioItemCard({
   isPlaying,
   onPlay,
   onDelete,
+  isDeleting,
 }: {
-  item: AudioItem;
+  item: AudioHistoryItem;
   isPlaying: boolean;
   onPlay: () => void;
   onDelete: () => void;
+  isDeleting: boolean;
 }) {
   return (
     <Card
@@ -198,9 +199,14 @@ function AudioItemCard({
             variant="ghost"
             className="shrink-0 text-gray-400 hover:text-red-500"
             onClick={onDelete}
+            disabled={isDeleting}
             aria-label="删除语音"
           >
-            <Trash2 className="size-4" aria-hidden="true" />
+            {isDeleting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2 className="size-4" aria-hidden="true" />
+            )}
           </Button>
         </div>
       </CardContent>
@@ -230,48 +236,108 @@ function EmptyState() {
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
+      <Loader2 className="size-5 animate-spin" />
+      <span>加载语音记录...</span>
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="text-center py-12">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 mb-4">
+        <AlertCircle className="size-8 text-red-400" />
+      </div>
+      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">
+        加载失败
+      </h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">
+        无法获取语音历史，请检查网络后重试
+      </p>
+      <Button variant="outline" className="gap-2" onClick={onRetry}>
+        <RefreshCw className="size-4" />
+        重新加载
+      </Button>
+    </div>
+  );
+}
+
 // ============================================
 // 主组件
 // ============================================
 
 export function AudioLibraryClient() {
+  const [audioItems, setAudioItems] = useState<AudioHistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 获取语音历史
+  const fetchAudioHistory = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/audio-library");
+      if (!response.ok) {
+        throw new Error("获取失败");
+      }
+      const result: { success: boolean; data: AudioHistoryItem[] } =
+        await response.json();
+      if (!result.success) {
+        throw new Error("获取失败");
+      }
+      setAudioItems(result.data);
+    } catch {
+      setError("加载语音历史失败");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAudioHistory();
+  }, [fetchAudioHistory]);
 
   // 过滤和分组
   const groupedItems = useMemo(() => {
-    let items = MOCK_AUDIO_HISTORY;
-
-    // 搜索过滤
+    let items = audioItems;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       items = items.filter((item) => item.title.toLowerCase().includes(query));
     }
-
     return groupByDate(items);
-  }, [searchQuery]);
+  }, [audioItems, searchQuery]);
 
-  const totalCount = MOCK_AUDIO_HISTORY.length;
+  const totalCount = audioItems.length;
   const hasItems = groupedItems.length > 0;
 
   // 处理播放
   const handlePlay = (id: string) => {
-    if (playingId === id) {
-      setPlayingId(null);
-    } else {
-      setPlayingId(id);
-      // 实际实现中这里会播放音频
-    }
+    setPlayingId((prev) => (prev === id ? null : id));
+    // 实际播放逻辑预留（通过 audioPath 获取签名 URL 后播放）
   };
 
   // 处理删除
-  const handleDelete = async (id: string) => {
-    // 当前为 Mock 数据，后续集成真实 API
-    // 预留 API 调用接口：DELETE /api/audio-library/{id}
-    console.info(`[AudioLibrary] Delete requested for id: ${id}`);
-    // 未来实现：
-    // await fetch(`/api/audio-library/${id}`, { method: "DELETE" });
-    // 刷新列表
+  const handleDelete = async (item: AudioHistoryItem) => {
+    setDeletingId(item.id);
+    try {
+      const response = await fetch("/api/audio-library", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioPath: item.audioPath }),
+      });
+      if (response.ok) {
+        setAudioItems((prev) => prev.filter((a) => a.id !== item.id));
+        if (playingId === item.id) setPlayingId(null);
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -298,25 +364,33 @@ export function AudioLibraryClient() {
                   {AUDIO_LIBRARY.DESCRIPTION}
                 </p>
               </div>
-              <Badge variant="secondary" className="text-sm">
-                共 {totalCount} 条语音
-              </Badge>
+              {!isLoading && !error && (
+                <Badge variant="secondary" className="text-sm">
+                  共 {totalCount} 条语音
+                </Badge>
+              )}
             </div>
           </div>
 
           {/* 搜索框 */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-            <Input
-              placeholder={AUDIO_LIBRARY.SEARCH_PLACEHOLDER}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          {!isLoading && !error && totalCount > 0 && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+              <Input
+                placeholder={AUDIO_LIBRARY.SEARCH_PLACEHOLDER}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          )}
 
-          {/* 语音列表 */}
-          {!hasItems ? (
+          {/* 内容区域 */}
+          {isLoading ? (
+            <LoadingState />
+          ) : error ? (
+            <ErrorState onRetry={fetchAudioHistory} />
+          ) : !hasItems ? (
             <EmptyState />
           ) : (
             <div className="space-y-6">
@@ -335,7 +409,8 @@ export function AudioLibraryClient() {
                         item={item}
                         isPlaying={playingId === item.id}
                         onPlay={() => handlePlay(item.id)}
-                        onDelete={() => handleDelete(item.id)}
+                        onDelete={() => handleDelete(item)}
+                        isDeleting={deletingId === item.id}
                       />
                     ))}
                   </div>
