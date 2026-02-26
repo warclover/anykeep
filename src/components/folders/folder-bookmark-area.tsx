@@ -223,9 +223,9 @@ export function FolderBookmarkArea({
 
   return (
     <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-      {/* 标题栏 */}
-      <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="flex items-center gap-3">
+      {/* 标题栏 - 合并搜索和工具栏，高度与左侧导航面板头部对齐 */}
+      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-4">
           {/* 左侧：图标 + 标题 + 统计 */}
           <div
             className={cn(
@@ -235,10 +235,10 @@ export function FolderBookmarkArea({
           >
             <SelectionIcon className="size-4 text-white" />
           </div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
             {selectionInfo.title}
           </h2>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {isLoading ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="size-3 animate-spin" />
@@ -249,99 +249,99 @@ export function FolderBookmarkArea({
             )}
           </span>
 
-          {/* 右侧：按钮组 */}
+          {/* 右侧：搜索框 + 工具栏 + 按钮组 */}
           <div className="flex-1" />
-          {onOpenAIAssistant && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenAIAssistant}
-              className="hidden lg:flex gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
+          <div className="flex items-center gap-2">
+            {/* 搜索框 */}
+            <div className="relative w-40 lg:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
+            </div>
+
+            {/* 排序 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 px-2.5">
+                  <SortAsc className="size-4 mr-1" />
+                  <span className="hidden sm:inline text-xs">
+                    {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {SORT_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => setSortBy(option.value)}
+                    className={sortBy === option.value ? "bg-accent" : ""}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 视图切换 */}
+            <div
+              className="hidden md:flex items-center border rounded-md overflow-hidden"
+              role="group"
+              aria-label="视图切换"
             >
-              <Sparkles className="size-4" />
-              AI 助手
-            </Button>
-          )}
-          {onCreateBookmark && (
-            <Button size="sm" onClick={onCreateBookmark}>
-              <Plus className="size-4 mr-1" />
-              添加收藏
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* 快捷操作栏 */}
-      <div className="flex-shrink-0 px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
-        <div className="flex items-center gap-3">
-          {/* 搜索框 */}
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索书签..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-            />
-          </div>
-
-          {/* 排序 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <SortAsc className="size-4 mr-2" />
-                {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+              <Button
+                variant={viewMode === "card" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-9 w-9 p-0 rounded-none"
+                onClick={() => setViewMode("card")}
+                aria-label="卡片视图"
+                aria-pressed={viewMode === "card"}
+              >
+                <LayoutGrid className="size-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {SORT_OPTIONS.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  onClick={() => setSortBy(option.value)}
-                  className={sortBy === option.value ? "bg-accent" : ""}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-9 w-9 p-0 rounded-none"
+                onClick={() => setViewMode("list")}
+                aria-label="列表视图"
+                aria-pressed={viewMode === "list"}
+              >
+                <List className="size-4" />
+              </Button>
+              <Button
+                variant={viewMode === "compact" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-9 w-9 p-0 rounded-none"
+                onClick={() => setViewMode("compact")}
+                aria-label="紧凑视图"
+                aria-pressed={viewMode === "compact"}
+              >
+                <ListCollapse className="size-4" />
+              </Button>
+            </div>
 
-          {/* 视图切换 */}
-          <div
-            className="flex items-center border rounded-lg overflow-hidden"
-            role="group"
-            aria-label="视图切换"
-          >
-            <Button
-              variant={viewMode === "card" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-9 rounded-none"
-              onClick={() => setViewMode("card")}
-              aria-label="卡片视图"
-              aria-pressed={viewMode === "card"}
-            >
-              <LayoutGrid className="size-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-9 rounded-none"
-              onClick={() => setViewMode("list")}
-              aria-label="列表视图"
-              aria-pressed={viewMode === "list"}
-            >
-              <List className="size-4" />
-            </Button>
-            <Button
-              variant={viewMode === "compact" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-9 rounded-none"
-              onClick={() => setViewMode("compact")}
-              aria-label="紧凑视图"
-              aria-pressed={viewMode === "compact"}
-            >
-              <ListCollapse className="size-4" />
-            </Button>
+            {/* AI 助手 */}
+            {onOpenAIAssistant && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenAIAssistant}
+                className="hidden lg:flex gap-1.5 text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
+              >
+                <Sparkles className="size-4" />
+                AI 助手
+              </Button>
+            )}
+            {onCreateBookmark && (
+              <Button size="sm" className="h-9" onClick={onCreateBookmark}>
+                <Plus className="size-4 mr-1" />
+                添加收藏
+              </Button>
+            )}
           </div>
         </div>
       </div>
