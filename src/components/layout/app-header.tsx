@@ -32,6 +32,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { PlatformFilter } from "@/components/layout/platform-filter";
 import { HeaderMenu } from "@/components/layout/header-menu";
+import { HeaderToolbar } from "@/components/layout/header-toolbar";
 import { NotificationDropdown } from "@/components/layout/notification-dropdown";
 import { useUser } from "@/contexts/user-context";
 import { useSafeNavigation } from "@/contexts/navigation-context";
@@ -167,6 +168,9 @@ export const AppHeader = memo(function AppHeader() {
 
           {/* 通知按钮 */}
           <NotificationDropdown />
+
+          {/* 首页工具栏（视图切换 + 排序） */}
+          <HeaderToolbar />
 
           {/* 更多菜单 */}
           <HeaderMenu />

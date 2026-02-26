@@ -1,10 +1,12 @@
 /**
- * V4.2.17: 顶部导航栏更多菜单
+ * V4.2.18: 顶部导航栏更多菜单（精简版）
  *
- * Phase 3.1 - 迁移到 HomePageContext
+ * 收缩后的菜单内容：
+ * - 布局模式（仅首页 + 卡片视图 + 非浏览器书签）
+ * - 数据导入、导出、批量选择（仅首页）
+ * - 设置（始终显示）
  *
- * 包含视图模式、布局模式、排序、导入导出等功能
- * 优先使用 Context，Fallback 到 Window Event（兼容非首页场景）
+ * 高频操作（视图切换、排序）已移至 HeaderToolbar
  */
 
 "use client";
@@ -13,14 +15,9 @@ import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   MoreHorizontal,
-  LayoutGrid,
-  List,
-  AlignJustify,
   Sparkles,
   Rows3,
   Columns3,
-  ArrowUpDown,
-  Plus,
   Upload,
   Download,
   CheckSquare,
@@ -38,29 +35,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
-import type { ViewMode, LayoutMode, DialogType } from "@/components/home/types";
+import type { LayoutMode, DialogType } from "@/components/home/types";
 
 // 本地存储 key（Fallback 使用）
-const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
 const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
-
-// 排序选项
-const sortOptions = [
-  { value: "created_desc", label: "最新收藏" },
-  { value: "created_asc", label: "最早收藏" },
-  { value: "title_asc", label: "标题 A-Z" },
-  { value: "title_desc", label: "标题 Z-A" },
-];
-
-// Fallback: 从 localStorage 读取视图模式
-function getStoredViewMode(): ViewMode {
-  if (typeof window === "undefined") return "card";
-  const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-  if (saved && ["card", "list", "compact"].includes(saved)) {
-    return saved as ViewMode;
-  }
-  return "card";
-}
 
 // Fallback: 从 localStorage 读取布局模式
 function getStoredLayoutMode(): LayoutMode {
@@ -77,7 +55,6 @@ export function HeaderMenu() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentPlatform = searchParams?.get("platform") || "";
-  const currentSort = searchParams?.get("sort") || "created_desc";
 
   // Phase 3.1: 尝试获取 HomePageContext（安全版本，不抛错）
   const homeContext = useHomePageSafe();
@@ -92,32 +69,14 @@ export function HeaderMenu() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Fallback 本地状态（仅在无 Context 时使用）
-  const [localViewMode, setLocalViewMode] =
-    useState<ViewMode>(getStoredViewMode);
   const [localLayoutMode, setLocalLayoutMode] =
     useState<LayoutMode>(getStoredLayoutMode);
 
   // 视图模式：优先从 Context 读取，Fallback 到本地状态
-  const viewMode = homeContext?.view.viewMode ?? localViewMode;
+  const viewMode = homeContext?.view.viewMode ?? "card";
   const layoutMode = homeContext?.view.layoutMode ?? localLayoutMode;
 
   // ========== Handler 函数 ==========
-
-  /**
-   * 切换视图模式
-   * 优先使用 Context，Fallback 到 UIEventBus
-   */
-  const handleViewModeChange = (mode: ViewMode) => {
-    if (homeContext) {
-      // Phase 3.1: 使用 Context
-      homeContext.view.setViewMode(mode);
-    } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
-      setLocalViewMode(mode);
-      localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-      uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode });
-    }
-  };
 
   /**
    * 切换布局模式
@@ -125,24 +84,12 @@ export function HeaderMenu() {
    */
   const handleLayoutModeChange = (mode: LayoutMode) => {
     if (homeContext) {
-      // Phase 3.1: 使用 Context
       homeContext.view.setLayoutMode(mode);
     } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       setLocalLayoutMode(mode);
       localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
       uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });
     }
-  };
-
-  /**
-   * 切换排序（仍使用 URL 参数，与 Context 无关）
-   */
-  const handleSortChange = (sortValue: string) => {
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.set("sort", sortValue);
-    router.push(`/home?${params.toString()}`);
-    setIsOpen(false);
   };
 
   /**
@@ -151,10 +98,8 @@ export function HeaderMenu() {
    */
   const triggerDialog = (dialogType: DialogType) => {
     if (homeContext) {
-      // Phase 3.1: 使用 Context
       homeContext.dialog.openDialogAction(dialogType);
     } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       uiEventBus.emit(UIEvents.DIALOG_OPEN, { type: dialogType });
     }
     setIsOpen(false);
@@ -166,10 +111,8 @@ export function HeaderMenu() {
    */
   const triggerSelectionMode = () => {
     if (homeContext) {
-      // Phase 3.1: 使用 Context
       homeContext.selection.toggleSelectionMode();
     } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: true });
     }
     setIsOpen(false);
@@ -187,31 +130,8 @@ export function HeaderMenu() {
           <MoreHorizontal className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        {/* 视图模式（仅首页且非浏览器平台显示） */}
-        {isHomePage && !isBrowserPlatform && (
-          <>
-            <DropdownMenuLabel className="text-xs">视图模式</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleViewModeChange("card")}>
-              <LayoutGrid className="size-4 mr-2" />
-              <span className="flex-1">瀑布流</span>
-              {viewMode === "card" && <Check className="size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleViewModeChange("list")}>
-              <List className="size-4 mr-2" />
-              <span className="flex-1">列表</span>
-              {viewMode === "list" && <Check className="size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleViewModeChange("compact")}>
-              <AlignJustify className="size-4 mr-2" />
-              <span className="flex-1">紧凑</span>
-              {viewMode === "compact" && <Check className="size-4" />}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-
-        {/* 布局模式（仅首页且卡片视图显示） */}
+      <DropdownMenuContent align="end" className="w-48">
+        {/* 布局模式（仅首页且卡片视图且非浏览器平台显示） */}
         {isHomePage && viewMode === "card" && !isBrowserPlatform && (
           <>
             <DropdownMenuLabel className="text-xs">布局模式</DropdownMenuLabel>
@@ -234,31 +154,9 @@ export function HeaderMenu() {
           </>
         )}
 
-        {/* 排序（仅首页显示） */}
+        {/* 操作菜单（仅首页显示） */}
         {isHomePage && (
           <>
-            <DropdownMenuLabel className="text-xs">排序</DropdownMenuLabel>
-            {sortOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => handleSortChange(option.value)}
-              >
-                <ArrowUpDown className="size-4 mr-2" />
-                <span className="flex-1">{option.label}</span>
-                {currentSort === option.value && <Check className="size-4" />}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-          </>
-        )}
-
-        {/* 操作菜单 */}
-        {isHomePage && (
-          <>
-            <DropdownMenuItem onClick={() => triggerDialog("create")}>
-              <Plus className="size-4 mr-2" />
-              新建收藏
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/import")}>
               <Upload className="size-4 mr-2" />
               数据导入
