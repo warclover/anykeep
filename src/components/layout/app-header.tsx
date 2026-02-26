@@ -14,7 +14,7 @@
 
 import { useState, memo } from "react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Moon, Sun } from "lucide-react";
@@ -35,7 +35,6 @@ import { HeaderMenu } from "@/components/layout/header-menu";
 import { HeaderToolbar } from "@/components/layout/header-toolbar";
 import { NotificationDropdown } from "@/components/layout/notification-dropdown";
 import { useUser } from "@/contexts/user-context";
-import { useSafeNavigation } from "@/contexts/navigation-context";
 import { useHomePageSafe } from "@/contexts/home-page-context";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -44,39 +43,27 @@ import { useUiText } from "@/lib/i18n";
 export const AppHeader = memo(function AppHeader() {
   const { user, profile, isLoading } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
   const t = useUiText();
 
-  // 获取导航和首页上下文
-  const navigationContext = useSafeNavigation();
+  // 获取首页上下文（用于平台筛选判断）
   const homeContext = useHomePageSafe();
 
-  const { activePage, isClientNavEnabled } = navigationContext || {
-    activePage: null,
-    isClientNavEnabled: false,
-  };
-
-  // 判断是否在首页
-  const isHomePage = isClientNavEnabled
-    ? activePage === "home"
-    : pathname === "/home";
-
-  // 获取当前文件夹和平台（用于判断回收站和浏览器书签）
+  // 获取当前文件夹和平台（用于判断浏览器书签）
   const currentFolder =
     homeContext?.filter.folder ?? searchParams?.get("folder") ?? "";
   const currentPlatform =
     homeContext?.filter.platform ?? searchParams?.get("platform") ?? "";
 
-  // 判断是否为回收站或浏览器书签
-  const isTrashFolder = currentFolder === "trash";
+  // 判断是否为浏览器书签
   const isBrowserPlatform = currentPlatform === "browser";
 
-  // 是否显示快速添加区域：首页 + 非回收站 + 非移动端
-  const showQuickAdd = isHomePage && !isTrashFolder && !isMobile;
+  // 是否显示快速添加区域：非移动端（所有桌面端页面都显示）
+  // V5.4: 扩展到全局，用户可在任意页面快速收藏
+  const showQuickAdd = !isMobile;
 
   // 手动创建按钮点击事件 - 使用挤压式面板
   const handleOpenCreatePanel = () => {
