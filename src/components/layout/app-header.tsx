@@ -139,6 +139,27 @@ export const AppHeader = memo(function AppHeader() {
 
         {/* 右侧操作区 */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
+          {/* 搜索按钮 - 使用 Link + Button asChild 启用预取并保持样式一致 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="hidden sm:flex"
+          >
+            <Link href="/search" aria-label={t.common.search} prefetch={true}>
+              <Search className="h-5 w-5" />
+            </Link>
+          </Button>
+
+          {/* 首页工具栏（视图切换 + 排序） */}
+          <HeaderToolbar />
+
+          {/* 更多菜单 */}
+          <HeaderMenu />
+
+          {/* 通知按钮 */}
+          <NotificationDropdown />
+
           {/* 主题切换按钮 */}
           <Button
             variant="ghost"
@@ -154,54 +175,25 @@ export const AppHeader = memo(function AppHeader() {
             )}
           </Button>
 
-          {/* 搜索按钮 - 使用 Link + Button asChild 启用预取并保持样式一致 */}
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="hidden sm:flex"
-          >
-            <Link href="/search" aria-label={t.common.search} prefetch={true}>
-              <Search className="h-5 w-5" />
-            </Link>
-          </Button>
-
-          {/* 通知按钮 */}
-          <NotificationDropdown />
-
-          {/* 首页工具栏（视图切换 + 排序） */}
-          <HeaderToolbar />
-
-          {/* 更多菜单 */}
-          <HeaderMenu />
-
           {/* 用户菜单 */}
           {isLoading ? (
             // 加载状态骨架屏
-            <div className="flex items-center gap-2 px-2">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="hidden md:block h-4 w-16" />
-            </div>
+            <Skeleton className="h-8 w-8 rounded-full" />
           ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-9 gap-2 rounded-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  size="icon"
+                  className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 flex-shrink-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
                     <span className="text-sm font-medium text-purple-600 dark:text-purple-300">
                       {profile?.nickname?.[0] ||
                         user.email?.[0]?.toUpperCase() ||
                         "U"}
                     </span>
                   </div>
-                  {/* 用户名 - 在中等及以上屏幕显示 */}
-                  <span className="hidden md:inline-block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
-                    {profile?.nickname ||
-                      user.email?.split("@")[0] ||
-                      t.common.user}
-                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>

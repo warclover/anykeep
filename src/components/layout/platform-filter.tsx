@@ -48,13 +48,13 @@ const platformCandyColors: Record<string, { active: string; hover: string }> = {
     active: "bg-sky-50 text-sky-500 dark:bg-sky-950 dark:text-sky-400",
     hover: "hover:bg-sky-100 dark:hover:bg-sky-900",
   },
-  // 浏览器书签：紫色（区别于内容平台）
+  // 浏览器：紫色（区别于内容平台）
   browser: {
     active:
       "bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400",
     hover: "hover:bg-purple-100 dark:hover:bg-purple-900",
   },
-  // MD文档：橙色
+  // 笔记：橙色
   md: {
     active:
       "bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400",
@@ -68,8 +68,8 @@ const platforms = [
   { id: "wechat", name: "微信", value: "WECHAT_OFFICIAL_ACCOUNT", href: null },
   { id: "xiaohongshu", name: "小红书", value: "XIAOHONGSHU", href: null },
   { id: "bilibili", name: "B站", value: "BILIBILI", href: null },
-  { id: "browser", name: "浏览器书签", value: "browser", href: null },
-  { id: "md", name: "MD文档", value: "md", href: "/md-collections" },
+  { id: "browser", name: "浏览器", value: "browser", href: null },
+  { id: "md", name: "笔记", value: "md", href: "/md-collections" },
 ];
 
 // 本地存储 key（Fallback 使用）
