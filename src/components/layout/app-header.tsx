@@ -132,10 +132,49 @@ export const AppHeader = memo(function AppHeader() {
           </span>
         </Link>
 
-        {/* 平台筛选（仅首页显示） */}
-        <div className="hidden sm:flex flex-1 justify-start overflow-hidden ml-4 lg:ml-20 mr-2">
-          <PlatformFilter />
-        </div>
+        {/* 快速添加（首页非回收站）或 平台筛选（其他情况） */}
+        {showQuickAdd ? (
+          <div className="hidden sm:flex flex-1 items-center gap-2 ml-4 lg:ml-20 mr-2 overflow-hidden">
+            <div className="flex-1 min-w-0 max-w-2xl">
+              <QuickAddBookmark />
+            </div>
+
+            <Button
+              variant="outline"
+              className="shrink-0 h-8 px-3 text-xs border-2 border-pink-400 text-pink-600 bg-transparent hover:bg-pink-50 hover:border-pink-500 dark:text-pink-400 dark:border-pink-500 dark:hover:bg-pink-950/30 dark:hover:border-pink-400 transition-all duration-200"
+              onClick={handleOpenCreatePanel}
+            >
+              <Plus className="size-3.5 mr-1" />
+              {t.mobileMenu.manualCreate}
+            </Button>
+
+            {!isBrowserPlatform && !currentFolder && homeContext && (
+              <Button
+                variant="outline"
+                className="shrink-0 h-8 px-3 text-xs border-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
+                onClick={handleOpenFilterPanel}
+              >
+                <Filter className="size-3.5 mr-1" />
+                {t.nav.usageFilter}
+              </Button>
+            )}
+
+            {homeContext && (
+              <Button
+                variant="outline"
+                className="shrink-0 h-8 px-3 text-xs border-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
+                onClick={() => homeContext.aiPanel.toggleAIPanel()}
+              >
+                <Sparkles className="size-3.5 mr-1" />
+                {t.mobileMenu.aiAssistant}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="hidden sm:flex flex-1 justify-start overflow-hidden ml-4 lg:ml-20 mr-2">
+            <PlatformFilter />
+          </div>
+        )}
 
         {/* 右侧操作区 */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
@@ -232,10 +271,10 @@ export const AppHeader = memo(function AppHeader() {
         </div>
       </div>
 
-      {/* 第二行：快速添加区域（仅首页非回收站显示） */}
+      {/* 第二行：平台筛选区域（仅首页非回收站显示） */}
       {showQuickAdd && (
         <div className="flex items-center h-11 px-4 lg:px-6 gap-2 border-t border-gray-100 dark:border-gray-800">
-          {/* Logo 占位（桌面端：不可见但占用相同空间，实现与第一行平台筛选左对齐） */}
+          {/* Logo 占位（桌面端：不可见但占用相同空间，实现与第一行左对齐） */}
           <div
             className="hidden sm:flex items-center space-x-2 shrink-0 invisible"
             aria-hidden="true"
@@ -243,45 +282,8 @@ export const AppHeader = memo(function AppHeader() {
             <span className="text-lg md:text-xl font-bold">AnyKeep</span>
           </div>
 
-          {/* 快速添加区域（向左靠拢，略小于第一行平台筛选） */}
           <div className="flex flex-1 items-center gap-2 sm:ml-2 lg:ml-10">
-            <div className="flex-1 min-w-0 max-w-2xl">
-              <QuickAddBookmark />
-            </div>
-
-            {/* 手动创建按钮 - 主操作（粉红描边，无底色） */}
-            <Button
-              variant="outline"
-              className="shrink-0 h-8 px-3 text-sm border-2 border-pink-400 text-pink-600 bg-transparent hover:bg-pink-50 hover:border-pink-500 dark:text-pink-400 dark:border-pink-500 dark:hover:bg-pink-950/30 dark:hover:border-pink-400 transition-all duration-200"
-              onClick={handleOpenCreatePanel}
-            >
-              <Plus className="size-3.5 mr-1" />
-              {t.mobileMenu.manualCreate}
-            </Button>
-
-            {/* 用途筛选按钮（非浏览器书签 + 无文件夹筛选时显示）- 次要操作（边框宽度与手动创建一致） */}
-            {!isBrowserPlatform && !currentFolder && homeContext && (
-              <Button
-                variant="outline"
-                className="shrink-0 h-8 px-3 text-sm border-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950/30 transition-colors duration-200"
-                onClick={handleOpenFilterPanel}
-              >
-                <Filter className="size-3.5 mr-1" />
-                {t.nav.usageFilter}
-              </Button>
-            )}
-
-            {/* AI 助理按钮 - 次要操作（边框宽度与手动创建一致） */}
-            {homeContext && (
-              <Button
-                variant="outline"
-                className="shrink-0 h-8 px-3 text-sm border-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300 dark:text-cyan-400 dark:border-cyan-800 dark:hover:bg-cyan-950/30 transition-colors duration-200"
-                onClick={() => homeContext.aiPanel.toggleAIPanel()}
-              >
-                <Sparkles className="size-3.5 mr-1" />
-                {t.mobileMenu.aiAssistant}
-              </Button>
-            )}
+            <PlatformFilter />
           </div>
         </div>
       )}

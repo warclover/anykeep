@@ -199,7 +199,7 @@ export const QuickAddInput = forwardRef<HTMLInputElement, QuickAddInputProps>(
           spellCheck={false}
           className={cn(
             "flex-1 bg-transparent border-none outline-none",
-            "text-sm font-medium placeholder:text-purple-400/80 placeholder:font-normal",
+            "text-xs font-medium placeholder:text-purple-400/80 placeholder:font-normal",
             "disabled:cursor-not-allowed",
           )}
         />
