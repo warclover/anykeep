@@ -319,7 +319,7 @@ export function FolderNavPanel({
       <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            收藏夹
+            我的分类
           </h2>
           <Button size="sm" variant="ghost" onClick={onCreateFolder}>
             <Plus className="size-4" />

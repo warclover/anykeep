@@ -146,7 +146,7 @@ const FOLDER_GROUPS: Record<
     icon: Gamepad2,
   },
   other: {
-    label: "其他收藏",
+    label: "收藏分类文件夹",
     icon: MoreHorizontal,
   },
 };

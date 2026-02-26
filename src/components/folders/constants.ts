@@ -186,16 +186,16 @@ export const FOLDER_GROUPS: Record<string, FolderGroupConfig> = {
     },
   },
   other: {
-    label: "其他收藏",
+    label: "收藏分类文件夹",
     icon: MoreHorizontal,
     keywords: [],
     colors: {
-      bg: "bg-gray-50 dark:bg-gray-800/50",
-      bgHover: "hover:bg-gray-100 dark:hover:bg-gray-700/50",
-      border: "border-gray-200 dark:border-gray-700",
-      accent: "text-gray-600 dark:text-gray-400",
-      iconBg: "bg-gray-100 dark:bg-gray-700",
-      gradient: { from: "from-gray-400", to: "to-slate-500" },
+      bg: "bg-pink-50 dark:bg-pink-900/20",
+      bgHover: "hover:bg-pink-100 dark:hover:bg-pink-800/30",
+      border: "border-pink-200 dark:border-pink-800",
+      accent: "text-pink-600 dark:text-pink-400",
+      iconBg: "bg-pink-100 dark:bg-pink-800",
+      gradient: { from: "from-pink-400", to: "to-rose-500" },
     },
   },
 };

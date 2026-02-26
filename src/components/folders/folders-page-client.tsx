@@ -559,7 +559,7 @@ export function FoldersPageClient({
             >
               <Menu className="size-5" />
             </Button>
-            <h1 className="text-lg font-semibold flex-1">收藏夹</h1>
+            <h1 className="text-lg font-semibold flex-1">我的分类</h1>
             <Button
               variant="outline"
               size="sm"
