@@ -226,7 +226,7 @@ export function FolderBookmarkArea({
       {/* 标题栏 - 合并搜索和工具栏，高度与左侧导航面板头部对齐 */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="flex items-center gap-4">
-          {/* 左侧：图标 + 标题 + 统计 */}
+          {/* 左侧：图标 + 标题(带统计) */}
           <div
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
@@ -235,19 +235,21 @@ export function FolderBookmarkArea({
           >
             <SelectionIcon className="size-4 text-white" />
           </div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-            {selectionInfo.title}
-          </h2>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {isLoading ? (
-              <span className="flex items-center gap-1">
-                <Loader2 className="size-3 animate-spin" />
-                加载中...
-              </span>
-            ) : (
-              `${filteredBookmarks.length} 条收藏`
-            )}
-          </span>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
+              {selectionInfo.title}
+            </h2>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {isLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="size-3 animate-spin" />
+                  加载中...
+                </span>
+              ) : (
+                `${filteredBookmarks.length} 条收藏`
+              )}
+            </span>
+          </div>
 
           {/* 右侧：搜索框 + 工具栏 + 按钮组 */}
           <div className="flex-1" />
