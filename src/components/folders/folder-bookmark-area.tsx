@@ -392,6 +392,7 @@ export function FolderBookmarkArea({
             totalCount={filteredBookmarks.length}
             onSelectAll={handleSelectAll}
             onClearSelection={deselectAll}
+            onExit={exitSelectionMode}
             onOpenTagDialog={() => setShowBatchTagDialog(true)}
             onOpenMoveDialog={() => setShowBatchMoveDialog(true)}
             onBatchDelete={handleBatchDelete}

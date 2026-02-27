@@ -316,6 +316,7 @@ export function BatchPageClient({ embedded = false }: BatchPageClientProps) {
           totalCount={bookmarks.length}
           onSelectAll={handleSelectAll}
           onClearSelection={deselectAll}
+          onExit={() => router.push("/home")}
           onOpenTagDialog={() => setIsTagDialogOpen(true)}
           onOpenExportDialog={() => setIsExportDialogOpen(true)}
           onBatchDelete={handleBatchDelete}

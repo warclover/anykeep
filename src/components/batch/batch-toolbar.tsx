@@ -14,6 +14,7 @@ import {
   Loader2,
   Download,
   FolderInput,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BATCH_TEXT } from "./constants";
@@ -27,6 +28,8 @@ interface BatchToolbarProps {
   onSelectAll: () => void;
   /** 清空选择回调 */
   onClearSelection: () => void;
+  /** 退出批量模式回调 */
+  onExit: () => void;
   /** 打开标签对话框回调 */
   onOpenTagDialog: () => void;
   /** 打开导出对话框回调 */
@@ -47,6 +50,7 @@ export const BatchToolbar = memo(function BatchToolbar({
   totalCount,
   onSelectAll,
   onClearSelection,
+  onExit,
   onOpenTagDialog,
   onOpenExportDialog,
   onBatchDelete,
@@ -132,7 +136,7 @@ export const BatchToolbar = memo(function BatchToolbar({
         )}
       </div>
 
-      {/* 右侧：选中数量和清空 */}
+      {/* 右侧：选中数量、清空和返回 */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-blue-700 dark:text-blue-300">
           {BATCH_TEXT.SELECTED_COUNT(selectedCount)}
@@ -149,6 +153,20 @@ export const BatchToolbar = memo(function BatchToolbar({
             {BATCH_TEXT.CLEAR_SELECTION}
           </Button>
         )}
+
+        {/* 分隔线 */}
+        <div className="h-4 w-px bg-blue-200 dark:bg-blue-700" />
+
+        {/* 返回按钮 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExit}
+          className="h-8 px-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          返回
+        </Button>
       </div>
     </div>
   );
