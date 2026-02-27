@@ -421,7 +421,7 @@ export function FolderBookmarkArea({
             >
               <SelectionIcon className="size-4 text-white" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
                 {selectionInfo.title}
               </h2>
