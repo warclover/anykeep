@@ -31,6 +31,16 @@ export async function GET() {
       return unauthorizedError("请先登录");
     }
 
+    const logCatch =
+      <T>(label: string, fallback: T) =>
+      (err: unknown) => {
+        logger.warn(
+          { error: err instanceof Error ? err.message : err },
+          `[LearningInsights] ${label} failed, using fallback`,
+        );
+        return fallback;
+      };
+
     const [
       exclusions,
       exclusionStats,
@@ -40,22 +50,30 @@ export async function GET() {
     ] = await Promise.all([
       negativeSampleService
         .getUserExclusions(user.id, { limit: 200 })
-        .catch(() => []),
-      negativeSampleService.getUserStats(user.id).catch(() => ({
-        total: 0,
-        byType: {} as Record<string, number>,
-        byFolder: {} as Record<number, number>,
-      })),
-      preferenceLearner.getUserPreferences(user.id).catch(() => null),
-      preferenceLearner.getLearningStats(user.id).catch(() => ({
-        totalEvents: 0,
-        confirmations: 0,
-        rejections: 0,
-        modifications: 0,
-        accuracy: 0,
-        lastLearningTime: null,
-      })),
-      feedbackLoopService.generateHealthReport(user.id).catch(() => null),
+        .catch(logCatch("getUserExclusions", [])),
+      negativeSampleService.getUserStats(user.id).catch(
+        logCatch("getUserStats", {
+          total: 0,
+          byType: {} as Record<string, number>,
+          byFolder: {} as Record<number, number>,
+        }),
+      ),
+      preferenceLearner
+        .getUserPreferences(user.id)
+        .catch(logCatch("getUserPreferences", null)),
+      preferenceLearner.getLearningStats(user.id).catch(
+        logCatch("getLearningStats", {
+          totalEvents: 0,
+          confirmations: 0,
+          rejections: 0,
+          modifications: 0,
+          accuracy: 0,
+          lastLearningTime: null,
+        }),
+      ),
+      feedbackLoopService
+        .generateHealthReport(user.id)
+        .catch(logCatch("generateHealthReport", null)),
     ]);
 
     return successResponse({

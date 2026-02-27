@@ -242,11 +242,12 @@ export function AILearningPageClient({ error }: AILearningPageClientProps) {
     );
   }
 
-  const hasData =
-    data &&
+  const hasAnyData =
+    data != null &&
     (data.learningStats.totalEvents > 0 ||
       data.exclusions.length > 0 ||
-      (data.preferences?.folderPreferences?.length ?? 0) > 0);
+      (data.preferences?.folderPreferences?.length ?? 0) > 0 ||
+      (data.preferences?.sourcePreferences?.length ?? 0) > 0);
 
   return (
     <div className="container max-w-5xl mx-auto p-4 md:p-6 space-y-6">
@@ -265,17 +266,27 @@ export function AILearningPageClient({ error }: AILearningPageClientProps) {
         </Button>
       </div>
 
-      {!hasData ? (
+      {!data ? (
         <EmptyState />
       ) : (
         <>
           <StatsOverview
-            stats={data!.learningStats}
-            exclusionCount={data!.exclusionStats.total}
-            healthScore={data!.healthReport?.overallScore}
+            stats={data.learningStats}
+            exclusionCount={data.exclusionStats.total}
+            healthScore={data.healthReport?.overallScore}
           />
 
-          <Tabs defaultValue="overview" className="space-y-4">
+          {!hasAnyData && (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground py-6">
+              <BrainCog className="size-10 opacity-20" />
+              <p className="text-sm">{TEXT.noDataHint}</p>
+            </div>
+          )}
+
+          <Tabs
+            defaultValue={hasAnyData ? "overview" : "folders"}
+            className="space-y-4"
+          >
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">{TEXT.tabs.overview}</TabsTrigger>
               <TabsTrigger value="exclusions">
@@ -287,30 +298,28 @@ export function AILearningPageClient({ error }: AILearningPageClientProps) {
 
             <TabsContent value="overview">
               <OverviewTab
-                stats={data!.learningStats}
-                health={data!.healthReport}
-                timePreferences={data!.preferences?.timePreferences}
+                stats={data.learningStats}
+                health={data.healthReport}
+                timePreferences={data.preferences?.timePreferences}
               />
             </TabsContent>
 
             <TabsContent value="exclusions">
               <ExclusionsTab
-                exclusions={data!.exclusions}
-                stats={data!.exclusionStats}
-                folderPreferences={data!.preferences?.folderPreferences}
+                exclusions={data.exclusions}
+                stats={data.exclusionStats}
+                folderPreferences={data.preferences?.folderPreferences}
               />
             </TabsContent>
 
             <TabsContent value="folders">
-              <FoldersTab
-                folders={data!.preferences?.folderPreferences ?? []}
-              />
+              <FoldersTab folders={data.preferences?.folderPreferences ?? []} />
             </TabsContent>
 
             <TabsContent value="sources">
               <SourcesTab
-                sources={data!.preferences?.sourcePreferences ?? []}
-                folders={data!.preferences?.folderPreferences ?? []}
+                sources={data.preferences?.sourcePreferences ?? []}
+                folders={data.preferences?.folderPreferences ?? []}
               />
             </TabsContent>
           </Tabs>

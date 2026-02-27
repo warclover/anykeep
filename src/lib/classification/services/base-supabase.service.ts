@@ -20,27 +20,26 @@ export type SupabaseServerClient = Awaited<
 
 /**
  * 基础 Supabase 服务类
- * 提供延迟初始化的 Supabase 客户端
+ * 提供按请求创建的 Supabase 客户端
+ *
+ * 注意：不可缓存客户端实例。createServerSupabaseClient 依赖当前请求的
+ * cookies 进行鉴权，缓存会导致后续请求使用过期的 auth context，
+ * 进而被 RLS 静默拦截或返回鉴权错误。
  */
 export abstract class BaseSupabaseService {
-  private _supabase: SupabaseServerClient | null = null;
-
   /**
-   * 获取 Supabase 客户端（延迟初始化）
+   * 获取 Supabase 客户端（每次调用都创建新实例）
    * @returns Supabase 服务端客户端实例
    */
   protected async getSupabase(): Promise<SupabaseServerClient> {
-    if (!this._supabase) {
-      this._supabase = await createServerSupabaseClient();
-    }
-    return this._supabase;
+    return await createServerSupabaseClient();
   }
 
   /**
    * 重置 Supabase 客户端
-   * 用于测试或需要刷新连接的场景
+   * @deprecated 客户端已不再缓存，此方法仅为兼容保留
    */
   protected resetSupabase(): void {
-    this._supabase = null;
+    // no-op: 客户端不再缓存
   }
 }

@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import { LEARNING_LIMITS } from "@/lib/trust-mode/config";
+import { logger } from "@/lib/logger";
 // Json 类型保留用于未来扩展
 
 /**
@@ -199,9 +200,8 @@ export class PreferenceLearner {
   async getUserPreferences(userId: string): Promise<ClassificationPreferences> {
     const supabase = await createClient();
 
-    // 并行加载数据
+    // 并行加载核心数据（文件夹 + 书签 + 排除规则）
     const [foldersData, bookmarksData, exclusionsData] = await Promise.all([
-      // 获取文件夹使用统计
       supabase
         .from("folders")
         .select("id, name, updated_at")
@@ -209,7 +209,6 @@ export class PreferenceLearner {
         .eq("is_archived", false)
         .order("updated_at", { ascending: false })
         .limit(50),
-      // 获取最近书签分类
       supabase
         .from("bookmarks")
         .select("folder_id, url, tags, created_at")
@@ -225,20 +224,25 @@ export class PreferenceLearner {
         }> | null;
         error: unknown;
       }>,
-      // 获取排除规则
       this.getExclusions(userId),
     ]);
 
-    // 构建文件夹偏好
     const folderPreferences = await this.buildFolderPreferences(
       foldersData.data || [],
       bookmarksData.data || [],
     );
 
-    // 构建来源偏好
-    const sourcePreferences = await this.buildSourcePreferences(userId);
+    // 来源偏好独立 try-catch，失败不影响核心数据返回
+    let sourcePreferences: SourcePreference[] = [];
+    try {
+      sourcePreferences = await this.buildSourcePreferences(userId);
+    } catch (err) {
+      logger.warn(
+        { error: err },
+        "[PreferenceLearner] buildSourcePreferences failed, returning empty",
+      );
+    }
 
-    // 构建时间偏好
     const timePreferences = this.buildTimePreferences(bookmarksData.data || []);
 
     return {
