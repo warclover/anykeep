@@ -410,16 +410,16 @@ export function FolderBookmarkArea({
           />
         </div>
       ) : (
-        <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4">
             {/* 左侧：图标 + 标题(带统计) */}
             <div
               className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
                 `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
               )}
             >
-              <SelectionIcon className="size-4 text-white" />
+              <SelectionIcon className="size-3.5 text-white" />
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
@@ -442,20 +442,20 @@ export function FolderBookmarkArea({
             <div className="flex items-center gap-2">
               {/* 搜索框 */}
               <div className="relative w-40 lg:w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <Input
                   placeholder="搜索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-9 text-sm"
+                  className="pl-7 h-8 text-sm"
                 />
               </div>
 
               {/* 排序 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 px-2.5">
-                    <SortAsc className="size-4 mr-1" />
+                  <Button variant="outline" size="sm" className="h-8 px-2.5">
+                    <SortAsc className="size-3.5 mr-1" />
                     <span className="hidden sm:inline text-xs">
                       {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
                     </span>
@@ -477,12 +477,12 @@ export function FolderBookmarkArea({
               {/* 视图切换 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 px-2.5">
+                  <Button variant="outline" size="sm" className="h-8 px-2.5">
                     {(() => {
                       const Icon =
                         VIEW_OPTIONS.find((o) => o.value === viewMode)?.icon ||
                         LayoutGrid;
-                      return <Icon className="size-4 mr-1" />;
+                      return <Icon className="size-3.5 mr-1" />;
                     })()}
                     <span className="hidden sm:inline text-xs">
                       {VIEW_OPTIONS.find((o) => o.value === viewMode)?.label}
@@ -496,7 +496,7 @@ export function FolderBookmarkArea({
                       onClick={() => setViewMode(option.value)}
                       className={viewMode === option.value ? "bg-accent" : ""}
                     >
-                      <option.icon className="size-4 mr-2" />
+                      <option.icon className="size-3.5 mr-2" />
                       {option.label}
                     </DropdownMenuItem>
                   ))}
@@ -509,9 +509,9 @@ export function FolderBookmarkArea({
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectionMode}
-                  className="h-9 px-2.5 text-xs"
+                  className="h-8 px-2.5 text-xs"
                 >
-                  <CheckSquare className="size-4 mr-1" />
+                  <CheckSquare className="size-3.5 mr-1" />
                   <span className="hidden sm:inline">批量</span>
                 </Button>
               )}
@@ -522,21 +522,21 @@ export function FolderBookmarkArea({
                   variant="outline"
                   size="sm"
                   onClick={onOpenAIAssistant}
-                  className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
+                  className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-8"
                 >
                   AI 助手
                 </Button>
               )}
               {onCreateBookmark && (
-                <Button size="sm" className="h-9" onClick={onCreateBookmark}>
-                  <Plus className="size-4 mr-1" />
+                <Button size="sm" className="h-8" onClick={onCreateBookmark}>
+                  <Plus className="size-3.5 mr-1" />
                   添加收藏
                 </Button>
               )}
             </div>
           </div>
           {/* 拖拽提示 */}
-          <div className="px-6 pb-2 text-xs text-muted-foreground">
+          <div className="px-6 pb-1.5 text-xs text-muted-foreground">
             拖拽收藏到左侧文件夹可快速实现分类和移动
           </div>
         </div>
