@@ -95,6 +95,16 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "updated", label: "更新时间" },
 ];
 
+const VIEW_OPTIONS: {
+  value: ViewMode;
+  label: string;
+  icon: typeof LayoutGrid;
+}[] = [
+  { value: "card", label: "卡片", icon: LayoutGrid },
+  { value: "list", label: "列表", icon: List },
+  { value: "compact", label: "紧凑", icon: ListCollapse },
+];
+
 // ==================== 工具函数 ====================
 
 function getSelectionInfo(
@@ -465,42 +475,33 @@ export function FolderBookmarkArea({
               </DropdownMenu>
 
               {/* 视图切换 */}
-              <div
-                className="hidden md:flex items-center border rounded-md overflow-hidden"
-                role="group"
-                aria-label="视图切换"
-              >
-                <Button
-                  variant={viewMode === "card" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-9 w-9 p-0 rounded-none"
-                  onClick={() => setViewMode("card")}
-                  aria-label="卡片视图"
-                  aria-pressed={viewMode === "card"}
-                >
-                  <LayoutGrid className="size-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-9 w-9 p-0 rounded-none"
-                  onClick={() => setViewMode("list")}
-                  aria-label="列表视图"
-                  aria-pressed={viewMode === "list"}
-                >
-                  <List className="size-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "compact" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-9 w-9 p-0 rounded-none"
-                  onClick={() => setViewMode("compact")}
-                  aria-label="紧凑视图"
-                  aria-pressed={viewMode === "compact"}
-                >
-                  <ListCollapse className="size-4" />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 px-2.5">
+                    {(() => {
+                      const Icon =
+                        VIEW_OPTIONS.find((o) => o.value === viewMode)?.icon ||
+                        LayoutGrid;
+                      return <Icon className="size-4 mr-1" />;
+                    })()}
+                    <span className="hidden sm:inline text-xs">
+                      {VIEW_OPTIONS.find((o) => o.value === viewMode)?.label}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {VIEW_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setViewMode(option.value)}
+                      className={viewMode === option.value ? "bg-accent" : ""}
+                    >
+                      <option.icon className="size-4 mr-2" />
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* 批量管理按钮 */}
               {filteredBookmarks.length > 0 && (
