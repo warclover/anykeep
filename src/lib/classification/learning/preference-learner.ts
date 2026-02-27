@@ -232,10 +232,10 @@ export class PreferenceLearner {
       bookmarksData.data || [],
     );
 
-    // 来源偏好独立 try-catch，失败不影响核心数据返回
+    // 来源偏好：直接从书签 URL 推导，独立 try-catch 保护
     let sourcePreferences: SourcePreference[] = [];
     try {
-      sourcePreferences = await this.buildSourcePreferences(userId);
+      sourcePreferences = this.buildSourcePreferences(bookmarksData.data || []);
     } catch (err) {
       logger.warn(
         { error: err },
@@ -596,22 +596,75 @@ export class PreferenceLearner {
 
   /**
    * 构建来源偏好
+   *
+   * 直接从书签数据中按 URL hostname 聚合，无需 source_profiles 表。
+   * 统计每个来源在各文件夹出现次数，取出现最多的文件夹作为偏好文件夹。
    */
-  private async buildSourcePreferences(
-    userId: string,
-  ): Promise<SourcePreference[]> {
-    const sourceProfiles = await sourceProfileService.findAllByUserId(userId);
+  private buildSourcePreferences(
+    bookmarks: Array<{
+      folder_id: number | null;
+      url: string;
+      created_at: string;
+    }>,
+  ): SourcePreference[] {
+    // sourceId -> { folderId -> count }
+    const sourceMap = new Map<
+      string,
+      { folderCounts: Map<number, number>; total: number }
+    >();
 
-    return sourceProfiles
-      .filter((p) => p.sampleCount >= 3 && p.frequentFolders.length > 0)
-      .map((p) => ({
-        sourceId: p.sourceId,
-        sourceName: p.sourceName,
-        preferredFolderId: p.frequentFolders[0],
-        sampleCount: p.sampleCount,
-        confirmationRate: p.avgConfidence || 0,
-      }))
-      .slice(0, 50);
+    for (const bookmark of bookmarks) {
+      if (!bookmark.folder_id) continue;
+
+      let hostname: string;
+      try {
+        hostname = new URL(bookmark.url).hostname.replace(/^www\./, "");
+      } catch {
+        continue;
+      }
+      if (!hostname) continue;
+
+      const entry = sourceMap.get(hostname) ?? {
+        folderCounts: new Map(),
+        total: 0,
+      };
+      entry.folderCounts.set(
+        bookmark.folder_id,
+        (entry.folderCounts.get(bookmark.folder_id) ?? 0) + 1,
+      );
+      entry.total++;
+      sourceMap.set(hostname, entry);
+    }
+
+    const result: SourcePreference[] = [];
+
+    for (const [hostname, { folderCounts, total }] of sourceMap.entries()) {
+      // 至少 2 条才展示，过滤掉极少量的偶然记录
+      if (total < 2) continue;
+
+      // 找出书签最多的文件夹
+      let preferredFolderId = 0;
+      let maxCount = 0;
+      for (const [folderId, count] of folderCounts.entries()) {
+        if (count > maxCount) {
+          maxCount = count;
+          preferredFolderId = folderId;
+        }
+      }
+      if (!preferredFolderId) continue;
+
+      result.push({
+        sourceId: hostname,
+        sourceName: hostname,
+        preferredFolderId,
+        sampleCount: total,
+        // confirmationRate 用偏好文件夹命中率近似
+        confirmationRate: maxCount / total,
+      });
+    }
+
+    // 按样本数降序，最多返回 50 条
+    return result.sort((a, b) => b.sampleCount - a.sampleCount).slice(0, 50);
   }
 
   /**
