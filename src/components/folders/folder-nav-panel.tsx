@@ -125,11 +125,7 @@ function NavItem({
           </span>
         )}
       </button>
-      {actionMenu && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
-          {actionMenu}
-        </div>
-      )}
+      {actionMenu && <div className="pr-1">{actionMenu}</div>}
     </div>
   );
 }
