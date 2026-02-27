@@ -171,7 +171,7 @@ export async function PUT(
       return handleValidationError(validation.error);
     }
 
-    const { name, parentId, color: _color, icon: _icon } = validation.data;
+    const { name, parentId, color, icon } = validation.data;
 
     // 3. 检查文件夹是否存在且属于当前用户
     // 类型断言: 手动维护类型文件时需要此断言
@@ -228,11 +228,14 @@ export async function PUT(
     }
 
     // 5. 构建更新数据
-    type FolderUpdateFields = Partial<Pick<FolderUpdate, "name" | "parent_id">>;
+    type FolderUpdateFields = Partial<
+      Pick<FolderUpdate, "name" | "parent_id" | "color" | "icon">
+    >;
     const updateData: FolderUpdateFields = {};
     if (name !== undefined) updateData.name = name;
     if (parentId !== undefined) updateData.parent_id = parentId;
-    // Note: color and icon are not in the database schema yet, removing for now
+    if (color !== undefined) updateData.color = color;
+    if (icon !== undefined) updateData.icon = icon;
 
     // 6. 更新文件夹
     const { data: updatedFolder, error: updateError } = (await (

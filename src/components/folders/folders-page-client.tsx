@@ -41,6 +41,7 @@ import type {
   FolderSelection,
 } from "@/components/folders/types";
 import type { Folder as FolderType } from "@/types/supabase";
+import { useUser } from "@/contexts/user-context";
 
 // ==================== 组件 Props ====================
 
@@ -114,6 +115,7 @@ export function FoldersPageClient({
 }: FoldersPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
 
   // ==================== 状态管理 ====================
 
@@ -194,11 +196,11 @@ export function FoldersPageClient({
 
     setLockStatusMap(map);
 
-    // 更新 localStorage 缓存
-    if (folders.length > 0) {
-      setFoldersCache(folders);
+    // 更新 localStorage 缓存（按用户隔离，避免多用户共用设备时读到他人数据）
+    if (folders.length > 0 && user?.id) {
+      setFoldersCache(folders, user.id);
     }
-  }, [folders]);
+  }, [folders, user?.id]);
 
   // 当 folders 变化时，检查当前选择是否仍有效
   // 这里的 setState 是必要的 - 用于同步派生状态

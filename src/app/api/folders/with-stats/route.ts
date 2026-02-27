@@ -191,6 +191,8 @@ export async function GET(request: NextRequest) {
       user_id: folder.user_id,
       name: folder.name,
       parent_id: folder.parent_id,
+      color: folder.color ?? null,
+      icon: folder.icon ?? null,
       created_at: folder.created_at,
       updated_at: folder.updated_at,
       deleted_at: folder.deleted_at,

@@ -41,6 +41,8 @@ export interface FolderWithStats {
   user_id: string;
   name: string;
   parent_id: number | null;
+  color: string | null;
+  icon: string | null;
   created_at: string | null;
   updated_at: string | null;
   deleted_at: string | null;
@@ -95,6 +97,8 @@ export function toFolderWithStats(row: FolderWithStatsDbRow): FolderWithStats {
     user_id: row.user_id,
     name: row.name,
     parent_id: row.parent_id,
+    color: row.color ?? null,
+    icon: row.icon ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,

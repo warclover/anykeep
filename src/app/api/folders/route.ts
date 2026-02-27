@@ -162,17 +162,17 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { name, parentId } = validation.data;
+    const { name, parentId, color, icon } = validation.data;
 
     // 3. 创建文件夹
-    // 注意：数据库 folders 表目前只有基础字段（name, parent_id 等）
-    // color 和 icon 字段需要通过数据库迁移添加后才能使用
-    // 类型断言: 手动维护类型文件时需要此断言
+    // V1.0.1: 已通过迁移添加 color 和 icon 字段
     type CreatedFolderType = {
       id: number;
       user_id: string;
       name: string;
       parent_id: number | null;
+      color: string | null;
+      icon: string | null;
     };
 
     const { data: folder, error: createError } = (await supabase
@@ -181,6 +181,8 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         name,
         parent_id: parentId || null,
+        color: color || null,
+        icon: icon || null,
       })
       .select()
       .single()) as {

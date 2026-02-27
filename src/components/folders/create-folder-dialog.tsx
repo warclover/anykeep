@@ -154,14 +154,16 @@ export function CreateFolderDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 文件夹名称 */}
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="create-folder-name">
               文件夹名称 <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="name"
+              id="create-folder-name"
+              name="new-folder-name"
               placeholder="例如: 工作学习"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
               required
               className={errors.name ? "border-red-500" : ""}
             />

@@ -3011,10 +3011,12 @@ export type Database = {
       folders: {
         Row: {
           ai_generation_source: string | null;
+          color: string | null;
           created_at: string | null;
           crystal_birth_time: string | null;
           deleted_at: string | null;
           folder_group: string | null;
+          icon: string | null;
           id: number;
           is_ai_generated: boolean | null;
           is_archived: boolean;
@@ -3031,10 +3033,12 @@ export type Database = {
         };
         Insert: {
           ai_generation_source?: string | null;
+          color?: string | null;
           created_at?: string | null;
           crystal_birth_time?: string | null;
           deleted_at?: string | null;
           folder_group?: string | null;
+          icon?: string | null;
           id?: number;
           is_ai_generated?: boolean | null;
           is_archived?: boolean;
@@ -3051,10 +3055,12 @@ export type Database = {
         };
         Update: {
           ai_generation_source?: string | null;
+          color?: string | null;
           created_at?: string | null;
           crystal_birth_time?: string | null;
           deleted_at?: string | null;
           folder_group?: string | null;
+          icon?: string | null;
           id?: number;
           is_ai_generated?: boolean | null;
           is_archived?: boolean;

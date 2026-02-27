@@ -70,6 +70,8 @@ export const FOLDER_LIST_FIELDS = `
   id,
   name,
   parent_id,
+  color,
+  icon,
   is_system,
   system_type,
   is_archived,
