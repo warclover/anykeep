@@ -43,6 +43,7 @@ interface CreateFolderDialogProps {
 
 // 预设颜色
 const PRESET_COLORS = [
+  { name: "默认", value: "" }, // 无颜色选项
   { name: "蓝色", value: "#3B82F6" },
   { name: "绿色", value: "#10B981" },
   { name: "紫色", value: "#8B5CF6" },
@@ -65,7 +66,7 @@ export function CreateFolderDialog({
   // 表单状态
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string>("");
-  const [color, setColor] = useState<string>(PRESET_COLORS[0].value);
+  const [color, setColor] = useState<string>(""); // 默认无颜色
 
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -203,22 +204,45 @@ export function CreateFolderDialog({
           {/* 颜色选择 */}
           <div className="space-y-2">
             <Label htmlFor="color">文件夹颜色</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               {PRESET_COLORS.map((presetColor) => (
                 <button
-                  key={presetColor.value}
+                  key={presetColor.value || "default"}
                   type="button"
                   onClick={() => setColor(presetColor.value)}
-                  className={`w-10 h-10 rounded-full border-2 transition-all ${
+                  className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
                     color === presetColor.value
                       ? "border-gray-900 dark:border-white scale-110"
                       : "border-gray-300 dark:border-gray-600"
                   }`}
-                  style={{ backgroundColor: presetColor.value }}
+                  style={
+                    presetColor.value
+                      ? { backgroundColor: presetColor.value }
+                      : { backgroundColor: "transparent" }
+                  }
                   title={presetColor.name}
-                />
+                >
+                  {!presetColor.value && (
+                    <svg
+                      className="w-6 h-6 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                      />
+                    </svg>
+                  )}
+                </button>
               ))}
             </div>
+            <p className="text-xs text-gray-500">
+              选择「默认」将使用系统自动分配的颜色
+            </p>
             {errors.color && (
               <p className="text-xs text-red-500">{errors.color}</p>
             )}
