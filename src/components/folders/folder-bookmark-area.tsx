@@ -1,13 +1,20 @@
 /**
- * 文件夹书签内容区域 (v2.0 重构)
+ * 文件夹书签内容区域 (v2.1 批量操作集成)
  *
  * 替换原 folder-content-area.tsx，显示选中文件夹/分组的书签列表
- * 支持搜索、排序、视图切换和拖拽移动
+ * 支持搜索、排序、视图切换、拖拽移动和批量操作
  */
 
 "use client";
 
-import { useMemo, useState, useDeferredValue, useRef, useEffect } from "react";
+import {
+  useMemo,
+  useState,
+  useCallback,
+  useDeferredValue,
+  useRef,
+  useEffect,
+} from "react";
 import {
   Search,
   SortAsc,
@@ -17,7 +24,9 @@ import {
   Plus,
   Loader2,
   FolderOpen,
+  CheckSquare,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,6 +37,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
+import { BatchToolbar } from "@/components/batch/batch-toolbar";
+import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
+import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
+import { useSelectionMode } from "@/hooks/core/use-selection-mode";
+import { useAbortableFetch } from "@/hooks/core";
 import { FOLDER_GROUPS } from "./constants";
 import type {
   FolderSelection,
@@ -65,6 +79,10 @@ interface FolderBookmarkAreaProps {
   onToggleRead?: (id: number, isRead: boolean) => void;
   /** 切换星标回调 */
   onToggleStarred?: (id: number, isStarred: boolean) => void;
+  /** 批量移动成功回调（用于父组件更新文件夹计数） */
+  onBatchMoveSuccess?: (bookmarkIds: number[]) => void;
+  /** 批量删除成功回调 */
+  onBatchDeleteSuccess?: (bookmarkIds: number[]) => void;
   /** 样式类名 */
   className?: string;
 }
@@ -79,9 +97,6 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 // ==================== 工具函数 ====================
 
-/**
- * 获取选择状态的显示信息
- */
 function getSelectionInfo(
   selection: FolderSelection,
   folders: FolderWithStats[],
@@ -142,6 +157,8 @@ export function FolderBookmarkArea({
   onDeleteBookmark,
   onToggleRead,
   onToggleStarred,
+  onBatchMoveSuccess,
+  onBatchDeleteSuccess,
   className,
 }: FolderBookmarkAreaProps) {
   // 搜索和排序状态
@@ -169,12 +186,69 @@ export function FolderBookmarkArea({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
 
-  // 设置滚动父元素
   useEffect(() => {
     if (scrollContainerRef.current) {
       setScrollParent(scrollContainerRef.current);
     }
   }, []);
+
+  // ==================== 批量选择模式 ====================
+
+  const {
+    isSelectionMode,
+    selectedIds,
+    isBatchDeleting,
+    toggleSelectionMode,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    setIsBatchDeleting,
+    exitSelectionMode,
+  } = useSelectionMode();
+
+  // 批量操作对话框状态
+  const [showBatchMoveDialog, setShowBatchMoveDialog] = useState(false);
+  const [showBatchTagDialog, setShowBatchTagDialog] = useState(false);
+
+  // 单个书签移动状态（复用 BatchMoveDialog）
+  const [singleMoveId, setSingleMoveId] = useState<number | null>(null);
+  const singleMoveIds = useMemo(
+    () => (singleMoveId ? new Set([singleMoveId]) : new Set<number>()),
+    [singleMoveId],
+  );
+
+  const { fetchWithAbort } = useAbortableFetch();
+
+  // 切换文件夹/分组时自动退出选择模式
+  const prevSelectionRef = useRef(selection);
+  useEffect(() => {
+    const prev = prevSelectionRef.current;
+    const changed =
+      prev.type !== selection.type ||
+      (prev.type === "group" &&
+        selection.type === "group" &&
+        prev.groupId !== selection.groupId) ||
+      ((prev.type === "folder" || prev.type === "system") &&
+        (selection.type === "folder" || selection.type === "system") &&
+        prev.folderId !== selection.folderId);
+
+    if (changed && isSelectionMode) {
+      exitSelectionMode();
+    }
+    prevSelectionRef.current = selection;
+  }, [selection, isSelectionMode, exitSelectionMode]);
+
+  // Esc 退出选择模式
+  useEffect(() => {
+    if (!isSelectionMode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        exitSelectionMode();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSelectionMode, exitSelectionMode]);
 
   // 获取选择信息
   const selectionInfo = useMemo(
@@ -187,7 +261,6 @@ export function FolderBookmarkArea({
   const filteredBookmarks = useMemo(() => {
     let result = [...bookmarks];
 
-    // 搜索过滤
     if (deferredSearch.trim()) {
       const query = deferredSearch.toLowerCase();
       result = result.filter(
@@ -198,7 +271,6 @@ export function FolderBookmarkArea({
       );
     }
 
-    // 排序
     result.sort((a, b) => {
       switch (sortBy) {
         case "title":
@@ -220,131 +292,249 @@ export function FolderBookmarkArea({
     return result;
   }, [bookmarks, deferredSearch, sortBy]);
 
+  // 所有可见书签的 ID（用于全选和 Shift 选择）
+  const allBookmarkIds = useMemo(
+    () => filteredBookmarks.map((b) => b.id),
+    [filteredBookmarks],
+  );
+
+  // 选中的书签数据（用于批量标签对话框）
+  const selectedBookmarks = useMemo(
+    () => filteredBookmarks.filter((b) => selectedIds.has(b.id)),
+    [filteredBookmarks, selectedIds],
+  );
+
+  // ==================== 批量操作回调 ====================
+
+  const handleSelectAll = useCallback(() => {
+    selectAll(allBookmarkIds);
+  }, [selectAll, allBookmarkIds]);
+
+  const handleToggleSelect = useCallback(
+    (id: number) => {
+      if (!isSelectionMode) return;
+      toggleSelect(id);
+    },
+    [isSelectionMode, toggleSelect],
+  );
+
+  const handleBatchMoveSuccess = useCallback(() => {
+    const movedIds = Array.from(selectedIds);
+    exitSelectionMode();
+    onBatchMoveSuccess?.(movedIds);
+  }, [selectedIds, exitSelectionMode, onBatchMoveSuccess]);
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `确定要删除选中的 ${selectedIds.size} 条收藏吗？此操作会将它们移到回收站。`,
+    );
+    if (!confirmed) return;
+
+    setIsBatchDeleting(true);
+    try {
+      const res = await fetchWithAbort("/api/v1/bookmarks/batch/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || "删除失败");
+      }
+
+      const deletedCount = data.data?.deletedCount || selectedIds.size;
+      toast.success(`已删除 ${deletedCount} 条收藏`);
+
+      const deletedIds = Array.from(selectedIds);
+      exitSelectionMode();
+      onBatchDeleteSuccess?.(deletedIds);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      toast.error(error instanceof Error ? error.message : "删除失败");
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  }, [
+    selectedIds,
+    setIsBatchDeleting,
+    fetchWithAbort,
+    exitSelectionMode,
+    onBatchDeleteSuccess,
+  ]);
+
+  const handleBatchTagSuccess = useCallback(() => {
+    exitSelectionMode();
+  }, [exitSelectionMode]);
+
+  // 单个书签移动
+  const handleMoveBookmark = useCallback((id: number) => {
+    setSingleMoveId(id);
+  }, []);
+
+  const handleSingleMoveSuccess = useCallback(() => {
+    const movedId = singleMoveId;
+    setSingleMoveId(null);
+    if (movedId) {
+      onBatchMoveSuccess?.([movedId]);
+    }
+  }, [singleMoveId, onBatchMoveSuccess]);
+
   return (
     <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-      {/* 标题栏 - 合并搜索和工具栏，高度与左侧导航面板头部对齐 */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="flex items-center gap-4">
-          {/* 左侧：图标 + 标题(带统计) */}
-          <div
-            className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-              `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
-            )}
-          >
-            <SelectionIcon className="size-4 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
-              {selectionInfo.title}
-            </h2>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {isLoading ? (
-                <span className="flex items-center gap-1">
-                  <Loader2 className="size-3 animate-spin" />
-                  加载中...
-                </span>
-              ) : (
-                `${filteredBookmarks.length} 条收藏`
-              )}
-            </span>
-          </div>
-
-          {/* 右侧：搜索框 + 工具栏 + 按钮组 */}
-          <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            {/* 搜索框 */}
-            <div className="relative w-40 lg:w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
-
-            {/* 排序 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 px-2.5">
-                  <SortAsc className="size-4 mr-1" />
-                  <span className="hidden sm:inline text-xs">
-                    {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {SORT_OPTIONS.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => setSortBy(option.value)}
-                    className={sortBy === option.value ? "bg-accent" : ""}
-                  >
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 视图切换 */}
+      {/* 标题栏 / 批量工具栏 */}
+      {isSelectionMode ? (
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
+          <BatchToolbar
+            selectedCount={selectedIds.size}
+            totalCount={filteredBookmarks.length}
+            onSelectAll={handleSelectAll}
+            onClearSelection={deselectAll}
+            onOpenTagDialog={() => setShowBatchTagDialog(true)}
+            onOpenMoveDialog={() => setShowBatchMoveDialog(true)}
+            onBatchDelete={handleBatchDelete}
+            isProcessing={isBatchDeleting}
+          />
+        </div>
+      ) : (
+        <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="flex items-center gap-4">
+            {/* 左侧：图标 + 标题(带统计) */}
             <div
-              className="hidden md:flex items-center border rounded-md overflow-hidden"
-              role="group"
-              aria-label="视图切换"
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
+              )}
             >
-              <Button
-                variant={viewMode === "card" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-9 w-9 p-0 rounded-none"
-                onClick={() => setViewMode("card")}
-                aria-label="卡片视图"
-                aria-pressed={viewMode === "card"}
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-9 w-9 p-0 rounded-none"
-                onClick={() => setViewMode("list")}
-                aria-label="列表视图"
-                aria-pressed={viewMode === "list"}
-              >
-                <List className="size-4" />
-              </Button>
-              <Button
-                variant={viewMode === "compact" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-9 w-9 p-0 rounded-none"
-                onClick={() => setViewMode("compact")}
-                aria-label="紧凑视图"
-                aria-pressed={viewMode === "compact"}
-              >
-                <ListCollapse className="size-4" />
-              </Button>
+              <SelectionIcon className="size-4 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
+                {selectionInfo.title}
+              </h2>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {isLoading ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="size-3 animate-spin" />
+                    加载中...
+                  </span>
+                ) : (
+                  `${filteredBookmarks.length} 条收藏`
+                )}
+              </span>
             </div>
 
-            {/* AI 助手 */}
-            {onOpenAIAssistant && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenAIAssistant}
-                className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
+            {/* 右侧：搜索框 + 工具栏 + 按钮组 */}
+            <div className="flex-1" />
+            <div className="flex items-center gap-2">
+              {/* 搜索框 */}
+              <div className="relative w-40 lg:w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-9 text-sm"
+                />
+              </div>
+
+              {/* 排序 */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 px-2.5">
+                    <SortAsc className="size-4 mr-1" />
+                    <span className="hidden sm:inline text-xs">
+                      {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {SORT_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setSortBy(option.value)}
+                      className={sortBy === option.value ? "bg-accent" : ""}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* 视图切换 */}
+              <div
+                className="hidden md:flex items-center border rounded-md overflow-hidden"
+                role="group"
+                aria-label="视图切换"
               >
-                AI 助手
-              </Button>
-            )}
-            {onCreateBookmark && (
-              <Button size="sm" className="h-9" onClick={onCreateBookmark}>
-                <Plus className="size-4 mr-1" />
-                添加收藏
-              </Button>
-            )}
+                <Button
+                  variant={viewMode === "card" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-9 w-9 p-0 rounded-none"
+                  onClick={() => setViewMode("card")}
+                  aria-label="卡片视图"
+                  aria-pressed={viewMode === "card"}
+                >
+                  <LayoutGrid className="size-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-9 w-9 p-0 rounded-none"
+                  onClick={() => setViewMode("list")}
+                  aria-label="列表视图"
+                  aria-pressed={viewMode === "list"}
+                >
+                  <List className="size-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "compact" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-9 w-9 p-0 rounded-none"
+                  onClick={() => setViewMode("compact")}
+                  aria-label="紧凑视图"
+                  aria-pressed={viewMode === "compact"}
+                >
+                  <ListCollapse className="size-4" />
+                </Button>
+              </div>
+
+              {/* 批量管理按钮 */}
+              {filteredBookmarks.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectionMode}
+                  className="h-9 px-2.5 text-xs"
+                >
+                  <CheckSquare className="size-4 mr-1" />
+                  <span className="hidden sm:inline">批量</span>
+                </Button>
+              )}
+
+              {/* AI 助手 */}
+              {onOpenAIAssistant && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenAIAssistant}
+                  className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-9"
+                >
+                  AI 助手
+                </Button>
+              )}
+              {onCreateBookmark && (
+                <Button size="sm" className="h-9" onClick={onCreateBookmark}>
+                  <Plus className="size-4 mr-1" />
+                  添加收藏
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 内容区域 */}
       <div
@@ -370,13 +560,44 @@ export function FolderBookmarkArea({
             onLoadMore={onLoadMore}
             onEdit={onEditBookmark}
             onDelete={onDeleteBookmark}
+            onMove={handleMoveBookmark}
             onToggleRead={onToggleRead}
             onToggleStarred={onToggleStarred}
+            isSelectionMode={isSelectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
             customScrollParent={scrollParent}
-            draggable
+            draggable={!isSelectionMode}
           />
         )}
       </div>
+
+      {/* 批量移动对话框 */}
+      <BatchMoveDialog
+        open={showBatchMoveDialog}
+        onOpenChange={setShowBatchMoveDialog}
+        selectedIds={selectedIds}
+        onSuccess={handleBatchMoveSuccess}
+      />
+
+      {/* 批量标签对话框 */}
+      <BatchTagDialog
+        open={showBatchTagDialog}
+        onOpenChange={setShowBatchTagDialog}
+        selectedIds={Array.from(selectedIds)}
+        selectedBookmarks={selectedBookmarks}
+        onSuccess={handleBatchTagSuccess}
+      />
+
+      {/* 单个书签移动对话框（复用 BatchMoveDialog） */}
+      <BatchMoveDialog
+        open={singleMoveId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSingleMoveId(null);
+        }}
+        selectedIds={singleMoveIds}
+        onSuccess={handleSingleMoveSuccess}
+      />
     </div>
   );
 }

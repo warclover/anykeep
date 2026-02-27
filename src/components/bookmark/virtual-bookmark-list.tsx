@@ -45,6 +45,8 @@ interface VirtualBookmarkListProps {
   onEdit?: (id: number) => void;
   /** 删除回调 */
   onDelete?: (id: number) => void;
+  /** 移动到文件夹回调 */
+  onMove?: (id: number) => void;
   /** 切换已读状态回调 */
   onToggleRead?: (id: number, isRead: boolean) => void;
   /** 切换星标回调 */
@@ -78,6 +80,7 @@ const BookmarkItem = memo(function BookmarkItem({
   enableFlipCard,
   onEdit,
   onDelete,
+  onMove,
   onToggleRead,
   onToggleStarred,
   isSelectionMode,
@@ -92,6 +95,7 @@ const BookmarkItem = memo(function BookmarkItem({
   enableFlipCard?: boolean;
   onEdit?: (id: number) => void;
   onDelete?: (id: number) => void;
+  onMove?: (id: number) => void;
   onToggleRead?: (id: number, isRead: boolean) => void;
   onToggleStarred?: (id: number, isStarred: boolean) => void;
   isSelectionMode?: boolean;
@@ -129,6 +133,7 @@ const BookmarkItem = memo(function BookmarkItem({
               bookmark={bookmark}
               onEdit={onEdit}
               onDelete={onDelete}
+              onMove={onMove}
               onToggleRead={onToggleRead}
               onToggleStarred={onToggleStarred}
               isSelectionMode={isSelectionMode}
@@ -148,6 +153,7 @@ const BookmarkItem = memo(function BookmarkItem({
         bookmark={bookmark}
         onEdit={onEdit}
         onDelete={onDelete}
+        onMove={onMove}
         onToggleRead={onToggleRead}
         onToggleStarred={onToggleStarred}
         isSelectionMode={isSelectionMode}
@@ -198,6 +204,7 @@ export function VirtualBookmarkList({
   onLoadMore,
   onEdit,
   onDelete,
+  onMove,
   onToggleRead,
   onToggleStarred,
   isSelectionMode = false,
@@ -262,6 +269,7 @@ export function VirtualBookmarkList({
         enableFlipCard={enableFlipCard}
         onEdit={onEdit}
         onDelete={onDelete}
+        onMove={onMove}
         onToggleRead={onToggleRead}
         onToggleStarred={onToggleStarred}
         isSelectionMode={isSelectionMode}
@@ -277,6 +285,7 @@ export function VirtualBookmarkList({
       enableFlipCard,
       onEdit,
       onDelete,
+      onMove,
       onToggleRead,
       onToggleStarred,
       isSelectionMode,

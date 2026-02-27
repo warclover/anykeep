@@ -20,6 +20,7 @@ import {
   Lock,
   Star,
   Sparkles,
+  FolderInput,
 } from "lucide-react";
 import {
   Card,
@@ -86,6 +87,7 @@ interface ActionMenuProps {
   onToggleRead?: (e: React.MouseEvent) => void;
   onToggleStarred?: (e: React.MouseEvent) => void;
   onEdit?: (e: React.MouseEvent) => void;
+  onMove?: (e: React.MouseEvent) => void;
   onDelete?: (e: React.MouseEvent) => void;
   t: ReturnType<typeof useUiText>;
 }
@@ -110,6 +112,7 @@ const ActionMenu = memo(function ActionMenu({
   onToggleRead,
   onToggleStarred,
   onEdit,
+  onMove,
   onDelete,
   t,
 }: ActionMenuProps) {
@@ -193,6 +196,12 @@ const ActionMenu = memo(function ActionMenu({
             {t.common.edit}
           </DropdownMenuItem>
         )}
+        {onMove && (
+          <DropdownMenuItem onClick={onMove}>
+            <FolderInput className="mr-2 h-4 w-4" />
+            {t.bookmark.move}
+          </DropdownMenuItem>
+        )}
         {onDelete && (
           <DropdownMenuItem
             onClick={onDelete}
@@ -264,6 +273,8 @@ interface BookmarkCardProps {
   onEdit?: (id: number) => void;
   /** 删除回调，传入书签 ID */
   onDelete?: (id: number) => void;
+  /** 移动到文件夹回调，传入书签 ID */
+  onMove?: (id: number) => void;
   /** 切换已读状态回调 */
   onToggleRead?: (id: number, isRead: boolean) => void;
   /** 切换星标状态回调 (V8.0) */
@@ -340,6 +351,7 @@ export const BookmarkCard = memo(function BookmarkCard({
   bookmark,
   onEdit,
   onDelete,
+  onMove,
   onToggleRead,
   onToggleStarred,
   isSelectionMode = false,
@@ -429,6 +441,12 @@ export const BookmarkCard = memo(function BookmarkCard({
     onToggleStarred?.(bookmark.id, !bookmark.is_starred);
   };
 
+  const handleMove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onMove?.(bookmark.id);
+  };
+
   // 书签详情页 URL
   const bookmarkHref = `/bookmark/${bookmark.id}`;
 
@@ -441,6 +459,7 @@ export const BookmarkCard = memo(function BookmarkCard({
     onToggleRead: onToggleRead ? handleToggleRead : undefined,
     onToggleStarred: onToggleStarred ? handleToggleStarred : undefined,
     onEdit: onEdit ? handleEdit : undefined,
+    onMove: onMove ? handleMove : undefined,
     onDelete: onDelete ? handleDelete : undefined,
     t,
   } satisfies Omit<ActionMenuProps, "className" | "variant">;

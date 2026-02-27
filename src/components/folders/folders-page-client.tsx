@@ -475,6 +475,66 @@ export function FoldersPageClient({
     [bookmarks, mutateBookmarks, toggleStarredStatus],
   );
 
+  // 批量移动成功回调：乐观更新文件夹计数 + 刷新列表
+  const handleBatchMoveSuccess = useCallback(
+    (movedIds: number[]) => {
+      const count = movedIds.length;
+
+      if (selection?.type === "folder" || selection?.type === "system") {
+        setLocalFolders((prev) =>
+          prev.map((f) =>
+            f.id === selection.folderId
+              ? {
+                  ...f,
+                  bookmark_count: Math.max(0, (f.bookmark_count || 0) - count),
+                }
+              : f,
+          ),
+        );
+      }
+
+      // 从当前列表中移除已移动的书签
+      mutateBookmarks(
+        bookmarks.filter((b) => !movedIds.includes(b.id)),
+        false,
+      );
+
+      clearFoldersCache();
+      router.refresh();
+    },
+    [selection, bookmarks, mutateBookmarks, router],
+  );
+
+  // 批量删除成功回调：乐观更新文件夹计数 + 刷新列表
+  const handleBatchDeleteSuccess = useCallback(
+    (deletedIds: number[]) => {
+      const count = deletedIds.length;
+
+      if (selection?.type === "folder" || selection?.type === "system") {
+        setLocalFolders((prev) =>
+          prev.map((f) =>
+            f.id === selection.folderId
+              ? {
+                  ...f,
+                  bookmark_count: Math.max(0, (f.bookmark_count || 0) - count),
+                }
+              : f,
+          ),
+        );
+      }
+
+      // 从当前列表中移除已删除的书签
+      mutateBookmarks(
+        bookmarks.filter((b) => !deletedIds.includes(b.id)),
+        false,
+      );
+
+      clearFoldersCache();
+      router.refresh();
+    },
+    [selection, bookmarks, mutateBookmarks, router],
+  );
+
   // ==================== 渲染 ====================
 
   // 错误状态
@@ -586,6 +646,8 @@ export function FoldersPageClient({
                 onDeleteBookmark={handleDeleteBookmark}
                 onToggleRead={handleToggleRead}
                 onToggleStarred={handleToggleStarred}
+                onBatchMoveSuccess={handleBatchMoveSuccess}
+                onBatchDeleteSuccess={handleBatchDeleteSuccess}
                 className="flex-1"
               />
             </FeatureErrorBoundary>
