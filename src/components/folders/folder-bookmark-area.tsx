@@ -535,6 +535,10 @@ export function FolderBookmarkArea({
               )}
             </div>
           </div>
+          {/* 拖拽提示 */}
+          <div className="px-6 pb-2 text-xs text-muted-foreground">
+            拖拽收藏到左侧文件夹可快速实现分类和移动
+          </div>
         </div>
       )}
 
