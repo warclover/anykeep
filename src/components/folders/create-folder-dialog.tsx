@@ -21,13 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createFolderSchema } from "@/lib/validation";
 import { folderCacheInvalidation } from "@/lib/cache";
 import type { Folder } from "@/types/supabase";
@@ -36,7 +29,6 @@ import { useUser } from "@/contexts/user-context";
 interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  folders?: Folder[]; // 可选的父文件夹列表
   /** 创建成功后的回调，参数为新创建的文件夹数据 */
   onSuccess?: (folder: Folder) => void;
 }
@@ -55,7 +47,6 @@ const PRESET_COLORS = [
 export function CreateFolderDialog({
   open,
   onOpenChange,
-  folders = [],
   onSuccess,
 }: CreateFolderDialogProps) {
   const router = useRouter();
@@ -65,7 +56,6 @@ export function CreateFolderDialog({
 
   // 表单状态
   const [name, setName] = useState("");
-  const [parentId, setParentId] = useState<string>("");
   const [color, setColor] = useState<string>(""); // 默认无颜色
 
   // 表单错误
@@ -80,7 +70,6 @@ export function CreateFolderDialog({
       // 验证输入
       const validation = createFolderSchema.safeParse({
         name,
-        parentId: parentId ? parseInt(parentId) : undefined,
         color: color || undefined,
       });
 
@@ -124,7 +113,6 @@ export function CreateFolderDialog({
       // P0-6 修复：先重置表单状态，再关闭对话框
       // 避免用户快速重新打开时看到旧状态
       setName("");
-      setParentId("");
       setColor(PRESET_COLORS[0].value);
       setErrors({});
 
@@ -172,34 +160,6 @@ export function CreateFolderDialog({
               <p className="text-xs text-red-500">{errors.name}</p>
             )}
           </div>
-
-          {/* 父文件夹选择 */}
-          {folders.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="parent">父文件夹（可选）</Label>
-              <Select
-                value={parentId || "__none__"}
-                onValueChange={(val) =>
-                  setParentId(val === "__none__" ? "" : val)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="选择父文件夹（可选）" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">无（根文件夹）</SelectItem>
-                  {folders.map((folder) => (
-                    <SelectItem key={folder.id} value={folder.id.toString()}>
-                      {folder.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                选择父文件夹可以创建嵌套的文件夹结构
-              </p>
-            </div>
-          )}
 
           {/* 颜色选择 */}
           <div className="space-y-2">
