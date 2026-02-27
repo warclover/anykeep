@@ -23,6 +23,7 @@ import { logger } from "@/lib/logger";
 import type { BookmarkUpdate } from "@/types/supabase";
 import { BOOKMARK, AUTH } from "@/lib/constants/messages";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
+import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
 import { BOOKMARK_DETAIL_FIELDS } from "@/lib/constants/query-fields";
 // NOTE: 公共类型已提取到 @/types/api-helpers，后续重构时使用
 
@@ -155,15 +156,20 @@ export async function PUT(
       isMarkedForDeletion,
     } = validation.data;
 
-    // 3. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
+    // 3. 检查收藏是否存在且属于当前用户（包含 folder_id + ai_tags 用于 profile 更新和学习）
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
-      .select("id, user_id, folder_id")
+      .select("id, user_id, folder_id, ai_tags")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
       .single()) as unknown as {
-      data: { id: number; user_id: string; folder_id: number | null } | null;
+      data: {
+        id: number;
+        user_id: string;
+        folder_id: number | null;
+        ai_tags: string[] | null;
+      } | null;
       error: { code?: string; message: string } | null;
     };
 
@@ -230,6 +236,24 @@ export async function PUT(
         logger.warn(
           { error: err },
           "Failed to update folder profiles after bookmark update",
+        );
+      });
+
+      // 5.6 异步触发 AI 学习（不阻塞响应）
+      triggerMoveLearning({
+        userId: user.id,
+        bookmarks: [
+          {
+            id: bookmarkId,
+            folder_id: originalFolderId,
+            ai_tags: existingBookmark.ai_tags,
+          },
+        ],
+        targetFolderId: folderId,
+      }).catch((err) => {
+        logger.warn(
+          { error: err },
+          "Failed to trigger move learning after bookmark update",
         );
       });
     }

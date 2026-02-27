@@ -30,6 +30,7 @@ import {
   Share2,
   LinkIcon,
   GraduationCap,
+  BrainCog,
 } from "lucide-react";
 import type { PageId } from "@/contexts/navigation-context";
 
@@ -203,6 +204,12 @@ const insightGroup: NavGroupConfig = {
       href: "/activity",
       icon: Activity,
       description: "mobileMenu.operationHistory",
+    },
+    {
+      name: "nav.aiLearning",
+      href: "/ai-learning",
+      icon: BrainCog,
+      description: "mobileMenu.aiLearningInsights",
     },
     {
       name: "nav.notifications",

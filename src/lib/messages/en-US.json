@@ -72,7 +72,8 @@
     "notifications": "Notifications",
     "ragDashboard": "RAG Monitor",
     "folderHealth": "Folder Health",
-    "aiDebug": "AI Debug"
+    "aiDebug": "AI Debug",
+    "aiLearning": "AI Learning"
   },
   "mobileMenu": {
     "openMenu": "Open Menu",
@@ -92,6 +93,7 @@
     "aiOrganize": "AI Organize",
     "viewDataAnalysis": "View data analysis",
     "operationHistory": "Operation history",
+    "aiLearningInsights": "View AI learning insights",
     "systemMessages": "System messages",
     "appSettings": "App settings",
     "deletedContent": "Deleted content",

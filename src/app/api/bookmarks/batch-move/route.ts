@@ -17,6 +17,7 @@ import {
 import { logger } from "@/lib/logger";
 import { Notify } from "@/lib/notifications/server";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
+import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
 
 /**
  * POST /api/bookmarks/batch-move
@@ -45,15 +46,21 @@ export async function POST(request: NextRequest) {
 
     const { ids, folderId } = validation.data;
 
-    // 2.5 获取要移动的书签的当前文件夹（用于更新源文件夹 profile）
+    // 2.5 获取要移动的书签的当前文件夹和元数据（用于更新源文件夹 profile + 学习）
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: bookmarksToMove } = (await supabase
       .from("bookmarks")
-      .select("id, folder_id")
+      .select("id, folder_id, ai_tags")
       .in("id", ids)
       .eq("user_id", user.id)
       .is("deleted_at", null)) as unknown as {
-      data: { id: number; folder_id: number | null }[] | null;
+      data:
+        | {
+            id: number;
+            folder_id: number | null;
+            ai_tags: string[] | null;
+          }[]
+        | null;
       error: unknown;
     };
 
@@ -128,7 +135,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 6. 返回移动结果
+    // 6. 异步触发 AI 学习（不阻塞响应）
+    if (movedCount > 0 && bookmarksToMove) {
+      triggerMoveLearning({
+        userId: user.id,
+        bookmarks: bookmarksToMove,
+        targetFolderId: folderId,
+      }).catch((err) => {
+        logger.warn({ error: err }, "Failed to trigger move learning");
+      });
+    }
+
+    // 7. 返回移动结果
     return successResponse({
       movedCount,
       movedIds: movedBookmarks?.map((b) => b.id) || [],

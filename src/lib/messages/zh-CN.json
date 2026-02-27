@@ -73,7 +73,8 @@
     "notifications": "消息通知",
     "ragDashboard": "RAG 监控",
     "folderHealth": "文件夹健康",
-    "aiDebug": "AI 助手调试"
+    "aiDebug": "AI 助手调试",
+    "aiLearning": "AI 学习洞察"
   },
   "mobileMenu": {
     "openMenu": "打开菜单",
@@ -94,6 +95,7 @@
     "aiOrganize": "AI 智能整理",
     "viewDataAnalysis": "查看数据分析",
     "operationHistory": "操作历史",
+    "aiLearningInsights": "查看 AI 学习成果",
     "systemMessages": "系统消息",
     "appSettings": "应用设置",
     "deletedContent": "已删除内容",

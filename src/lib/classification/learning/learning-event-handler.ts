@@ -71,7 +71,7 @@ interface BookmarkMetadata {
 const DEFAULT_CONFIG: LearningEventHandlerConfig = {
   enableNegativeSampling: true,
   enablePreferenceLearning: true,
-  learnInManualMode: false,
+  learnInManualMode: true,
   bulkOperationThreshold: 3,
 };
 
