@@ -64,6 +64,18 @@ export const FolderCard = memo(function FolderCard({
 
   const colors = getColors();
 
+  // 如果文件夹有自定义颜色，使用内联样式
+  const customColor = folder.color;
+  const hasCustomColor = !!customColor;
+
+  // 生成自定义颜色的样式
+  const customColorStyle = hasCustomColor
+    ? {
+        borderColor: customColor,
+        backgroundColor: `${customColor}15`, // 15% 透明度
+      }
+    : undefined;
+
   return (
     <div className="group relative">
       <Link href={`/home?folder=${folder.id}`}>
@@ -71,20 +83,35 @@ export const FolderCard = memo(function FolderCard({
           className={cn(
             "relative rounded-xl border-2 transition-all duration-200",
             "h-[120px] w-full",
-            colors.bg,
-            colors.border,
-            colors.bgHover,
+            !hasCustomColor && colors.bg,
+            !hasCustomColor && colors.border,
+            !hasCustomColor && colors.bgHover,
             "hover:shadow-lg hover:scale-[1.02]",
             isArchived && "opacity-60 grayscale-[30%]",
           )}
+          style={customColorStyle}
+          onMouseEnter={(e) => {
+            if (hasCustomColor) {
+              e.currentTarget.style.backgroundColor = `${customColor}25`;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (hasCustomColor) {
+              e.currentTarget.style.backgroundColor = `${customColor}15`;
+            }
+          }}
         >
           {/* 左侧颜色条 */}
           {!isInbox && (
             <div
               className={cn(
                 "absolute left-0 top-3 bottom-3 w-1 rounded-r-full",
-                `bg-gradient-to-b ${FOLDER_GROUPS[folder.folder_group || "other"]?.colors.gradient.from} ${FOLDER_GROUPS[folder.folder_group || "other"]?.colors.gradient.to}`,
+                !hasCustomColor &&
+                  `bg-gradient-to-b ${FOLDER_GROUPS[folder.folder_group || "other"]?.colors.gradient.from} ${FOLDER_GROUPS[folder.folder_group || "other"]?.colors.gradient.to}`,
               )}
+              style={
+                hasCustomColor ? { backgroundColor: customColor } : undefined
+              }
             />
           )}
 
@@ -97,14 +124,21 @@ export const FolderCard = memo(function FolderCard({
                 className={cn(
                   "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
                   "shadow-sm transition-transform group-hover:scale-110",
-                  isInbox ? "bg-slate-200 dark:bg-slate-700" : colors.iconBg,
+                  isInbox
+                    ? "bg-slate-200 dark:bg-slate-700"
+                    : !hasCustomColor && colors.iconBg,
                 )}
+                style={
+                  hasCustomColor && !isInbox
+                    ? { backgroundColor: `${customColor}30` }
+                    : undefined
+                }
               >
                 {isInbox ? (
                   <Inbox className="size-5 text-slate-600 dark:text-slate-300" />
                 ) : (
                   <span className="text-2xl">
-                    {getFolderEmoji(folder.name)}
+                    {folder.icon || getFolderEmoji(folder.name)}
                   </span>
                 )}
               </div>

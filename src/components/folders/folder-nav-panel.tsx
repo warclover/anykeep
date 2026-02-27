@@ -77,6 +77,10 @@ interface NavItemProps {
   indent?: number;
   onClick?: () => void;
   actionMenu?: React.ReactNode;
+  /** 文件夹自定义颜色 */
+  folderColor?: string | null;
+  /** 文件夹自定义图标 */
+  folderIcon?: string | null;
 }
 
 function NavItem({
@@ -90,6 +94,8 @@ function NavItem({
   indent = 0,
   onClick,
   actionMenu,
+  folderColor,
+  folderIcon,
 }: NavItemProps) {
   return (
     <div className="group flex items-center min-w-0">
@@ -104,10 +110,17 @@ function NavItem({
           isSelected && "bg-primary/10 text-primary font-medium",
           isSystem && !isSelected && "bg-blue-50/50 dark:bg-blue-900/10",
         )}
-        style={{ paddingLeft: `${12 + indent * 16}px` }}
+        style={{
+          paddingLeft: `${12 + indent * 16}px`,
+          ...(folderColor &&
+            !isSelected && {
+              borderLeftColor: folderColor,
+              borderLeftWidth: "3px",
+            }),
+        }}
       >
         <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-          {icon}
+          {folderIcon ? <span className="text-base">{folderIcon}</span> : icon}
         </span>
         <span className="flex-1 min-w-0 text-left truncate">{label}</span>
         {/* 热度指示器 */}
@@ -409,6 +422,8 @@ export function FolderNavPanel({
                               indent={1}
                               isSelected={isFolderSelected(folder.id)}
                               onClick={() => onSelectFolder(folder.id)}
+                              folderColor={folder.color}
+                              folderIcon={folder.icon}
                               actionMenu={
                                 <FolderActionMenu
                                   folder={folder}
@@ -463,6 +478,8 @@ export function FolderNavPanel({
                         count={folder.bookmark_count}
                         isSelected={isFolderSelected(folder.id)}
                         onClick={() => onSelectFolder(folder.id)}
+                        folderColor={folder.color}
+                        folderIcon={folder.icon}
                       />
                     ))}
                   </div>
