@@ -211,7 +211,7 @@ export class PreferenceLearner {
         .limit(50),
       supabase
         .from("bookmarks")
-        .select("folder_id, url, tags, created_at")
+        .select("folder_id, url, user_tags, created_at")
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -219,7 +219,7 @@ export class PreferenceLearner {
         data: Array<{
           folder_id: number | null;
           url: string;
-          tags: string[] | null;
+          user_tags: string[] | null;
           created_at: string;
         }> | null;
         error: unknown;
@@ -522,7 +522,7 @@ export class PreferenceLearner {
     bookmarks: Array<{
       folder_id: number | null;
       url: string;
-      tags: string[] | null;
+      user_tags: string[] | null;
       created_at: string;
     }>,
   ): Promise<FolderPreference[]> {
@@ -554,8 +554,8 @@ export class PreferenceLearner {
         stats.lastUsed = createdAt;
       }
 
-      if (bookmark.tags) {
-        for (const tag of bookmark.tags) {
+      if (bookmark.user_tags) {
+        for (const tag of bookmark.user_tags) {
           stats.tags.add(tag.toLowerCase());
         }
       }
