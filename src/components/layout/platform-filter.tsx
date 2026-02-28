@@ -225,7 +225,7 @@ export function PlatformFilter() {
           platformCandyColors[platform.id] || platformCandyColors.all;
 
         const buttonClassName = cn(
-          "px-3 py-1.5 text-sm font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
+          "px-3 py-1.5 text-xs font-medium rounded-full transition-colors whitespace-nowrap flex-shrink-0",
           isActive
             ? candyColor.active
             : cn(
@@ -268,7 +268,7 @@ export function PlatformFilter() {
           onClick={handleFlipToggle}
           title="翻转卡片 Demo"
           className={cn(
-            "px-3 py-1.5 h-auto text-sm font-medium rounded-full whitespace-nowrap flex-shrink-0",
+            "px-3 py-1.5 h-auto text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0",
             enableFlipCard
               ? "bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-700"
               : "border-gray-200 dark:border-gray-700",
