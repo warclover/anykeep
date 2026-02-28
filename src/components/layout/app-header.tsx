@@ -269,7 +269,7 @@ export const AppHeader = memo(function AppHeader() {
               <span className="text-lg md:text-xl font-bold">AnyKeep</span>
             </div>
 
-            <div className="flex flex-1 items-center gap-2 sm:ml-2 lg:ml-10">
+            <div className="flex flex-1 items-center gap-2 sm:ml-4 lg:ml-20">
               <PlatformFilter />
             </div>
           </div>
