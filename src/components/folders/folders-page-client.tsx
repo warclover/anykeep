@@ -352,8 +352,8 @@ export function FoldersPageClient({
     if (!selection || !selectionInfo) return null;
     return (
       <div className="flex items-stretch w-full">
-        {/* 桌面端：左侧「我的分类」与搜索框同行，宽度 279px 与下方导航区一致 */}
-        <div className="hidden lg:flex w-[279px] flex-shrink-0 items-center border-r border-gray-200 dark:border-gray-800">
+        {/* 桌面端：左侧「我的分类」280px 与下方文件夹导航同宽，FolderPageToolbar 左缘与文件夹右缘对齐 */}
+        <div className="hidden lg:flex w-[280px] flex-shrink-0 items-center border-r border-gray-200 dark:border-gray-800">
           <FolderNavHeader
             totalStats={totalStats}
             onCreateCategory={handleCreateCategoryClick}

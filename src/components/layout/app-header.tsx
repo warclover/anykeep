@@ -254,8 +254,11 @@ export const AppHeader = memo(function AppHeader() {
       {/* 第二行：页面工具栏（优先）或 平台筛选区域 */}
       {pageToolbar?.toolbar ? (
         <div
-          className="flex items-center h-11 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[padding-left] duration-200 ease-smooth max-lg:!pl-0"
-          style={{ paddingLeft: sidebarWidth + 24 }}
+          className="flex items-center h-11 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[padding] duration-200 ease-smooth max-lg:!pl-4 max-lg:!pr-4"
+          style={{
+            paddingLeft: sidebarWidth + 24,
+            paddingRight: 24,
+          }}
         >
           {pageToolbar.toolbar}
         </div>
