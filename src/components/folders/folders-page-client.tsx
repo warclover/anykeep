@@ -23,7 +23,10 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { FeatureErrorBoundary } from "@/components/error-boundary/feature-error-boundary";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { CreateCategoryDialog } from "@/components/folders/create-category-dialog";
-import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
+import {
+  FolderNavPanel,
+  FolderNavHeader,
+} from "@/components/folders/folder-nav-panel";
 import {
   FolderBookmarkArea,
   getSelectionInfo,
@@ -37,6 +40,7 @@ import { FolderDropProvider } from "@/components/folders/folder-drop-context";
 import { usePageToolbar } from "@/contexts/page-toolbar-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { useFolderBookmarks } from "@/hooks/data/use-folder-bookmarks";
 import { useBookmarkActions } from "@/hooks/domain/bookmark/use-bookmark-actions";
 import type {
@@ -214,6 +218,7 @@ export function FoldersPageClient({
 
   // ==================== 整页第二行工具栏状态 ====================
   const pageToolbar = usePageToolbar();
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("created");
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -224,6 +229,19 @@ export function FoldersPageClient({
     }
     return "list";
   });
+
+  // 分类统计（与 FolderNavPanel 一致，供工具栏头部使用）
+  const totalStats = useMemo(() => {
+    const active = localFolders.filter((f) => !f.is_archived);
+    return {
+      folderCount: active.length,
+      bookmarkCount: active.reduce(
+        (sum, f) => sum + (f.bookmark_count || 0),
+        0,
+      ),
+      todayCount: active.reduce((sum, f) => sum + (f.today_count || 0), 0),
+    };
+  }, [localFolders]);
 
   // 计算选择信息（供工具栏使用）
   const selectionInfo = useMemo(
@@ -248,47 +266,6 @@ export function FoldersPageClient({
     }
     return result.length;
   }, [bookmarks, searchQuery]);
-
-  // 使用 useMemo 缓存工具栏元素，避免每次渲染创建新 JSX 导致无限循环
-  const toolbarElement = useMemo(() => {
-    if (!selection || !selectionInfo) return null;
-    return (
-      <FolderPageToolbar
-        selectionInfo={selectionInfo}
-        filteredBookmarkCount={filteredBookmarkCount}
-        isLoading={isLoadingBookmarks}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
-        className="w-full"
-      />
-    );
-  }, [
-    selection,
-    selectionInfo,
-    filteredBookmarkCount,
-    isLoadingBookmarks,
-    searchQuery,
-    sortBy,
-    viewMode,
-  ]);
-
-  // 将工具栏注入到布局层
-  useEffect(() => {
-    if (!pageToolbar) return;
-    pageToolbar.setToolbar(toolbarElement);
-  }, [pageToolbar, toolbarElement]);
-
-  // 卸载时清空工具栏
-  useEffect(() => {
-    return () => {
-      pageToolbar?.setToolbar(null);
-    };
-  }, [pageToolbar]);
 
   // ==================== 同步 folders 到 localFolders ====================
   // 这个 useEffect 用于同步 props 到本地状态，实现乐观更新
@@ -369,6 +346,59 @@ export function FoldersPageClient({
   const handleCreateCategoryClick = () => {
     setShowCreateCategoryDialog(true);
   };
+
+  // 使用 useMemo 缓存工具栏元素（含「我的分类」头部，与搜索框同行）
+  const toolbarElement = useMemo(() => {
+    if (!selection || !selectionInfo) return null;
+    return (
+      <div className="flex items-stretch w-full">
+        {/* 桌面端：左侧「我的分类」与搜索框同行，宽度 279px 与下方导航区一致 */}
+        <div className="hidden lg:flex w-[279px] flex-shrink-0 items-center border-r border-gray-200 dark:border-gray-800">
+          <FolderNavHeader
+            totalStats={totalStats}
+            onCreateCategory={handleCreateCategoryClick}
+            onCreateFolder={handleCreateClick}
+            className="!min-h-0 !py-0 !pr-2 !border-0"
+          />
+        </div>
+        <FolderPageToolbar
+          selectionInfo={selectionInfo}
+          filteredBookmarkCount={filteredBookmarkCount}
+          isLoading={isLoadingBookmarks}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+          className="flex-1 min-w-0"
+        />
+      </div>
+    );
+  }, [
+    selection,
+    selectionInfo,
+    totalStats,
+    filteredBookmarkCount,
+    isLoadingBookmarks,
+    searchQuery,
+    sortBy,
+    viewMode,
+  ]);
+
+  // 将工具栏注入到布局层
+  useEffect(() => {
+    if (!pageToolbar) return;
+    pageToolbar.setToolbar(toolbarElement);
+  }, [pageToolbar, toolbarElement]);
+
+  // 卸载时清空工具栏
+  useEffect(() => {
+    return () => {
+      pageToolbar?.setToolbar(null);
+    };
+  }, [pageToolbar]);
 
   // 栏目选择
   const handleSelectCategory = useCallback(
@@ -805,6 +835,7 @@ export function FoldersPageClient({
         onCategoryColorChanged={handleCategoryColorChanged}
         onCategoryMoved={handleCategoryMoved}
         lockStatusMap={lockStatusMap}
+        hideHeader={!isMobile}
         className="h-full"
       />
     </FeatureErrorBoundary>

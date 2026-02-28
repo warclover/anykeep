@@ -255,7 +255,7 @@ export const AppHeader = memo(function AppHeader() {
       {pageToolbar?.toolbar ? (
         <div
           className="flex items-center h-11 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[padding-left] duration-200 ease-smooth max-lg:!pl-0"
-          style={{ paddingLeft: sidebarWidth + 280 }}
+          style={{ paddingLeft: sidebarWidth + 24 }}
         >
           {pageToolbar.toolbar}
         </div>

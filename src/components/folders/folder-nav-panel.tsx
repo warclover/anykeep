@@ -42,6 +42,75 @@ import { getFolderEmoji, getCategoryEmoji } from "./constants";
 import type { FolderCategory } from "@/types/domain";
 import type { FolderWithStats, FolderSelection, LockStatusMap } from "./types";
 
+// ==================== 导航头部（可独立用于工具栏行） ====================
+
+export interface FolderNavHeaderStats {
+  folderCount: number;
+  bookmarkCount: number;
+  todayCount: number;
+}
+
+interface FolderNavHeaderProps {
+  totalStats: FolderNavHeaderStats;
+  onCreateCategory: () => void;
+  onCreateFolder: (defaultCategoryId?: number) => void;
+  className?: string;
+}
+
+export function FolderNavHeader({
+  totalStats,
+  onCreateCategory,
+  onCreateFolder,
+  className,
+}: FolderNavHeaderProps) {
+  return (
+    <div
+      className={cn(
+        "flex-shrink-0 p-4 border-b border-transparent",
+        "flex flex-row items-center min-h-[2.75rem] w-full",
+        className,
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
+          我的分类
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {totalStats.folderCount} 个文件夹 · {totalStats.bookmarkCount} 篇收藏
+          {totalStats.todayCount > 0 && (
+            <span className="text-green-500 ml-1">
+              +{totalStats.todayCount} 今日
+            </span>
+          )}
+        </p>
+      </div>
+      <div className="ml-auto flex shrink-0 items-center justify-center self-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 p-0 flex items-center justify-center text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:text-pink-300 dark:hover:bg-pink-950/50"
+            >
+              <Plus className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onCreateCategory}>
+              <LayoutGrid className="size-4 mr-2" />
+              新建栏目
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onCreateFolder()}>
+              <FolderPlus className="size-4 mr-2" />
+              新建文件夹
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
 // ==================== 组件 Props ====================
 
 interface FolderNavPanelProps {
@@ -75,6 +144,8 @@ interface FolderNavPanelProps {
     categoryId: number | null,
   ) => void;
   lockStatusMap?: LockStatusMap;
+  /** 为 true 时不渲染头部（头部已移至工具栏行时使用） */
+  hideHeader?: boolean;
   className?: string;
 }
 
@@ -295,6 +366,7 @@ export function FolderNavPanel({
   onCategoryMoved,
   onFolderCategoryChanged,
   lockStatusMap = {},
+  hideHeader = false,
   className,
 }: FolderNavPanelProps) {
   const [expandedCategories, setExpandedCategories] = useState<
@@ -384,39 +456,15 @@ export function FolderNavPanel({
         className,
       )}
     >
-      {/* 头部 */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            我的分类
-          </h2>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost">
-                <Plus className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onCreateCategory()}>
-                <LayoutGrid className="size-4 mr-2" />
-                新建栏目
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onCreateFolder()}>
-                <FolderPlus className="size-4 mr-2" />
-                新建文件夹
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {totalStats.folderCount} 个文件夹 · {totalStats.bookmarkCount} 篇收藏
-          {totalStats.todayCount > 0 && (
-            <span className="text-green-500 ml-1">
-              +{totalStats.todayCount} 今日
-            </span>
-          )}
-        </p>
-      </div>
+      {/* 头部（hideHeader 时由工具栏行渲染） */}
+      {!hideHeader && (
+        <FolderNavHeader
+          totalStats={totalStats}
+          onCreateCategory={onCreateCategory}
+          onCreateFolder={onCreateFolder}
+          className="border-b border-gray-200 dark:border-gray-800"
+        />
+      )}
 
       {/* 导航内容 */}
       <div className="flex-1 overflow-y-auto">
