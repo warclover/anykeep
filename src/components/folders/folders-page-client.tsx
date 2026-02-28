@@ -421,6 +421,50 @@ export function FoldersPageClient({
     [],
   );
 
+  // 栏目图标变更后的乐观更新
+  const handleCategoryIconChanged = useCallback(
+    (categoryId: number, newIcon: string) => {
+      setLocalCategories((prev) =>
+        prev.map((c) =>
+          c.id === categoryId ? { ...c, icon: newIcon || null } : c,
+        ),
+      );
+    },
+    [],
+  );
+
+  // 栏目颜色变更后的乐观更新
+  const handleCategoryColorChanged = useCallback(
+    (categoryId: number, newColor: string) => {
+      setLocalCategories((prev) =>
+        prev.map((c) =>
+          c.id === categoryId ? { ...c, color: newColor || null } : c,
+        ),
+      );
+    },
+    [],
+  );
+
+  // 栏目排序变更后的乐观更新
+  const handleCategoryMoved = useCallback(
+    (
+      categoryId: number,
+      newSortOrder: number,
+      neighborId: number,
+      neighborNewOrder: number,
+    ) => {
+      setLocalCategories((prev) =>
+        prev.map((c) => {
+          if (c.id === categoryId) return { ...c, sort_order: newSortOrder };
+          if (c.id === neighborId)
+            return { ...c, sort_order: neighborNewOrder };
+          return c;
+        }),
+      );
+    },
+    [],
+  );
+
   // 文件夹合并后的乐观更新
   const handleFolderMerged = useCallback(
     (sourceFolderId: number, targetFolderId: number, movedCount: number) => {
@@ -670,6 +714,9 @@ export function FoldersPageClient({
         onFolderCategoryChanged={handleFolderCategoryChanged}
         onCategoryDeleted={handleCategoryDeleted}
         onCategoryRenamed={handleCategoryRenamed}
+        onCategoryIconChanged={handleCategoryIconChanged}
+        onCategoryColorChanged={handleCategoryColorChanged}
+        onCategoryMoved={handleCategoryMoved}
         lockStatusMap={lockStatusMap}
         className="h-full"
       />

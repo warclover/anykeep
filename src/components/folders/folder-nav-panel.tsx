@@ -62,6 +62,14 @@ interface FolderNavPanelProps {
   ) => void;
   onCategoryDeleted?: (categoryId: number) => void;
   onCategoryRenamed?: (categoryId: number, newName: string) => void;
+  onCategoryIconChanged?: (categoryId: number, newIcon: string) => void;
+  onCategoryColorChanged?: (categoryId: number, newColor: string) => void;
+  onCategoryMoved?: (
+    categoryId: number,
+    newSortOrder: number,
+    neighborId: number,
+    neighborNewOrder: number,
+  ) => void;
   onFolderCategoryChanged?: (
     folderId: number,
     categoryId: number | null,
@@ -150,6 +158,7 @@ function NavItem({
 
 interface CategoryHeaderProps {
   category: FolderCategory;
+  allCategories: FolderCategory[];
   bookmarkCount: number;
   folderCount: number;
   isExpanded: boolean;
@@ -159,10 +168,19 @@ interface CategoryHeaderProps {
   onAddFolder: () => void;
   onDeleted?: (categoryId: number) => void;
   onRenamed?: (categoryId: number, newName: string) => void;
+  onIconChanged?: (categoryId: number, newIcon: string) => void;
+  onColorChanged?: (categoryId: number, newColor: string) => void;
+  onMoved?: (
+    categoryId: number,
+    newSortOrder: number,
+    neighborId: number,
+    neighborNewOrder: number,
+  ) => void;
 }
 
 function CategoryHeader({
   category,
+  allCategories,
   bookmarkCount,
   folderCount,
   isExpanded,
@@ -172,6 +190,9 @@ function CategoryHeader({
   onAddFolder,
   onDeleted,
   onRenamed,
+  onIconChanged,
+  onColorChanged,
+  onMoved,
 }: CategoryHeaderProps) {
   return (
     <div
@@ -242,8 +263,12 @@ function CategoryHeader({
       <CategoryActionMenu
         category={category}
         folderCount={folderCount}
+        allCategories={allCategories}
         onDeleted={onDeleted}
         onRenamed={onRenamed}
+        onIconChanged={onIconChanged}
+        onColorChanged={onColorChanged}
+        onMoved={onMoved}
       />
     </div>
   );
@@ -265,6 +290,9 @@ export function FolderNavPanel({
   onFolderMerged,
   onCategoryDeleted,
   onCategoryRenamed,
+  onCategoryIconChanged,
+  onCategoryColorChanged,
+  onCategoryMoved,
   onFolderCategoryChanged,
   lockStatusMap = {},
   className,
@@ -420,13 +448,30 @@ export function FolderNavPanel({
           )}
 
           {/* 栏目列表 */}
-          {categories.length > 0 && (
-            <div className="pt-2">
-              <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="pt-2">
+            <div className="flex items-center justify-between px-3 py-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 栏目
               </p>
+              <button
+                onClick={onCreateCategory}
+                className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-foreground hover:text-foreground transition-colors"
+                title="新建栏目"
+                aria-label="新建栏目"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
 
-              {categories.map((category) => {
+            {categories.length === 0 ? (
+              <button
+                onClick={onCreateCategory}
+                className="w-full px-3 py-3 text-xs text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-center"
+              >
+                + 创建第一个栏目
+              </button>
+            ) : (
+              categories.map((category) => {
                 const foldersInCat = grouped.byCat.get(category.id) || [];
                 const isExpanded = expandedCategories[category.id] ?? true;
                 const bookmarkCount = foldersInCat.reduce(
@@ -442,6 +487,7 @@ export function FolderNavPanel({
                   >
                     <CategoryHeader
                       category={category}
+                      allCategories={categories}
                       bookmarkCount={bookmarkCount}
                       folderCount={foldersInCat.length}
                       isExpanded={isExpanded}
@@ -451,6 +497,9 @@ export function FolderNavPanel({
                       onAddFolder={() => onCreateFolder(category.id)}
                       onDeleted={onCategoryDeleted}
                       onRenamed={onCategoryRenamed}
+                      onIconChanged={onCategoryIconChanged}
+                      onColorChanged={onCategoryColorChanged}
+                      onMoved={onCategoryMoved}
                     />
 
                     <CollapsibleContent>
@@ -503,9 +552,9 @@ export function FolderNavPanel({
                     </CollapsibleContent>
                   </Collapsible>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
 
           {/* 未分类文件夹 */}
           {grouped.uncategorized.length > 0 && (
@@ -615,19 +664,6 @@ export function FolderNavPanel({
             </div>
           )}
         </div>
-      </div>
-
-      {/* 底部操作 */}
-      <div className="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-800">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => onCreateFolder()}
-        >
-          <Plus className="size-4 mr-2" />
-          新建文件夹
-        </Button>
       </div>
     </div>
   );
