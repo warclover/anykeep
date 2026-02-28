@@ -16,7 +16,7 @@ import { dataCache, CACHE_KEYS } from "@/lib/cache";
 import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
-import type { FolderWithStats } from "@/types/domain";
+import type { FolderWithStats, FolderCategory } from "@/types/domain";
 
 // ==================== 通用类型 ====================
 
@@ -75,6 +75,7 @@ export type { FolderWithStats } from "@/types/domain";
 
 interface FoldersData {
   folders: FolderWithStats[];
+  categories: FolderCategory[];
   recentBookmarks: (Bookmark & { folders?: { name: string } | null })[];
 }
 
@@ -162,6 +163,7 @@ export function useFoldersData() {
 
       const newData: FoldersData = {
         folders: result.data.folders || [],
+        categories: result.data.categories || [],
         recentBookmarks: result.data.recentBookmarks || [],
       };
 

@@ -720,6 +720,7 @@ export function FoldersPageClient({
               <FolderBookmarkArea
                 selection={selection}
                 folders={localFolders}
+                categories={localCategories}
                 bookmarks={bookmarks}
                 isLoading={isLoadingBookmarks}
                 hasMore={hasMore}

@@ -42,12 +42,13 @@ import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
 import { useAbortableFetch } from "@/hooks/core";
-import { FOLDER_GROUPS } from "./constants";
+import { FOLDER_GROUPS, getCategoryEmoji } from "./constants";
 import type {
   FolderSelection,
   FolderWithStats,
   BookmarkWithFolder,
 } from "./types";
+import type { FolderCategory } from "@/types/domain";
 
 // ==================== 类型定义 ====================
 
@@ -59,6 +60,8 @@ interface FolderBookmarkAreaProps {
   selection: FolderSelection;
   /** 文件夹列表（用于获取名称和统计） */
   folders: FolderWithStats[];
+  /** 用户自定义栏目列表（用于显示栏目名称、颜色等） */
+  categories?: FolderCategory[];
   /** 书签数据 */
   bookmarks: BookmarkWithFolder[];
   /** 是否正在加载 */
@@ -110,14 +113,18 @@ const VIEW_OPTIONS: {
 function getSelectionInfo(
   selection: FolderSelection,
   folders: FolderWithStats[],
+  categories: FolderCategory[] = [],
 ): {
   title: string;
+  titleEmoji: string | null;
   icon: typeof FolderOpen;
   colors: { gradient: { from: string; to: string } };
+  categoryColor: string | null;
   bookmarkCount: number;
 } {
   switch (selection.type) {
     case "category": {
+      const category = categories.find((c) => c.id === selection.categoryId);
       const catFolders = folders.filter(
         (f) =>
           !f.is_archived &&
@@ -129,9 +136,11 @@ function getSelectionInfo(
         0,
       );
       return {
-        title: "栏目",
+        title: category?.name || "未知栏目",
+        titleEmoji: getCategoryEmoji(category?.icon),
         icon: FolderOpen,
         colors: FOLDER_GROUPS.other.colors,
+        categoryColor: category?.color || null,
         bookmarkCount,
       };
     }
@@ -149,8 +158,10 @@ function getSelectionInfo(
       );
       return {
         title: config?.label || "未知分组",
+        titleEmoji: null,
         icon: config?.icon || FolderOpen,
         colors: config?.colors || FOLDER_GROUPS.other.colors,
+        categoryColor: null,
         bookmarkCount,
       };
     }
@@ -159,11 +170,13 @@ function getSelectionInfo(
       const folder = folders.find((f) => f.id === selection.folderId);
       return {
         title: folder?.name || "未知文件夹",
+        titleEmoji: null,
         icon: FolderOpen,
         colors: folder?.is_system
           ? FOLDER_GROUPS.default.colors
           : FOLDER_GROUPS[folder?.folder_group || "other"]?.colors ||
             FOLDER_GROUPS.other.colors,
+        categoryColor: null,
         bookmarkCount: folder?.bookmark_count || 0,
       };
     }
@@ -175,6 +188,7 @@ function getSelectionInfo(
 export function FolderBookmarkArea({
   selection,
   folders,
+  categories = [],
   bookmarks,
   isLoading,
   hasMore = false,
@@ -283,8 +297,8 @@ export function FolderBookmarkArea({
 
   // 获取选择信息
   const selectionInfo = useMemo(
-    () => getSelectionInfo(selection, folders),
-    [selection, folders],
+    () => getSelectionInfo(selection, folders, categories),
+    [selection, folders, categories],
   );
   const SelectionIcon = selectionInfo.icon;
 
@@ -434,16 +448,34 @@ export function FolderBookmarkArea({
         <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4">
             {/* 左侧：图标 + 标题(带统计) */}
-            <div
-              className={cn(
-                "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
-                `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
-              )}
-            >
-              <SelectionIcon className="size-3.5 text-white" />
-            </div>
+            {selectionInfo.titleEmoji ? (
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: selectionInfo.categoryColor
+                    ? `${selectionInfo.categoryColor}20`
+                    : undefined,
+                }}
+              >
+                <span className="text-base">{selectionInfo.titleEmoji}</span>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
+                  `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
+                )}
+              >
+                <SelectionIcon className="size-3.5 text-white" />
+              </div>
+            )}
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap leading-tight">
+              <h2
+                className="text-sm font-semibold whitespace-nowrap leading-tight"
+                style={{
+                  color: selectionInfo.categoryColor || undefined,
+                }}
+              >
                 {selectionInfo.title}
               </h2>
               <span className="text-xs text-muted-foreground whitespace-nowrap">

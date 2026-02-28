@@ -333,6 +333,7 @@ function FoldersPageRenderer() {
   return (
     <FoldersPageClient
       folders={data?.folders || []}
+      categories={data?.categories || []}
       recentBookmarks={data?.recentBookmarks || []}
       error={error || undefined}
     />

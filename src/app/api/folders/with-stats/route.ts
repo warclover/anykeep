@@ -20,7 +20,8 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
-import type { FolderWithStats } from "@/types/domain";
+import type { FolderWithStats, FolderCategory } from "@/types/domain";
+import { ensureDefaultCategories } from "@/lib/folder/category-defaults";
 import type { Bookmark } from "@/types/supabase";
 
 /**
@@ -103,36 +104,40 @@ export async function GET(request: NextRequest) {
 
     const queryStart = performance.now();
 
-    // 并行执行：文件夹查询 + 书签统计查询 + 最近书签查询
-    const [foldersResult, statsResult, recentResult] = await Promise.all([
-      // 查询 1：获取所有文件夹
-      supabase
-        .from("folders")
-        .select("*")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true }),
+    // 并行执行：文件夹查询 + 书签统计查询 + 最近书签查询 + 栏目查询
+    const [foldersResult, statsResult, recentResult, categories] =
+      await Promise.all([
+        // 查询 1：获取所有文件夹
+        supabase
+          .from("folders")
+          .select("*")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true }),
 
-      // 查询 2：获取书签统计（使用 RPC 函数或简化查询）
-      supabase
-        .from("bookmarks")
-        .select("folder_id, created_at")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .not("folder_id", "is", null),
+        // 查询 2：获取书签统计（使用 RPC 函数或简化查询）
+        supabase
+          .from("bookmarks")
+          .select("folder_id, created_at")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .not("folder_id", "is", null),
 
-      // 查询 3：获取最近书签（仅在需要时执行）
-      includeRecent
-        ? supabase
-            .from("bookmarks")
-            .select("*, folders!bookmarks_folder_id_fkey(name)")
-            .eq("user_id", user.id)
-            .is("deleted_at", null)
-            .order("created_at", { ascending: false })
-            .limit(recentLimit)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+        // 查询 3：获取最近书签（仅在需要时执行）
+        includeRecent
+          ? supabase
+              .from("bookmarks")
+              .select("*, folders!bookmarks_folder_id_fkey(name)")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .order("created_at", { ascending: false })
+              .limit(recentLimit)
+          : Promise.resolve({ data: [], error: null }),
+
+        // 查询 4：获取栏目列表（如果没有则自动创建默认栏目）
+        ensureDefaultCategories(supabase, user.id),
+      ]);
 
     monitor.mark("ParallelQueries", {
       durationMs: Math.round(performance.now() - queryStart),
@@ -211,6 +216,10 @@ export async function GET(request: NextRequest) {
       // 统计字段
       bookmark_count: countMap.get(folder.id) || 0,
       today_count: todayCountMap.get(folder.id) || 0,
+      // 栏目字段
+      category_id:
+        ((folder as Record<string, unknown>).category_id as number | null) ??
+        null,
     }));
 
     monitor.mark("Aggregation", {
@@ -222,6 +231,7 @@ export async function GET(request: NextRequest) {
     // 5. 构建响应
     const responseData = {
       folders: foldersWithStats,
+      categories: categories as FolderCategory[],
       recentBookmarks:
         (recentResult.data as (Bookmark & {
           folders?: { name: string } | null;

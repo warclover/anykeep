@@ -46,6 +46,7 @@ import { DeleteFolderDialog } from "./delete-folder-dialog";
 import { useAbortableFetch } from "@/hooks/core";
 import { useUser } from "@/contexts/user-context";
 import { folderCacheInvalidation } from "@/lib/cache";
+import { getCategoryEmoji } from "./constants";
 import type { Folder as FolderType } from "@/types/supabase";
 import type { FolderCategory } from "@/types/domain";
 
@@ -615,7 +616,7 @@ export function FolderActionMenu({
                       }}
                       disabled={isCurrent || isMoving}
                     >
-                      <span className="mr-2">{cat.icon ?? "📁"}</span>
+                      <span className="mr-2">{getCategoryEmoji(cat.icon)}</span>
                       {cat.name}
                       {isCurrent && (
                         <Badge variant="secondary" className="ml-auto text-xs">

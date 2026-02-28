@@ -38,7 +38,7 @@ import { CategoryActionMenu } from "./category-action-menu";
 import { DroppableFolder } from "./droppable-folder";
 import { FolderHeatIndicator } from "@/components/folder/folder-heat-indicator";
 import { useFolderHeat } from "@/hooks/domain/folder/use-folder-heat";
-import { getFolderEmoji } from "./constants";
+import { getFolderEmoji, getCategoryEmoji } from "./constants";
 import type { FolderCategory } from "@/types/domain";
 import type { FolderWithStats, FolderSelection, LockStatusMap } from "./types";
 
@@ -210,29 +210,7 @@ function CategoryHeader({
             className="text-sm"
             style={{ color: category.color || undefined }}
           >
-            {category.icon === "Briefcase"
-              ? "💼"
-              : category.icon === "GraduationCap"
-                ? "🎓"
-                : category.icon === "Heart"
-                  ? "❤️"
-                  : category.icon === "Gamepad2"
-                    ? "🎮"
-                    : category.icon === "Star"
-                      ? "⭐"
-                      : category.icon === "BookOpen"
-                        ? "📖"
-                        : category.icon === "Code"
-                          ? "💻"
-                          : category.icon === "Music"
-                            ? "🎵"
-                            : category.icon === "Camera"
-                              ? "📷"
-                              : category.icon === "Globe"
-                                ? "🌍"
-                                : category.icon === "MoreHorizontal"
-                                  ? "📂"
-                                  : "📁"}
+            {getCategoryEmoji(category.icon)}
           </span>
         </div>
         <span

@@ -276,6 +276,30 @@ export function getGroupIcon(groupKey: string) {
   return FOLDER_GROUPS[groupKey]?.icon || Folder;
 }
 
+// ==================== 栏目图标映射 ====================
+
+const CATEGORY_ICON_MAP: Record<string, string> = {
+  Briefcase: "💼",
+  GraduationCap: "🎓",
+  Heart: "❤️",
+  Gamepad2: "🎮",
+  Star: "⭐",
+  BookOpen: "📖",
+  Code: "💻",
+  Music: "🎵",
+  Camera: "📷",
+  Globe: "🌍",
+  MoreHorizontal: "📂",
+};
+
+/**
+ * 将 lucide 图标名映射为 emoji（用于栏目显示）
+ */
+export function getCategoryEmoji(iconName: string | null | undefined): string {
+  if (!iconName) return "📁";
+  return CATEGORY_ICON_MAP[iconName] ?? "📁";
+}
+
 // ==================== 分组工具函数 ====================
 
 // 导入类型（延迟导入避免循环依赖）

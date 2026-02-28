@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -74,6 +74,12 @@ export function CreateFolderDialog({
   const [categoryId, setCategoryId] = useState<string>(
     defaultCategoryId ? String(defaultCategoryId) : "",
   );
+
+  useEffect(() => {
+    if (open) {
+      setCategoryId(defaultCategoryId ? String(defaultCategoryId) : "");
+    }
+  }, [open, defaultCategoryId]);
 
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
