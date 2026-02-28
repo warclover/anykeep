@@ -16,6 +16,8 @@ import type { FolderWithStats } from "@/types/domain";
  */
 export type { FolderWithStats } from "@/types/domain";
 
+export type { FolderCategory } from "@/types/domain";
+
 // ==================== 锁定状态类型 ====================
 
 /** 锁定状态 */
@@ -36,10 +38,18 @@ export type BookmarkWithFolder = Bookmark & {
 
 // ==================== 分组类型 ====================
 
-/** 分组后的文件夹结构 */
+/** @deprecated 使用 CategoryGroupedFolders 替代 */
 export interface GroupedFolders {
   system: FolderWithStats[];
   groups: Record<UIFolderGroup, FolderWithStats[]>;
+  archived: FolderWithStats[];
+}
+
+/** 基于栏目的文件夹分组结构 */
+export interface CategoryGroupedFolders {
+  system: FolderWithStats[];
+  categories: Map<number, FolderWithStats[]>;
+  uncategorized: FolderWithStats[];
   archived: FolderWithStats[];
 }
 
@@ -47,11 +57,13 @@ export interface GroupedFolders {
 
 /**
  * 文件夹选择状态
- * - group: 选中分组，显示该分组下所有文件夹的书签
+ * - category: 选中栏目，显示该栏目下所有文件夹的书签
+ * - group: 选中分组（兼容旧逻辑）
  * - folder: 选中单个文件夹，显示该文件夹的书签
  * - system: 选中系统文件夹
  */
 export type FolderSelection =
+  | { type: "category"; categoryId: number }
   | { type: "group"; groupId: UIFolderGroup }
   | { type: "folder"; folderId: number }
   | { type: "system"; folderId: number };
@@ -61,6 +73,8 @@ export type FolderSelection =
  */
 export function getSelectionKey(selection: FolderSelection): string {
   switch (selection.type) {
+    case "category":
+      return `category:${selection.categoryId}`;
     case "group":
       return `group:${selection.groupId}`;
     case "folder":
@@ -81,8 +95,18 @@ export function getBookmarkQueryParams(
     case "folder":
     case "system":
       return { folder_ids: [selection.folderId] };
+    case "category": {
+      const catFolderIds = folders
+        .filter(
+          (f) =>
+            !f.is_archived &&
+            !f.is_system &&
+            f.category_id === selection.categoryId,
+        )
+        .map((f) => f.id);
+      return catFolderIds.length > 0 ? { folder_ids: catFolderIds } : {};
+    }
     case "group": {
-      // 获取该分组下所有文件夹的 ID
       const groupFolderIds = folders
         .filter(
           (f) =>

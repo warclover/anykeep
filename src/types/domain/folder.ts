@@ -46,7 +46,9 @@ export interface FolderWithStats {
   created_at: string | null;
   updated_at: string | null;
   deleted_at: string | null;
+  /** @deprecated 已被 category_id 替代 */
   folder_group: string | null;
+  category_id: number | null;
   sort_order: number | null;
   source: string | null;
   system_type: string | null;
@@ -103,6 +105,10 @@ export function toFolderWithStats(row: FolderWithStatsDbRow): FolderWithStats {
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
     folder_group: row.folder_group,
+    category_id:
+      ((row as unknown as Record<string, unknown>).category_id as
+        | number
+        | null) ?? null,
     sort_order: row.sort_order,
     source: row.source,
     system_type: row.system_type,

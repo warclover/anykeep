@@ -162,15 +162,15 @@ export async function POST(request: NextRequest) {
       return handleValidationError(validation.error);
     }
 
-    const { name, parentId, color, icon } = validation.data;
+    const { name, parentId, categoryId, color, icon } = validation.data;
 
     // 3. 创建文件夹
-    // V1.0.1: 已通过迁移添加 color 和 icon 字段
     type CreatedFolderType = {
       id: number;
       user_id: string;
       name: string;
       parent_id: number | null;
+      category_id: number | null;
       color: string | null;
       icon: string | null;
     };
@@ -181,6 +181,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         name,
         parent_id: parentId || null,
+        category_id: categoryId || null,
         color: color || null,
         icon: icon || null,
       })

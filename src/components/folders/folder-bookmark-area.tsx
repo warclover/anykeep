@@ -117,6 +117,24 @@ function getSelectionInfo(
   bookmarkCount: number;
 } {
   switch (selection.type) {
+    case "category": {
+      const catFolders = folders.filter(
+        (f) =>
+          !f.is_archived &&
+          !f.is_system &&
+          f.category_id === selection.categoryId,
+      );
+      const bookmarkCount = catFolders.reduce(
+        (sum, f) => sum + (f.bookmark_count || 0),
+        0,
+      );
+      return {
+        title: "栏目",
+        icon: FolderOpen,
+        colors: FOLDER_GROUPS.other.colors,
+        bookmarkCount,
+      };
+    }
     case "group": {
       const config = FOLDER_GROUPS[selection.groupId];
       const groupFolders = folders.filter(
@@ -235,6 +253,9 @@ export function FolderBookmarkArea({
     const prev = prevSelectionRef.current;
     const changed =
       prev.type !== selection.type ||
+      (prev.type === "category" &&
+        selection.type === "category" &&
+        prev.categoryId !== selection.categoryId) ||
       (prev.type === "group" &&
         selection.type === "group" &&
         prev.groupId !== selection.groupId) ||

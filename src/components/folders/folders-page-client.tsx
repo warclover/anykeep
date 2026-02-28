@@ -22,20 +22,17 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { FeatureErrorBoundary } from "@/components/error-boundary/feature-error-boundary";
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
+import { CreateCategoryDialog } from "@/components/folders/create-category-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
 import { FolderBookmarkArea } from "@/components/folders/folder-bookmark-area";
 import { FolderDropProvider } from "@/components/folders/folder-drop-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
-import {
-  UI_GROUP_KEYS,
-  groupFolders,
-  type UIFolderGroup,
-} from "@/components/folders/constants";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import { useFolderBookmarks } from "@/hooks/data/use-folder-bookmarks";
 import { useBookmarkActions } from "@/hooks/domain/bookmark/use-bookmark-actions";
 import type {
   FolderWithStats,
+  FolderCategory,
   BookmarkWithFolder,
   LockStatusMap,
   FolderSelection,
@@ -47,6 +44,7 @@ import { useUser } from "@/contexts/user-context";
 
 interface FoldersPageClientProps {
   folders: FolderWithStats[];
+  categories?: FolderCategory[];
   /** @deprecated 暂未使用，保留接口兼容性 */
   recentBookmarks?: BookmarkWithFolder[];
   error?: string;
@@ -55,23 +53,34 @@ interface FoldersPageClientProps {
 // ==================== 工具函数 ====================
 
 /**
- * 获取默认选择状态（第一个非空分组）
+ * 获取默认选择状态（第一个有文件夹的栏目，或系统文件夹）
  */
 function getDefaultSelection(
   folders: FolderWithStats[],
+  categories: FolderCategory[],
 ): FolderSelection | null {
-  const grouped = groupFolders(folders);
-
-  // 优先选中第一个非空分组
-  for (const groupKey of UI_GROUP_KEYS) {
-    if (grouped.groups[groupKey].length > 0) {
-      return { type: "group", groupId: groupKey };
+  // 优先选中第一个有文件夹的栏目
+  for (const cat of categories) {
+    const hasFolder = folders.some(
+      (f) => !f.is_archived && !f.is_system && f.category_id === cat.id,
+    );
+    if (hasFolder) {
+      return { type: "category", categoryId: cat.id };
     }
   }
 
-  // 如果没有分组有文件夹，尝试系统文件夹
-  if (grouped.system.length > 0) {
-    return { type: "system", folderId: grouped.system[0].id };
+  // 如果有未分类文件夹，选第一个
+  const uncategorized = folders.find(
+    (f) => !f.is_archived && !f.is_system && !f.category_id,
+  );
+  if (uncategorized) {
+    return { type: "folder", folderId: uncategorized.id };
+  }
+
+  // 尝试系统文件夹
+  const sys = folders.find((f) => f.is_system);
+  if (sys) {
+    return { type: "system", folderId: sys.id };
   }
 
   return null;
@@ -83,13 +92,17 @@ function getDefaultSelection(
 function parseSelectionFromUrl(
   searchParams: URLSearchParams,
   folders: FolderWithStats[],
+  categories: FolderCategory[],
 ): FolderSelection | null {
-  const groupParam = searchParams.get("group");
+  const catParam = searchParams.get("cat");
   const folderIdParam = searchParams.get("id");
 
-  // 分组参数
-  if (groupParam && UI_GROUP_KEYS.includes(groupParam as UIFolderGroup)) {
-    return { type: "group", groupId: groupParam as UIFolderGroup };
+  // 栏目参数
+  if (catParam) {
+    const catId = parseInt(catParam, 10);
+    if (categories.some((c) => c.id === catId)) {
+      return { type: "category", categoryId: catId };
+    }
   }
 
   // 文件夹 ID 参数
@@ -106,35 +119,49 @@ function parseSelectionFromUrl(
   return null;
 }
 
+// ==================== 常量 ====================
+
+const EMPTY_CATEGORIES: FolderCategory[] = [];
+
 // ==================== 主组件 ====================
 
 export function FoldersPageClient({
   folders,
+  categories: initialCategories,
   recentBookmarks: _recentBookmarks,
   error,
 }: FoldersPageClientProps) {
+  const stableCategories = initialCategories ?? EMPTY_CATEGORIES;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
 
   // ==================== 状态管理 ====================
 
-  // 创建对话框状态
+  // 对话框状态
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateCategoryDialog, setShowCreateCategoryDialog] =
+    useState(false);
+  const [createFolderDefaultCategoryId, setCreateFolderDefaultCategoryId] =
+    useState<number | undefined>();
 
-  // 本地文件夹状态（用于乐观更新）
+  // 本地文件夹和栏目状态（乐观更新）
   const [localFolders, setLocalFolders] = useState(folders);
+  const [localCategories, setLocalCategories] =
+    useState<FolderCategory[]>(stableCategories);
 
-  // 选择状态（v2.0 核心变更）
+  // 选择状态
   const [selection, setSelection] = useState<FolderSelection | null>(() => {
-    // 尝试从 URL 解析（searchParams 可能为 null）
     if (searchParams) {
-      const urlSelection = parseSelectionFromUrl(searchParams, folders);
+      const urlSelection = parseSelectionFromUrl(
+        searchParams,
+        folders,
+        stableCategories,
+      );
       if (urlSelection) return urlSelection;
     }
 
-    // 使用默认选择
-    return getDefaultSelection(folders);
+    return getDefaultSelection(folders, stableCategories);
   });
 
   // 移动端导航抽屉状态
@@ -182,8 +209,8 @@ export function FoldersPageClient({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 同步 props 到本地状态
     setLocalFolders(folders);
+    setLocalCategories(stableCategories);
 
-    // 同步更新锁状态
     const map: LockStatusMap = {};
     for (const folder of folders) {
       if (!folder.is_system) {
@@ -196,49 +223,46 @@ export function FoldersPageClient({
 
     setLockStatusMap(map);
 
-    // 更新 localStorage 缓存（按用户隔离，避免多用户共用设备时读到他人数据）
     if (folders.length > 0 && user?.id) {
       setFoldersCache(folders, user.id);
     }
-  }, [folders, user?.id]);
+  }, [folders, stableCategories, user?.id]);
 
-  // 当 folders 变化时，检查当前选择是否仍有效
-  // 这里的 setState 是必要的 - 用于同步派生状态
+  // 验证并修正选择状态（当数据变化时）
   useEffect(() => {
     if (!selection) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 同步派生状态
-      setSelection(getDefaultSelection(localFolders));
+      const next = getDefaultSelection(localFolders, localCategories);
+      if (next) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- 验证选择有效性，无效时重置
+        setSelection(next);
+      }
       return;
     }
 
-    // 验证选择有效性
+    let isValid = true;
+
     if (selection.type === "folder" || selection.type === "system") {
-      const exists = localFolders.some((f) => f.id === selection.folderId);
-      if (!exists) {
-        setSelection(getDefaultSelection(localFolders));
-      }
-    } else if (selection.type === "group") {
-      // P1-5: 验证分组是否有文件夹
-      const grouped = groupFolders(localFolders);
-      const foldersInGroup = grouped.groups[selection.groupId];
-      if (!foldersInGroup || foldersInGroup.length === 0) {
-        // 分组为空，切换到默认选择
-        setSelection(getDefaultSelection(localFolders));
-      }
+      isValid = localFolders.some((f) => f.id === selection.folderId);
+    } else if (selection.type === "category") {
+      isValid = localCategories.some((c) => c.id === selection.categoryId);
     }
-  }, [localFolders, selection]);
+
+    if (!isValid) {
+      setSelection(getDefaultSelection(localFolders, localCategories));
+    }
+  }, [localFolders, localCategories, selection]);
 
   // ==================== 回调函数 ====================
 
-  /**
-   * 更新 URL 状态（浅路由，不触发页面刷新）
-   */
   const updateUrlState = useCallback((newSelection: FolderSelection) => {
     const params = new URLSearchParams();
 
-    if (newSelection.type === "group") {
-      params.set("group", newSelection.groupId);
-    } else {
+    if (newSelection.type === "category") {
+      params.set("cat", newSelection.categoryId.toString());
+    } else if (
+      newSelection.type === "folder" ||
+      newSelection.type === "system"
+    ) {
       params.set("id", newSelection.folderId.toString());
     }
 
@@ -250,14 +274,19 @@ export function FoldersPageClient({
     router.refresh();
   };
 
-  const handleCreateClick = () => {
+  const handleCreateClick = (defaultCategoryId?: number) => {
+    setCreateFolderDefaultCategoryId(defaultCategoryId);
     setShowCreateDialog(true);
   };
 
-  // 分组选择
-  const handleSelectGroup = useCallback(
-    (groupId: UIFolderGroup) => {
-      const newSelection: FolderSelection = { type: "group", groupId };
+  const handleCreateCategoryClick = () => {
+    setShowCreateCategoryDialog(true);
+  };
+
+  // 栏目选择
+  const handleSelectCategory = useCallback(
+    (categoryId: number) => {
+      const newSelection: FolderSelection = { type: "category", categoryId };
       setSelection(newSelection);
       updateUrlState(newSelection);
       setIsMobileNavOpen(false);
@@ -306,12 +335,12 @@ export function FoldersPageClient({
         selection.folderId === deletedFolderId
       ) {
         const remaining = localFolders.filter((f) => f.id !== deletedFolderId);
-        setSelection(getDefaultSelection(remaining));
+        setSelection(getDefaultSelection(remaining, localCategories));
       }
 
       router.refresh();
     },
-    [router, selection, localFolders],
+    [router, selection, localFolders, localCategories],
   );
 
   // 文件夹重命名后的乐观更新
@@ -327,7 +356,6 @@ export function FoldersPageClient({
 
   // 文件夹创建后的乐观更新
   const handleFolderCreated = useCallback((newFolder: FolderType) => {
-    // 将 Folder 转换为 FolderWithStats 格式
     const folderWithStats: FolderWithStats = {
       ...newFolder,
       source: newFolder.source ?? null,
@@ -339,24 +367,59 @@ export function FoldersPageClient({
       is_ai_generated: newFolder.is_ai_generated ?? null,
       is_naming_pending: newFolder.is_naming_pending ?? null,
       origin_bookmark_ids: newFolder.origin_bookmark_ids ?? null,
-      // 新创建的文件夹统计为 0
+      category_id:
+        ((newFolder as Record<string, unknown>).category_id as number | null) ??
+        null,
       bookmark_count: 0,
       today_count: 0,
       is_locked: false,
     };
 
-    // 立即更新本地状态（乐观更新）
     setLocalFolders((prev) => {
-      // 避免重复添加（防止 router.refresh 后重复）
       if (prev.some((f) => f.id === newFolder.id)) {
         return prev;
       }
-      // 新文件夹添加到列表开头（按创建时间倒序）
       return [folderWithStats, ...prev];
     });
 
     clearFoldersCache();
   }, []);
+
+  // 栏目创建后的乐观更新
+  const handleCategoryCreated = useCallback((newCategory: FolderCategory) => {
+    setLocalCategories((prev) => {
+      if (prev.some((c) => c.id === newCategory.id)) return prev;
+      return [...prev, newCategory];
+    });
+  }, []);
+
+  // 栏目删除后的乐观更新
+  const handleCategoryDeleted = useCallback(
+    (categoryId: number) => {
+      setLocalCategories((prev) => prev.filter((c) => c.id !== categoryId));
+      // 如果正在查看被删除的栏目，切换到默认选择
+      if (
+        selection?.type === "category" &&
+        selection.categoryId === categoryId
+      ) {
+        const remainingCats = localCategories.filter(
+          (c) => c.id !== categoryId,
+        );
+        setSelection(getDefaultSelection(localFolders, remainingCats));
+      }
+    },
+    [selection, localFolders, localCategories],
+  );
+
+  // 栏目重命名后的乐观更新
+  const handleCategoryRenamed = useCallback(
+    (categoryId: number, newName: string) => {
+      setLocalCategories((prev) =>
+        prev.map((c) => (c.id === categoryId ? { ...c, name: newName } : c)),
+      );
+    },
+    [],
+  );
 
   // 文件夹合并后的乐观更新
   const handleFolderMerged = useCallback(
@@ -374,6 +437,19 @@ export function FoldersPageClient({
       refreshBookmarks();
     },
     [refreshBookmarks],
+  );
+
+  // 文件夹栏目变更后的乐观更新
+  const handleFolderCategoryChanged = useCallback(
+    (folderId: number, categoryId: number | null) => {
+      setLocalFolders((prev) =>
+        prev.map((f) =>
+          f.id === folderId ? { ...f, category_id: categoryId } : f,
+        ),
+      );
+      clearFoldersCache();
+    },
+    [],
   );
 
   // 书签操作回调
@@ -561,7 +637,7 @@ export function FoldersPageClient({
         <p className="text-muted-foreground text-center max-w-sm mb-6">
           创建文件夹来分类管理你的收藏内容，让知识更有条理
         </p>
-        <Button size="lg" onClick={handleCreateClick}>
+        <Button size="lg" onClick={() => handleCreateClick()}>
           <Plus className="size-5 mr-2" />
           创建第一个文件夹
         </Button>
@@ -569,7 +645,7 @@ export function FoldersPageClient({
         <CreateFolderDialog
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
-          folders={localFolders}
+          categories={localCategories}
           onSuccess={handleFolderCreated}
         />
       </div>
@@ -581,14 +657,19 @@ export function FoldersPageClient({
     <FeatureErrorBoundary feature="folder-nav" compact>
       <FolderNavPanel
         folders={localFolders}
+        categories={localCategories}
         selection={selection}
-        onSelectGroup={handleSelectGroup}
+        onSelectCategory={handleSelectCategory}
         onSelectFolder={handleSelectFolder}
         onSelectSystem={handleSelectSystem}
         onCreateFolder={handleCreateClick}
+        onCreateCategory={handleCreateCategoryClick}
         onFolderDeleted={handleFolderDeleted}
         onFolderRenamed={handleFolderRenamed}
         onFolderMerged={handleFolderMerged}
+        onFolderCategoryChanged={handleFolderCategoryChanged}
+        onCategoryDeleted={handleCategoryDeleted}
+        onCategoryRenamed={handleCategoryRenamed}
         lockStatusMap={lockStatusMap}
         className="h-full"
       />
@@ -660,8 +741,16 @@ export function FoldersPageClient({
         <CreateFolderDialog
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
-          folders={localFolders}
+          categories={localCategories}
+          defaultCategoryId={createFolderDefaultCategoryId}
           onSuccess={handleFolderCreated}
+        />
+
+        {/* 创建栏目对话框 */}
+        <CreateCategoryDialog
+          open={showCreateCategoryDialog}
+          onOpenChange={setShowCreateCategoryDialog}
+          onSuccess={handleCategoryCreated}
         />
 
         {/* AI 助手面板 */}

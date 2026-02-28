@@ -68,6 +68,14 @@ export {
   toFolderWithStatsList,
 } from "./folder";
 
+// 栏目类型
+export {
+  type FolderCategory,
+  type FolderCategoryDbRow,
+  toFolderCategory,
+  toFolderCategoryList,
+} from "./folder-category";
+
 // 合成报告类型
 export {
   REPORT_SUGGESTION_TYPES,

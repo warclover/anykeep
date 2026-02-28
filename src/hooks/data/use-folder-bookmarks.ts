@@ -89,8 +89,16 @@ function getFolderIds(
     case "folder":
     case "system":
       return [selection.folderId];
-    case "group": {
-      // 获取该分组下所有文件夹的 ID
+    case "category":
+      return folders
+        .filter(
+          (f) =>
+            !f.is_archived &&
+            !f.is_system &&
+            f.category_id === selection.categoryId,
+        )
+        .map((f) => f.id);
+    case "group":
       return folders
         .filter(
           (f) =>
@@ -99,7 +107,6 @@ function getFolderIds(
             (f.folder_group || "other") === selection.groupId,
         )
         .map((f) => f.id);
-    }
   }
 }
 

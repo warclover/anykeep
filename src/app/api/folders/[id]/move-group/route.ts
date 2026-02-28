@@ -1,6 +1,9 @@
 /**
  * 文件夹跨类别移动 API 路由
  * PATCH /api/folders/[id]/move-group - 移动文件夹到其他类别
+ *
+ * @deprecated 已被栏目系统（folder_categories + category_id）替代。
+ * 保留以兼容旧客户端调用，新功能应使用 PATCH /api/folders/[id] 更新 category_id。
  */
 
 import type { NextRequest } from "next/server";
@@ -17,21 +20,22 @@ import type { FolderGroup } from "@/types/supabase";
 
 /**
  * 移动分组请求体
+ * 支持新的 category_id 和旧的 folder_group（向后兼容）
  */
 interface MoveGroupRequest {
-  folder_group: FolderGroup;
+  folder_group?: FolderGroup;
+  category_id?: number | null;
 }
 
 /**
  * PATCH /api/folders/[id]/move-group
- * 移动文件夹到其他类别
+ * 移动文件夹到其他栏目（category_id）或旧类别（folder_group，兼容）
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // 0. 解析动态路由参数（Next.js 15+ 需要 await）
     const { id: folderIdStr } = await params;
     const folderId = parseInt(folderIdStr, 10);
 
@@ -39,7 +43,6 @@ export async function PATCH(
       return badRequestError("Invalid folder ID");
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
     const {
       data: { user },
@@ -50,23 +53,23 @@ export async function PATCH(
       return unauthorizedError();
     }
 
-    // 2. 解析请求体
     const body = (await request.json()) as MoveGroupRequest;
 
-    // 3. 验证 folder_group
-    const validGroups: FolderGroup[] = [
-      "work",
-      "study",
-      "life",
-      "entertainment",
-      "other",
-    ];
-    if (!validGroups.includes(body.folder_group)) {
-      return badRequestError("Invalid folder group");
+    const useCategoryId = "category_id" in body;
+
+    if (!useCategoryId) {
+      const validGroups: FolderGroup[] = [
+        "work",
+        "study",
+        "life",
+        "entertainment",
+        "other",
+      ];
+      if (!body.folder_group || !validGroups.includes(body.folder_group)) {
+        return badRequestError("Invalid folder group");
+      }
     }
 
-    // P0-4 修复：显式验证文件夹存在且属于当前用户
-    // 类型断言: 手动维护类型文件时需要此断言
     type ExistingFolderType = {
       id: number;
       user_id: string;
@@ -101,15 +104,20 @@ export async function PATCH(
       return badRequestError("系统文件夹不可移动");
     }
 
-    // 4. 更新文件夹分组
-    // 注意：移动到新类别后，sort_order 设为 0（移到新类别的顶部）
-    // 已在上方验证所有权和系统文件夹状态，这里仅需基本条件
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updatePayload: Record<string, any> = {
+      sort_order: 0,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (useCategoryId) {
+      updatePayload.category_id = body.category_id;
+    } else {
+      updatePayload.folder_group = body.folder_group;
+    }
+
     const { error: updateError } = (await (supabase.from("folders") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-      .update({
-        folder_group: body.folder_group,
-        sort_order: 0,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", folderId)
       .eq("user_id", user.id)
       .is("deleted_at", null)) as { error: { message: string } | null };
@@ -120,9 +128,9 @@ export async function PATCH(
           error: updateError,
           operation: "move_folder_group",
           folderId,
-          targetGroup: body.folder_group,
+          payload: updatePayload,
         },
-        "Failed to move folder to new group",
+        "Failed to move folder",
       );
       return databaseError("移动失败", updateError);
     }
@@ -131,9 +139,9 @@ export async function PATCH(
       {
         operation: "move_folder_group",
         folderId,
-        targetGroup: body.folder_group,
+        payload: updatePayload,
       },
-      "Folder moved to new group successfully",
+      "Folder moved successfully",
     );
 
     return successResponse({

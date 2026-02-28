@@ -20,15 +20,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FolderInput,
-  Briefcase,
-  GraduationCap,
-  Heart,
-  Gamepad2,
-  MoreHorizontal,
   Lock,
   Unlock,
   Folder,
-  Pin,
   Download,
   Sparkles,
   FileText,
@@ -52,18 +46,8 @@ import { DeleteFolderDialog } from "./delete-folder-dialog";
 import { useAbortableFetch } from "@/hooks/core";
 import { useUser } from "@/contexts/user-context";
 import { folderCacheInvalidation } from "@/lib/cache";
-import type { Folder as FolderType, FolderGroup } from "@/types/supabase";
-
-/** UI 显示用的文件夹分组键类型 */
-type UIFolderDisplayGroup =
-  | "default"
-  | "pinned"
-  | "archived"
-  | "work"
-  | "study"
-  | "life"
-  | "entertainment"
-  | "other";
+import type { Folder as FolderType } from "@/types/supabase";
+import type { FolderCategory } from "@/types/domain";
 
 type FolderWithCount = FolderType & {
   bookmark_count?: number;
@@ -71,8 +55,8 @@ type FolderWithCount = FolderType & {
   is_system?: boolean;
   is_archived?: boolean | null;
   folder_group?: string | null;
+  category_id?: number | null;
   sort_order?: number | null;
-  // Crystal Growth 相关字段（支持 undefined）
   ai_generation_source?: string | null | undefined;
   crystal_birth_time?: string | null | undefined;
   is_ai_generated?: boolean | null | undefined;
@@ -91,6 +75,8 @@ interface InitialLockStatus {
 interface FolderActionMenuProps {
   folder: FolderWithCount;
   allFolders: FolderWithCount[];
+  /** 用户自定义栏目列表，用于「移至栏目」菜单 */
+  categories?: FolderCategory[];
   onActionComplete?: () => void;
   onFolderDeleted?: (folderId: number) => void;
   onFolderRenamed?: (folderId: number, newName: string) => void;
@@ -98,6 +84,11 @@ interface FolderActionMenuProps {
     sourceFolderId: number,
     targetFolderId: number,
     movedCount: number,
+  ) => void;
+  /** 文件夹栏目变更后的乐观更新 */
+  onFolderCategoryChanged?: (
+    folderId: number,
+    categoryId: number | null,
   ) => void;
   /** 导出文件夹内书签回调 */
   onExportFolder?: (folderId: number) => void;
@@ -112,61 +103,15 @@ interface FolderActionMenuProps {
   initialLockStatus?: InitialLockStatus;
 }
 
-// 文件夹分组配置（包含 UI 显示用的虚拟分组）
-const FOLDER_GROUPS: Record<
-  UIFolderDisplayGroup,
-  { label: string; icon: typeof Folder }
-> = {
-  default: {
-    label: "默认",
-    icon: Folder,
-  },
-  pinned: {
-    label: "已固定",
-    icon: Pin,
-  },
-  archived: {
-    label: "已归档",
-    icon: Archive,
-  },
-  work: {
-    label: "工作相关",
-    icon: Briefcase,
-  },
-  study: {
-    label: "学习成长",
-    icon: GraduationCap,
-  },
-  life: {
-    label: "生活方式",
-    icon: Heart,
-  },
-  entertainment: {
-    label: "休闲娱乐",
-    icon: Gamepad2,
-  },
-  other: {
-    label: "收藏分类文件夹",
-    icon: MoreHorizontal,
-  },
-};
-
-// 可用于数据库存储的有效分组（用于"移至类别"菜单）
-const VALID_FOLDER_GROUPS: FolderGroup[] = [
-  "work",
-  "study",
-  "life",
-  "entertainment",
-  "other",
-];
-
 export function FolderActionMenu({
   folder,
   allFolders,
+  categories = [],
   onActionComplete,
   onFolderDeleted,
   onFolderRenamed,
   onFolderMerged,
+  onFolderCategoryChanged,
   onExportFolder,
   onCreateSynthesis,
   onOpenAIAssistant,
@@ -208,14 +153,14 @@ export function FolderActionMenu({
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === groupFolders.length - 1;
 
-  // 处理移至类别
-  const handleMoveToGroup = async (newGroup: FolderGroup) => {
+  // 处理移至栏目（更新 category_id）
+  const handleMoveToCategory = async (categoryId: number | null) => {
     setIsMoving(true);
     try {
       const res = await fetchWithAbort(`/api/folders/${folder.id}/move-group`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folder_group: newGroup }),
+        body: JSON.stringify({ category_id: categoryId }),
       });
 
       const data = await res.json();
@@ -224,13 +169,15 @@ export function FolderActionMenu({
         throw new Error(data.error?.message || "移动失败");
       }
 
-      toast.success(
-        `已移至「${FOLDER_GROUPS[newGroup as UIFolderDisplayGroup]?.label ?? newGroup}」`,
-      );
-      // 清除文件夹缓存
+      const targetName = categoryId
+        ? (categories.find((c) => c.id === categoryId)?.name ?? "目标栏目")
+        : "未分类";
+      toast.success(`已移至「${targetName}」`);
+
       if (user?.id) {
         folderCacheInvalidation.onFolderGroupChange(user.id);
       }
+      onFolderCategoryChanged?.(folder.id, categoryId);
       onActionComplete?.();
       router.refresh();
     } catch (err) {
@@ -649,40 +596,53 @@ export function FolderActionMenu({
 
           <DropdownMenuSeparator />
 
-          {/* 移至类别 - 子菜单 */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger disabled={isSystemFolder || isMoving}>
-              <FolderInput className="size-4 mr-2" />
-              移至类别
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {VALID_FOLDER_GROUPS.map((groupKey) => {
-                const groupConfig =
-                  FOLDER_GROUPS[groupKey as UIFolderDisplayGroup];
-                if (!groupConfig) return null;
-                const GroupIcon = groupConfig.icon;
-                const isCurrent = folder.folder_group === groupKey;
-                return (
-                  <DropdownMenuItem
-                    key={groupKey}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMoveToGroup(groupKey);
-                    }}
-                    disabled={isCurrent || isMoving}
-                  >
-                    <GroupIcon className="size-4 mr-2" />
-                    {groupConfig.label}
-                    {isCurrent && (
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        当前
-                      </Badge>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {/* 移至栏目 - 子菜单 */}
+          {categories.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger disabled={isSystemFolder || isMoving}>
+                <FolderInput className="size-4 mr-2" />
+                移至栏目
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {categories.map((cat) => {
+                  const isCurrent = folder.category_id === cat.id;
+                  return (
+                    <DropdownMenuItem
+                      key={cat.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveToCategory(cat.id);
+                      }}
+                      disabled={isCurrent || isMoving}
+                    >
+                      <span className="mr-2">{cat.icon ?? "📁"}</span>
+                      {cat.name}
+                      {isCurrent && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          当前
+                        </Badge>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+                {folder.category_id != null && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveToCategory(null);
+                      }}
+                      disabled={isMoving}
+                    >
+                      <Folder className="size-4 mr-2" />
+                      移出栏目
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
 
           <DropdownMenuSeparator />
 

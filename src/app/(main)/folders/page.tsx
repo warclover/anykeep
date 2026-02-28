@@ -11,7 +11,7 @@ import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { FoldersPageClient } from "@/components/folders/folders-page-client";
 import { QUERY_LIMITS } from "@/lib/constants/app";
 import type { Folder } from "@/types/supabase";
-import type { FolderWithStats } from "@/types/domain";
+import type { FolderWithStats, FolderCategory } from "@/types/domain";
 
 export default async function FoldersPage() {
   // 从 Middleware 预验证的 cookies 获取用户 ID（兼容页面路由）
@@ -105,6 +105,9 @@ export default async function FoldersPage() {
         updated_at: folder.updated_at,
         deleted_at: folder.deleted_at,
         folder_group: folder.folder_group,
+        category_id:
+          ((folder as Record<string, unknown>).category_id as number | null) ??
+          null,
         sort_order: folder.sort_order,
         source: folder.source ?? null,
         system_type: folder.system_type,
@@ -123,6 +126,29 @@ export default async function FoldersPage() {
       }),
     );
   }
+
+  // 获取用户的栏目列表
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: categoriesRaw } = (await (supabase as any)
+    .from("folder_categories")
+    .select("*")
+    .eq("user_id", userId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })) as {
+    data: Record<string, unknown>[] | null;
+  };
+
+  const categories: FolderCategory[] = (categoriesRaw || []).map((row) => ({
+    id: row.id as number,
+    user_id: row.user_id as string,
+    name: row.name as string,
+    icon: (row.icon as string) || null,
+    color: (row.color as string) || null,
+    sort_order: (row.sort_order as number) ?? 0,
+    is_default: (row.is_default as boolean) ?? false,
+    created_at: (row.created_at as string) || null,
+    updated_at: (row.updated_at as string) || null,
+  }));
 
   // 获取最近添加的收藏
   const { data: recentBookmarks, error: bookmarksError } = await supabase
@@ -144,6 +170,7 @@ export default async function FoldersPage() {
   return (
     <FoldersPageClient
       folders={foldersWithStats}
+      categories={categories}
       recentBookmarks={recentBookmarks || []}
       error={error}
     />

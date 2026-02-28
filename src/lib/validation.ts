@@ -426,6 +426,7 @@ export type GetBookmarksQuery = z.infer<typeof getBookmarksQuerySchema>;
 export const createFolderSchema = z.object({
   name: folderNameSchema,
   parentId: z.coerce.number().int().positive().optional(),
+  categoryId: z.coerce.number().int().positive().optional(),
   color: z
     .string()
     .trim()
@@ -439,6 +440,55 @@ export const createFolderSchema = z.object({
 });
 
 export type CreateFolder = z.infer<typeof createFolderSchema>;
+
+/**
+ * 栏目名称验证
+ */
+const categoryNameSchema = z
+  .string()
+  .trim()
+  .min(1, VALIDATION.REQUIRED("栏目名称"))
+  .max(50, VALIDATION.TOO_LONG("栏目名称", 50));
+
+/**
+ * 创建栏目验证 Schema
+ */
+export const createCategorySchema = z.object({
+  name: categoryNameSchema,
+  icon: z
+    .string()
+    .trim()
+    .max(50, VALIDATION.TOO_LONG("图标名称", 50))
+    .optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT("颜色"))
+    .optional(),
+});
+
+export type CreateCategory = z.infer<typeof createCategorySchema>;
+
+/**
+ * 更新栏目验证 Schema
+ */
+export const updateCategorySchema = z.object({
+  name: categoryNameSchema.optional(),
+  icon: z
+    .string()
+    .trim()
+    .max(50, VALIDATION.TOO_LONG("图标名称", 50))
+    .optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9A-Fa-f]{6}$/, VALIDATION.INVALID_FORMAT("颜色"))
+    .nullable()
+    .optional(),
+  sort_order: z.coerce.number().int().min(0).optional(),
+});
+
+export type UpdateCategory = z.infer<typeof updateCategorySchema>;
 
 /**
  * 更新文件夹验证 Schema

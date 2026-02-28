@@ -76,6 +76,7 @@ export const FOLDER_LIST_FIELDS = `
   system_type,
   is_archived,
   folder_group,
+  category_id,
   sort_order,
   created_at,
   updated_at

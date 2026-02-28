@@ -1,6 +1,6 @@
 /**
  * 创建文件夹对话框组件
- * 提供表单让用户创建新文件夹
+ * 提供表单让用户创建新文件夹（支持选择所属栏目）
  */
 
 "use client";
@@ -21,14 +21,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createFolderSchema } from "@/lib/validation";
 import { folderCacheInvalidation } from "@/lib/cache";
 import type { Folder } from "@/types/supabase";
+import type { FolderCategory } from "@/types/domain";
 import { useUser } from "@/contexts/user-context";
 
 interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 可用的栏目列表 */
+  categories?: FolderCategory[];
+  /** 默认选中的栏目 ID */
+  defaultCategoryId?: number;
   /** 创建成功后的回调，参数为新创建的文件夹数据 */
   onSuccess?: (folder: Folder) => void;
 }
@@ -47,6 +59,8 @@ const PRESET_COLORS = [
 export function CreateFolderDialog({
   open,
   onOpenChange,
+  categories = [],
+  defaultCategoryId,
   onSuccess,
 }: CreateFolderDialogProps) {
   const router = useRouter();
@@ -56,7 +70,10 @@ export function CreateFolderDialog({
 
   // 表单状态
   const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(""); // 默认无颜色
+  const [color, setColor] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>(
+    defaultCategoryId ? String(defaultCategoryId) : "",
+  );
 
   // 表单错误
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,6 +88,10 @@ export function CreateFolderDialog({
       const validation = createFolderSchema.safeParse({
         name,
         color: color || undefined,
+        categoryId:
+          categoryId && categoryId !== "none"
+            ? parseInt(categoryId, 10)
+            : undefined,
       });
 
       if (!validation.success) {
@@ -110,10 +131,9 @@ export function CreateFolderDialog({
         onSuccess(data.data as Folder);
       }
 
-      // P0-6 修复：先重置表单状态，再关闭对话框
-      // 避免用户快速重新打开时看到旧状态
       setName("");
       setColor(PRESET_COLORS[0].value);
+      setCategoryId(defaultCategoryId ? String(defaultCategoryId) : "");
       setErrors({});
 
       // 关闭对话框
@@ -160,6 +180,26 @@ export function CreateFolderDialog({
               <p className="text-xs text-red-500">{errors.name}</p>
             )}
           </div>
+
+          {/* 所属栏目 */}
+          {categories.length > 0 && (
+            <div className="space-y-2">
+              <Label>所属栏目</Label>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择栏目（可选）" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不指定栏目</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* 颜色选择 */}
           <div className="space-y-2">

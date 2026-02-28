@@ -283,8 +283,8 @@ import type { FolderWithStats, GroupedFolders } from "./types";
 
 /**
  * 将文件夹按分组分类
- * @param folders 文件夹列表
- * @returns 分组后的文件夹结构
+ * @deprecated 已被基于 category_id 的分组机制替代。
+ * 保留以兼容 folder-action-menu 和 folder-bookmark-area 等旧组件。
  */
 export function groupFolders(folders: FolderWithStats[]): GroupedFolders {
   const result: GroupedFolders = {
@@ -313,7 +313,6 @@ export function groupFolders(folders: FolderWithStats[]): GroupedFolders {
     }
   }
 
-  // 按 sort_order 排序
   UI_GROUP_KEYS.forEach((groupKey) => {
     result.groups[groupKey].sort(
       (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
