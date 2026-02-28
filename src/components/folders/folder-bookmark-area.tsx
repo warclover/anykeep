@@ -86,6 +86,21 @@ interface FolderBookmarkAreaProps {
   onBatchMoveSuccess?: (bookmarkIds: number[]) => void;
   /** 批量删除成功回调 */
   onBatchDeleteSuccess?: (bookmarkIds: number[]) => void;
+  /**
+   * 工具栏位置：
+   * - "inline" = 在内容区顶部显示（默认）
+   * - "none" = 不显示工具栏（由页面在外部渲染）
+   */
+  toolbarPosition?: "inline" | "none";
+  /** 受控搜索关键词（toolbarPosition="none" 时由外部控制） */
+  searchQuery?: string;
+  setSearchQuery?: (q: string) => void;
+  /** 受控排序方式 */
+  sortBy?: SortOption;
+  setSortBy?: (s: SortOption) => void;
+  /** 受控视图模式 */
+  viewMode?: ViewMode;
+  setViewMode?: (v: ViewMode) => void;
   /** 样式类名 */
   className?: string;
 }
@@ -110,7 +125,8 @@ const VIEW_OPTIONS: {
 
 // ==================== 工具函数 ====================
 
-function getSelectionInfo(
+/** 导出供页面工具栏使用 */
+export function getSelectionInfo(
   selection: FolderSelection,
   folders: FolderWithStats[],
   categories: FolderCategory[] = [],
@@ -201,15 +217,34 @@ export function FolderBookmarkArea({
   onToggleStarred,
   onBatchMoveSuccess,
   onBatchDeleteSuccess,
+  toolbarPosition = "inline",
+  searchQuery: searchQueryProp,
+  setSearchQuery: setSearchQueryProp,
+  sortBy: sortByProp,
+  setSortBy: setSortByProp,
+  viewMode: viewModeProp,
+  setViewMode: setViewModeProp,
   className,
 }: FolderBookmarkAreaProps) {
-  // 搜索和排序状态
-  const [searchQuery, setSearchQuery] = useState("");
-  const deferredSearch = useDeferredValue(searchQuery);
-  const [sortBy, setSortBy] = useState<SortOption>("created");
+  const isToolbarExternal = toolbarPosition === "none";
 
-  // 视图模式（从 localStorage 恢复）
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+  // 搜索和排序状态（支持受控或内部）
+  const [internalSearch, setInternalSearch] = useState("");
+  const [internalSortBy, setInternalSortBy] = useState<SortOption>("created");
+  const searchQuery = isToolbarExternal
+    ? (searchQueryProp ?? "")
+    : internalSearch;
+  const setSearchQuery = isToolbarExternal
+    ? (setSearchQueryProp ?? (() => {}))
+    : setInternalSearch;
+  const sortBy = isToolbarExternal ? (sortByProp ?? "created") : internalSortBy;
+  const setSortBy = isToolbarExternal
+    ? (setSortByProp ?? (() => {}))
+    : setInternalSortBy;
+  const deferredSearch = useDeferredValue(searchQuery);
+
+  // 视图模式（从 localStorage 恢复，或受控）
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("folder-bookmark-view-mode");
       if (saved === "card" || saved === "list" || saved === "compact") {
@@ -218,6 +253,12 @@ export function FolderBookmarkArea({
     }
     return "list";
   });
+  const viewMode = isToolbarExternal
+    ? (viewModeProp ?? "list")
+    : internalViewMode;
+  const setViewMode = isToolbarExternal
+    ? (setViewModeProp ?? (() => {}))
+    : setInternalViewMode;
 
   // 持久化视图模式
   useEffect(() => {
@@ -429,7 +470,7 @@ export function FolderBookmarkArea({
 
   return (
     <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-      {/* 标题栏 / 批量工具栏 */}
+      {/* 标题栏 / 批量工具栏（toolbarPosition="none" 时仅保留批量栏，普通栏由页面在外部渲染） */}
       {isSelectionMode ? (
         <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
           <BatchToolbar
@@ -444,7 +485,7 @@ export function FolderBookmarkArea({
             isProcessing={isBatchDeleting}
           />
         </div>
-      ) : (
+      ) : !isToolbarExternal ? (
         <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4">
             {/* 左侧：图标 + 标题(带统计) */}
@@ -593,7 +634,7 @@ export function FolderBookmarkArea({
             拖拽收藏到左侧文件夹可快速实现分类和移动
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* 内容区域 */}
       <div

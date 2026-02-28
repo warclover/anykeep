@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Folder, Plus, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,17 @@ import { FeatureErrorBoundary } from "@/components/error-boundary/feature-error-
 import { CreateFolderDialog } from "@/components/folders/create-folder-dialog";
 import { CreateCategoryDialog } from "@/components/folders/create-category-dialog";
 import { FolderNavPanel } from "@/components/folders/folder-nav-panel";
-import { FolderBookmarkArea } from "@/components/folders/folder-bookmark-area";
+import {
+  FolderBookmarkArea,
+  getSelectionInfo,
+} from "@/components/folders/folder-bookmark-area";
+import {
+  FolderPageToolbar,
+  type SortOption,
+  type ViewMode,
+} from "@/components/folders/folder-page-toolbar";
 import { FolderDropProvider } from "@/components/folders/folder-drop-context";
+import { usePageToolbar } from "@/contexts/page-toolbar-context";
 import { AIAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import { useFolderBookmarks } from "@/hooks/data/use-folder-bookmarks";
@@ -202,6 +211,84 @@ export function FoldersPageClient({
   // 书签操作 Hook
   const { deleteBookmark, toggleReadStatus, toggleStarredStatus } =
     useBookmarkActions();
+
+  // ==================== 整页第二行工具栏状态 ====================
+  const pageToolbar = usePageToolbar();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("created");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("folder-bookmark-view-mode");
+      if (saved === "card" || saved === "list" || saved === "compact")
+        return saved;
+    }
+    return "list";
+  });
+
+  // 计算选择信息（供工具栏使用）
+  const selectionInfo = useMemo(
+    () =>
+      selection
+        ? getSelectionInfo(selection, localFolders, localCategories)
+        : null,
+    [selection, localFolders, localCategories],
+  );
+
+  // 计算筛选后的书签数量
+  const filteredBookmarkCount = useMemo(() => {
+    let result = [...bookmarks];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (b) =>
+          b.title?.toLowerCase().includes(q) ||
+          b.ai_summary?.toLowerCase().includes(q) ||
+          b.ai_tags?.some((tag) => tag.toLowerCase().includes(q)),
+      );
+    }
+    return result.length;
+  }, [bookmarks, searchQuery]);
+
+  // 使用 useMemo 缓存工具栏元素，避免每次渲染创建新 JSX 导致无限循环
+  const toolbarElement = useMemo(() => {
+    if (!selection || !selectionInfo) return null;
+    return (
+      <FolderPageToolbar
+        selectionInfo={selectionInfo}
+        filteredBookmarkCount={filteredBookmarkCount}
+        isLoading={isLoadingBookmarks}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+        className="w-full"
+      />
+    );
+  }, [
+    selection,
+    selectionInfo,
+    filteredBookmarkCount,
+    isLoadingBookmarks,
+    searchQuery,
+    sortBy,
+    viewMode,
+  ]);
+
+  // 将工具栏注入到布局层
+  useEffect(() => {
+    if (!pageToolbar) return;
+    pageToolbar.setToolbar(toolbarElement);
+  }, [pageToolbar, toolbarElement]);
+
+  // 卸载时清空工具栏
+  useEffect(() => {
+    return () => {
+      pageToolbar?.setToolbar(null);
+    };
+  }, [pageToolbar]);
 
   // ==================== 同步 folders 到 localFolders ====================
   // 这个 useEffect 用于同步 props 到本地状态，实现乐观更新
@@ -779,6 +866,13 @@ export function FoldersPageClient({
                 onToggleStarred={handleToggleStarred}
                 onBatchMoveSuccess={handleBatchMoveSuccess}
                 onBatchDeleteSuccess={handleBatchDeleteSuccess}
+                toolbarPosition="none"
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
                 className="flex-1"
               />
             </FeatureErrorBoundary>
