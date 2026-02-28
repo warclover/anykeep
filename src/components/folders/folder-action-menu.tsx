@@ -15,17 +15,12 @@ import {
   Archive,
   ArchiveRestore,
   Loader2,
-  ArrowLeft,
-  ArrowRight,
-  ChevronsLeft,
-  ChevronsRight,
   FolderInput,
   Lock,
   Unlock,
   Folder,
   Download,
   Sparkles,
-  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -93,10 +88,6 @@ interface FolderActionMenuProps {
   ) => void;
   /** 导出文件夹内书签回调 */
   onExportFolder?: (folderId: number) => void;
-  /** 生成综述回调 */
-  onCreateSynthesis?: (folderId: number, folderName: string) => void;
-  /** 打开 AI 助手回调（传入当前文件夹上下文） */
-  onOpenAIAssistant?: (folder: FolderWithCount) => void;
   /**
    * V4.2.1: 从父组件批量查询结果传入的初始锁状态
    * 如果提供，则跳过单独的 API 请求
@@ -114,8 +105,6 @@ export function FolderActionMenu({
   onFolderMerged,
   onFolderCategoryChanged,
   onExportFolder,
-  onCreateSynthesis,
-  onOpenAIAssistant,
   initialLockStatus,
 }: FolderActionMenuProps) {
   const router = useRouter();
@@ -144,15 +133,6 @@ export function FolderActionMenu({
   const handleActionComplete = () => {
     onActionComplete?.();
   };
-
-  // 获取同组文件夹（用于计算移动位置）
-  const groupFolders = allFolders
-    .filter((f) => !f.is_system && f.folder_group === folder.folder_group)
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-
-  const currentIndex = groupFolders.findIndex((f) => f.id === folder.id);
-  const isFirst = currentIndex === 0;
-  const isLast = currentIndex === groupFolders.length - 1;
 
   // 处理移至栏目（更新 category_id）
   const handleMoveToCategory = async (categoryId: number | null) => {
@@ -187,67 +167,6 @@ export function FolderActionMenu({
       }
       const message = err instanceof Error ? err.message : "移动失败";
       toast.error(message);
-    } finally {
-      setIsMoving(false);
-    }
-  };
-
-  // 处理同组内移动（上移/下移/置顶/置底）
-  const handleMove = async (direction: "up" | "down" | "top" | "bottom") => {
-    // 计算新位置
-    let newIndex = currentIndex;
-    switch (direction) {
-      case "up":
-        newIndex = Math.max(0, currentIndex - 1);
-        break;
-      case "down":
-        newIndex = Math.min(groupFolders.length - 1, currentIndex + 1);
-        break;
-      case "top":
-        newIndex = 0;
-        break;
-      case "bottom":
-        newIndex = groupFolders.length - 1;
-        break;
-    }
-
-    if (newIndex === currentIndex) return;
-
-    // 重新排列
-    const reordered = [...groupFolders];
-    const [moved] = reordered.splice(currentIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-
-    // 生成更新列表
-    const updates = reordered.map((f, index) => ({
-      id: f.id,
-      sort_order: index,
-    }));
-
-    setIsMoving(true);
-    try {
-      const res = await fetchWithAbort("/api/folders/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
-      });
-
-      if (!res.ok) {
-        throw new Error("移动失败");
-      }
-
-      toast.success("移动成功");
-      // 清除文件夹缓存
-      if (user?.id) {
-        folderCacheInvalidation.onAnyChange(user.id);
-      }
-      onActionComplete?.();
-      router.refresh();
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
-      }
-      toast.error("移动失败");
     } finally {
       setIsMoving(false);
     }
@@ -494,21 +413,6 @@ export function FolderActionMenu({
             </DropdownMenuItem>
           )}
 
-          {/* 生成综述 */}
-          {onCreateSynthesis && hasBookmarks && !isSystemFolder && (
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateSynthesis(folder.id, folder.name);
-              }}
-              className="text-indigo-600 dark:text-indigo-400"
-            >
-              <FileText className="size-4 mr-2" />
-              生成综述
-              <span className="ml-auto text-xs">({folder.bookmark_count})</span>
-            </DropdownMenuItem>
-          )}
-
           {/* 一键分类（仅限待整理文件夹） */}
           {isInboxFolder && hasBookmarks && (
             <DropdownMenuItem
@@ -528,72 +432,6 @@ export function FolderActionMenu({
               <span className="ml-auto text-xs">({folder.bookmark_count})</span>
             </DropdownMenuItem>
           )}
-
-          <DropdownMenuSeparator />
-
-          {/* 左移 */}
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleMove("up");
-            }}
-            disabled={isSystemFolder || isMoving || isFirst}
-          >
-            {isMoving ? (
-              <Loader2 className="size-4 mr-2 animate-spin" />
-            ) : (
-              <ArrowLeft className="size-4 mr-2" />
-            )}
-            左移
-          </DropdownMenuItem>
-
-          {/* 右移 */}
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleMove("down");
-            }}
-            disabled={isSystemFolder || isMoving || isLast}
-          >
-            {isMoving ? (
-              <Loader2 className="size-4 mr-2 animate-spin" />
-            ) : (
-              <ArrowRight className="size-4 mr-2" />
-            )}
-            右移
-          </DropdownMenuItem>
-
-          {/* 移到最左侧 */}
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleMove("top");
-            }}
-            disabled={isSystemFolder || isMoving || isFirst}
-          >
-            {isMoving ? (
-              <Loader2 className="size-4 mr-2 animate-spin" />
-            ) : (
-              <ChevronsLeft className="size-4 mr-2" />
-            )}
-            移到最左侧
-          </DropdownMenuItem>
-
-          {/* 移到最右侧 */}
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleMove("bottom");
-            }}
-            disabled={isSystemFolder || isMoving || isLast}
-          >
-            {isMoving ? (
-              <Loader2 className="size-4 mr-2 animate-spin" />
-            ) : (
-              <ChevronsRight className="size-4 mr-2" />
-            )}
-            移到最右侧
-          </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
@@ -698,23 +536,6 @@ export function FolderActionMenu({
               </span>
             )}
           </DropdownMenuItem>
-
-          {/* AI 协助管理（可选） */}
-          {onOpenAIAssistant && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenAIAssistant(folder);
-                }}
-                className="text-violet-600 dark:text-violet-400"
-              >
-                <Sparkles className="size-4 mr-2" />
-                AI 协助管理
-              </DropdownMenuItem>
-            </>
-          )}
 
           <DropdownMenuSeparator />
 
