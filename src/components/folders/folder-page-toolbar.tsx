@@ -90,49 +90,53 @@ export function FolderPageToolbar({
   return (
     <div className={cn("px-4 lg:px-6 h-full flex items-center", className)}>
       <div className="flex items-center gap-3 w-full">
-        {/* 左侧：图标 + 标题(带统计) */}
-        {selectionInfo.titleEmoji ? (
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{
-              backgroundColor: selectionInfo.categoryColor
-                ? `${selectionInfo.categoryColor}20`
-                : undefined,
-            }}
-          >
-            <span className="text-sm">{selectionInfo.titleEmoji}</span>
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0",
-              `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
+        {/* 左侧：图标+标题 | 统计；第二行提示与统计左对齐，整体上下居中 */}
+        <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 items-center content-center self-center">
+          <div className="flex items-center gap-3 self-center">
+            {selectionInfo.titleEmoji ? (
+              <div
+                className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: selectionInfo.categoryColor
+                    ? `${selectionInfo.categoryColor}20`
+                    : undefined,
+                }}
+              >
+                <span className="text-sm">{selectionInfo.titleEmoji}</span>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0",
+                  `bg-gradient-to-br ${selectionInfo.colors.gradient.from} ${selectionInfo.colors.gradient.to}`,
+                )}
+              >
+                <SelectionIcon className="size-3 text-white" />
+              </div>
             )}
-          >
-            <SelectionIcon className="size-3 text-white" />
+            <h2
+              className="text-base font-semibold whitespace-nowrap"
+              style={{ color: selectionInfo.categoryColor || undefined }}
+            >
+              {selectionInfo.title}
+            </h2>
           </div>
-        )}
-        <h2
-          className="text-base font-semibold whitespace-nowrap"
-          style={{ color: selectionInfo.categoryColor || undefined }}
-        >
-          {selectionInfo.title}
-        </h2>
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {isLoading ? (
-            <span className="flex items-center gap-1">
-              <Loader2 className="size-3 animate-spin" />
-              加载中...
-            </span>
-          ) : (
-            `${filteredBookmarkCount} 条收藏`
-          )}
-        </span>
-
-        {/* 提示文本（桌面端） */}
-        <span className="hidden lg:inline text-xs text-muted-foreground ml-2">
-          拖拽收藏到左侧文件夹可快速分类
-        </span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {isLoading ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="size-3 animate-spin" />
+                加载中...
+              </span>
+            ) : (
+              `${filteredBookmarkCount} 条收藏`
+            )}
+          </span>
+          {/* 提示文本（桌面端）：第二行与「X 条收藏」左对齐 */}
+          <div className="hidden lg:block" />
+          <span className="hidden lg:inline text-xs text-muted-foreground">
+            拖拽收藏到左侧文件夹可快速分类
+          </span>
+        </div>
 
         {/* 右侧：搜索框 + 工具栏 */}
         <div className="flex-1" />
@@ -181,9 +185,7 @@ export function FolderPageToolbar({
                     LayoutGrid;
                   return <Icon className="size-3 mr-1" />;
                 })()}
-                <span className="hidden sm:inline text-xs">
-                  {VIEW_OPTIONS.find((o) => o.value === viewMode)?.label}
-                </span>
+                <span className="hidden sm:inline text-xs">视图</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
