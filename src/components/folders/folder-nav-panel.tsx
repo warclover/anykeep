@@ -307,7 +307,7 @@ function CategoryHeader({
         </div>
         <span
           className={cn(
-            "flex-1 text-left text-xs font-medium truncate",
+            "flex-1 text-left text-xs font-bold truncate",
             isSelected && "text-primary",
           )}
         >
