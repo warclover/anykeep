@@ -120,22 +120,26 @@ export function FolderPageToolbar({
             >
               {selectionInfo.title}
             </h2>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {isLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="size-3 animate-spin" />
+                  加载中...
+                </span>
+              ) : (
+                `${filteredBookmarkCount} 条收藏`
+              )}
+            </span>
           </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {isLoading ? (
-              <span className="flex items-center gap-1">
-                <Loader2 className="size-3 animate-spin" />
-                加载中...
-              </span>
-            ) : (
-              `${filteredBookmarkCount} 条收藏`
-            )}
-          </span>
-          {/* 提示文本（桌面端）：第二行与「X 条收藏」左对齐 */}
+          <div aria-hidden="true" />
+          {/* 提示文本（桌面端）：第二行与标题「其他收藏」等左对齐 */}
+          <div className="hidden lg:flex items-center gap-3 self-center">
+            <div className="w-6 h-6 flex-shrink-0" aria-hidden="true" />
+            <span className="text-xs text-muted-foreground">
+              拖拽收藏到左侧文件夹可快速分类
+            </span>
+          </div>
           <div className="hidden lg:block" />
-          <span className="hidden lg:inline text-xs text-muted-foreground">
-            拖拽收藏到左侧文件夹可快速分类
-          </span>
         </div>
 
         {/* 右侧：搜索框 + 工具栏 */}
