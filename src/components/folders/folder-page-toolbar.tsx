@@ -113,7 +113,7 @@ export function FolderPageToolbar({
           </div>
         )}
         <h2
-          className="text-sm font-semibold whitespace-nowrap"
+          className="text-base font-semibold whitespace-nowrap"
           style={{ color: selectionInfo.categoryColor || undefined }}
         >
           {selectionInfo.title}
@@ -206,7 +206,7 @@ export function FolderPageToolbar({
               variant="outline"
               size="sm"
               onClick={onOpenAIAssistant}
-              className="hidden lg:flex text-xs text-violet-600 border-violet-200 hover:bg-violet-50 hover:border-violet-300 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950 h-7"
+              className="hidden lg:flex h-7 px-2 text-xs"
             >
               AI 助手
             </Button>
