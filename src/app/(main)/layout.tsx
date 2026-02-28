@@ -33,7 +33,7 @@ import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
 import { MainContentSkeleton } from "@/components/layout/main-content-skeleton";
 import { PageToolbarProvider } from "@/contexts/page-toolbar-context";
-import { PageToolbarSlot } from "@/components/layout/page-toolbar-slot";
+// PageToolbarSlot 已移入 AppHeader 内部渲染（页面工具栏替换第二行）
 // V5.3: P2-3.3 响应式布局组件（条件渲染优化）
 import {
   DesktopSidebar,
@@ -62,8 +62,7 @@ export default function MainLayout({
         {/* 顶部导航 */}
         <AppHeader />
 
-        {/* 页面工具栏插槽（整页第二行，全宽） */}
-        <PageToolbarSlot />
+        {/* 页面工具栏已移入 AppHeader 内部（替换第二行平台筛选） */}
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* V5.3: 侧边栏（条件渲染 - 仅桌面端） */}

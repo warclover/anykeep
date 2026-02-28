@@ -88,8 +88,8 @@ export function FolderPageToolbar({
   const SelectionIcon = selectionInfo.icon;
 
   return (
-    <div className={cn("px-4 lg:px-6 py-1.5", className)}>
-      <div className="flex items-center gap-3">
+    <div className={cn("px-4 lg:px-6 h-full flex items-center", className)}>
+      <div className="flex items-center gap-3 w-full">
         {/* 左侧：图标 + 标题(带统计) */}
         {selectionInfo.titleEmoji ? (
           <div

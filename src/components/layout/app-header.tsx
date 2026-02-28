@@ -39,6 +39,8 @@ import { useHomePageSafe } from "@/contexts/home-page-context";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useUiText } from "@/lib/i18n";
+import { usePageToolbar } from "@/contexts/page-toolbar-context";
+import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
 
 export const AppHeader = memo(function AppHeader() {
   const { user, profile, isLoading } = useUser();
@@ -48,6 +50,9 @@ export const AppHeader = memo(function AppHeader() {
   const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
   const t = useUiText();
+  const pageToolbar = usePageToolbar();
+  const sidebarContext = useSafeSidebar();
+  const sidebarWidth = sidebarContext?.displayWidth ?? SIDEBAR_WIDTH.expanded;
 
   // 获取首页上下文（用于平台筛选判断）
   const homeContext = useHomePageSafe();
@@ -246,21 +251,29 @@ export const AppHeader = memo(function AppHeader() {
         </div>
       </div>
 
-      {/* 第二行：平台筛选区域（仅首页非回收站显示） */}
-      {showQuickAdd && (
-        <div className="flex items-center h-11 px-4 lg:px-6 gap-2 border-t border-gray-100 dark:border-gray-800">
-          {/* Logo 占位（桌面端：不可见但占用相同空间，实现与第一行左对齐） */}
-          <div
-            className="hidden sm:flex items-center space-x-2 shrink-0 invisible"
-            aria-hidden="true"
-          >
-            <span className="text-lg md:text-xl font-bold">AnyKeep</span>
-          </div>
-
-          <div className="flex flex-1 items-center gap-2 sm:ml-2 lg:ml-10">
-            <PlatformFilter />
-          </div>
+      {/* 第二行：页面工具栏（优先）或 平台筛选区域 */}
+      {pageToolbar?.toolbar ? (
+        <div
+          className="flex items-center h-11 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[padding-left] duration-200 ease-smooth max-lg:!pl-0"
+          style={{ paddingLeft: sidebarWidth + 280 }}
+        >
+          {pageToolbar.toolbar}
         </div>
+      ) : (
+        showQuickAdd && (
+          <div className="flex items-center h-11 px-4 lg:px-6 gap-2 border-t border-gray-100 dark:border-gray-800">
+            <div
+              className="hidden sm:flex items-center space-x-2 shrink-0 invisible"
+              aria-hidden="true"
+            >
+              <span className="text-lg md:text-xl font-bold">AnyKeep</span>
+            </div>
+
+            <div className="flex flex-1 items-center gap-2 sm:ml-2 lg:ml-10">
+              <PlatformFilter />
+            </div>
+          </div>
+        )
       )}
     </header>
   );
