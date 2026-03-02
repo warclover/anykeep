@@ -3,9 +3,9 @@
  *
  * 允许页面组件在 AppHeader 下方渲染工具栏（整页第二行，全宽）
  *
- * 每次 setToolbar 会记录调用时的 pathname，
- * 消费端只在 pathname 匹配时才返回 toolbar，
- * 从而避免跨页面导航时工具栏残留。
+ * setToolbar 会记录调用时的 pathname（forPathname），
+ * 由消费端（AppHeader）根据当前 pathname 与 forPathname 是否一致决定是否展示，
+ * 避免跨页面导航时工具栏残留。
  */
 
 "use client";
@@ -22,8 +22,10 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 
-interface PageToolbarContextValue {
+export interface PageToolbarContextValue {
   toolbar: ReactNode | null;
+  /** 注入该 toolbar 时的 pathname，仅当与当前路由一致时才应显示 */
+  forPathname: string | null;
   setToolbar: (toolbar: ReactNode | null) => void;
 }
 
@@ -35,11 +37,6 @@ interface ToolbarState {
 const PageToolbarContext = createContext<PageToolbarContextValue | null>(null);
 
 export function PageToolbarProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<ToolbarState>({
-    toolbar: null,
-    forPathname: null,
-  });
-
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
 
@@ -48,6 +45,11 @@ export function PageToolbarProvider({ children }: { children: ReactNode }) {
     pathnameRef.current = pathname;
   }, [pathname]);
 
+  const [state, setState] = useState<ToolbarState>({
+    toolbar: null,
+    forPathname: null,
+  });
+
   const handleSetToolbar = useCallback((newToolbar: ReactNode | null) => {
     setState({
       toolbar: newToolbar,
@@ -55,14 +57,13 @@ export function PageToolbarProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const effectiveToolbar =
-    state.toolbar !== null && state.forPathname === pathname
-      ? state.toolbar
-      : null;
-
-  const value = useMemo(
-    () => ({ toolbar: effectiveToolbar, setToolbar: handleSetToolbar }),
-    [effectiveToolbar, handleSetToolbar],
+  const value = useMemo<PageToolbarContextValue>(
+    () => ({
+      toolbar: state.toolbar,
+      forPathname: state.forPathname,
+      setToolbar: handleSetToolbar,
+    }),
+    [state.toolbar, state.forPathname, handleSetToolbar],
   );
 
   return (

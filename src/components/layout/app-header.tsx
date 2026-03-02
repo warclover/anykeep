@@ -14,7 +14,7 @@
 
 import { useState, memo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Moon, Sun } from "lucide-react";
@@ -51,6 +51,7 @@ export const AppHeader = memo(function AppHeader() {
   const isMobile = useIsMobile();
   const t = useUiText();
   const pageToolbar = usePageToolbar();
+  const pathname = usePathname();
   const sidebarContext = useSafeSidebar();
   const sidebarWidth = sidebarContext?.displayWidth ?? SIDEBAR_WIDTH.expanded;
 
@@ -251,8 +252,8 @@ export const AppHeader = memo(function AppHeader() {
         </div>
       </div>
 
-      {/* 第二行：页面工具栏（优先）或 平台筛选区域 */}
-      {pageToolbar?.toolbar ? (
+      {/* 第二行：页面工具栏（优先）或 平台筛选区域；仅当当前路由与注入时一致时显示自定义工具栏 */}
+      {pageToolbar?.toolbar && pageToolbar.forPathname === pathname ? (
         <div
           className="flex items-center h-11 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-[padding] duration-200 ease-smooth max-lg:!pl-4 max-lg:!pr-4"
           style={{

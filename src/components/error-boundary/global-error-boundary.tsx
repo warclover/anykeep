@@ -12,6 +12,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { reportError } from "./error-reporter";
 import { GlobalFallbackUI } from "./fallback-ui";
+import { FeedbackProvider } from "@/components/feedback";
 import type { ErrorBoundaryProps, ErrorBoundaryState } from "./types";
 
 /**
@@ -75,13 +76,15 @@ export class GlobalErrorBoundary extends Component<
       }
 
       return (
-        <GlobalFallbackUI
-          error={this.state.error}
-          errorInfo={this.state.errorInfo}
-          feature={this.props.feature}
-          showDetails={this.props.showDetails}
-          onRetry={this.handleRetry}
-        />
+        <FeedbackProvider>
+          <GlobalFallbackUI
+            error={this.state.error}
+            errorInfo={this.state.errorInfo}
+            feature={this.props.feature}
+            showDetails={this.props.showDetails}
+            onRetry={this.handleRetry}
+          />
+        </FeedbackProvider>
       );
     }
 
