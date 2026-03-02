@@ -387,18 +387,13 @@ export function FoldersPageClient({
     viewMode,
   ]);
 
-  // 将工具栏注入到布局层
+  // 将工具栏注入到布局层，卸载时自动清空
+  const setPageToolbar = pageToolbar?.setToolbar;
   useEffect(() => {
-    if (!pageToolbar) return;
-    pageToolbar.setToolbar(toolbarElement);
-  }, [pageToolbar, toolbarElement]);
-
-  // 卸载时清空工具栏
-  useEffect(() => {
-    return () => {
-      pageToolbar?.setToolbar(null);
-    };
-  }, [pageToolbar]);
+    if (!setPageToolbar) return;
+    setPageToolbar(toolbarElement);
+    return () => setPageToolbar(null);
+  }, [setPageToolbar, toolbarElement]);
 
   // 栏目选择
   const handleSelectCategory = useCallback(
