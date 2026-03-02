@@ -7,14 +7,7 @@
 
 "use client";
 
-import {
-  Search,
-  SortAsc,
-  LayoutGrid,
-  List,
-  ListCollapse,
-  Loader2,
-} from "lucide-react";
+import { Search, LayoutGrid, List, ListCollapse, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -160,8 +153,7 @@ export function FolderPageToolbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 px-2">
-                <SortAsc className="size-3 mr-1" />
-                <span className="hidden sm:inline text-xs">
+                <span className="text-xs">
                   {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
                 </span>
               </Button>
@@ -183,13 +175,7 @@ export function FolderPageToolbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 px-2">
-                {(() => {
-                  const Icon =
-                    VIEW_OPTIONS.find((o) => o.value === viewMode)?.icon ||
-                    LayoutGrid;
-                  return <Icon className="size-3 mr-1" />;
-                })()}
-                <span className="hidden sm:inline text-xs">视图</span>
+                <span className="text-xs">视图</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
