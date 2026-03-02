@@ -917,7 +917,7 @@ export const BookmarkCard = memo(function BookmarkCard({
             {/* V4.2.24: 标题固定两行高度，保持卡片对齐 */}
             <CardTitle
               className={cn(
-                "text-base leading-tight line-clamp-2 min-h-[2.5rem]",
+                "text-sm leading-tight line-clamp-2 min-h-[2.5rem]",
                 titleLoading
                   ? "text-gray-400 dark:text-gray-500 italic animate-pulse"
                   : bookmark.is_read
@@ -929,7 +929,7 @@ export const BookmarkCard = memo(function BookmarkCard({
             </CardTitle>
           </div>
           {/* V4.2.24: 摘要固定两行高度，保持卡片对齐 */}
-          <CardDescription className="text-sm leading-tight mt-0.5 line-clamp-2 min-h-[2.25rem] text-muted-foreground">
+          <CardDescription className="text-xs leading-tight mt-0.5 line-clamp-3 min-h-[2.8125rem] text-muted-foreground">
             {getDisplaySummary(bookmark.ai_summary) || "\u00A0"}
           </CardDescription>
         </CardHeader>
