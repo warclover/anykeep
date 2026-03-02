@@ -857,8 +857,8 @@ export const BookmarkCard = memo(function BookmarkCard({
             decoding="async"
             onError={handleImageError}
           />
-          {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
-          <div className="absolute top-3 left-3">
+          {/* 平台标识 - P0.5: 缩放70%显示 */}
+          <div className="absolute top-3 left-3 scale-[0.7] origin-top-left">
             <PlatformBadge
               platform={bookmark.platform ?? "UNKNOWN"}
               size="lg"
