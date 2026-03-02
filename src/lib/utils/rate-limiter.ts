@@ -53,6 +53,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   batch: { windowMs: 60_000, maxRequests: 10, useDistributed: true },
   // 书签操作：每分钟 300 次（核心用户操作，需要宽松限制）
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
+  // MD 收藏列表/详情：与 bookmarks 分离，避免列表刷新占满额度；每分钟 200 次
+  md_collections: { windowMs: 60_000, maxRequests: 200 },
   // 附件内容抓取：每分钟 10 次（防滥用，最多 3 个附件）
   attachment_fetch: { windowMs: 60_000, maxRequests: 10 },
   // 快照操作：每分钟 60 次
@@ -478,12 +480,10 @@ function getConfigKey(pathname: string): string {
   if (pathname.includes("/auth") || pathname.includes("/login")) return "auth";
   // 附件内容抓取（严格限制）
   if (pathname.includes("/fetch-content")) return "attachment_fetch";
+  // MD 收藏单独限流，避免与 bookmarks 共用额度导致列表 429
+  if (pathname.includes("/md-collections")) return "md_collections";
   // 注意：必须在 /batch 检查之前，避免 batch-status 端点被错误匹配
-  if (
-    pathname.includes("/bookmarks") ||
-    pathname.includes("/bookmark") ||
-    pathname.includes("/md-collections")
-  )
+  if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
     return "bookmarks";
   if (pathname.includes("/batch")) return "batch";
   if (

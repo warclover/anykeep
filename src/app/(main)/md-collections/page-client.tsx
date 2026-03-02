@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -38,12 +38,12 @@ import {
 import type { MdCollection, MdContentType } from "@/features/md-collections";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePageToolbar } from "@/contexts/page-toolbar-context";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -125,6 +125,9 @@ export function MdCollectionPageClient({
 
   // 视图偏好
   const { viewMode, setViewMode } = useMdViewPreference("list");
+
+  // 页面工具栏注入
+  const pageToolbar = usePageToolbar();
 
   // 对话框状态
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
@@ -243,6 +246,76 @@ export function MdCollectionPageClient({
     [uploadFile, addLocal],
   );
 
+  // 注入 AppHeader 第二行工具栏（仅依赖稳定/标量值，避免 setViewMode/refresh 等引用变化导致 useMemo 每轮新引用 → useEffect 循环）
+  const toolbarElement = useMemo(
+    () => (
+      <div className="flex items-center justify-between w-full">
+        <div>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-white leading-none">
+            我的笔记
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            收藏和管理你的 Markdown 内容
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <MdViewToggle value={viewMode} onChange={setViewMode} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 w-7 px-0"
+            onClick={() => refresh()}
+            disabled={isLoading || isValidating}
+          >
+            <RefreshCw
+              className={cn(
+                "w-3 h-3",
+                (isLoading || isValidating) && "animate-spin",
+              )}
+            />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            disabled={isUploading}
+            className="h-7 px-2 text-xs"
+          >
+            <label className="cursor-pointer">
+              <Upload className="w-3 h-3 mr-1.5" />
+              上传文件
+              <input
+                type="file"
+                className="hidden"
+                accept=".md,.txt,.markdown"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+              />
+            </label>
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 px-2 text-xs bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+            onClick={() => setIsPasteDialogOpen(true)}
+          >
+            <Plus className="w-3 h-3 mr-1.5" />
+            新建收藏
+          </Button>
+        </div>
+      </div>
+    ),
+    // 故意不包含 setViewMode/refresh，避免引用每轮变化导致 toolbarElement 常新 → setToolbar 重渲染循环
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewMode, isLoading, isValidating, isUploading, handleFileUpload],
+  );
+
+  const setPageToolbarFn = pageToolbar?.setToolbar;
+  useEffect(() => {
+    if (!hasAccess || !setPageToolbarFn) return;
+    setPageToolbarFn(toolbarElement);
+    return () => setPageToolbarFn(null);
+  }, [hasAccess, setPageToolbarFn, toolbarElement]);
+
   // 无权限状态
   if (!hasAccess) {
     return (
@@ -267,139 +340,86 @@ export function MdCollectionPageClient({
 
   return (
     <div className="p-6">
-      {/* 页面标题和操作 */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            我的笔记
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            收藏和管理你的 Markdown 内容
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 视图切换 */}
-          <MdViewToggle value={viewMode} onChange={setViewMode} />
-
-          {/* 刷新按钮 */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refresh()}
-            disabled={isLoading || isValidating}
-          >
-            <RefreshCw
-              className={cn(
-                "w-4 h-4",
-                (isLoading || isValidating) && "animate-spin",
-              )}
-            />
-          </Button>
-
-          {/* 上传按钮 */}
-          <Button variant="outline" asChild disabled={isUploading}>
-            <label className="cursor-pointer">
-              <Upload className="w-4 h-4 mr-2" />
-              上传文件
-              <input
-                type="file"
-                className="hidden"
-                accept=".md,.txt,.markdown"
-                onChange={handleFileUpload}
-                disabled={isUploading}
+      {/* 新建收藏对话框（由 AppHeader 工具栏触发，Dialog 留在渲染树以保持 Portal 正常） */}
+      <Dialog open={isPasteDialogOpen} onOpenChange={setIsPasteDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>粘贴 Markdown 内容</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="title">标题（可选）</Label>
+              <Input
+                id="title"
+                placeholder="自动从内容提取"
+                value={pasteForm.title}
+                onChange={(e) =>
+                  setPasteForm({ ...pasteForm, title: e.target.value })
+                }
               />
-            </label>
-          </Button>
-
-          {/* 粘贴对话框 */}
-          <Dialog open={isPasteDialogOpen} onOpenChange={setIsPasteDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
-                <Plus className="w-4 h-4 mr-2" />
-                新建收藏
+            </div>
+            <div>
+              <Label htmlFor="contentType">内容类型</Label>
+              <Select
+                value={pasteForm.contentType}
+                onValueChange={(v) =>
+                  setPasteForm({
+                    ...pasteForm,
+                    contentType: v as MdContentType,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* 只显示小写的用户选项 */}
+                  {(
+                    [
+                      "article",
+                      "tutorial",
+                      "code",
+                      "note",
+                      "documentation",
+                    ] as const
+                  ).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {CONTENT_TYPE_CONFIG[key]?.label || key}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="content">Markdown 内容</Label>
+              <Textarea
+                id="content"
+                placeholder="在此粘贴 Markdown 内容..."
+                className="min-h-[300px] font-mono text-sm"
+                value={pasteForm.content}
+                onChange={(e) =>
+                  setPasteForm({ ...pasteForm, content: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsPasteDialogOpen(false)}
+              >
+                取消
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>粘贴 Markdown 内容</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <Label htmlFor="title">标题（可选）</Label>
-                  <Input
-                    id="title"
-                    placeholder="自动从内容提取"
-                    value={pasteForm.title}
-                    onChange={(e) =>
-                      setPasteForm({ ...pasteForm, title: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contentType">内容类型</Label>
-                  <Select
-                    value={pasteForm.contentType}
-                    onValueChange={(v) =>
-                      setPasteForm({
-                        ...pasteForm,
-                        contentType: v as MdContentType,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* 只显示小写的用户选项 */}
-                      {(
-                        [
-                          "article",
-                          "tutorial",
-                          "code",
-                          "note",
-                          "documentation",
-                        ] as const
-                      ).map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {CONTENT_TYPE_CONFIG[key]?.label || key}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="content">Markdown 内容</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="在此粘贴 Markdown 内容..."
-                    className="min-h-[300px] font-mono text-sm"
-                    value={pasteForm.content}
-                    onChange={(e) =>
-                      setPasteForm({ ...pasteForm, content: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsPasteDialogOpen(false)}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    onClick={handlePasteCreate}
-                    disabled={isCreating || !pasteForm.content.trim()}
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500"
-                  >
-                    {isCreating ? "创建中..." : "创建收藏"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+              <Button
+                onClick={handlePasteCreate}
+                disabled={isCreating || !pasteForm.content.trim()}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500"
+              >
+                {isCreating ? "创建中..." : "创建收藏"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 错误状态 */}
       {error && (

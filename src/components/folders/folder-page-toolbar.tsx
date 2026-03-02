@@ -114,9 +114,11 @@ export function FolderPageToolbar({
             </span>
           </div>
           <div aria-hidden="true" />
-          {/* 提示文本（桌面端）：第二行与标题「其他收藏」等左对齐 */}
+          {/* 提示文本（桌面端）：与上一行标题左对齐（有图标时用占位对齐，无图标时与标题同起跑线） */}
           <div className="hidden lg:flex items-center gap-3 self-center">
-            <div className="w-6 h-6 flex-shrink-0" aria-hidden="true" />
+            {!selectionInfo.titleEmoji && (
+              <div className="w-6 h-6 flex-shrink-0" aria-hidden="true" />
+            )}
             <span className="text-xs text-muted-foreground">
               拖拽收藏到左侧文件夹可快速分类
             </span>
