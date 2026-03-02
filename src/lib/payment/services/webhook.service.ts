@@ -3,7 +3,7 @@
  * 幂等性保障 + 事件分发
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/supabase";
 import type {
   WebhookEvent,
@@ -71,7 +71,7 @@ class WebhookService {
     provider: PaymentProvider,
     eventId: string,
   ): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
 
     const { data } = await supabase
       .from("payment_events")
@@ -87,7 +87,7 @@ class WebhookService {
    * 记录原始事件
    */
   private async logEvent(event: WebhookEvent): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
 
     await supabase.from("payment_events").upsert(
       {
@@ -245,7 +245,7 @@ class WebhookService {
     provider: PaymentProvider,
     eventId: string,
   ): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
 
     await supabase
       .from("payment_events")
@@ -265,7 +265,7 @@ class WebhookService {
     eventId: string,
     error: unknown,
   ): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
 
     // 先获取当前 retry_count，然后 +1
     const { data } = await supabase
