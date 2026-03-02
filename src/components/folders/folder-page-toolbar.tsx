@@ -86,18 +86,7 @@ export function FolderPageToolbar({
         {/* 左侧：图标+标题 | 统计；第二行提示与统计左对齐，整体上下居中 */}
         <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 items-center content-center self-center">
           <div className="flex items-center gap-3 self-center">
-            {selectionInfo.titleEmoji ? (
-              <div
-                className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{
-                  backgroundColor: selectionInfo.categoryColor
-                    ? `${selectionInfo.categoryColor}20`
-                    : undefined,
-                }}
-              >
-                <span className="text-sm">{selectionInfo.titleEmoji}</span>
-              </div>
-            ) : (
+            {!selectionInfo.titleEmoji && (
               <div
                 className={cn(
                   "w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0",
