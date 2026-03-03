@@ -1,11 +1,12 @@
 /**
  * V4.2 聚类建议面板
  * 展示智能分拣服务产生的所有待确认聚类建议
+ * 使用 TanStack Query 拉取 inbox?type=suggestions，避免重复请求。
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,19 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Sparkles, Brain, CheckCircle2 } from "lucide-react";
 import { ClusterSuggestionCard } from "./cluster-suggestion-card";
 import { ClusterProcessingStatusCard } from "./cluster-processing-status";
-import type { ClusterProcessingStatus } from "@/lib/classification/types/suggestion";
-import { clientLogger } from "@/lib/client-logger";
-import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
-
-interface ClusterSuggestion {
-  id: number;
-  suggestedFolderName: string;
-  bookmarkIds: number[];
-  sampleTitles: string[];
-  confidence: number;
-  reason: string | null;
-  createdAt: string;
-}
+import { useClusterSuggestions } from "@/hooks/data/use-cluster-suggestions";
 
 interface ClusterSuggestionsPanelProps {
   /** 刷新书签列表回调 */
@@ -41,67 +30,27 @@ interface ClusterSuggestionsPanelProps {
 export function ClusterSuggestionsPanel({
   onRefreshBookmarks,
 }: ClusterSuggestionsPanelProps) {
-  const [suggestions, setSuggestions] = useState<ClusterSuggestion[]>([]);
-  const [clusterStatus, setClusterStatus] =
-    useState<ClusterProcessingStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { suggestions, clusterStatus, isLoading, isFetching, error, refresh } =
+    useClusterSuggestions();
 
-  // 加载聚类建议
-  const loadSuggestions = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await fetch(
-        `${API_CLASSIFICATION.inbox}?type=suggestions`,
-      );
+  const handleRefresh = useCallback(() => {
+    refresh();
+  }, [refresh]);
 
-      if (!response.ok) {
-        throw new Error("加载聚类建议失败");
-      }
-
-      const data = await response.json();
-      setSuggestions(data.data?.suggestions || []);
-      setClusterStatus(data.data?.clusterStatus || null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败");
-      clientLogger.error(
-        { error: err },
-        "[ClusterSuggestionsPanel] Failed to load cluster suggestions",
-      );
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    setIsLoading(true);
-    loadSuggestions().finally(() => setIsLoading(false));
-  }, [loadSuggestions]);
-
-  // 刷新
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await loadSuggestions();
-    setIsRefreshing(false);
-  };
-
-  // 建议确认回调
   const handleConfirmed = useCallback(
-    (folderId: number, folderName: string) => {
-      // 从列表中移除已确认的建议
-      setSuggestions((prev) =>
-        prev.filter((s) => s.suggestedFolderName !== folderName),
-      );
-      // 刷新书签列表
+    (_folderId: number, _folderName: string) => {
       onRefreshBookmarks?.();
+      refresh();
     },
-    [onRefreshBookmarks],
+    [onRefreshBookmarks, refresh],
   );
 
-  // 建议拒绝回调
-  const handleRejected = useCallback((suggestionId: number) => {
-    setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
-  }, []);
+  const handleRejected = useCallback(
+    (_suggestionId: number) => {
+      refresh();
+    },
+    [refresh],
+  );
 
   // 加载中状态
   if (isLoading) {
@@ -149,11 +98,11 @@ export function ClusterSuggestionsPanel({
             <Button
               variant="outline"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isFetching}
               className="gap-2"
             >
               <RefreshCw
-                className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+                className={isFetching ? "animate-spin h-4 w-4" : "h-4 w-4"}
               />
               刷新状态
             </Button>
@@ -201,10 +150,10 @@ export function ClusterSuggestionsPanel({
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isFetching}
           >
             <RefreshCw
-              className={isRefreshing ? "animate-spin h-4 w-4" : "h-4 w-4"}
+              className={isFetching ? "animate-spin h-4 w-4" : "h-4 w-4"}
             />
           </Button>
         </div>

@@ -3,9 +3,10 @@
 /**
  * 整理建议面板组件
  * 展示待整理文件夹的智能整理建议列表
+ * 使用 TanStack Query 拉取 /api/classification/inbox，避免重复请求。
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +29,7 @@ import { ClusterProcessingStatusCard } from "./cluster-processing-status";
 import type { OrganizationAnalysis } from "@/lib/classification";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import { useInboxOrganizationAnalysis } from "@/hooks/data/use-inbox-organization-analysis";
 
 interface OrganizationSuggestionsPanelProps {
   /** 初始分析数据 */
@@ -46,159 +48,113 @@ export function OrganizationSuggestionsPanel({
   onRefresh,
   onSuggestionApplied,
 }: OrganizationSuggestionsPanelProps) {
-  const [analysis, setAnalysis] = useState<OrganizationAnalysis | null>(
-    initialAnalysis || null,
-  );
-  const [isLoading, setIsLoading] = useState(!initialAnalysis);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // 加载分析数据
-  const loadAnalysis = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await fetch(API_CLASSIFICATION.inbox);
-      const data = await response.json();
+  const { analysis, isLoading, error, refresh, setAnalysis } =
+    useInboxOrganizationAnalysis({
+      initialData: initialAnalysis ?? undefined,
+      enabled: !initialAnalysis,
+    });
 
-      if (!response.ok) {
-        // 提取服务器返回的错误信息
-        const errorMsg =
-          data?.error?.message || data?.error?.details || response.statusText;
-        throw new Error(errorMsg);
-      }
-
-      setAnalysis(data.data);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "加载整理建议失败";
-      setError(errorMsg);
-      clientLogger.error(
-        { error: errorMsg },
-        "[OrganizationSuggestionsPanel] Failed to load analysis",
-      );
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    if (!initialAnalysis) {
-      setIsLoading(true);
-      loadAnalysis().finally(() => setIsLoading(false));
-    }
-  }, [initialAnalysis, loadAnalysis]);
-
-  // 刷新分析
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setError(null);
     setSuccessMessage(null);
-
+    setOperationError(null);
     try {
       if (onRefresh) {
         const newAnalysis = await onRefresh();
         setAnalysis(newAnalysis);
       } else {
-        await loadAnalysis();
+        await refresh();
       }
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [onRefresh, refresh, setAnalysis]);
 
-  // 应用建议
-  const handleApply = async (
-    suggestionId: number,
-    _targetFolderId?: number,
-  ) => {
-    setProcessingIds((prev) => new Set(prev).add(suggestionId));
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const response = await fetch(API_CLASSIFICATION.inbox, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ suggestionId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to apply suggestion");
+  const handleApply = useCallback(
+    async (suggestionId: number, _targetFolderId?: number) => {
+      setProcessingIds((prev) => new Set(prev).add(suggestionId));
+      setSuccessMessage(null);
+      setOperationError(null);
+      try {
+        const response = await fetch(API_CLASSIFICATION.inbox, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ suggestionId }),
+        });
+        if (!response.ok) throw new Error("Failed to apply suggestion");
+        setAnalysis(
+          analysis
+            ? {
+                ...analysis,
+                suggestions: analysis.suggestions.filter(
+                  (s) => s.id !== suggestionId,
+                ),
+              }
+            : null,
+        );
+        setSuccessMessage("建议已应用");
+        onSuggestionApplied?.();
+      } catch (err) {
+        setOperationError("应用建议失败");
+        clientLogger.error(
+          { error: err },
+          "[OrganizationSuggestionsPanel] Failed to apply suggestion",
+        );
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(suggestionId);
+          return next;
+        });
       }
+    },
+    [analysis, setAnalysis, onSuggestionApplied],
+  );
 
-      // 从列表中移除已应用的建议
-      setAnalysis((prev) =>
-        prev
-          ? {
-              ...prev,
-              suggestions: prev.suggestions.filter(
-                (s) => s.id !== suggestionId,
-              ),
-            }
-          : null,
-      );
-
-      setSuccessMessage("建议已应用");
-      onSuggestionApplied?.();
-    } catch (err) {
-      setError("应用建议失败");
-      clientLogger.error(
-        { error: err },
-        "[OrganizationSuggestionsPanel] Failed to apply suggestion",
-      );
-    } finally {
-      setProcessingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(suggestionId);
-        return next;
-      });
-    }
-  };
-
-  // 拒绝建议
-  const handleReject = async (suggestionId: number) => {
-    setProcessingIds((prev) => new Set(prev).add(suggestionId));
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const response = await fetch(API_CLASSIFICATION.inbox, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ suggestionId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to reject suggestion");
+  const handleReject = useCallback(
+    async (suggestionId: number) => {
+      setProcessingIds((prev) => new Set(prev).add(suggestionId));
+      setSuccessMessage(null);
+      setOperationError(null);
+      try {
+        const response = await fetch(API_CLASSIFICATION.inbox, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ suggestionId }),
+        });
+        if (!response.ok) throw new Error("Failed to reject suggestion");
+        setAnalysis(
+          analysis
+            ? {
+                ...analysis,
+                suggestions: analysis.suggestions.filter(
+                  (s) => s.id !== suggestionId,
+                ),
+              }
+            : null,
+        );
+        setSuccessMessage("已忽略该建议");
+      } catch (err) {
+        setOperationError("操作失败");
+        clientLogger.error(
+          { error: err },
+          "[OrganizationSuggestionsPanel] Failed to reject suggestion",
+        );
+      } finally {
+        setProcessingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(suggestionId);
+          return next;
+        });
       }
-
-      // 从列表中移除已拒绝的建议
-      setAnalysis((prev) =>
-        prev
-          ? {
-              ...prev,
-              suggestions: prev.suggestions.filter(
-                (s) => s.id !== suggestionId,
-              ),
-            }
-          : null,
-      );
-
-      setSuccessMessage("已忽略该建议");
-    } catch (err) {
-      setError("操作失败");
-      clientLogger.error(
-        { error: err },
-        "[OrganizationSuggestionsPanel] Failed to reject suggestion",
-      );
-    } finally {
-      setProcessingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(suggestionId);
-        return next;
-      });
-    }
-  };
+    },
+    [analysis, setAnalysis],
+  );
 
   // 一键应用所有建议
   const handleApplyAll = async () => {
@@ -299,12 +255,12 @@ export function OrganizationSuggestionsPanel({
           <ClusterProcessingStatusCard status={analysis.clusterStatus} />
         )}
 
-        {/* 错误提示 */}
-        {error && (
+        {/* 错误提示（加载错误或应用/拒绝操作错误） */}
+        {(error || operationError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>错误</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error ?? operationError}</AlertDescription>
           </Alert>
         )}
 

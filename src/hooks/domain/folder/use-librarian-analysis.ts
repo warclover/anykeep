@@ -29,6 +29,14 @@ export type {
 import type { LibrarianAnalysis } from "@/types/librarian.types";
 
 /**
+ * Hook 选项
+ */
+export interface UseLibrarianAnalysisOptions {
+  /** 是否启用数据获取（默认 true）。为 false 时不发起请求，用于按需加载（如仅健康诊断 Tab 可见时再请求） */
+  enabled?: boolean;
+}
+
+/**
  * Hook 返回类型
  */
 export interface UseLibrarianAnalysisReturn {
@@ -60,10 +68,15 @@ export interface UseLibrarianAnalysisReturn {
 
 /**
  * 整理大师分析 Hook
+ *
+ * @param options.enabled - 为 false 时不发起初始请求，用于按需加载（如仅健康诊断 Tab 可见时再请求），避免首屏多余请求
  */
-export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
+export function useLibrarianAnalysis(
+  options: UseLibrarianAnalysisOptions = {},
+): UseLibrarianAnalysisReturn {
+  const { enabled = true } = options;
   const [analysis, setAnalysis] = useState<LibrarianAnalysis | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,11 +164,15 @@ export function useLibrarianAnalysis(): UseLibrarianAnalysisReturn {
     setError(null);
   }, []);
 
-  // 初始加载
+  // 初始加载（仅 enabled 时请求，避免首屏多余 analysis 请求）
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     fetchRecent().finally(() => setIsLoading(false));
-  }, [fetchRecent]);
+  }, [enabled, fetchRecent]);
 
   return {
     analysis,

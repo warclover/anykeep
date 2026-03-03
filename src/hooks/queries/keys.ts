@@ -157,6 +157,8 @@ export const inboxKeys = {
   items: () => [...inboxKeys.all, "items"] as const,
   /** 特定 Tab 的书签列表 */
   itemsByTab: (tabId: string) => [...inboxKeys.items(), tabId] as const,
+  /** 聚类建议（type=suggestions），用于 TanStack Query 去重 */
+  suggestions: () => [...inboxKeys.all, "suggestions"] as const,
 };
 
 /**

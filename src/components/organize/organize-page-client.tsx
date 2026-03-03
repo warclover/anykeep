@@ -231,7 +231,11 @@ export function OrganizePageClient({
     error: snapshotError,
   } = useOrganizeComparison();
 
-  const { analysis, refresh: refreshAnalysis } = useLibrarianAnalysis();
+  // 仅在选择「健康诊断」Tab 时请求，避免首屏多余 analysis 请求及与 HealthDiagnosisPanel 重复请求
+  const librarianAnalysis = useLibrarianAnalysis({
+    enabled: activeTab === "health",
+  });
+  const { analysis, refresh: refreshAnalysis } = librarianAnalysis;
 
   const { mergeFolders, deleteFolder, renameFolder, createFolder } =
     useHealthActions({
@@ -649,9 +653,17 @@ export function OrganizePageClient({
             )}
           </div>
 
-          {/* 右侧：健康诊断面板 */}
+          {/* 右侧：健康诊断面板（由父组件传入完整状态，避免重复请求 /api/librarian/analysis） */}
           <div className="lg:col-span-2">
             <HealthDiagnosisPanel
+              librarianState={{
+                analysis: librarianAnalysis.analysis,
+                isLoading: librarianAnalysis.isLoading,
+                isAnalyzing: librarianAnalysis.isAnalyzing,
+                error: librarianAnalysis.error,
+                runAnalysis: librarianAnalysis.runAnalysis,
+                refresh: librarianAnalysis.refresh,
+              }}
               onViewAllIssues={() => setShowIssueDrawer(true)}
               onIssueAction={handleIssueAction}
               disabled={isExecuting}

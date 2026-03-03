@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
+import type { LibrarianAnalysis } from "@/types/librarian.types";
 import { calculateTotalIssues } from "@/lib/organize/types";
 import { HealthScoreCard } from "./health-score-card";
 import { ContentHealthTab } from "./content-health-tab";
@@ -32,8 +33,22 @@ import {
 // 类型定义
 // ============================================================================
 
+/** 由父组件传入的分析状态，避免与父组件重复请求同一接口 */
+export interface LibrarianPanelState {
+  analysis: LibrarianAnalysis | null;
+  isLoading: boolean;
+  isAnalyzing: boolean;
+  error: string | null;
+  runAnalysis: () => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
 interface HealthDiagnosisPanelProps {
   className?: string;
+  /** 由父组件传入时使用，避免重复请求 /api/librarian/analysis */
+  analysis?: LibrarianAnalysis | null;
+  /** 完整状态由父组件传入时使用（organize 页仅传 analysis，其余用内部 hook 会重复请求，故传完整状态） */
+  librarianState?: LibrarianPanelState;
   onViewAllIssues?: () => void;
   onIssueAction?: (type: IssueType, itemId: number, action: ActionType) => void;
   disabled?: boolean;
@@ -52,6 +67,8 @@ const TAB_CONTENT = "content";
 
 export function HealthDiagnosisPanel({
   className,
+  analysis: analysisProp,
+  librarianState,
   onViewAllIssues,
   onIssueAction,
   disabled,
@@ -66,8 +83,17 @@ export function HealthDiagnosisPanel({
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
-  const { analysis, isLoading, isAnalyzing, error, runAnalysis } =
-    useLibrarianAnalysis();
+  const hookState = useLibrarianAnalysis({
+    enabled: !librarianState,
+  });
+
+  // 优先使用父组件传入的状态，避免与父组件重复请求
+  const analysis =
+    librarianState?.analysis ?? analysisProp ?? hookState.analysis;
+  const isLoading = librarianState?.isLoading ?? hookState.isLoading;
+  const isAnalyzing = librarianState?.isAnalyzing ?? hookState.isAnalyzing;
+  const error = librarianState?.error ?? hookState.error;
+  const runAnalysis = librarianState?.runAnalysis ?? hookState.runAnalysis;
 
   // 加载状态
   if (isLoading) {
