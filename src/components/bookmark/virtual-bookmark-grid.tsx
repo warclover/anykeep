@@ -212,6 +212,39 @@ export function VirtualBookmarkGrid({
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const prefetchTriggered = useRef(false);
 
+  // 使用 ref 存储 selectedIds，避免 itemContent 回调因 Set 引用变化而重建
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  // 稳定的 itemContent 渲染器（通过 ref 访问 selectedIds，减少依赖）
+  const renderItem = useCallback(
+    (_index: number, bookmark: BookmarkWithFolder) => (
+      <GridBookmarkItem
+        key={bookmark.id}
+        bookmark={bookmark}
+        enableFlipCard={enableFlipCard}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleRead={onToggleRead}
+        onToggleStarred={onToggleStarred}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedIdsRef.current.has(bookmark.id)}
+        onToggleSelect={onToggleSelect}
+        customUsageTags={customUsageTags}
+      />
+    ),
+    [
+      enableFlipCard,
+      onEdit,
+      onDelete,
+      onToggleRead,
+      onToggleStarred,
+      isSelectionMode,
+      onToggleSelect,
+      customUsageTags,
+    ],
+  );
+
   // 智能预取：当滚动到指定位置时提前加载
   const handleRangeChanged = useCallback(
     ({ endIndex }: { startIndex: number; endIndex: number }) => {
@@ -289,21 +322,7 @@ export function VirtualBookmarkGrid({
         endReached={handleEndReached}
         overscan={200}
         initialTopMostItemIndex={0}
-        itemContent={(index, bookmark) => (
-          <GridBookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            enableFlipCard={enableFlipCard}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleRead={onToggleRead}
-            onToggleStarred={onToggleStarred}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedIds.has(bookmark.id)}
-            onToggleSelect={onToggleSelect}
-            customUsageTags={customUsageTags}
-          />
-        )}
+        itemContent={renderItem}
         components={components}
       />
     );
@@ -323,21 +342,7 @@ export function VirtualBookmarkGrid({
         endReached={handleEndReached}
         overscan={200}
         initialTopMostItemIndex={0}
-        itemContent={(index, bookmark) => (
-          <GridBookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            enableFlipCard={enableFlipCard}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onToggleRead={onToggleRead}
-            onToggleStarred={onToggleStarred}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedIds.has(bookmark.id)}
-            onToggleSelect={onToggleSelect}
-            customUsageTags={customUsageTags}
-          />
-        )}
+        itemContent={renderItem}
         components={components}
       />
     </div>
