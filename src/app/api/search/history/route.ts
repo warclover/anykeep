@@ -11,6 +11,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
@@ -67,7 +68,10 @@ export async function GET(request: NextRequest) {
       result.hotKeywords = await service.getHotKeywords(limit, days);
     }
 
-    return successResponse(result);
+    return NextResponse.json(
+      { success: true, data: result },
+      { headers: { "Cache-Control": "private, max-age=60" } },
+    );
   } catch (error) {
     logger.error({ error }, "[SearchHistory API] GET 失败");
     return internalError("获取搜索历史失败");

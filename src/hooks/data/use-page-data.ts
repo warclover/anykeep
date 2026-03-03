@@ -4,19 +4,21 @@
  *
  * V5.1: 收藏夹数据支持本地持久化缓存
  * V5.3: P2-2.4 添加 AbortController 请求中断机制
+ * V5.5: useFoldersData 迁移到 TanStack Query，消除三条并行 API 路径中的第三条
  */
 
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
-import { dataCache, CACHE_KEYS } from "@/lib/cache";
 import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
 import type { FolderWithStats, FolderCategory } from "@/types/domain";
+import { folderKeys } from "@/hooks/queries/keys";
 
 // ==================== 通用类型 ====================
 
@@ -79,137 +81,52 @@ interface FoldersData {
   recentBookmarks: (Bookmark & { folders?: { name: string } | null })[];
 }
 
-/**
- * 收藏夹页面数据获取 Hook
- * V5.1: 支持本地持久化缓存，启动即显示
- * V5.2: 使用聚合 API 优化性能（3次串行查询 → 1次 API 调用）
- * V5.3: P2-2.4 添加 AbortController 请求中断，防止竞态条件
- */
-export function useFoldersData() {
-  const { user } = useUser();
+async function fetchFoldersWithStats(): Promise<FoldersData> {
+  const response = await fetch(
+    "/api/folders/with-stats?include_recent=true&recent_limit=6",
+  );
 
-  // V5.1: 生成缓存键
-  const cacheKey = user ? CACHE_KEYS.folders(user.id) : "";
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
 
-  // V5.3: AbortController ref，用于取消进行中的请求
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const result = await response.json();
 
-  // V5.1: 同步读取缓存（包括从 localStorage 恢复的数据）
-  const [state, setState] = useState<DataState<FoldersData>>(() => {
-    if (user && cacheKey) {
-      const cached = dataCache.getSync<FoldersData>(cacheKey);
-      if (cached.data) {
-        return {
-          data: cached.data,
-          isLoading: false,
-          error: null,
-          lastFetched: cached.timestamp || 0,
-        };
-      }
-    }
-    return {
-      data: null,
-      isLoading: true,
-      error: null,
-      lastFetched: 0,
-    };
-  });
-
-  // V5.1: 后台刷新状态
-  const [isValidating, setIsValidating] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    if (!user) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      return;
-    }
-
-    // V5.3: 取消之前的请求，防止竞态条件
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    const currentCacheKey = CACHE_KEYS.folders(user.id);
-
-    // V5.1: 有缓存时只设置 isValidating，不阻塞 UI
-    const hasCache = dataCache.hasSync(currentCacheKey);
-    if (hasCache) {
-      setIsValidating(true);
-    } else {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-    }
-
-    try {
-      // V5.2: 使用聚合 API 替代 3 次串行数据库查询
-      // V5.3: 传入 AbortController signal
-      const response = await fetch(
-        "/api/folders/with-stats?include_recent=true&recent_limit=6",
-        {
-          signal: controller.signal,
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error?.message || "加载文件夹失败");
-      }
-
-      const newData: FoldersData = {
-        folders: result.data.folders || [],
-        categories: result.data.categories || [],
-        recentBookmarks: result.data.recentBookmarks || [],
-      };
-
-      // V5.1: 存入缓存（自动持久化到 localStorage）
-      dataCache.setCache(currentCacheKey, newData);
-
-      setState({
-        data: newData,
-        isLoading: false,
-        error: null,
-        lastFetched: Date.now(),
-      });
-    } catch (err) {
-      // V5.3: 忽略被取消的请求错误
-      if ((err as Error).name === "AbortError") {
-        return;
-      }
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : "加载失败",
-      }));
-    } finally {
-      setIsValidating(false);
-    }
-  }, [user]);
-
-  // 初始加载
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // V5.3: 组件卸载时取消进行中的请求
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, []);
+  if (!result.success) {
+    throw new Error(result.error?.message || "加载文件夹失败");
+  }
 
   return {
-    ...state,
-    isValidating, // V5.1: 新增后台刷新状态
-    refetch: fetchData,
+    folders: result.data.folders || [],
+    categories: result.data.categories || [],
+    recentBookmarks: result.data.recentBookmarks || [],
+  };
+}
+
+/**
+ * 收藏夹页面数据获取 Hook
+ * V5.5: 迁移到 TanStack Query（消除自定义 dataCache + AbortController 样板代码）
+ *       使用 folderKeys.withStats() 作为唯一缓存键，5 分钟 stale，不随窗口 focus 刷新
+ */
+export function useFoldersData() {
+  const { data, isLoading, isFetching, error, refetch } = useQuery<FoldersData>(
+    {
+      queryKey: folderKeys.withStats(),
+      queryFn: fetchFoldersWithStats,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  );
+
+  return {
+    data: data ?? null,
+    isLoading,
+    isValidating: isFetching && !isLoading,
+    error: error ? (error instanceof Error ? error.message : "加载失败") : null,
+    lastFetched: 0,
+    refetch: async () => {
+      await refetch();
+    },
   };
 }
 

@@ -13,7 +13,15 @@
 
 "use client";
 
-import { lazy, Suspense, useRef, useLayoutEffect, useState, memo } from "react";
+import {
+  lazy,
+  Suspense,
+  useRef,
+  useLayoutEffect,
+  useState,
+  memo,
+  useCallback,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -378,6 +386,11 @@ export const HomeContent = memo(function HomeContent({
 
   const { isBrowserPlatform, isTrashFolder } = filter;
 
+  // 稳定的 loadMore 回调，避免内联箭头函数导致下游 memo 组件重渲染
+  const handleLoadMore = useCallback(() => {
+    loadMore(viewMode);
+  }, [loadMore, viewMode]);
+
   // 内容渲染逻辑
   const renderContent = () => {
     // 错误状态
@@ -418,7 +431,7 @@ export const HomeContent = memo(function HomeContent({
           bookmarks={bookmarks}
           hasMore={hasMore}
           isLoadingMore={isLoadingMore}
-          onLoadMore={() => loadMore(viewMode)}
+          onLoadMore={handleLoadMore}
           onRestore={onRestore}
           onPermanentDelete={onPermanentDelete}
           isSelectionMode={isSelectionMode}
@@ -437,7 +450,7 @@ export const HomeContent = memo(function HomeContent({
         bookmarks={bookmarks}
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
-        onLoadMore={() => loadMore(viewMode)}
+        onLoadMore={handleLoadMore}
         onEdit={onEdit}
         onDelete={onDelete}
         onToggleRead={onToggleRead}

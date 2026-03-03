@@ -51,7 +51,6 @@ export async function GET(request: Request) {
 
     const startTime = Date.now();
     let updatedUsersCount = 0;
-    let totalFoldersUpdated = 0;
     let errorCount = 0;
 
     // 1. 获取所有活跃用户（最近 30 天有登录或有书签变更）
@@ -94,30 +93,31 @@ export async function GET(request: Request) {
     // 2. 初始化画像服务
     const profilerService = new FolderTagProfilerService(supabaseAdmin);
 
-    // 3. 为每个用户更新画像
-    for (const user of activeUsers) {
-      try {
-        // 获取用户文件夹数量
-        const { count: folderCount } = await supabaseAdmin
-          .from("folders")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .is("deleted_at", null);
+    // 3. 并发更新用户画像（移除冗余 count 查询，控制并发数防止 DB 连接耗尽）
+    const CONCURRENCY = 10;
+    for (let i = 0; i < activeUsers.length; i += CONCURRENCY) {
+      const batch = activeUsers.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.allSettled(
+        batch.map((user) => profilerService.updateAllProfiles(user.id)),
+      );
 
-        if (folderCount && folderCount > 0) {
-          await profilerService.updateAllProfiles(user.id);
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        if (result.status === "fulfilled") {
           updatedUsersCount++;
-          totalFoldersUpdated += folderCount;
+        } else {
+          errorCount++;
+          logger.error(
+            {
+              error:
+                result.reason instanceof Error
+                  ? result.reason.message
+                  : String(result.reason),
+              userId: batch[j].id,
+            },
+            "Failed to update user folder tag profiles",
+          );
         }
-      } catch (error) {
-        errorCount++;
-        logger.error(
-          {
-            error: error instanceof Error ? error.message : String(error),
-            userId: user.id,
-          },
-          "Failed to update user folder tag profiles",
-        );
       }
     }
 
@@ -126,7 +126,6 @@ export async function GET(request: Request) {
     logger.info(
       {
         updatedUsersCount,
-        totalFoldersUpdated,
         errorCount,
         duration,
       },
@@ -137,7 +136,6 @@ export async function GET(request: Request) {
       success: true,
       stats: {
         users: updatedUsersCount,
-        folders: totalFoldersUpdated,
         errors: errorCount,
         duration,
         timestamp: new Date().toISOString(),

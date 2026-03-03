@@ -94,10 +94,15 @@ export async function GET(
     // 类型断言: 手动维护类型文件时需要此断言
     type BookmarkOwnerRow = { id: number; user_id: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmark, error: bookmarkError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, user_id")
       .eq("id", bookmarkId)
-      .single() as { data: BookmarkOwnerRow | null; error: { message: string } | null };
+      .single()) as {
+      data: BookmarkOwnerRow | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       return NextResponse.json(
@@ -133,13 +138,20 @@ export async function GET(
       types,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        related,
-        totalCount: related.length,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          related,
+          totalCount: related.length,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "private, max-age=120",
+        },
+      },
+    );
   } catch (error) {
     logger.error({ error }, "[API] Failed to get related bookmarks");
     return NextResponse.json(

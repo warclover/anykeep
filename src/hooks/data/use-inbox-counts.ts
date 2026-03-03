@@ -183,6 +183,7 @@ export function useInboxCounts(): UseInboxCountsReturn {
     staleTime: STALE_TIME,
     refetchInterval: REFETCH_INTERVAL,
     refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
     retry: 2,
     retryDelay: 3000,
   });

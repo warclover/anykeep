@@ -35,15 +35,22 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: notifications,
-      pagination: {
-        limit,
-        offset,
-        hasMore: notifications.length === limit,
+    return NextResponse.json(
+      {
+        success: true,
+        data: notifications,
+        pagination: {
+          limit,
+          offset,
+          hasMore: notifications.length === limit,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+        },
+      },
+    );
   } catch (error) {
     logger.error({ error }, "[API] GET /api/notifications failed");
     return NextResponse.json(

@@ -87,12 +87,9 @@ export function FolderNavHeader({
       <div className="ml-auto flex shrink-0 items-center justify-center self-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 shrink-0 p-0 flex items-center justify-center text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:text-pink-300 dark:hover:bg-pink-950/50"
-            >
-              <Plus className="size-5" />
+            <Button variant="outline" size="sm" className="h-7 px-2 gap-1.5">
+              <Plus className="size-4" />
+              <span className="text-xs">新建</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

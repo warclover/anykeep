@@ -108,16 +108,23 @@ const nextConfig = {
     ignoreBuildErrors: false, // ✅ 保持启用类型检查
   },
 
-  // 允许外部图片域名
+  // 图片优化配置
+  // 注意：移除了 unoptimized: true，启用自动 WebP/AVIF 格式转换
   images: {
-    unoptimized: true, // Required for static export
     remotePatterns: [
+      // 允许所有 HTTPS 来源（书签封面图来自各平台 CDN，域名不固定）
       {
         protocol: 'https',
-        hostname: 'www.google.com',
-        pathname: '/s2/favicons/**',
+        hostname: '**',
+      },
+      // 允许 HTTP（部分老图片链接）
+      {
+        protocol: 'http',
+        hostname: '**',
       },
     ],
+    // 现代格式优先（减少传输体积 30-60%）
+    formats: ['image/avif', 'image/webp'],
   },
 
   // API 路径重写：向后兼容旧路径

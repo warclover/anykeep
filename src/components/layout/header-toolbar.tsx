@@ -7,6 +7,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   LayoutGrid,
@@ -82,7 +83,7 @@ function getStoredLayoutMode(): LayoutMode {
   return "auto";
 }
 
-export function HeaderToolbar() {
+export const HeaderToolbar = memo(function HeaderToolbar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -247,4 +248,4 @@ export function HeaderToolbar() {
       </DropdownMenu>
     </div>
   );
-}
+});

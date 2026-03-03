@@ -34,14 +34,16 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
 
-    // 获取重复内容记录
+    // 获取重复内容记录（指定字段避免 select *，限制最大记录数防止内存溢出）
+    const DUPLICATE_FETCH_LIMIT = 2000;
     const { data, error } = await supabase
       .from("health_check_cache")
-      .select("*")
+      .select("id, bookmark_id, details, detected_at")
       .eq("user_id", user.id)
       .eq("check_type", "duplicate")
       .eq("status", "issue")
-      .order("detected_at", { ascending: false });
+      .order("detected_at", { ascending: false })
+      .limit(DUPLICATE_FETCH_LIMIT);
 
     if (error) {
       logger.error(

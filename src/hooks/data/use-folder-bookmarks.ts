@@ -25,8 +25,8 @@ import type {
   BookmarkWithFolder,
 } from "@/components/folders/types";
 
-/** 每页书签数量 */
-const PAGE_SIZE = 50;
+/** 每页书签数量（首屏 15 条以提升访问速度，不足时当页即全部加载） */
+const PAGE_SIZE = 15;
 
 /** 缓存时间：2 分钟 */
 const STALE_TIME = 2 * 60 * 1000;

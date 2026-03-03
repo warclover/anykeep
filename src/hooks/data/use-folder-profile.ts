@@ -5,10 +5,14 @@
  *
  * 获取和管理文件夹的 AI 画像数据
  * 包括：标签分布、内容统计、AI 理解等
+ *
+ * @version 2.0.0 - 迁移到 TanStack Query，支持跨组件缓存共享
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import { folderProfileKeys } from "@/hooks/queries/keys";
 
 /**
  * 文件夹画像数据
@@ -47,16 +51,65 @@ export interface FolderProfile {
   universalCategory?: string;
 }
 
-/**
- * 画像加载状态
- */
-interface UseFolderProfileState {
+// ============================================
+// Fetcher
+// ============================================
+
+function deserializeProfile(raw: Record<string, unknown>): FolderProfile {
+  return {
+    ...(raw as FolderProfile),
+    lastBookmarkAt: raw.lastBookmarkAt
+      ? new Date(raw.lastBookmarkAt as string)
+      : null,
+    computedAt: new Date(raw.computedAt as string),
+    updatedAt: new Date(raw.updatedAt as string),
+  };
+}
+
+async function fetchFolderProfile(
+  folderId: number,
+): Promise<FolderProfile | null> {
+  const response = await fetch(
+    `${API_CLASSIFICATION.foldersProfiles}?folderId=${folderId}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("获取画像失败");
+  }
+
+  const result = await response.json();
+
+  if (result.success && result.data) {
+    return deserializeProfile(result.data as Record<string, unknown>);
+  }
+
+  return null;
+}
+
+async function fetchAllFolderProfiles(): Promise<FolderProfile[]> {
+  const response = await fetch(API_CLASSIFICATION.foldersProfiles);
+
+  if (!response.ok) {
+    throw new Error("获取画像列表失败");
+  }
+
+  const result = await response.json();
+
+  if (result.success && Array.isArray(result.data)) {
+    return (result.data as Record<string, unknown>[]).map(deserializeProfile);
+  }
+
+  return [];
+}
+
+// ============================================
+// Hooks
+// ============================================
+
+interface UseFolderProfileReturn {
   profile: FolderProfile | null;
   isLoading: boolean;
   error: string | null;
-}
-
-interface UseFolderProfileReturn extends UseFolderProfileState {
   /** 刷新画像 */
   refresh: () => Promise<void>;
   /** 重新计算画像 */
@@ -65,111 +118,61 @@ interface UseFolderProfileReturn extends UseFolderProfileState {
 
 /**
  * 文件夹画像 Hook
+ *
+ * V2.0: 使用 TanStack Query，多个组件共享同一缓存条目，避免重复请求
  */
 export function useFolderProfile(
   folderId: number | null,
 ): UseFolderProfileReturn {
-  const [state, setState] = useState<UseFolderProfileState>({
-    profile: null,
-    isLoading: false,
-    error: null,
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: folderId ? folderProfileKeys.byFolderId(folderId) : ["noop"],
+    queryFn: () => fetchFolderProfile(folderId!),
+    enabled: !!folderId,
+    staleTime: 5 * 60 * 1000,
   });
 
-  /**
-   * 获取文件夹画像
-   */
-  const fetchProfile = useCallback(async () => {
-    if (!folderId) {
-      setState({ profile: null, isLoading: false, error: null });
-      return;
-    }
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const response = await fetch(
-        `${API_CLASSIFICATION.foldersProfiles}?folderId=${folderId}`,
-      );
-
-      if (!response.ok) {
-        throw new Error("获取画像失败");
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setState({
-          profile: {
-            ...result.data,
-            lastBookmarkAt: result.data.lastBookmarkAt
-              ? new Date(result.data.lastBookmarkAt)
-              : null,
-            computedAt: new Date(result.data.computedAt),
-            updatedAt: new Date(result.data.updatedAt),
-          },
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        setState({
-          profile: null,
-          isLoading: false,
-          error: null, // 没有画像不是错误
-        });
-      }
-    } catch (error) {
-      setState({
-        profile: null,
-        isLoading: false,
-        error: error instanceof Error ? error.message : "获取画像失败",
-      });
-    }
-  }, [folderId]);
-
-  /**
-   * 重新计算画像
-   */
   const recompute = useCallback(async () => {
     if (!folderId) return;
 
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    const response = await fetch(API_CLASSIFICATION.foldersProfiles, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
 
-    try {
-      const response = await fetch(API_CLASSIFICATION.foldersProfiles, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("重新计算画像失败");
-      }
-
-      // 重新获取画像
-      await fetchProfile();
-    } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : "重新计算画像失败",
-      }));
+    if (!response.ok) {
+      throw new Error("重新计算画像失败");
     }
-  }, [folderId, fetchProfile]);
 
-  // 初始加载
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    // 使缓存失效，触发重新获取
+    await queryClient.invalidateQueries({
+      queryKey: folderProfileKeys.byFolderId(folderId),
+    });
+  }, [folderId, queryClient]);
 
   return {
-    ...state,
-    refresh: fetchProfile,
+    profile: data ?? null,
+    isLoading,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : "获取画像失败"
+      : null,
+    refresh,
     recompute,
   };
 }
 
 /**
  * 批量获取多个文件夹的画像
+ *
+ * V2.0: 使用 TanStack Query list 缓存，客户端按 folderIds 过滤
  */
 export function useFolderProfiles(folderIds: number[]): {
   profiles: Map<number, FolderProfile>;
@@ -177,62 +180,35 @@ export function useFolderProfiles(folderIds: number[]): {
   error: string | null;
   refresh: () => Promise<void>;
 } {
-  const [profiles, setProfiles] = useState<Map<number, FolderProfile>>(
-    new Map(),
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchProfiles = useCallback(async () => {
-    if (folderIds.length === 0) {
-      setProfiles(new Map());
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(API_CLASSIFICATION.foldersProfiles);
-
-      if (!response.ok) {
-        throw new Error("获取画像列表失败");
-      }
-
-      const result = await response.json();
-
-      if (result.success && Array.isArray(result.data)) {
-        const profileMap = new Map<number, FolderProfile>();
-        for (const profile of result.data) {
-          if (folderIds.includes(profile.folderId)) {
-            profileMap.set(profile.folderId, {
-              ...profile,
-              lastBookmarkAt: profile.lastBookmarkAt
-                ? new Date(profile.lastBookmarkAt)
-                : null,
-              computedAt: new Date(profile.computedAt),
-              updatedAt: new Date(profile.updatedAt),
-            });
-          }
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: folderProfileKeys.list(),
+    queryFn: fetchAllFolderProfiles,
+    enabled: folderIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    select: (allProfiles) => {
+      const profileMap = new Map<number, FolderProfile>();
+      for (const profile of allProfiles) {
+        if (folderIds.includes(profile.folderId)) {
+          profileMap.set(profile.folderId, profile);
         }
-        setProfiles(profileMap);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "获取画像列表失败");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [folderIds]);
+      return profileMap;
+    },
+  });
 
-  useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return {
-    profiles,
+    profiles: data ?? new Map(),
     isLoading,
-    error,
-    refresh: fetchProfiles,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : "获取画像列表失败"
+      : null,
+    refresh,
   };
 }
 

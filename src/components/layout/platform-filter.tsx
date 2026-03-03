@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
@@ -76,7 +76,7 @@ const platforms = [
 const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
 const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
 
-export function PlatformFilter() {
+export const PlatformFilter = memo(function PlatformFilter() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -280,4 +280,4 @@ export function PlatformFilter() {
       )}
     </div>
   );
-}
+});

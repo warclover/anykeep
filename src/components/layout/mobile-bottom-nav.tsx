@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -52,7 +52,7 @@ const moreNavigationGroups = getMobileMoreGroups();
 
 // ==================== 组件 ====================
 
-export function MobileBottomNav() {
+export const MobileBottomNav = memo(function MobileBottomNav() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -377,4 +377,4 @@ export function MobileBottomNav() {
       </Sheet>
     </>
   );
-}
+});

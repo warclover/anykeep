@@ -224,8 +224,8 @@ export function useSmartListBookmarks(
     queryKey: smartListBookmarkKeys.byId(smartListId as number),
     queryFn: () => fetcher(smartListId as number),
     enabled: !!smartListId && enabled,
-    staleTime: 5000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // 智能列表数据 - 使用 useMemo 稳定引用，避免不必要的重渲染

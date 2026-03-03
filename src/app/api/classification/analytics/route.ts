@@ -237,7 +237,9 @@ async function handleSources(userId: string) {
 
   const { data: sources } = await typedSupabase
     .from("source_profiles")
-    .select("*")
+    .select(
+      "source_id, source_name, source_type, sample_count, trust_score, avg_confidence",
+    )
     .eq("user_id", userId)
     .order("sample_count", { ascending: false });
 

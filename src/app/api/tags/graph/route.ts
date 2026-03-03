@@ -31,10 +31,17 @@ export async function GET() {
     // 2. 获取标签图谱
     const graphData = await tagGraphService.getGraphVisualization(user.id);
 
-    return NextResponse.json({
-      success: true,
-      data: graphData,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: graphData,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=300, stale-while-revalidate=60",
+        },
+      },
+    );
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

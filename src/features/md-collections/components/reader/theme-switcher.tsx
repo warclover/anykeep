@@ -150,7 +150,7 @@ export function ThemeSwitcher({
           aria-label="切换阅读主题"
         >
           <Palette className="size-4" />
-          {showLabel && <span>主题</span>}
+          {showLabel && <span>阅读主题</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-48 p-2" align="end" sideOffset={8}>

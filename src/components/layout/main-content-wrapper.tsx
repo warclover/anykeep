@@ -5,6 +5,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { useSafeSidebar, SIDEBAR_WIDTH } from "@/contexts/sidebar-context";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,9 @@ interface MainContentWrapperProps {
   children: React.ReactNode;
 }
 
-export function MainContentWrapper({ children }: MainContentWrapperProps) {
+export const MainContentWrapper = memo(function MainContentWrapper({
+  children,
+}: MainContentWrapperProps) {
   // 安全获取侧边栏上下文
   const sidebarContext = useSafeSidebar();
   const displayWidth = sidebarContext?.displayWidth ?? SIDEBAR_WIDTH.expanded;
@@ -34,4 +37,4 @@ export function MainContentWrapper({ children }: MainContentWrapperProps) {
       {children}
     </main>
   );
-}
+});

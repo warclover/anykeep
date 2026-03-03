@@ -118,74 +118,66 @@ export async function POST(request: NextRequest) {
       "[Snapshot Cleanup] Found expired snapshots",
     );
 
-    // 批量处理过期快照
-    for (const snapshot of snapshots) {
-      try {
-        // 1. 删除 Storage 文件
-        const storagePaths = [
-          snapshot.storage_path,
-          snapshot.html_storage_path,
-          snapshot.screenshot_storage_path,
-        ].filter(Boolean) as string[];
+    // 批量处理过期快照（从 N+1 优化为 3 次批量操作）
 
-        if (storagePaths.length > 0) {
-          const { error: storageError } = await admin.storage
-            .from("snapshots")
-            .remove(storagePaths);
+    // 1. 批量删除 Storage 文件（所有路径合并为一次调用）
+    const allStoragePaths = snapshots.flatMap((s) =>
+      [s.storage_path, s.html_storage_path, s.screenshot_storage_path].filter(
+        Boolean,
+      ),
+    ) as string[];
 
-          if (storageError) {
-            logger.warn(
-              { snapshotId: snapshot.id, error: storageError.message },
-              "[Snapshot Cleanup] Failed to delete storage files",
-            );
-          } else {
-            results.filesDeleted += storagePaths.length;
-          }
-        }
+    if (allStoragePaths.length > 0) {
+      const { error: storageError } = await admin.storage
+        .from("snapshots")
+        .remove(allStoragePaths);
 
-        // 2. 删除快照记录
-        const { error: deleteError } = await admin
-          .from("bookmark_snapshots")
-          .delete()
-          .eq("id", snapshot.id);
-
-        if (deleteError) {
-          results.errors.push(
-            `Delete snapshot ${snapshot.id}: ${deleteError.message}`,
-          );
-          continue;
-        }
-
-        results.recordsDeleted++;
-
-        // 3. 更新 bookmark 状态（清除快照相关字段）
-        // 使用类型断言绕过类型检查（字段存在于数据库但类型文件未同步）
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateError } = await (admin as any)
-          .from("bookmarks")
-          .update({
-            has_snapshot: false,
-            snapshot_status: null,
-            last_snapshot_at: null,
-          })
-          .eq("id", snapshot.bookmark_id);
-
-        if (updateError) {
-          logger.warn(
-            { bookmarkId: snapshot.bookmark_id, error: updateError.message },
-            "[Snapshot Cleanup] Failed to update bookmark status",
-          );
-        } else {
-          results.bookmarksUpdated++;
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        results.errors.push(`Process snapshot ${snapshot.id}: ${message}`);
-        logger.error(
-          { snapshotId: snapshot.id, error: message },
-          "[Snapshot Cleanup] Failed to process snapshot",
+      if (storageError) {
+        logger.warn(
+          { error: storageError.message, pathCount: allStoragePaths.length },
+          "[Snapshot Cleanup] Failed to batch-delete storage files",
         );
+      } else {
+        results.filesDeleted = allStoragePaths.length;
       }
+    }
+
+    // 2. 批量删除快照记录（一次 .in() 替代 N 次逐条删除）
+    const snapshotIds = snapshots.map((s) => s.id);
+    const { error: deleteError } = await admin
+      .from("bookmark_snapshots")
+      .delete()
+      .in("id", snapshotIds);
+
+    if (deleteError) {
+      results.errors.push(`Batch delete snapshots: ${deleteError.message}`);
+      logger.error(
+        { error: deleteError.message, snapshotIds },
+        "[Snapshot Cleanup] Failed to batch-delete snapshot records",
+      );
+    } else {
+      results.recordsDeleted = snapshotIds.length;
+    }
+
+    // 3. 批量更新 bookmark 状态（一次 .in() 替代 N 次逐条更新）
+    const bookmarkIds = snapshots.map((s) => s.bookmark_id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (admin as any)
+      .from("bookmarks")
+      .update({
+        has_snapshot: false,
+        snapshot_status: null,
+        last_snapshot_at: null,
+      })
+      .in("id", bookmarkIds);
+
+    if (updateError) {
+      logger.warn(
+        { error: updateError.message, bookmarkIds },
+        "[Snapshot Cleanup] Failed to batch-update bookmark statuses",
+      );
+    } else {
+      results.bookmarksUpdated = bookmarkIds.length;
     }
 
     const duration = Date.now() - startTime;

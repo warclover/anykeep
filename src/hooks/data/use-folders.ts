@@ -1,14 +1,11 @@
 /**
  * 文件夹列表缓存 Hook
- * @version V5.4 - 统一使用 TanStack Query，消除 SWR 双缓存问题
+ * @version V5.5 - 统一 API 端点，消除 /api/folders 与 /api/v1/folders 双路径冲突
  *
  * 解决的问题：
- * - 之前 SWR 和 TanStack Query 并存，导致 3+ 次重复请求
- * - 现在统一使用 TanStack Query，所有组件共享同一份缓存
- *
- * 变更历史：
- * - V4.2.24: 使用 SWR 统一缓存
- * - V5.4: 迁移到 TanStack Query，与 use-folders-query.ts 共享缓存
+ * - V5.4: SWR → TanStack Query 迁移
+ * - V5.5: 端点统一到 /api/v1/folders，与 use-folders-query.ts 共享同一 fetcher
+ *   两个 hook 现在使用相同的 cache key + 相同的 endpoint，彻底消除缓存数据不一致
  */
 
 "use client";
@@ -59,20 +56,22 @@ const STALE_TIME = 5 * 60 * 1000;
 
 /**
  * 文件夹列表 Fetcher
- * 使用 /api/folders 端点（与原 SWR 版本保持一致）
+ * 使用 /api/v1/folders 端点（与 use-folders-query.ts 共享同一端点 + 同一 cache key）
  */
 async function foldersFetcher(): Promise<Folder[]> {
-  const response = await fetch("/api/folders");
+  const response = await fetch("/api/v1/folders");
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error?.message || "获取文件夹列表失败");
+    throw new Error(
+      data.error?.message || data.message || "获取文件夹列表失败",
+    );
   }
 
   const data = await response.json();
-  // API 返回 { success: true, data: folderTree }
-  // data.data 直接是文件夹数组（树形结构）
-  return data.data || data.folders || [];
+  // v1 API 返回 { success: true, data: { folders: [...], total: N } }
+  const inner = data.data || data;
+  return inner.folders || (Array.isArray(inner) ? inner : []);
 }
 
 // ============================================

@@ -133,7 +133,7 @@ async function handleSources(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: sources } = await (supabase as any)
     .from("source_profiles")
-    .select("*")
+    .select("source_id, source_name, source_type, sample_count, trust_score")
     .eq("user_id", userId)
     .order("sample_count", { ascending: false });
 
@@ -254,14 +254,19 @@ async function handleTrends(
   startDate.setDate(startDate.getDate() - days);
 
   // 类型断言: 手动维护类型文件时需要此断言
-  type BookmarkTrendsRow = { created_at: string | null; folder_id: number | null };
+  type BookmarkTrendsRow = {
+    created_at: string | null;
+    folder_id: number | null;
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: bookmarks } = await (supabase.from("bookmarks") as any)
+  const { data: bookmarks } = (await (supabase.from("bookmarks") as any)
     .select("created_at, folder_id")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .gte("created_at", startDate.toISOString())
-    .order("created_at", { ascending: true }) as { data: BookmarkTrendsRow[] | null };
+    .order("created_at", { ascending: true })) as {
+    data: BookmarkTrendsRow[] | null;
+  };
 
   const dailyStats = new Map<string, { total: number; classified: number }>();
 
@@ -433,11 +438,14 @@ async function getBookmarkStats(
   // 类型断言: 手动维护类型文件时需要此断言
   type BookmarkStatsRow = { folder_id: number | null };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: bookmarks, count } = await (supabase.from("bookmarks") as any)
+  const { data: bookmarks, count } = (await (supabase.from("bookmarks") as any)
     .select("folder_id", { count: "exact" })
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .gte("created_at", startDate.toISOString()) as { data: BookmarkStatsRow[] | null; count: number | null };
+    .gte("created_at", startDate.toISOString())) as {
+    data: BookmarkStatsRow[] | null;
+    count: number | null;
+  };
 
   const classified = bookmarks?.filter((b) => b.folder_id).length || 0;
 

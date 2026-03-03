@@ -211,10 +211,12 @@ export async function GET(request: NextRequest) {
 
     const { includePresets, sortBy } = validation.data;
 
-    // 3. 构建查询
+    // 3. 构建查询（明确指定字段，避免 select * 拉取未来可能新增的大字段）
     let query = supabase
       .from("smart_lists")
-      .select("*")
+      .select(
+        "id, user_id, name, description, icon, color, filters, sort_by, view_mode, sort_order, is_pinned, is_preset, last_accessed_at, created_at, updated_at, deleted_at",
+      )
       .eq("user_id", user.id)
       .is("deleted_at", null);
 
@@ -315,12 +317,12 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type SmartListExistingRow = { id: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase.from("smart_lists") as any)
+    const { data: existing } = (await (supabase.from("smart_lists") as any)
       .select("id")
       .eq("user_id", user.id)
       .eq("name", name)
       .is("deleted_at", null)
-      .single() as { data: SmartListExistingRow | null };
+      .single()) as { data: SmartListExistingRow | null };
 
     if (existing) {
       return successResponse({ error: "智能列表名称已存在" }, 400);
@@ -330,19 +332,21 @@ export async function POST(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type SortOrderRow = { sort_order: number };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: maxOrder } = await (supabase.from("smart_lists") as any)
+    const { data: maxOrder } = (await (supabase.from("smart_lists") as any)
       .select("sort_order")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("sort_order", { ascending: false })
       .limit(1)
-      .single() as { data: SortOrderRow | null };
+      .single()) as { data: SortOrderRow | null };
 
     const newSortOrder = (maxOrder?.sort_order ?? -1) + 1;
 
     // 5. 插入新智能列表
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: smartList, error: insertError } = await (supabase.from("smart_lists") as any)
+    const { data: smartList, error: insertError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .insert({
         user_id: user.id,
         name,
@@ -356,7 +360,10 @@ export async function POST(request: NextRequest) {
         is_preset: false,
       })
       .select()
-      .single() as { data: SmartList | null; error: { message: string } | null };
+      .single()) as {
+      data: SmartList | null;
+      error: { message: string } | null;
+    };
 
     if (insertError || !smartList) {
       logger.error(

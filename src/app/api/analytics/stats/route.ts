@@ -100,18 +100,28 @@ export async function GET(_request: NextRequest) {
 
     const queryStart = performance.now();
 
-    // 3. 获取书签数据（只获取统计所需字段，而非全部字段）
+    // 3. 获取书签数据（只获取统计所需字段，最多 10000 条防止内存溢出）
+    const BOOKMARK_FETCH_LIMIT = 10000;
     const { data: bookmarks, error: queryError } = await supabase
       .from("bookmarks")
       .select("id, platform, folder_id, created_at, ai_tags")
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(BOOKMARK_FETCH_LIMIT);
 
     monitor.mark("DatabaseQuery", {
       durationMs: Math.round(performance.now() - queryStart),
       bookmarkCount: bookmarks?.length || 0,
+      hitLimit: bookmarks?.length === BOOKMARK_FETCH_LIMIT,
     });
+
+    if (bookmarks?.length === BOOKMARK_FETCH_LIMIT) {
+      logger.warn(
+        { userId: user.id, limit: BOOKMARK_FETCH_LIMIT },
+        "Analytics stats hit fetch limit — statistics may be approximate",
+      );
+    }
 
     if (queryError) {
       return databaseError("加载统计数据失败", queryError);

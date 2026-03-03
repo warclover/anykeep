@@ -90,6 +90,9 @@ export const folderKeys = {
 
   /** 文件夹路径（面包屑） */
   path: (id: number) => [...folderKeys.all, "path", id] as const,
+
+  /** 带统计信息的文件夹列表（含分类、近期收藏） */
+  withStats: () => [...folderKeys.all, "withStats"] as const,
 };
 
 /**
@@ -284,6 +287,18 @@ export const synthesisKeys = {
   detail: (id: string) => [...synthesisKeys.details(), id] as const,
   highlights: (reportId: string) =>
     [...synthesisKeys.all, "highlights", reportId] as const,
+};
+
+/**
+ * Folder Profile Query Keys (文件夹 AI 画像)
+ */
+export const folderProfileKeys = {
+  all: ["folderProfiles"] as const,
+  /** 单个文件夹画像 */
+  byFolderId: (folderId: number) =>
+    [...folderProfileKeys.all, folderId] as const,
+  /** 批量文件夹画像列表 */
+  list: () => [...folderProfileKeys.all, "list"] as const,
 };
 
 /**

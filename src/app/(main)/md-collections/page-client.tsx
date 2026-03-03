@@ -250,11 +250,11 @@ export function MdCollectionPageClient({
   const toolbarElement = useMemo(
     () => (
       <div className="flex items-center justify-between w-full">
-        <div>
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-white leading-none">
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-base font-semibold text-gray-900 dark:text-white leading-none">
             我的笔记
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 leading-none">
             收藏和管理你的 Markdown 内容
           </p>
         </div>

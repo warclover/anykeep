@@ -625,7 +625,7 @@ function InternalReader({
             {/* 右侧：工具按钮 */}
             <div className="flex items-center gap-1 shrink-0">
               {/* 主题切换 */}
-              <ThemeSwitcher />
+              <ThemeSwitcher showLabel size="sm" className="h-9 px-3 text-xs" />
 
               {/* 专注模式 */}
               <FocusModeToggle />
@@ -633,7 +633,8 @@ function InternalReader({
               {/* 字体大小 */}
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
+                className="h-9 px-3 text-xs gap-2"
                 onClick={() => {
                   const sizes: ("small" | "medium" | "large")[] = [
                     "small",
@@ -646,23 +647,26 @@ function InternalReader({
                 title={`字体大小: ${fontSize}`}
               >
                 <Type className="w-4 h-4" />
+                字号
               </Button>
 
               {/* 键盘帮助 */}
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setIsHelpOpen(true)}
                 title="键盘快捷键"
-                className="hidden md:flex"
+                className="hidden md:flex h-9 px-3 text-xs gap-2"
               >
                 <Keyboard className="w-4 h-4" />
+                快捷键
               </Button>
 
               {/* 全屏 */}
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
+                className="h-9 px-3 text-xs gap-2"
                 onClick={toggleFullscreen}
                 title={isFullscreen ? "退出全屏" : "全屏阅读"}
               >
@@ -671,6 +675,7 @@ function InternalReader({
                 ) : (
                   <Maximize2 className="w-4 h-4" />
                 )}
+                {isFullscreen ? "退出" : "全屏"}
               </Button>
             </div>
           </div>
