@@ -63,7 +63,7 @@ export class FolderService extends BaseService {
       }
 
       return {
-        folders: filtered.map(this.toWithCountResponse),
+        folders: filtered.map((f) => this.toWithCountResponse(f)),
         total: filtered.length,
       };
     });
