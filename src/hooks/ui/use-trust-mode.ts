@@ -10,14 +10,18 @@
  * - 获取模式相关统计
  * - 支持乐观更新
  *
- * @version 1.0.0
+ * V2.0 - TanStack Query 迁移：同一 query key 全局只发 1 次 GET，多页面/Strict Mode 共享缓存，减少重复 3s+ 请求
+ *
+ * @version 2.0.0
  * @since 2025-12-11
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TrustMode, TrustModeConfig } from "@/types/trust-mode";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { trustModeKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
 // 类型定义
@@ -61,6 +65,13 @@ interface UseTrustModeReturn {
   refresh: () => Promise<void>;
 }
 
+/** GET 接口返回的 data 形状 */
+interface TrustModeApiData {
+  mode: TrustMode;
+  config: TrustModeConfig;
+  stats: TrustModeStats | null;
+}
+
 // ============================================================================
 // 默认值
 // ============================================================================
@@ -92,71 +103,81 @@ const DEFAULT_CONFIG: TrustModeConfig = {
   },
 };
 
+const API_URL = "/api/settings/trust-mode";
+const STALE_TIME_MS = 5 * 60 * 1000;
+
+// ============================================================================
+// Fetcher
+// ============================================================================
+
+async function fetchTrustMode(): Promise<TrustModeApiData> {
+  const response = await fetch(API_URL);
+  if (!response.ok) {
+    throw new Error("Failed to load trust mode settings");
+  }
+  const result = await response.json();
+  if (!result.success || !result.data) {
+    return {
+      mode: "full_auto",
+      config: DEFAULT_CONFIG,
+      stats: null,
+    };
+  }
+  return {
+    mode: result.data.mode || "full_auto",
+    config: result.data.config || DEFAULT_CONFIG,
+    stats: result.data.stats ?? null,
+  };
+}
+
 // ============================================================================
 // Hook 实现
 // ============================================================================
 
 /**
- * 托管模式 Hook
+ * 托管模式 Hook（TanStack Query：全局单次请求 + 缓存共享）
  */
 export function useTrustMode(): UseTrustModeReturn {
-  const [mode, setMode] = useState<TrustMode>("full_auto");
-  const [config, setConfig] = useState<TrustModeConfig | null>(null);
-  const [stats, setStats] = useState<TrustModeStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const key = trustModeKeys.current();
 
-  // 加载托管模式设置
-  const loadTrustMode = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const {
+    data,
+    error: queryError,
+    isLoading,
+  } = useQuery({
+    queryKey: key,
+    queryFn: fetchTrustMode,
+    staleTime: STALE_TIME_MS,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
+    retryDelay: 2000,
+  });
 
-    try {
-      const response = await fetch("/api/settings/trust-mode");
-      if (!response.ok) {
-        throw new Error("Failed to load trust mode settings");
-      }
+  const mode = data?.mode ?? "full_auto";
+  const config = data?.config ?? null;
+  const stats = data?.stats ?? null;
+  const error = queryError ? (queryError as Error).message : null;
 
-      const result = await response.json();
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: key });
+  }, [queryClient, key]);
 
-      if (result.success && result.data) {
-        setMode(result.data.mode || "full_auto");
-        setConfig(result.data.config || DEFAULT_CONFIG);
-        setStats(result.data.stats || null);
-      } else {
-        // 使用默认值
-        setMode("full_auto");
-        setConfig(DEFAULT_CONFIG);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
-      clientLogger.error({ err }, "[TrustMode] Failed to load trust mode");
-
-      // 使用默认值
-      setMode("full_auto");
-      setConfig(DEFAULT_CONFIG);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    loadTrustMode();
-  }, [loadTrustMode]);
-
-  // 切换模式
   const switchMode = useCallback(
     async (newMode: TrustMode, options?: SwitchOptions): Promise<boolean> => {
-      const previousMode = mode;
-      const previousConfig = config;
+      const previousData = queryClient.getQueryData<TrustModeApiData>(key);
 
       // 乐观更新
-      setMode(newMode);
+      if (previousData) {
+        queryClient.setQueryData<TrustModeApiData>(key, {
+          ...previousData,
+          mode: newMode,
+        });
+      }
 
       try {
-        const response = await fetch("/api/settings/trust-mode", {
+        const response = await fetch(API_URL, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -173,41 +194,43 @@ export function useTrustMode(): UseTrustModeReturn {
         }
 
         const result = await response.json();
-
-        if (result.success) {
-          // 更新配置
-          if (result.data?.config) {
-            setConfig(result.data.config);
-          }
+        if (result.success && result.data) {
+          queryClient.setQueryData<TrustModeApiData>(key, {
+            mode: result.data.mode || newMode,
+            config:
+              result.data.config || previousData?.config || DEFAULT_CONFIG,
+            stats: result.data.stats ?? previousData?.stats ?? null,
+          });
           toast.success(`已切换到${getModeLabel(newMode)}模式`);
           return true;
-        } else {
-          throw new Error(result.error || "Switch failed");
         }
+        throw new Error(result.error || "Switch failed");
       } catch (err) {
-        // 回滚
-        setMode(previousMode);
-        setConfig(previousConfig);
-
+        if (previousData) {
+          queryClient.setQueryData(key, previousData);
+        }
         const message = err instanceof Error ? err.message : "Unknown error";
         toast.error(`切换失败: ${message}`);
         clientLogger.error({ err }, "[TrustMode] Failed to switch trust mode");
         return false;
       }
     },
-    [mode, config],
+    [queryClient, key],
   );
 
-  // 更新配置
   const updateConfig = useCallback(
     async (updates: Partial<TrustModeConfig>): Promise<boolean> => {
-      const previousConfig = config;
+      const previousData = queryClient.getQueryData<TrustModeApiData>(key);
 
-      // 乐观更新
-      setConfig((prev) => (prev ? { ...prev, ...updates } : prev));
+      if (previousData?.config) {
+        queryClient.setQueryData<TrustModeApiData>(key, {
+          ...previousData,
+          config: { ...previousData.config, ...updates },
+        });
+      }
 
       try {
-        const response = await fetch("/api/settings/trust-mode", {
+        const response = await fetch(API_URL, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
@@ -218,19 +241,19 @@ export function useTrustMode(): UseTrustModeReturn {
         }
 
         const result = await response.json();
-
-        if (result.success) {
-          if (result.data?.config) {
-            setConfig(result.data.config);
-          }
+        if (result.success && result.data?.config) {
+          queryClient.setQueryData<TrustModeApiData>(key, {
+            mode: previousData?.mode ?? "full_auto",
+            config: result.data.config,
+            stats: previousData?.stats ?? null,
+          });
           return true;
-        } else {
-          throw new Error(result.error || "Update failed");
         }
+        throw new Error(result.error || "Update failed");
       } catch (err) {
-        // 回滚
-        setConfig(previousConfig);
-
+        if (previousData) {
+          queryClient.setQueryData(key, previousData);
+        }
         const message = err instanceof Error ? err.message : "Unknown error";
         toast.error(`更新失败: ${message}`);
         clientLogger.error(
@@ -240,17 +263,15 @@ export function useTrustMode(): UseTrustModeReturn {
         return false;
       }
     },
-    [config],
+    [queryClient, key],
   );
 
-  // 派生状态
   const isFullAuto = mode === "full_auto";
   const isSemiAuto = mode === "semi_auto";
   const isManual = mode === "manual";
   const autoConfirmThreshold =
-    config?.classification?.confirmationThreshold || 80;
+    config?.classification?.confirmationThreshold ?? 80;
 
-  // Memoized 返回值
   return useMemo(
     () => ({
       mode,
@@ -264,7 +285,7 @@ export function useTrustMode(): UseTrustModeReturn {
       autoConfirmThreshold,
       switchMode,
       updateConfig,
-      refresh: loadTrustMode,
+      refresh,
     }),
     [
       mode,
@@ -278,7 +299,7 @@ export function useTrustMode(): UseTrustModeReturn {
       autoConfirmThreshold,
       switchMode,
       updateConfig,
-      loadTrustMode,
+      refresh,
     ],
   );
 }
@@ -287,9 +308,6 @@ export function useTrustMode(): UseTrustModeReturn {
 // 辅助函数
 // ============================================================================
 
-/**
- * 获取模式标签
- */
 function getModeLabel(mode: TrustMode): string {
   const labels: Record<TrustMode, string> = {
     full_auto: "全自动",
@@ -307,14 +325,11 @@ export function shouldRequireConfirmation(
   confidence: number,
   threshold: number,
 ): boolean {
-  if (mode === "manual") return false; // 手动模式不自动分类
-  if (mode === "full_auto") return false; // 全自动模式不需要确认
-  return confidence < threshold; // 半自动模式低于阈值需确认
+  if (mode === "manual") return false;
+  if (mode === "full_auto") return false;
+  return confidence < threshold;
 }
 
-/**
- * 获取默认配置
- */
 export function getDefaultConfig(): TrustModeConfig {
   return { ...DEFAULT_CONFIG };
 }

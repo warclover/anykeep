@@ -67,7 +67,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { useSynthesisList } from "@/hooks/synthesis/use-synthesis-list";
+import { useSynthesisListQuery } from "@/hooks/synthesis/use-synthesis-list-query";
 import type {
   SynthesisReportSummary,
   SynthesisDepthMode,
@@ -420,6 +420,26 @@ function EmptyState() {
   );
 }
 
+/** P2: 书签列表骨架屏（对比/主题 Tab 加载态） */
+function BookmarkListSkeleton() {
+  return (
+    <div className="divide-y">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="flex items-start gap-3 p-3 animate-pulse">
+          <div className="h-5 w-5 shrink-0 rounded bg-muted" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="flex gap-2">
+              <div className="h-4 bg-muted rounded w-12" />
+              <div className="h-4 bg-muted rounded w-16" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ============ 主组件 ============
 
 /**
@@ -470,7 +490,8 @@ export function ContentAnalysisListClient() {
 
   // 防抖定时器 ref
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialMount = useRef(true);
+  // 书签首屏是否已加载过（防 Strict Mode 双挂载重复请求）
+  const initialBookmarksLoadDone = useRef(false);
 
   // 根据 Tab 设置数量限制
   const minCount = activeTab === "compare" ? 2 : 3;
@@ -480,7 +501,8 @@ export function ContentAnalysisListClient() {
   const sortOption =
     SORT_OPTIONS.find((o) => o.value === sortValue) || SORT_OPTIONS[0];
 
-  const { data, isLoading, error, refetch } = useSynthesisList({
+  // P0: 仅在「历史记录」Tab 时请求综述列表，并用 TanStack Query 去重
+  const { data, isLoading, error, refetch } = useSynthesisListQuery({
     search: search || undefined,
     depthMode:
       depthFilter !== "all" ? (depthFilter as SynthesisDepthMode) : undefined,
@@ -488,6 +510,7 @@ export function ContentAnalysisListClient() {
       statusFilter !== "all" ? (statusFilter as SynthesisStatus) : undefined,
     sort: sortOption.sort,
     order: sortOption.order,
+    enabled: activeTab === "history",
   });
 
   const reports = data?.data || [];
@@ -552,28 +575,32 @@ export function ContentAnalysisListClient() {
         setOutputStyle("comparison");
       } else if (newTab === "synthesis") {
         setOutputStyle("narrative");
-      } else if (newTab === "history") {
-        // 切换到历史记录时加载书签（如果之前没有加载过）
-        if (bookmarks.length === 0) {
-          loadBookmarks(1);
-        }
+      }
+      // 切换到对比/主题 Tab 且书签未加载过时再加载（不预加载，减少请求）
+      if (
+        (newTab === "compare" || newTab === "synthesis") &&
+        bookmarks.length === 0
+      ) {
+        loadBookmarks(1);
       }
     },
     [pathname, searchParams, router, bookmarks.length, loadBookmarks],
   );
 
-  // 初始加载书签
+  // P0: 初始加载书签（仅一次，防 Strict Mode 双挂载重复请求）
   useEffect(() => {
-    if (activeTab !== "history") {
-      loadBookmarks(1);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (activeTab === "history") return;
+    if (initialBookmarksLoadDone.current) return;
+    initialBookmarksLoadDone.current = true;
+    loadBookmarks(1);
+  }, [activeTab, loadBookmarks]);
 
-  // 搜索变化时防抖重新加载
+  // 搜索变化时防抖重新加载（仅响应用户输入；首屏空搜索不在此处理）
+  const searchEffectEverRun = useRef(false);
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (activeTab === "history") return;
+    if (bookmarkSearch === "" && !searchEffectEverRun.current) {
+      searchEffectEverRun.current = true;
       return;
     }
 
@@ -591,7 +618,7 @@ export function ContentAnalysisListClient() {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [bookmarkSearch, loadBookmarks]);
+  }, [bookmarkSearch, activeTab, loadBookmarks]);
 
   // 加载更多
   const handleLoadMore = useCallback(() => {
@@ -816,9 +843,7 @@ export function ContentAnalysisListClient() {
                 style={{ height: "calc(100vh - 320px)" }}
               >
                 {isLoadingBookmarks ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
+                  <BookmarkListSkeleton />
                 ) : bookmarks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <CheckSquare className="h-8 w-8 mb-2" />
@@ -926,9 +951,7 @@ export function ContentAnalysisListClient() {
                 style={{ height: "calc(100vh - 340px)" }}
               >
                 {isLoadingBookmarks ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
+                  <BookmarkListSkeleton />
                 ) : bookmarks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <CheckSquare className="h-8 w-8 mb-2" />

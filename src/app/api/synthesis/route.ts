@@ -15,6 +15,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/cached-auth";
 import { logger } from "@/lib/logger";
 import {
   type SynthesisListQuery,
@@ -73,15 +74,22 @@ async function getAuthenticatedUserId(
   return session?.user?.id || null;
 }
 
+/** 列表 GET 短期缓存，减少重复请求 */
+const LIST_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60";
+
 /**
  * GET /api/synthesis - 获取综述列表
+ * P1: 优先 getCachedUser 鉴权（与 bookmarks 一致），并返回短期缓存头
  */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-
-    // V4.2.28: 使用回退机制获取用户 ID
-    const userId = await getAuthenticatedUserId(request, supabase);
+    // P1: 优先使用缓存认证（~1-5ms），失败再回退到 request+supabase 鉴权
+    const { user: cachedUser } = await getCachedUser();
+    let userId: string | null = cachedUser?.id ?? null;
+    if (!userId) {
+      userId = await getAuthenticatedUserId(request, supabase);
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -177,7 +185,9 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: { "Cache-Control": LIST_CACHE_CONTROL },
+    });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : String(error) },

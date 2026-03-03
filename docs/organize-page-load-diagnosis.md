@@ -67,8 +67,8 @@ OrganizePageClient
 2. **inbox / inbox?type=suggestions**
    - 用 TanStack Query（或现有请求去重层）统一拉取并缓存，同一 key 只发一次请求，避免 Strict Mode 或多次挂载导致重复。
 
-3. **useTrustMode**
-   - 可考虑改为 TanStack Query，统一 cache key，减少重复请求并利于缓存。
+3. **useTrustMode**（已做）
+   - 已改为 TanStack Query（`trustModeKeys.current()`），多页面/Strict Mode 共享同一请求与缓存，首屏由 2 次合并为 1 次，切页复用缓存。
 
 4. **confirmations 中止**
    - 检查 useConfirmations 的依赖与卸载逻辑，避免不必要的发起后立即 abort。

@@ -46,6 +46,7 @@ import {
 // 且 Suspense fallback={null} 已保证不会阻塞首屏渲染。
 import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
 import { FloatingActionMenu } from "@/components/fab";
+import { PrefetchUsageTags } from "@/components/layout/prefetch-usage-tags";
 
 export default function MainLayout({
   children,
@@ -90,6 +91,8 @@ export default function MainLayout({
         <Suspense fallback={null}>
           <FloatingActionMenu />
         </Suspense>
+        {/* P2: 后台预取 usage-tags，减轻首屏等待 */}
+        <PrefetchUsageTags />
       </div>
     </PageToolbarProvider>
   );

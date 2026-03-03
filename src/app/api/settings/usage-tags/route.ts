@@ -40,13 +40,16 @@ const MESSAGES = {
   MISSING_TAG_ID: "缺少标签ID",
 } as const;
 
+/** P1: 用途标签 GET 短期缓存（标签变更频率低） */
+const USAGE_TAGS_CACHE = "private, max-age=60, stale-while-revalidate=120";
+
 /**
  * GET /api/settings/usage-tags
  * 获取用户的自定义用途标签
  */
 export async function GET() {
   try {
-    // 认证
+    // 认证（内部已使用 getCachedUser）
     const authResult = await getAuthenticatedUser();
     if (!authResult.success) {
       return unauthorizedError();
@@ -60,11 +63,13 @@ export async function GET() {
     }
     const { customUsageTags } = settingsResult;
 
-    return successResponse({
+    const res = successResponse({
       customUsageTags,
       limit: CUSTOM_USAGE_TAG_LIMIT,
       remaining: CUSTOM_USAGE_TAG_LIMIT - customUsageTags.length,
     });
+    res.headers.set("Cache-Control", USAGE_TAGS_CACHE);
+    return res;
   } catch (error) {
     logApiError(error, "get_usage_tags", "GET /api/settings/usage-tags");
     return internalError(MESSAGES.LOAD_ERROR);
@@ -178,7 +183,9 @@ export async function PUT(request: NextRequest) {
 
     // 查找要更新的标签
     // 类型断言: CustomUsageTag 运行时包含 id 属性
-    const tagIndex = existingTags.findIndex((tag) => (tag as CustomUsageTag & { id: string }).id === id);
+    const tagIndex = existingTags.findIndex(
+      (tag) => (tag as CustomUsageTag & { id: string }).id === id,
+    );
     if (tagIndex === -1) {
       return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
@@ -260,13 +267,17 @@ export async function DELETE(request: NextRequest) {
 
     // 查找要删除的标签
     // 类型断言: CustomUsageTag 运行时包含 id 属性
-    const tagIndex = existingTags.findIndex((tag) => (tag as CustomUsageTag & { id: string }).id === id);
+    const tagIndex = existingTags.findIndex(
+      (tag) => (tag as CustomUsageTag & { id: string }).id === id,
+    );
     if (tagIndex === -1) {
       return badRequestError(MESSAGES.TAG_NOT_FOUND);
     }
 
     // 删除标签
-    const updatedTags = existingTags.filter((tag) => (tag as CustomUsageTag & { id: string }).id !== id);
+    const updatedTags = existingTags.filter(
+      (tag) => (tag as CustomUsageTag & { id: string }).id !== id,
+    );
 
     // 更新设置
     const updateResult = await updateUserCustomTags(

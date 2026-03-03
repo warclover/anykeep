@@ -34,6 +34,8 @@ interface UseSynthesisListOptions {
   page?: number;
   /** 每页数量 */
   pageSize?: number;
+  /** 为 false 时不发起请求（按需加载） */
+  enabled?: boolean;
 }
 
 interface UseSynthesisListResult {
@@ -54,7 +56,7 @@ export function useSynthesisList(
   options: UseSynthesisListOptions = {},
 ): UseSynthesisListResult {
   const [data, setData] = useState<SynthesisListResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => options.enabled !== false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -98,8 +100,12 @@ export function useSynthesisList(
   ]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (options.enabled !== false) {
+      fetchData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchData, options.enabled]);
 
   return {
     data,

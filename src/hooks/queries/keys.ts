@@ -279,12 +279,27 @@ export const blueprintKeys = {
   list: () => [...blueprintKeys.all, "list"] as const,
 };
 
+/** 综述列表查询过滤参数（用于 queryKey） */
+export interface SynthesisListFilters {
+  sourceType?: string;
+  depthMode?: string;
+  status?: string;
+  search?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 /**
  * Synthesis Query Keys
  */
 export const synthesisKeys = {
   all: ["synthesis"] as const,
   lists: () => [...synthesisKeys.all, "list"] as const,
+  /** 带过滤条件的列表查询（用于去重与缓存） */
+  list: (filters?: SynthesisListFilters) =>
+    [...synthesisKeys.lists(), filters ?? {}] as const,
   details: () => [...synthesisKeys.all, "detail"] as const,
   detail: (id: string) => [...synthesisKeys.details(), id] as const,
   highlights: (reportId: string) =>
@@ -313,4 +328,13 @@ export const organizeKeys = {
   items: () => [...organizeKeys.all, "items"] as const,
   /** 特定 Tab 的书签列表 */
   itemsByTab: (tabId: string) => [...organizeKeys.items(), tabId] as const,
+};
+
+/**
+ * Trust Mode Query Keys (托管模式设置)
+ * 用于 TanStack Query 去重，多页面/多组件共享同一请求与缓存
+ */
+export const trustModeKeys = {
+  all: ["trustMode"] as const,
+  current: () => [...trustModeKeys.all, "current"] as const,
 };
