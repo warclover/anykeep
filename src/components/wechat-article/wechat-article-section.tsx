@@ -33,6 +33,8 @@ export interface WechatArticleSectionProps {
   defaultExpanded?: boolean;
   /** 自定义类名 */
   className?: string;
+  /** P1: SSR 预取的快照数据，有值时跳过客户端 fetch 请求 */
+  initialSnapshot?: { id: number; status: string } | null;
 }
 
 interface SnapshotInfo {
@@ -55,9 +57,13 @@ export function WechatArticleSection({
   bookmarkUrl,
   defaultExpanded: _defaultExpanded = false,
   className,
+  initialSnapshot = null,
 }: WechatArticleSectionProps) {
-  const [snapshot, setSnapshot] = useState<SnapshotInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // P1: 优先使用 SSR 预取数据，避免客户端重复请求
+  const [snapshot, setSnapshot] = useState<SnapshotInfo | null>(
+    initialSnapshot,
+  );
+  const [isLoading, setIsLoading] = useState(initialSnapshot === null);
   const [error, setError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
@@ -119,8 +125,10 @@ export function WechatArticleSection({
   }, [bookmarkId]);
 
   useEffect(() => {
+    // P1: SSR 已预取快照数据时跳过客户端二次请求
+    if (initialSnapshot !== null) return;
     fetchSnapshot();
-  }, [fetchSnapshot]);
+  }, [fetchSnapshot, initialSnapshot]);
 
   // 创建快照（抓取文章内容）
   const handleFetchArticle = async () => {

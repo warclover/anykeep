@@ -128,6 +128,9 @@ export default async function BookmarkDetailPage({
 
   // P4: 从并行查询结果中提取快照状态
   const initialHasSnapshot = !!snapshotResult.data?.id;
+  const initialSnapshot = snapshotResult.data
+    ? { id: snapshotResult.data.id, status: snapshotResult.data.status }
+    : null;
 
   return (
     <BookmarkDetailClient
@@ -135,6 +138,7 @@ export default async function BookmarkDetailPage({
       folderPath={folderPath}
       initialCustomUsageTags={customUsageTags}
       initialHasSnapshot={initialHasSnapshot}
+      initialSnapshot={initialSnapshot}
     />
   );
 }

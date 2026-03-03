@@ -9,7 +9,8 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Compass,
   RefreshCw,
@@ -62,6 +63,45 @@ interface RelatedBookmark {
 // 组件
 // ============================================
 
+async function fetchRelatedBookmarks(
+  bookmarkId: number,
+  maxItems: number,
+): Promise<RelatedBookmark[]> {
+  const params = new URLSearchParams({
+    limit: maxItems.toString(),
+    minSimilarity: "0.3",
+  });
+  const response = await fetch(
+    `/api/bookmarks/${bookmarkId}/related?${params.toString()}`,
+  );
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error?.message || "获取相关内容失败");
+  }
+
+  return (data.data?.related || []).map(
+    (item: {
+      id: number;
+      title: string;
+      url: string;
+      description: string | null;
+      similarity: number;
+      platform: string | null;
+      createdAt: string;
+    }) => ({
+      id: item.id,
+      title: item.title,
+      url: item.url,
+      description: item.description ?? undefined,
+      platform: item.platform || "OTHER",
+      similarity: item.similarity,
+      tags: [],
+      createdAt: item.createdAt,
+    }),
+  );
+}
+
 export function AIRelatedContent({
   bookmarkId,
   bookmarkTitle: _bookmarkTitle,
@@ -69,68 +109,28 @@ export function AIRelatedContent({
   className,
   onBookmarkClick,
 }: AIRelatedContentProps) {
-  const [relatedItems, setRelatedItems] = useState<RelatedBookmark[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  /**
-   * 获取相关内容
-   */
-  const fetchRelatedContent = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const {
+    data: relatedItems = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["ai-related-content", bookmarkId, maxItems],
+    queryFn: () => fetchRelatedBookmarks(bookmarkId, maxItems),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
 
-    try {
-      // 调用相关书签 API
-      const params = new URLSearchParams({
-        limit: maxItems.toString(),
-        minSimilarity: "0.3",
-      });
+  const error = queryError instanceof Error ? queryError.message : null;
 
-      const response = await fetch(
-        `/api/bookmarks/${bookmarkId}/related?${params.toString()}`,
-      );
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error?.message || "获取相关内容失败");
-      }
-
-      // 转换 API 响应格式为组件格式
-      const related: RelatedBookmark[] = (data.data?.related || []).map(
-        (item: {
-          id: number;
-          title: string;
-          url: string;
-          description: string | null;
-          similarity: number;
-          platform: string | null;
-          createdAt: string;
-        }) => ({
-          id: item.id,
-          title: item.title,
-          url: item.url,
-          description: item.description ?? undefined,
-          platform: item.platform || "OTHER",
-          similarity: item.similarity,
-          tags: [], // API 暂不返回标签
-          createdAt: item.createdAt,
-        }),
-      );
-
-      setRelatedItems(related);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "获取失败";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [bookmarkId, maxItems]);
-
-  // 初始加载
-  useEffect(() => {
-    fetchRelatedContent();
-  }, [fetchRelatedContent]);
+  const fetchRelatedContent = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["ai-related-content", bookmarkId, maxItems],
+    });
+    void refetch();
+  }, [queryClient, refetch, bookmarkId, maxItems]);
 
   /**
    * 格式化相似度

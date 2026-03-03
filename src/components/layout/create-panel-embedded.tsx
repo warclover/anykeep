@@ -105,7 +105,7 @@ export function CreatePanelEmbedded({
 }: CreatePanelEmbeddedProps) {
   const { fetchWithAbort } = useAbortableFetch();
   const { debouncedFetch, abortAll } = useDebouncedAbortableFetch(500);
-  const { folders = [] } = useFolders();
+  const { folders = [] } = useFolders({ enabled: open });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 表单状态

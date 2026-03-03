@@ -79,6 +79,8 @@ interface BookmarkDetailClientProps {
   initialCustomUsageTags?: CustomUsageTag[];
   /** V5.6 P4: 服务端预取的快照状态，消除客户端 useEffect 请求 */
   initialHasSnapshot?: boolean;
+  /** P1: 服务端预取的完整快照数据，传给 WechatArticleSection 跳过客户端二次请求 */
+  initialSnapshot?: { id: number; status: string } | null;
 }
 
 export function BookmarkDetailClient({
@@ -86,6 +88,7 @@ export function BookmarkDetailClient({
   folderPath = [],
   initialCustomUsageTags = [],
   initialHasSnapshot = false,
+  initialSnapshot = null,
 }: BookmarkDetailClientProps) {
   const router = useRouter();
   const platformConfig = getPlatformConfig(bookmark.platform ?? "UNKNOWN");
@@ -509,6 +512,7 @@ export function BookmarkDetailClient({
                       bookmarkId={bookmark.id}
                       bookmarkUrl={bookmark.url}
                       defaultExpanded={false}
+                      initialSnapshot={initialSnapshot}
                     />
                   </Suspense>
                 </SilentErrorBoundary>

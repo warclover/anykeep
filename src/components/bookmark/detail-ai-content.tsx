@@ -2,18 +2,17 @@
  * 详情页 AI 内容区
  * V5.7: 从 bookmark-detail-client.tsx 提取非首屏 AI 功能区域
  *
- * 包含：AIQuickActions、AIBookmarkChat、VisionInsights、AIRelatedContent
+ * 包含：AIBookmarkAssistant、VisionInsights
  * 该组件整体作为懒加载单元，将 useVisionAnalysis hook 及其依赖链
  * 从主组件移出，显著减少首屏模块数
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-09
  */
 
 "use client";
 
 import { useMemo, lazy, Suspense } from "react";
-import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVisionAnalysis } from "@/hooks/domain/ai/use-vision-analysis";
@@ -25,11 +24,6 @@ import type { Bookmark } from "@/types/supabase";
 const AIBookmarkAssistant = lazy(() =>
   import("@/components/ai/ai-bookmark-assistant").then((m) => ({
     default: m.AIBookmarkAssistant,
-  })),
-);
-const AIRelatedContent = lazy(() =>
-  import("@/components/ai").then((m) => ({
-    default: m.AIRelatedContent,
   })),
 );
 
@@ -63,8 +57,6 @@ export function DetailAIContent({
   setLocalUserTags,
   onOpenAIPanel,
 }: DetailAIContentProps) {
-  const router = useRouter();
-
   // 视觉分析 hook（依赖链从主组件移至此处）
   const {
     data: newVisionData,
@@ -151,19 +143,7 @@ export function DetailAIContent({
         </>
       )}
 
-      {/* AI 相关内容推荐（基于向量相似度） */}
-      {userId && (
-        <Suspense fallback={<Skeleton className="h-20 w-full rounded-lg" />}>
-          <AIRelatedContent
-            bookmarkId={bookmark.id}
-            bookmarkTitle={bookmark.title ?? ""}
-            maxItems={5}
-            onBookmarkClick={(relatedId) => {
-              router.push(`/bookmark/${relatedId}`);
-            }}
-          />
-        </Suspense>
-      )}
+      {/* 相关收藏已由页面底部的 RelatedBookmarksV2Lazy 统一展示，此处不重复请求 */}
     </>
   );
 }
