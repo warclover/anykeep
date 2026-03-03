@@ -21,7 +21,7 @@ import { useCallback } from "react";
 import { authFetcher } from "@/lib/api/fetch-with-auth";
 import { initDataKeys, type InitDataFilters } from "@/hooks/queries/keys";
 import type { SmartListClient } from "@/types/smart-list";
-import type { Bookmark, Folder } from "@/types/supabase";
+import type { Bookmark, Folder, CustomUsageTag } from "@/types/supabase";
 
 // ============================================
 // 类型定义
@@ -41,6 +41,8 @@ export interface InitData {
   smartLists: SmartListClient[];
   unreadCount: UnreadCounts;
   folders: (Folder & { children?: Folder[] })[];
+  /** 自定义用途标签（与 /api/settings/usage-tags 数据相同，避免独立请求） */
+  customUsageTags: CustomUsageTag[];
   _meta?: {
     authMethod: string;
     authDuration: number;
@@ -82,6 +84,8 @@ export interface UseInitDataResult {
   unreadCount: UnreadCounts;
   /** 文件夹树 */
   folders: (Folder & { children?: Folder[] })[];
+  /** 自定义用途标签 */
+  customUsageTags: CustomUsageTag[];
   /** 性能元数据 */
   meta: InitData["_meta"] | null;
   /** V4.2.1: 数据版本号，用于缓存失效验证 */
@@ -213,6 +217,7 @@ export function useInitData(
     smartLists: data?.smartLists ?? [],
     unreadCount: data?.unreadCount ?? DEFAULT_UNREAD_COUNT,
     folders: data?.folders ?? [],
+    customUsageTags: data?.customUsageTags ?? [],
     meta: data?._meta ?? null,
     dataVersion: data?._meta?.dataVersion ?? null,
     isLoading,

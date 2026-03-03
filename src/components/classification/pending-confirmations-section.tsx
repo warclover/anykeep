@@ -14,9 +14,10 @@
  * @since 2025-12-11
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Bell, Loader2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -66,6 +67,41 @@ interface ApiConfirmation {
 }
 
 // ============================================================================
+// Fetcher
+// ============================================================================
+
+const CONFIRMATIONS_QUERY_KEY = ["pending-confirmations"] as const;
+
+async function fetchPendingConfirmations(): Promise<ConfirmationMessage[]> {
+  const confirmationsRes = await fetchWithRetry(
+    API_CLASSIFICATION.confirmations + "?status=pending",
+    undefined,
+    { requestId: "confirmations-list" },
+  );
+
+  if (!confirmationsRes.ok) return [];
+
+  const confirmationsData = await confirmationsRes.json();
+  const confirmations: ApiConfirmation[] =
+    confirmationsData.data?.confirmations || [];
+
+  return confirmations.map((c) => ({
+    id: c.id,
+    bookmarkId: c.bookmarkId || 0,
+    bookmarkTitle:
+      c.bookmark?.title || (c.metadata?.bookmarkTitle as string) || "无标题",
+    bookmarkUrl: c.bookmark?.url || (c.metadata?.bookmarkUrl as string) || "",
+    suggestedFolderId: c.suggestion.folderId || 0,
+    suggestedFolderName: c.suggestion.folderName || "未知文件夹",
+    confidence: c.suggestion.confidence,
+    reason: c.suggestion.reason || "",
+    status: c.status as ConfirmationMessage["status"],
+    createdAt: c.createdAt,
+    expiresAt: c.expiresAt || "",
+  }));
+}
+
+// ============================================================================
 // 组件实现
 // ============================================================================
 
@@ -75,13 +111,25 @@ interface ApiConfirmation {
 export function PendingConfirmationsSection({
   className,
 }: PendingConfirmationsSectionProps) {
-  const [messages, setMessages] = useState<ConfirmationMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // TanStack Query 管理 confirmations 请求，自动去重，避免 StrictMode 双重调用
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: CONFIRMATIONS_QUERY_KEY,
+    queryFn: fetchPendingConfirmations,
+    staleTime: 2 * 60 * 1000, // 2 分钟内不重新请求
+    retry: 2,
+    meta: {
+      onError: (error: unknown) =>
+        clientLogger.error({ error }, "Failed to fetch confirmations"),
+    },
+  });
+
   // V4.2.24: 使用统一的文件夹缓存 Hook
-  const { folders: rawFolders } = useFolders();
+  // 仅在有待确认消息时才加载文件夹数据（用于修改分类时的文件夹选择器）
+  const { folders: rawFolders } = useFolders({ enabled: messages.length > 0 });
 
   // 转换文件夹数据格式
   const folders = useMemo<FolderOption[]>(() => {
@@ -92,52 +140,20 @@ export function PendingConfirmationsSection({
     }));
   }, [rawFolders]);
 
-  // V4.2.24: 获取待确认消息（文件夹数据由 useFolders Hook 提供）
-  const fetchConfirmations = useCallback(async () => {
-    try {
-      // 使用 fetchWithRetry 处理偶发的 401 错误
-      const confirmationsRes = await fetchWithRetry(
-        API_CLASSIFICATION.confirmations + "?status=pending",
-        undefined,
-        { requestId: "confirmations-list" },
-      );
+  // 从缓存中移除已处理的消息（乐观更新）
+  const removeMessage = (messageId: number) => {
+    queryClient.setQueryData<ConfirmationMessage[]>(
+      CONFIRMATIONS_QUERY_KEY,
+      (prev) => (prev ?? []).filter((m) => m.id !== messageId),
+    );
+  };
 
-      if (confirmationsRes.ok) {
-        const confirmationsData = await confirmationsRes.json();
-        // API 返回 { success, data: { confirmations, total, ... } }
-        const confirmations = confirmationsData.data?.confirmations || [];
-        const transformedMessages: ConfirmationMessage[] = confirmations.map(
-          (c: ApiConfirmation) => ({
-            id: c.id,
-            bookmarkId: c.bookmarkId || 0,
-            bookmarkTitle:
-              c.bookmark?.title ||
-              (c.metadata?.bookmarkTitle as string) ||
-              "无标题",
-            bookmarkUrl:
-              c.bookmark?.url || (c.metadata?.bookmarkUrl as string) || "",
-            suggestedFolderId: c.suggestion.folderId || 0,
-            suggestedFolderName: c.suggestion.folderName || "未知文件夹",
-            confidence: c.suggestion.confidence,
-            reason: c.suggestion.reason || "",
-            status: c.status as ConfirmationMessage["status"],
-            createdAt: c.createdAt,
-            expiresAt: c.expiresAt || "",
-          }),
-        );
-        setMessages(transformedMessages);
-      }
-    } catch (error) {
-      clientLogger.error({ error }, "Failed to fetch confirmations");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // 初始加载
-  useEffect(() => {
-    fetchConfirmations();
-  }, [fetchConfirmations]);
+  const removeMessages = (ids: Set<number>) => {
+    queryClient.setQueryData<ConfirmationMessage[]>(
+      CONFIRMATIONS_QUERY_KEY,
+      (prev) => (prev ?? []).filter((m) => !ids.has(m.id)),
+    );
+  };
 
   // V4.2.1: 处理确认（带重试）
   const handleConfirm = async (messageId: number) => {
@@ -154,7 +170,7 @@ export function PendingConfirmationsSection({
 
       if (!res.ok) throw new Error("确认失败");
 
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      removeMessage(messageId);
       toast.success("分类已确认");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "操作失败");
@@ -176,7 +192,7 @@ export function PendingConfirmationsSection({
 
       if (!res.ok) throw new Error("拒绝失败");
 
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      removeMessage(messageId);
       toast.success("分类已拒绝");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "操作失败");
@@ -201,7 +217,7 @@ export function PendingConfirmationsSection({
 
       if (!res.ok) throw new Error("修改失败");
 
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      removeMessage(messageId);
       toast.success("分类已修改");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "操作失败");
@@ -232,7 +248,7 @@ export function PendingConfirmationsSection({
       if (!res.ok) throw new Error("批量确认失败");
 
       const result = await res.json();
-      setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+      removeMessages(selectedIds);
       setSelectedIds(new Set());
       toast.success(
         `已确认 ${result.data?.summary?.success || ids.length} 条分类`,
@@ -266,7 +282,7 @@ export function PendingConfirmationsSection({
       if (!res.ok) throw new Error("批量拒绝失败");
 
       const result = await res.json();
-      setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+      removeMessages(selectedIds);
       setSelectedIds(new Set());
       toast.success(
         `已拒绝 ${result.data?.summary?.success || ids.length} 条分类`,

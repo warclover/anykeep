@@ -23,7 +23,12 @@ import { createClient } from "@/lib/supabase/server";
 import { withAuth, unauthorizedResponse } from "@/lib/api/auth-middleware";
 import { internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import type { Folder, Platform } from "@/types/supabase";
+import type {
+  Folder,
+  Platform,
+  CustomUsageTag,
+  ProfileSettings,
+} from "@/types/supabase";
 import type { SmartList } from "@/types/smart-list";
 import { toSmartListClient } from "@/types/smart-list";
 import {
@@ -187,9 +192,12 @@ async function getUnreadCount(
   userId: string,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)("get_unread_message_counts", {
-    p_user_id: userId,
-  }) as { data: unknown; error: { message: string } | null };
+  const { data, error } = (await (supabase.rpc as any)(
+    "get_unread_message_counts",
+    {
+      p_user_id: userId,
+    },
+  )) as { data: unknown; error: { message: string } | null };
 
   if (error) {
     // 非关键数据，返回默认值
@@ -200,6 +208,28 @@ async function getUnreadCount(
   return Array.isArray(data) && data.length > 0
     ? data[0]
     : { total: 0, silent: 0, normal: 0, important: 0 };
+}
+
+/**
+ * 获取用户自定义用途标签
+ * 与 /api/settings/usage-tags GET 逻辑等价，但复用同一 supabase 客户端，省去重复认证
+ */
+async function getCustomUsageTags(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<CustomUsageTag[]> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("settings")
+    .eq("id", userId)
+    .single();
+
+  const settings = (profile?.settings as ProfileSettings) || {};
+  return (
+    ((settings as Record<string, unknown>).customUsageTags as
+      | CustomUsageTag[]
+      | undefined) || []
+  );
 }
 
 /**
@@ -261,29 +291,37 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get("sort") || "created_desc";
     const folder = searchParams.get("folder") || "";
 
-    // 4. 并行获取所有数据
+    // 4. 并行获取所有数据（含 customUsageTags，省去独立 /api/settings/usage-tags 请求）
     const dataStart = performance.now();
 
-    const [bookmarks, smartLists, unreadCount, folders] = await Promise.all([
-      getBookmarks(supabase, userId, { platform, sort, folder }).catch(
-        (err) => {
-          logger.error({ error: err }, "[Init] Failed to get bookmarks");
+    const [bookmarks, smartLists, unreadCount, folders, customUsageTags] =
+      await Promise.all([
+        getBookmarks(supabase, userId, { platform, sort, folder }).catch(
+          (err) => {
+            logger.error({ error: err }, "[Init] Failed to get bookmarks");
+            return [];
+          },
+        ),
+        getSmartLists(supabase, userId).catch((err) => {
+          logger.error({ error: err }, "[Init] Failed to get smart lists");
           return [];
-        },
-      ),
-      getSmartLists(supabase, userId).catch((err) => {
-        logger.error({ error: err }, "[Init] Failed to get smart lists");
-        return [];
-      }),
-      getUnreadCount(supabase, userId).catch((err) => {
-        logger.error({ error: err }, "[Init] Failed to get unread count");
-        return { total: 0, silent: 0, normal: 0, important: 0 };
-      }),
-      getFolders(supabase, userId).catch((err) => {
-        logger.error({ error: err }, "[Init] Failed to get folders");
-        return [];
-      }),
-    ]);
+        }),
+        getUnreadCount(supabase, userId).catch((err) => {
+          logger.error({ error: err }, "[Init] Failed to get unread count");
+          return { total: 0, silent: 0, normal: 0, important: 0 };
+        }),
+        getFolders(supabase, userId).catch((err) => {
+          logger.error({ error: err }, "[Init] Failed to get folders");
+          return [];
+        }),
+        getCustomUsageTags(supabase, userId).catch((err) => {
+          logger.error(
+            { error: err },
+            "[Init] Failed to get custom usage tags",
+          );
+          return [] as CustomUsageTag[];
+        }),
+      ]);
 
     const dataDuration = performance.now() - dataStart;
     const totalDuration = performance.now() - startTime;
@@ -318,6 +356,7 @@ export async function GET(request: NextRequest) {
           smartLists,
           unreadCount,
           folders,
+          customUsageTags,
         },
         _meta: {
           authMethod: method,

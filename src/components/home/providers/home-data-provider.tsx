@@ -22,14 +22,14 @@ import {
   useEffect,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Bookmark } from "@/types/supabase";
+import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { useInitData } from "@/hooks/data";
 import { useAbortableFetch } from "@/hooks/core";
 import { clientLogger } from "@/lib/client-logger";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
-import { prefetchCustomUsageTags } from "@/hooks/data";
 import { useProcessingPoller } from "@/hooks/ui";
+import { customTagKeys } from "@/hooks/queries/keys";
 import { getPageSizeByView } from "../constants";
 import type { ViewMode } from "../types";
 
@@ -113,11 +113,6 @@ export function HomeDataProvider({
   const queryClient = useQueryClient();
   const { fetchWithAbort } = useAbortableFetch();
 
-  // V10.1: 预加载自定义用途标签
-  useEffect(() => {
-    prefetchCustomUsageTags(queryClient);
-  }, [queryClient]);
-
   // ========== 聚合数据获取（性能优化） ==========
   // 当没有 SSR 初始数据时，使用聚合 API 一次获取所有数据
   const shouldUseInitData =
@@ -127,10 +122,34 @@ export function HomeDataProvider({
     !folder &&
     !usageTags.length;
 
-  const { bookmarks: initBookmarks, isLoading: isInitDataLoading } =
-    useInitData({
-      enabled: shouldUseInitData,
-    });
+  // 在子组件挂载前同步写入占位缓存，阻止 useCustomUsageTags 发起独立的网络请求。
+  // React 先渲染父组件体再渲染子组件，因此此处赋值必定早于子组件首次 useQuery 执行。
+  // init 数据到达后会通过下方 useEffect 覆盖为真实值。
+  const hasSeededTagCacheRef = useRef(false);
+  if (shouldUseInitData && !hasSeededTagCacheRef.current) {
+    const existing = queryClient.getQueryData(customTagKeys.list());
+    if (existing === undefined) {
+      queryClient.setQueryData<CustomUsageTag[]>(customTagKeys.list(), []);
+      hasSeededTagCacheRef.current = true;
+    }
+  }
+
+  const {
+    bookmarks: initBookmarks,
+    customUsageTags: initCustomUsageTags,
+    isLoading: isInitDataLoading,
+  } = useInitData({
+    enabled: shouldUseInitData,
+  });
+
+  // init 数据就绪后，用真实 customUsageTags 覆盖占位缓存
+  useEffect(() => {
+    if (!shouldUseInitData || isInitDataLoading) return;
+    queryClient.setQueryData<CustomUsageTag[]>(
+      customTagKeys.list(),
+      initCustomUsageTags,
+    );
+  }, [shouldUseInitData, isInitDataLoading, initCustomUsageTags, queryClient]);
 
   // 优先使用聚合 API 数据作为初始值
   const effectiveInitialData = initialBookmarks?.length
