@@ -378,10 +378,29 @@ export const HomeContent = memo(function HomeContent({
     null,
   );
 
+  // 使用 ResizeObserver 确保容器有有效高度后再设置 scrollContainer
+  // 这避免了 Virtuoso 在容器高度为 0 时初始化导致的 "Zero-sized element" 警告
   useLayoutEffect(() => {
-    if (scrollContainerRef.current) {
-      setScrollContainer(scrollContainerRef.current);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // 如果容器已经有高度，直接设置
+    if (container.offsetHeight > 0) {
+      setScrollContainer(container);
+      return;
     }
+
+    // 否则等待容器有高度
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.contentRect.height > 0) {
+        setScrollContainer(container);
+        resizeObserver.disconnect();
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
   }, []);
 
   const { isBrowserPlatform, isTrashFolder } = filter;
@@ -423,6 +442,12 @@ export const HomeContent = memo(function HomeContent({
           onToggleSelect={onToggleSelect}
         />
       );
+    }
+
+    // 依赖虚拟滚动的视图需等待滚动容器就绪，避免 Virtuoso 以 0 高度初始化
+    // useLayoutEffect 同步执行，React 18 会在同一帧批量合并两次渲染，用户不会看到骨架屏闪烁
+    if (!scrollContainer) {
+      return <VirtualListSkeleton variant="grid" count={8} />;
     }
 
     if (isTrashFolder) {

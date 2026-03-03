@@ -282,6 +282,7 @@ export function ConversationList({
               Footer: renderFooter,
             }}
             className="p-2"
+            style={{ height: "100%" }}
           />
         )}
       </div>

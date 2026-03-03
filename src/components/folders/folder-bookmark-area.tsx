@@ -14,6 +14,7 @@ import {
   useDeferredValue,
   useRef,
   useEffect,
+  useLayoutEffect,
 } from "react";
 import {
   Search,
@@ -265,14 +266,36 @@ export function FolderBookmarkArea({
     localStorage.setItem("folder-bookmark-view-mode", viewMode);
   }, [viewMode]);
 
-  // 滚动容器引用
+  // 滚动容器引用（useLayoutEffect 同步执行，确保 Virtuoso 挂载时滚动父元素已就绪）
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      setScrollParent(scrollContainerRef.current);
+  // 使用 ResizeObserver 确保容器有有效高度后再设置 scrollParent
+  // 这避免了 Virtuoso 在容器高度为 0 时初始化导致的 "Zero-sized element" 警告
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // 如果容器已经有高度，直接设置
+    if (container.offsetHeight > 0) {
+      setScrollParent(container);
+      return;
     }
+
+    // 否则等待容器有高度
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.contentRect.height > 0) {
+        setScrollParent(container);
+        resizeObserver.disconnect();
+      }
+    });
+
+    resizeObserver.observe(container);
+    // 返回清理函数
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   // ==================== 批量选择模式 ====================
@@ -652,6 +675,16 @@ export function FolderBookmarkArea({
             selectionTitle={selectionInfo.title}
             onCreateBookmark={onCreateBookmark}
           />
+        ) : !scrollParent ? (
+          // scrollParent 未就绪时显示骨架屏，避免 Virtuoso "Zero-sized element" 警告
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[140px] rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"
+              />
+            ))}
+          </div>
         ) : (
           <VirtualBookmarkList
             bookmarks={filteredBookmarks}

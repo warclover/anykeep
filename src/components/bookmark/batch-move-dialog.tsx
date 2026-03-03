@@ -22,10 +22,28 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Folder as FolderType } from "@/types/supabase";
+import type { Folder as FolderType, FolderTreeNode } from "@/types/supabase";
 
-interface FolderTreeNode extends FolderType {
-  children: FolderTreeNode[];
+/** 将平坦的文件夹列表转换为树形结构 */
+function buildFolderTree(flatFolders: FolderType[]): FolderTreeNode[] {
+  const map = new Map<number, FolderTreeNode>();
+  const roots: FolderTreeNode[] = [];
+
+  // 第一遍：初始化所有节点，确保 children 数组存在
+  for (const folder of flatFolders) {
+    map.set(folder.id, { ...folder, children: [] });
+  }
+
+  // 第二遍：连接父子关系
+  for (const node of map.values()) {
+    if (node.parent_id != null && map.has(node.parent_id)) {
+      map.get(node.parent_id)!.children!.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
 }
 
 interface BatchMoveDialogProps {
@@ -57,8 +75,8 @@ export function BatchMoveDialog({
     error: loadError,
   } = useFolders({ enabled: open });
 
-  // 转换为树形结构类型
-  const folders = (rawFolders || []) as FolderTreeNode[];
+  // 将平坦列表转为树形结构
+  const folders = buildFolderTree(rawFolders || []);
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) return;
@@ -109,8 +127,9 @@ export function BatchMoveDialog({
   const findFolderName = (folders: FolderTreeNode[], id: number): string => {
     for (const folder of folders) {
       if (folder.id === id) return folder.name;
-      if (folder.children.length > 0) {
-        const found = findFolderName(folder.children, id);
+      const children = folder.children ?? [];
+      if (children.length > 0) {
+        const found = findFolderName(children, id);
         if (found) return found;
       }
     }
@@ -133,7 +152,7 @@ export function BatchMoveDialog({
   // 递归渲染文件夹树
   const renderFolderTree = (folders: FolderTreeNode[], level = 0) => {
     return folders.map((folder) => {
-      const hasChildren = folder.children.length > 0;
+      const hasChildren = (folder.children ?? []).length > 0;
       const isExpanded = expandedFolders.has(folder.id);
       const isSelected = selectedFolderId === folder.id;
 
@@ -193,7 +212,7 @@ export function BatchMoveDialog({
           </button>
 
           {hasChildren && isExpanded && (
-            <div>{renderFolderTree(folder.children, level + 1)}</div>
+            <div>{renderFolderTree(folder.children ?? [], level + 1)}</div>
           )}
         </div>
       );

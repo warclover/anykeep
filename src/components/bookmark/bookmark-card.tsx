@@ -287,9 +287,16 @@ export const BookmarkCard = memo(function BookmarkCard({
   };
 
   // ── 根据 variant 分派到对应变体组件 ──────────────────
+  // fallback 必须有非零高度：Virtuoso 通过 ResizeObserver + requestAnimationFrame 测量
+  // 每个 item 高度，若 Suspense 渲染 null（高度 0），会触发 "Zero-sized element" 警告。
+  // 高度与 VirtualBookmarkList 的 estimatedItemSize 保持一致：compact=72px，list=96px。
   if (variant === "compact") {
     return (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div className="h-[72px] mx-2 my-0.5 rounded-lg bg-muted animate-pulse" />
+        }
+      >
         <BookmarkCardCompact {...viewProps} />
       </Suspense>
     );
@@ -297,14 +304,22 @@ export const BookmarkCard = memo(function BookmarkCard({
 
   if (variant === "list") {
     return (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div className="h-[96px] mx-2 my-1 rounded-lg bg-muted animate-pulse" />
+        }
+      >
         <BookmarkCardList {...viewProps} />
       </Suspense>
     );
   }
 
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div className="min-h-[200px] rounded-lg bg-muted animate-pulse" />
+      }
+    >
       <BookmarkCardDefault {...viewProps} />
     </Suspense>
   );

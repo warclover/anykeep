@@ -145,12 +145,15 @@ const ListContainer = memo(
           "grid gap-4 p-4",
           // 响应式列数：移动端1列，sm 2列，md 2列，lg 3列，xl 4列
           "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-          // 布局模式
-          effectiveLayoutMode === "row" && "auto-rows-fr",
+          // 布局模式（不使用 auto-rows-fr，避免无明确高度的容器中行高为 0）
           effectiveLayoutMode === "column" && "grid-flow-col",
           className,
         )}
-        style={style}
+        style={{
+          // 确保网格行有最小高度，防止 react-virtuoso "Zero-sized element" 警告
+          gridAutoRows: "minmax(120px, auto)",
+          ...style,
+        }}
         {...props}
       >
         {children}
@@ -161,6 +164,7 @@ const ListContainer = memo(
 
 /**
  * 单个网格项容器组件
+ * 添加 min-height 防止 react-virtuoso "Zero-sized element" 警告
  */
 const ItemContainer = memo(function ItemContainer({
   children,
@@ -169,7 +173,7 @@ const ItemContainer = memo(function ItemContainer({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col h-full" {...props}>
+    <div className="flex flex-col" style={{ minHeight: 120 }} {...props}>
       {children}
     </div>
   );
