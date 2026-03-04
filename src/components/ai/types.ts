@@ -877,3 +877,21 @@ export function adaptBackendChunk(
       return { type: "text", text: "" };
   }
 }
+
+// =============================================================================
+// 组件 Props 类型
+// =============================================================================
+
+export interface AIPanelContentEnhancedProps {
+  conversationId?: string;
+  bookmarkIds?: number[];
+  folderId?: number;
+  title?: string;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+  className?: string;
+  useUnifiedEngine?: boolean;
+  initialMessage?: string;
+  autoSendInitialMessage?: boolean;
+  initialMessages?: DisplayMessage[];
+}

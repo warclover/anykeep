@@ -12,7 +12,10 @@ import { createClient } from "@/lib/supabase/server";
 import { FolderService } from "@/services";
 import { withAuthMiddleware, validateBody } from "@/lib/api/middleware";
 import { CreateFolderSchema } from "@/contracts";
+import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+
+const logger = createLogger("api:v1:folders");
 
 // 查询参数 Schema
 const FolderQuerySchema = z.object({
@@ -33,6 +36,7 @@ const FolderQuerySchema = z.object({
  * 获取文件夹列表或树结构
  */
 export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const handlerStart = performance.now();
   const searchParams = request.nextUrl.searchParams;
   const query = FolderQuerySchema.parse({
     view: searchParams.get("view") || "list",
@@ -45,6 +49,13 @@ export const GET = withAuthMiddleware(async (request, { userId }) => {
 
   if (query.view === "tree") {
     const result = await service.getTree();
+    const handlerMs = Math.round(performance.now() - handlerStart);
+    if (handlerMs > 1000) {
+      logger.warn(
+        { route: "GET /api/v1/folders", handlerMs, view: "tree" },
+        "Slow folders handler",
+      );
+    }
     return NextResponse.json({
       success: true,
       data: result,
@@ -55,7 +66,13 @@ export const GET = withAuthMiddleware(async (request, { userId }) => {
     includeArchived: query.includeArchived,
     includeSystem: query.includeSystem,
   });
-
+  const handlerMs = Math.round(performance.now() - handlerStart);
+  if (handlerMs > 1000) {
+    logger.warn(
+      { route: "GET /api/v1/folders", handlerMs, view: "list" },
+      "Slow folders handler",
+    );
+  }
   return NextResponse.json({
     success: true,
     data: result,

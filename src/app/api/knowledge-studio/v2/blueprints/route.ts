@@ -57,6 +57,7 @@ interface BlueprintListResponse {
  */
 export async function GET(_request: NextRequest) {
   const requestId = crypto.randomUUID();
+  const handlerStart = performance.now();
   logger.info({ requestId }, "Blueprint list request received");
 
   try {
@@ -90,6 +91,10 @@ export async function GET(_request: NextRequest) {
         );
       }
       userId = user.id;
+    }
+    const authMs = Math.round(performance.now() - handlerStart);
+    if (authMs > 500) {
+      logger.warn({ requestId, authMs }, "Slow blueprints auth");
     }
 
     // 2. 获取用户会员类型
@@ -139,6 +144,17 @@ export async function GET(_request: NextRequest) {
       userTier,
     };
 
+    const handlerMs = Math.round(performance.now() - handlerStart);
+    if (handlerMs > 1000) {
+      logger.warn(
+        {
+          requestId,
+          route: "GET /api/knowledge-studio/v2/blueprints",
+          handlerMs,
+        },
+        "Slow blueprints handler",
+      );
+    }
     logger.info(
       { requestId, count: blueprints.length, userTier },
       "Blueprint list returned",

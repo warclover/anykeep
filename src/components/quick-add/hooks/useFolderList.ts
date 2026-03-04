@@ -36,19 +36,25 @@ interface ApiFolderNode {
   children?: ApiFolderNode[];
 }
 
+export interface UseFolderListOptions {
+  /** 为 false 时不请求，仅在需要时（如抽屉打开）再请求，默认 true */
+  enabled?: boolean;
+}
+
 /**
  * 文件夹列表 Hook
  * V4.2.24: 基于 useFolders 共享缓存
  * @returns 文件夹选项列表、加载状态、错误信息
  */
-export function useFolderList() {
-  // 使用统一的文件夹缓存 Hook
+export function useFolderList(options: UseFolderListOptions = {}) {
+  const { enabled = true } = options;
+  // 使用统一的文件夹缓存 Hook，按需加载（如仅在抽屉打开时请求）
   const {
     folders: rawFolders,
     isLoading,
     error,
     refresh: refetch,
-  } = useFolders();
+  } = useFolders({ enabled });
 
   // 将树形结构扁平化为选项列表
   const folders = useMemo<FolderOption[]>(() => {

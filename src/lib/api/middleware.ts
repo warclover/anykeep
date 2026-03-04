@@ -69,6 +69,18 @@ export function withAuthMiddleware<TParams = Record<string, string>>(
     try {
       // 获取认证信息
       const authResult = await getAuth(request);
+      const authDuration = authResult.duration ?? 0;
+      if (authDuration > 500) {
+        logger.warn(
+          {
+            method,
+            url,
+            authDuration: Math.round(authDuration),
+            authMethod: authResult.method,
+          },
+          "Slow API auth - consider Middleware x-user-id or JWT fast path",
+        );
+      }
 
       if (authResult.error || !authResult.userId) {
         logger.warn(
@@ -89,6 +101,7 @@ export function withAuthMiddleware<TParams = Record<string, string>>(
       }
 
       // 执行处理函数
+      const handlerStart = Date.now();
       const response = await handler(request, {
         user: authResult.user,
         userId: authResult.userId,
@@ -96,10 +109,20 @@ export function withAuthMiddleware<TParams = Record<string, string>>(
         params: context?.params ?? Promise.resolve({} as TParams),
       });
 
-      // 记录请求完成
+      // 记录请求完成（总耗时 + 业务逻辑耗时，便于区分鉴权 vs 业务）
       const duration = Date.now() - startTime;
+      const handlerDuration = Date.now() - handlerStart;
       if (duration > 1000) {
-        logger.warn({ method, url, duration }, "Slow API request");
+        logger.warn(
+          {
+            method,
+            url,
+            duration,
+            authDuration: Math.round(authDuration),
+            handlerDuration,
+          },
+          "Slow API request",
+        );
       }
 
       return response;

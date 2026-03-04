@@ -16,6 +16,9 @@ import {
   validateBody,
 } from "@/lib/api/middleware";
 import { BookmarkQuerySchema, CreateBookmarkSchema } from "@/contracts";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("api:v1:bookmarks");
 
 /**
  * GET /api/v1/bookmarks
@@ -23,12 +26,19 @@ import { BookmarkQuerySchema, CreateBookmarkSchema } from "@/contracts";
  * 获取书签列表（分页、过滤、排序）
  */
 export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const handlerStart = performance.now();
   const query = validateQuery(request, BookmarkQuerySchema);
 
   const supabase = await createClient();
   const service = new BookmarkService(supabase, userId);
   const result = await service.list(query);
-
+  const handlerMs = Math.round(performance.now() - handlerStart);
+  if (handlerMs > 1000) {
+    logger.warn(
+      { route: "GET /api/v1/bookmarks", handlerMs },
+      "Slow bookmarks handler",
+    );
+  }
   return NextResponse.json({
     success: true,
     data: result,

@@ -25,3 +25,16 @@ export type {
 // 批量操作 Hook（Phase 2.3.2）
 export { useHomeBatch } from "./use-home-batch";
 export type { UseHomeBatchOptions, UseHomeBatchReturn } from "./use-home-batch";
+
+// URL 同步 Hook
+export { useHomeUrlSync } from "./use-home-url-sync";
+export type { UseHomeUrlSyncReturn } from "./use-home-url-sync";
+
+// 书签数据获取 Hook
+export { useHomeBookmarkData } from "./use-home-bookmark-data";
+
+// 加载更多 Hook
+export { useHomeLoadMore } from "./use-home-load-more";
+
+// 对话框 Hook
+export { useHomeDialogs } from "./use-home-dialogs";

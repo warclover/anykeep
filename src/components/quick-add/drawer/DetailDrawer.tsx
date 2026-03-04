@@ -59,12 +59,12 @@ export function DetailDrawer({
   const drawerRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
-  // Load folders from API
+  // Load folders from API only when drawer is open (P2: 按需加载，减轻首屏)
   const {
     folders,
     isLoading: foldersLoading,
     error: foldersError,
-  } = useFolderList();
+  } = useFolderList({ enabled: isOpen });
 
   // Handle escape key
   useEffect(() => {

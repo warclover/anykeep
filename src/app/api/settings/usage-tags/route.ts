@@ -27,6 +27,9 @@ import {
   updateUserCustomTags,
   logApiError,
 } from "@/lib/utils/usage-tags-api-helpers";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("api:settings:usage-tags");
 
 // 错误消息常量
 const MESSAGES = {
@@ -48,6 +51,7 @@ const USAGE_TAGS_CACHE = "private, max-age=60, stale-while-revalidate=120";
  * 获取用户的自定义用途标签
  */
 export async function GET() {
+  const handlerStart = performance.now();
   try {
     // 认证（内部已使用 getCachedUser）
     const authResult = await getAuthenticatedUser();
@@ -63,6 +67,13 @@ export async function GET() {
     }
     const { customUsageTags } = settingsResult;
 
+    const handlerMs = Math.round(performance.now() - handlerStart);
+    if (handlerMs > 1000) {
+      logger.warn(
+        { route: "GET /api/settings/usage-tags", handlerMs },
+        "Slow usage-tags handler",
+      );
+    }
     const res = successResponse({
       customUsageTags,
       limit: CUSTOM_USAGE_TAG_LIMIT,
