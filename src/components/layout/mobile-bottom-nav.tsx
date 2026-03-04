@@ -7,8 +7,8 @@
  * - 整理 (Sparkles) → /organize
  * - 更多 (MoreHorizontal) → 展开完整菜单 Sheet
  *
- * "更多" Sheet 复用 mobile-menu.tsx 的分组结构，
- * 确保移动端可访问桌面端 100% 的功能。
+ * "更多" Sheet 与汉堡菜单共用 nav-config（getMobileMoreGroups），
+ * 确保移动端双入口内容一致，与 Web 侧边栏同源。
  */
 
 "use client";

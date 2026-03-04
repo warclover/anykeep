@@ -1,13 +1,9 @@
 /**
  * 移动端汉堡菜单
- * 提供侧边抽屉导航，与 Web 端侧边栏保持一致的分组结构
+ * 提供侧边抽屉导航，与底部「更多」Sheet 共用 nav-config 数据源，
+ * 与 Web 端侧边栏保持一致的分组与链接（方案 A：统一数据源，保留双入口）。
  *
- * 导航结构：
- * - 内容中心：我的收藏、我的搜索、我的分类、我的标签、我的笔记
- * - 整理工具：等待分类、批量操作、内容导出、分发中心、链接检测
- * - 学习中心：知识回顾、知识萃取、知识工坊
- * - 洞察中心：数据分析、活动日志、消息通知
- * - 系统：设置、垃圾箱
+ * 数据来源：getMobileMoreGroups() @see src/lib/navigation/nav-config.ts
  */
 
 "use client";
@@ -16,31 +12,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  Menu,
-  X,
-  Moon,
-  Sun,
-  // 内容中心
-  BookOpen,
-  Search,
-  FolderOpen,
-  Tags,
-  FileText,
-  // 整理工具
-  Inbox,
-  Download,
-  // 学习中心
-  FlaskConical,
-  Sparkles,
-  // 洞察中心
-  BarChart3,
-  Activity,
-  Bell,
-  // 系统
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { Menu, X, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -54,150 +26,38 @@ import { cn } from "@/lib/utils";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { APP_VERSION } from "@/lib/constants/app";
-// 国际化
 import { useUiText } from "@/lib/i18n";
+import { getMobileMoreGroups } from "@/lib/navigation/nav-config";
 
-// ==================== 类型定义 ====================
+// ==================== 分组配色（与 Web 侧边栏语义一致） ====================
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: typeof BookOpen;
-  description?: string;
-  isPro?: boolean;
-  badge?: "unread";
-}
+type GroupColorKey = "myContent" | "smartTools" | "insight" | "system";
 
-interface NavGroup {
-  title: string;
-  titleColor: string;
-  activeColor: string;
-  items: NavItem[];
-}
+const groupTitleColors: Record<GroupColorKey, string> = {
+  myContent: "text-pink-500 dark:text-pink-400",
+  smartTools: "text-purple-600 dark:text-purple-400",
+  insight: "text-cyan-500 dark:text-cyan-400",
+  system: "text-gray-500 dark:text-gray-400",
+};
 
-// ==================== 导航配置 ====================
+const groupActiveColors: Record<GroupColorKey, string> = {
+  myContent: "bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400",
+  smartTools:
+    "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
+  insight: "bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400",
+  system: "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300",
+};
 
-const navigationGroups: NavGroup[] = [
-  {
-    title: "navGroup.myContent",
-    titleColor: "text-purple-500 dark:text-purple-400",
-    activeColor:
-      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-    items: [
-      {
-        name: "nav.myBookmarks",
-        href: "/home",
-        icon: BookOpen,
-        description: "mobileMenu.viewAllBookmarks",
-      },
-      {
-        name: "nav.mySearch",
-        href: "/search",
-        icon: Search,
-        description: "mobileMenu.aiSmartSearch",
-      },
-      {
-        name: "nav.myFolders",
-        href: "/folders",
-        icon: FolderOpen,
-        description: "mobileMenu.manageFolders",
-      },
-      {
-        name: "nav.myTags",
-        href: "/tags",
-        icon: Tags,
-        description: "mobileMenu.tagManagement",
-      },
-      {
-        name: "nav.myNotes",
-        href: "/md-collections",
-        icon: FileText,
-        description: "mobileMenu.markdownNotes",
-        isPro: true,
-      },
-    ],
-  },
-  {
-    title: "navGroup.smartTools",
-    titleColor: "text-purple-500 dark:text-purple-400",
-    activeColor:
-      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-    items: [
-      {
-        name: "nav.inbox",
-        href: "/inbox",
-        icon: Inbox,
-        description: "mobileMenu.waitingClassification",
-      },
-      {
-        name: "nav.synthesis",
-        href: "/synthesis",
-        icon: FlaskConical,
-        description: "mobileMenu.themeExtraction",
-      },
-      {
-        name: "nav.draftStudio",
-        href: "/knowledge-studio",
-        icon: Sparkles,
-        description: "mobileMenu.aiReportGeneration",
-        isPro: true,
-      },
-      {
-        name: "nav.export",
-        href: "/export",
-        icon: Download,
-        description: "mobileMenu.exportData",
-      },
-    ],
-  },
-  {
-    title: "navGroup.insightCenter",
-    titleColor: "text-purple-500 dark:text-purple-400",
-    activeColor:
-      "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
-    items: [
-      {
-        name: "nav.analytics",
-        href: "/analytics",
-        icon: BarChart3,
-        description: "mobileMenu.viewDataAnalysis",
-      },
-      {
-        name: "nav.activityLog",
-        href: "/activity",
-        icon: Activity,
-        description: "mobileMenu.operationHistory",
-      },
-      {
-        name: "nav.notifications",
-        href: "/messages",
-        icon: Bell,
-        description: "mobileMenu.systemMessages",
-        badge: "unread",
-      },
-    ],
-  },
-  {
-    title: "mobileMenu.system",
-    titleColor: "text-gray-400 dark:text-gray-500",
-    activeColor:
-      "bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300",
-    items: [
-      {
-        name: "nav.settings",
-        href: "/settings",
-        icon: Settings,
-        description: "mobileMenu.appSettings",
-      },
-      {
-        name: "nav.trash",
-        href: "/home?folder=trash",
-        icon: Trash2,
-        description: "mobileMenu.deletedContent",
-      },
-    ],
-  },
-];
+const getGroupStyle = (groupId: string) => {
+  const key = groupId as GroupColorKey;
+  return {
+    titleColor: groupTitleColors[key] ?? groupTitleColors.system,
+    activeColor: groupActiveColors[key] ?? groupActiveColors.system,
+  };
+};
+
+/** 与底部「更多」Sheet 共用同一数据源，保证双入口内容一致 */
+const mobileMenuGroups = getMobileMoreGroups();
 
 // ==================== 组件 ====================
 
@@ -291,80 +151,83 @@ export function MobileMenu() {
           </div>
         </SheetHeader>
 
-        {/* 导航菜单 - 可滚动区域 */}
+        {/* 导航菜单 - 可滚动区域（与底部「更多」Sheet 同源） */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 max-h-[calc(100vh-180px)]">
-          {navigationGroups.map((group) => (
-            <div key={group.title}>
-              {/* 分组标题 */}
-              <p
-                className={cn(
-                  "text-xs font-semibold uppercase tracking-wider px-3 mb-2",
-                  group.titleColor,
-                )}
-              >
-                {getText(group.title)}
-              </p>
+          {mobileMenuGroups.map((group) => {
+            const style = getGroupStyle(group.id);
+            return (
+              <div key={group.id}>
+                {/* 分组标题 */}
+                <p
+                  className={cn(
+                    "text-xs font-semibold uppercase tracking-wider px-3 mb-2",
+                    style.titleColor,
+                  )}
+                >
+                  {getText(group.title)}
+                </p>
 
-              {/* 分组项目 */}
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = isLinkActive(item.href);
-                  const showUnreadBadge =
-                    item.badge === "unread" && unreadCount > 0;
+                {/* 分组项目 */}
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = isLinkActive(item.href);
+                    const showUnreadBadge =
+                      item.badge === "unread" && unreadCount > 0;
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-                        isActive
-                          ? group.activeColor
-                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
-                      )}
-                    >
-                      <Icon
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
                         className={cn(
-                          "size-5 flex-shrink-0",
-                          isActive ? "" : "text-gray-400 dark:text-gray-500",
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                          isActive
+                            ? style.activeColor
+                            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
                         )}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "font-medium",
-                              isActive && "font-semibold",
-                            )}
-                          >
-                            {getText(item.name)}
-                          </span>
-                          {item.isPro && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                              Pro
-                            </span>
+                      >
+                        <Icon
+                          className={cn(
+                            "size-5 flex-shrink-0",
+                            isActive ? "" : "text-gray-400 dark:text-gray-500",
                           )}
-                          {showUnreadBadge && (
-                            <MessageBadge
-                              count={unreadCount}
-                              hasImportant={importantCount > 0}
-                            />
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "font-medium",
+                                isActive && "font-semibold",
+                              )}
+                            >
+                              {getText(item.name)}
+                            </span>
+                            {item.isPro && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                Pro
+                              </span>
+                            )}
+                            {showUnreadBadge && (
+                              <MessageBadge
+                                count={unreadCount}
+                                hasImportant={importantCount > 0}
+                              />
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                              {getText(item.description)}
+                            </p>
                           )}
                         </div>
-                        {item.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                            {getText(item.description)}
-                          </p>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* 底部信息和主题切换 */}
