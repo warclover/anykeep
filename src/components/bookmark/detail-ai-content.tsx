@@ -26,6 +26,8 @@ export interface DetailAIContentProps {
     folders?: { id: number; name: string } | null;
     source_id?: string | null;
   };
+  /** 最新摘要（含轮询更新），优先于 bookmark.ai_summary */
+  latestSummary?: string | null;
   userId?: string;
   localUserTags: string[] | null;
   setLocalUserTags: React.Dispatch<React.SetStateAction<string[] | null>>;
@@ -34,11 +36,13 @@ export interface DetailAIContentProps {
 
 export function DetailAIContent({
   bookmark,
+  latestSummary,
   userId,
   localUserTags: _localUserTags,
   setLocalUserTags,
   onOpenAIPanel,
 }: DetailAIContentProps) {
+  const summary = latestSummary ?? bookmark.ai_summary;
   return (
     <>
       {userId && (
@@ -49,7 +53,7 @@ export function DetailAIContent({
               bookmarkId={bookmark.id}
               bookmarkTitle={bookmark.title ?? ""}
               bookmarkUrl={bookmark.url}
-              bookmarkSummary={bookmark.ai_summary}
+              bookmarkSummary={summary}
               bookmarkTags={bookmark.user_tags}
               bookmarkPlatform={bookmark.platform}
               onActionComplete={(action, result) => {

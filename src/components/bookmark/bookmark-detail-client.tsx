@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 // V5.7: 按需导入图标，避免加载整个 lucide-react 图标库（~50KB gzipped）
 import Folder from "lucide-react/dist/esm/icons/folder";
@@ -52,6 +52,7 @@ const AISmartSummary = lazy(() =>
   })),
 );
 import { useOptionalUser } from "@/contexts/user-context";
+import { API_PATHS } from "@/lib/constants/api-paths";
 // Phase 2.3.7: 拆分组件
 import { useDetailMutations } from "./hooks/use-detail-mutations";
 import { DetailActionBar } from "./detail-action-bar";
@@ -148,6 +149,60 @@ export function BookmarkDetailClient({
     initialSummary: bookmark.ai_summary,
     initialIsRead: bookmark.is_read || false,
   });
+
+  // 新建收藏详情页：当 AI 摘要尚未生成时轮询 batch-status，拿到 ai_summary 后更新本地展示（摘要 + 关键价值点）
+  const pollCountRef = useRef(0);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const POLL_INTERVAL_MS = 3000;
+  const MAX_POLL_COUNT = 60; // 最多轮询 3 分钟
+  useEffect(() => {
+    const hasSummary = !!(bookmark.ai_summary?.trim() || localSummary?.trim());
+    if (!userId || hasSummary || pollCountRef.current >= MAX_POLL_COUNT) {
+      return;
+    }
+    const needPoll =
+      bookmark.status === "PROCESSING" || !bookmark.ai_summary?.trim();
+    if (!needPoll) return;
+
+    const batchStatusUrl =
+      (typeof API_PATHS?.bookmarks?.batchStatus === "string"
+        ? API_PATHS.bookmarks.batchStatus
+        : "/api/bookmarks/batch-status") + `?ids=${bookmark.id}`;
+
+    const tick = async () => {
+      pollCountRef.current += 1;
+      if (pollCountRef.current > MAX_POLL_COUNT) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+        return;
+      }
+      try {
+        const res = await fetch(batchStatusUrl, { credentials: "include" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json?.data ?? json;
+        const list = data?.bookmarks as
+          | Array<{ ai_summary?: string | null }>
+          | undefined;
+        const first = list?.[0];
+        if (first?.ai_summary?.trim()) {
+          setLocalSummary(first.ai_summary);
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
+      } catch {
+        // 静默失败，下次继续轮询
+      }
+    };
+
+    pollTimerRef.current = setInterval(tick, POLL_INTERVAL_MS);
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [userId, bookmark.id, bookmark.status, bookmark.ai_summary, localSummary]);
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = [
@@ -444,6 +499,7 @@ export function BookmarkDetailClient({
               {/* V5.7: AI 内容区提取为独立组件（快捷操作/聊天/视觉/相关内容） */}
               <DetailAIContent
                 bookmark={bookmark}
+                latestSummary={localSummary}
                 userId={userId}
                 localUserTags={localUserTags}
                 setLocalUserTags={setLocalUserTags}
@@ -518,10 +574,10 @@ export function BookmarkDetailClient({
                 </SilentErrorBoundary>
               )}
 
-              {/* 处理状态：仅当状态为 PROCESSING 且 AI 内容尚未生成时显示 */}
-              {bookmark.status === "PROCESSING" &&
-                !bookmark.ai_tags?.length &&
-                !bookmark.ai_summary && (
+              {/* 处理状态：仅当状态为 PROCESSING 且 AI 摘要/关键价值点尚未生成时显示（含轮询到的 localSummary） */}
+              {(bookmark.status === "PROCESSING" || !bookmark.ai_summary) &&
+                !localSummary?.trim() &&
+                !bookmark.ai_tags?.length && (
                   <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                     <span className="animate-pulse text-lg">●</span>
                     <span className="text-sm">

@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   FileText,
   RefreshCw,
@@ -93,6 +93,11 @@ export function AISmartSummary({
   const [status, setStatus] = useState<SummaryStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // 详情页轮询到 ai_summary 后父组件会更新 existingSummary，需同步到内部 state 以展示摘要与关键价值点
+  useEffect(() => {
+    setSummary(existingSummary ?? "");
+  }, [existingSummary]);
 
   /**
    * 生成摘要
