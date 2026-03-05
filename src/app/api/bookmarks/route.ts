@@ -366,10 +366,14 @@ async function generateBookmarkAIContent(
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
+    // AI 返回 0 个标签时使用占位，避免「无标签」导致功能表现为失效；用户可自行修改
+    const aiTags =
+      aiResult.tags.length > 0 ? aiResult.tags : (["待分类"] as string[]);
+
     // 2. 更新书签记录（包括状态更新为 ACTIVE + V2 内容类型）
     const updateData: BookmarkUpdate = {
       ai_summary: aiResult.summary,
-      ai_tags: aiResult.tags,
+      ai_tags: aiTags,
       ai_content_type: aiResult.contentType || null, // V2: AI检测的内容类型
       ai_content_type_confidence: aiResult.contentTypeConfidence || null, // V2: 置信度
       status: "COMPLETED", // AI 内容生成完成
@@ -389,7 +393,7 @@ async function generateBookmarkAIContent(
       {
         bookmarkId,
         summary: aiResult.summary.substring(0, 50) + "...",
-        tagCount: aiResult.tags.length,
+        tagCount: aiTags.length,
         contentType: aiResult.contentType,
         contentTypeConfidence: aiResult.contentTypeConfidence,
         action: "async_ai_success",
@@ -413,7 +417,7 @@ async function generateBookmarkAIContent(
           bookmarkId,
           title,
           aiResult.summary,
-          aiResult.tags,
+          aiTags,
           userId,
           currentFolderId,
         ),
@@ -422,11 +426,7 @@ async function generateBookmarkAIContent(
     );
 
     // 5. AI 文件夹推荐（仅当用户未指定文件夹时）
-    if (
-      !userSpecifiedFolderId &&
-      aiResult.summary &&
-      aiResult.tags.length > 0
-    ) {
+    if (!userSpecifiedFolderId && aiResult.summary && aiTags.length > 0) {
       // Use V2 classification system if enabled
       // V4.2.7: Profile 更新已集成到 classifyBookmarkV2 内部（同步执行）
       // V4.2.7: 使用重试机制，失败时入队到 job_queue
@@ -437,7 +437,7 @@ async function generateBookmarkAIContent(
               bookmarkId,
               title,
               aiResult.summary,
-              aiResult.tags,
+              aiTags,
               userId,
             );
           },
@@ -452,7 +452,7 @@ async function generateBookmarkAIContent(
               bookmarkId,
               title,
               aiResult.summary,
-              aiResult.tags,
+              aiTags,
               userId,
             ),
           userId,
@@ -677,6 +677,14 @@ export async function POST(request: NextRequest) {
     const validation = createBookmarkSchema.safeParse(body);
 
     if (!validation.success) {
+      logger.warn(
+        {
+          action: "create_bookmark_validation_failed",
+          issues: validation.error.issues,
+          path: validation.error.issues.map((i) => i.path.join(".")),
+        },
+        "POST /api/bookmarks: validation failed",
+      );
       return handleValidationError(validation.error);
     }
 

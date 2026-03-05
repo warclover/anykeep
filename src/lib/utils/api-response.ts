@@ -82,17 +82,21 @@ export function errorResponse(
 
 /**
  * 处理 Zod 验证错误
+ * 使用可序列化的 details，避免 JSON 后客户端拿到空 error 对象
  */
 export function handleValidationError(
   error: ZodError,
 ): NextResponse<ApiResponse> {
   const firstError = error.issues[0];
-  return errorResponse(
-    API_ERROR_CODES.VALIDATION_ERROR,
-    firstError.message,
-    400,
-    error.issues,
-  );
+  const message =
+    typeof firstError?.message === "string" && firstError.message
+      ? firstError.message
+      : error.issues.map((i) => i.message).join("；") || "校验失败";
+  const details = error.issues.map((i) => ({
+    path: i.path,
+    message: i.message,
+  }));
+  return errorResponse(API_ERROR_CODES.VALIDATION_ERROR, message, 400, details);
 }
 
 /**

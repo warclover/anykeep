@@ -85,6 +85,16 @@ function truncateTitle(title: string): string {
 }
 
 /**
+ * 描述最大长度（与 createBookmarkSchema SUMMARY_MAX_LENGTH 一致）
+ */
+const DESCRIPTION_MAX_LENGTH = 2000;
+
+function truncateDescription(desc: string): string {
+  if (!desc || desc.length <= DESCRIPTION_MAX_LENGTH) return desc;
+  return desc.substring(0, DESCRIPTION_MAX_LENGTH - 1) + "…";
+}
+
+/**
  * 从 HTML 中提取 meta 标签内容
  */
 function extractMetaTag(html: string, name: string): string | undefined {
@@ -173,10 +183,12 @@ async function crawlWechat(url: string): Promise<Partial<CrawlResult>> {
     extractMetaTag(html, "twitter:image") ||
     extractWechatCdnCoverUrl(html);
 
-  // 提取描述
-  const description =
+  // 提取描述（截断至 2000 字，与书签校验上限一致）
+  const description = truncateDescription(
     extractMetaTag(html, "og:description") ||
-    extractMetaTag(html, "description");
+      extractMetaTag(html, "description") ||
+      "",
+  );
 
   // 提取字数和图片数
   const wordCount = extractWordCount(html);
@@ -213,10 +225,12 @@ async function crawlBilibili(url: string): Promise<Partial<CrawlResult>> {
   // 提取封面
   const coverUrl = extractMetaTag(html, "og:image");
 
-  // 提取描述
-  const description =
+  // 提取描述（截断至 2000 字）
+  const description = truncateDescription(
     extractMetaTag(html, "og:description") ||
-    extractMetaTag(html, "description");
+      extractMetaTag(html, "description") ||
+      "",
+  );
 
   // 提取字数和图片数
   const wordCount = extractWordCount(html);
@@ -248,10 +262,12 @@ async function crawlXiaohongshu(url: string): Promise<Partial<CrawlResult>> {
   // 提取封面
   const coverUrl = extractMetaTag(html, "og:image");
 
-  // 提取描述
-  const description =
+  // 提取描述（截断至 2000 字）
+  const description = truncateDescription(
     extractMetaTag(html, "og:description") ||
-    extractMetaTag(html, "description");
+      extractMetaTag(html, "description") ||
+      "",
+  );
 
   // 提取字数和图片数
   const wordCount = extractWordCount(html);
@@ -282,9 +298,11 @@ async function crawlGeneric(url: string): Promise<Partial<CrawlResult>> {
   const author = extractMetaTag(html, "author");
   const coverUrl =
     extractMetaTag(html, "og:image") || extractMetaTag(html, "twitter:image");
-  const description =
+  const description = truncateDescription(
     extractMetaTag(html, "og:description") ||
-    extractMetaTag(html, "description");
+      extractMetaTag(html, "description") ||
+      "",
+  );
 
   // 提取字数和图片数
   const wordCount = extractWordCount(html);

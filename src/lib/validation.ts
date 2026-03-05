@@ -69,12 +69,23 @@ export const folderNameSchema = z
   );
 
 /**
- * 书签 URL 验证
+ * 书签 URL 验证（兼容无协议：自动补 https://）
  */
 export const bookmarkUrlSchema = z
   .string()
-  .url(VALIDATION.INVALID_URL)
-  .max(2000, VALIDATION.TOO_LONG("URL", 2000));
+  .trim()
+  .transform((val) => {
+    const s = val.trim();
+    if (!s) return s;
+    if (s.startsWith("http://") || s.startsWith("https://")) return s;
+    return `https://${s.replace(/^\/+/, "")}`;
+  })
+  .pipe(
+    z
+      .string()
+      .url(VALIDATION.INVALID_URL)
+      .max(2000, VALIDATION.TOO_LONG("URL", 2000)),
+  );
 
 /**
  * 标签验证
@@ -144,55 +155,83 @@ export type Pagination = z.infer<typeof paginationSchema>;
  */
 export const createBookmarkSchema = z.object({
   url: bookmarkUrlSchema,
-  // 标题改为选填：用户只需贴入链接即可创建，标题由后台异步补充
+  // 标题改为选填：用户只需贴入链接即可创建，标题由后台异步补充；兼容前端传 null
   title: z
-    .string()
-    .trim()
-    .max(
-      VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
-      VALIDATION.TOO_LONG("标题", VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH),
-    )
-    .optional()
-    .or(z.literal("")),
-  description: z
-    .string()
-    .trim()
-    .max(
-      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
-      VALIDATION.TOO_LONG("描述", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+    .preprocess(
+      (val) => (val === null || val === undefined ? undefined : val),
+      z
+        .string()
+        .trim()
+        .max(
+          VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
+          VALIDATION.TOO_LONG(
+            "标题",
+            VALIDATION_LIMITS.BOOKMARK_TITLE_MAX_LENGTH,
+          ),
+        )
+        .optional()
+        .or(z.literal("")),
     )
     .optional(),
+  description: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z
+      .string()
+      .trim()
+      .max(
+        VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+        VALIDATION.TOO_LONG("描述", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+      )
+      .optional(),
+  ),
   folderId: z.preprocess(
     (val) =>
       val === null || val === undefined || val === "" ? undefined : val,
     z.coerce.number().int().positive().optional(),
   ),
   userTags: tagsArraySchema.optional(),
-  notes: z
-    .string()
-    .trim()
-    .max(
-      VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
-      VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
-    )
-    .optional(),
-  coverUrl: z.preprocess(
-    (val) => (val === null || val === "" ? undefined : val),
-    z.string().trim().url(VALIDATION.INVALID_FORMAT("封面图 URL")).optional(),
+  notes: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z
+      .string()
+      .trim()
+      .max(
+        VALIDATION_LIMITS.SUMMARY_MAX_LENGTH,
+        VALIDATION.TOO_LONG("备注", VALIDATION_LIMITS.SUMMARY_MAX_LENGTH),
+      )
+      .optional(),
   ),
-  // 来源和作者信息（从元数据自动获取）
-  sourceName: z
-    .string()
-    .trim()
-    .max(200, VALIDATION.TOO_LONG("来源名称", 200))
-    .optional()
-    .or(z.literal("")),
-  author: z
-    .string()
-    .trim()
-    .max(200, VALIDATION.TOO_LONG("作者", 200))
-    .optional()
-    .or(z.literal("")),
+  // 封面图：null/空/非合法 URL 时视为未传，避免快速收藏等场景 400
+  coverUrl: z.preprocess((val) => {
+    if (val === null || val === undefined || val === "") return undefined;
+    const s = String(val).trim();
+    if (!s.startsWith("http://") && !s.startsWith("https://")) return undefined;
+    try {
+      new URL(s);
+      return s;
+    } catch {
+      return undefined;
+    }
+  }, z.string().optional()),
+  // 来源和作者信息（从元数据自动获取）；兼容前端传 null
+  sourceName: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z
+      .string()
+      .trim()
+      .max(200, VALIDATION.TOO_LONG("来源名称", 200))
+      .optional()
+      .or(z.literal("")),
+  ),
+  author: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z
+      .string()
+      .trim()
+      .max(200, VALIDATION.TOO_LONG("作者", 200))
+      .optional()
+      .or(z.literal("")),
+  ),
   // 内容统计（从元数据自动获取）
   wordCount: z.preprocess(
     (val) =>
@@ -204,20 +243,23 @@ export const createBookmarkSchema = z.object({
       val === null || val === undefined || val === "" ? undefined : val,
     z.coerce.number().int().nonnegative().optional(),
   ),
-  // 发布时间（从元数据自动获取，ISO 8601 格式）
-  publishTime: z
-    .string()
-    .trim()
-    .refine(
-      (val) => {
-        if (!val) return true; // 允许空值
-        const date = new Date(val);
-        return !isNaN(date.getTime());
-      },
-      { message: "发布时间格式无效" },
-    )
-    .optional()
-    .or(z.literal("")),
+  // 发布时间（从元数据自动获取，ISO 8601 格式）；兼容前端传 null
+  publishTime: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z
+      .string()
+      .trim()
+      .refine(
+        (val) => {
+          if (!val) return true;
+          const date = new Date(val);
+          return !isNaN(date.getTime());
+        },
+        { message: "发布时间格式无效" },
+      )
+      .optional()
+      .or(z.literal("")),
+  ),
   // AI 预生成内容（前端 generate-tags API 返回，避免后端重复生成）
   aiSummary: z
     .string()

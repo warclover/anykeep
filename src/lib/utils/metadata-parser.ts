@@ -43,7 +43,7 @@ export function parseHTMLMetadata(html: string, url: string): WebMetadata {
 
   return {
     title,
-    description,
+    description: truncateDescription(description),
     coverUrl,
     sourceName,
     author,
@@ -59,6 +59,16 @@ export function parseHTMLMetadata(html: string, url: string): WebMetadata {
  * 标题最大长度（与 DB VARCHAR(500) 和 Zod 验证保持一致）
  */
 const TITLE_MAX_LENGTH = 500;
+
+/**
+ * 描述最大长度（与 createBookmarkSchema SUMMARY_MAX_LENGTH 一致，防止创建书签时校验失败）
+ */
+const DESCRIPTION_MAX_LENGTH = 2000;
+
+function truncateDescription(desc: string): string {
+  if (desc.length <= DESCRIPTION_MAX_LENGTH) return desc;
+  return desc.substring(0, DESCRIPTION_MAX_LENGTH - 1) + "…";
+}
 
 /**
  * 提取页面标题
