@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ExternalLink,
-  Folder,
   Sparkles,
   ChevronRight,
   Brain,
@@ -26,6 +25,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PlatformBadge } from "@/components/ui/platform-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -99,6 +99,19 @@ const LINK_TYPE_CONFIG: Record<
 // Fetcher
 // ============================================================================
 
+/** 旧版相关书签 API 返回项（向量相似度） */
+interface LegacyRelatedItem {
+  id: number;
+  title: string;
+  url: string;
+  description: string | null;
+  similarity: number;
+  folderId: number | null;
+  folderName: string | null;
+  platform: string | null;
+  createdAt: string;
+}
+
 const fetchRelatedBookmarks = async (
   bookmarkId: number,
   limit: number,
@@ -114,11 +127,48 @@ const fetchRelatedBookmarks = async (
 
   const response = await fetch(
     `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`,
+    { credentials: "include" },
   );
   const data: ApiResponse = await response.json();
 
   if (!response.ok) {
     throw new Error(data.error || "获取相关书签失败");
+  }
+
+  // 知识关联为空时回退到旧版向量相关接口（find_related_bookmarks），保证有 embedding 的书签能看到「相关内容」
+  const related = data.data?.related ?? [];
+  if (related.length === 0) {
+    const legacyRes = await fetch(
+      `/api/bookmarks/${bookmarkId}/related?limit=${limit}&minSimilarity=${minStrength}`,
+      { credentials: "include" },
+    );
+    const legacyJson = await legacyRes.json();
+    const legacyList =
+      legacyJson?.data?.related ??
+      legacyJson?.related ??
+      ([] as LegacyRelatedItem[]);
+    if (Array.isArray(legacyList) && legacyList.length > 0) {
+      const mapped: RelatedBookmark[] = legacyList.map(
+        (item: LegacyRelatedItem) => ({
+          bookmark: {
+            id: item.id,
+            title: item.title,
+            url: item.url,
+            platform: item.platform ?? undefined,
+          },
+          link: {
+            type: "semantic" as LinkType,
+            strength:
+              typeof item.similarity === "number" ? item.similarity : 0.5,
+            sharedItems: [],
+          },
+        }),
+      );
+      return {
+        success: true,
+        data: { related: mapped, totalCount: mapped.length },
+      };
+    }
   }
 
   return data;
@@ -184,11 +234,7 @@ export function RelatedBookmarksV2({
     return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
   };
 
-  // 如果没有相关书签且未加载，不显示
-  if (!isLoading && related.length === 0 && !error) {
-    return null;
-  }
-
+  // 不再在「无数据且无错误」时 return null，否则整块消失且无法看到「暂无知识关联」空状态
   return (
     <div className={cn("space-y-3", className)}>
       {/* 标题栏 */}
@@ -255,28 +301,28 @@ export function RelatedBookmarksV2({
                 return (
                   <Card
                     key={item.bookmark.id}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors py-2 gap-1"
                     onClick={() => router.push(`/bookmark/${item.bookmark.id}`)}
                     onMouseEnter={() =>
                       router.prefetch(`/bookmark/${item.bookmark.id}`)
                     }
                   >
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        {/* 左侧：标题和关联信息 */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {item.bookmark.title}
-                          </h4>
+                    <CardContent className="py-1 px-3">
+                      <div className="flex flex-col gap-1">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {item.bookmark.title}
+                        </h4>
 
-                          {/* 关联类型徽章 */}
-                          <div className="flex items-center gap-2 mt-1.5">
+                        {/* 一行：语义相似等徽章 | 平台、强度、操作 */}
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          {/* 左侧：关联类型徽章 + 共享项目预览 */}
+                          <div className="flex items-center gap-2 min-w-0">
                             <Tooltip>
                               <TooltipTrigger>
                                 <Badge
                                   variant="outline"
                                   className={cn(
-                                    "text-xs font-normal gap-1",
+                                    "text-xs font-normal gap-1 shrink-0",
                                     typeConfig.color,
                                   )}
                                 >
@@ -307,8 +353,6 @@ export function RelatedBookmarksV2({
                                 )}
                               </TooltipContent>
                             </Tooltip>
-
-                            {/* 共享项目预览 */}
                             {item.link.sharedItems.length > 0 && (
                               <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {item.link.sharedItems.slice(0, 2).join("、")}
@@ -317,40 +361,38 @@ export function RelatedBookmarksV2({
                             )}
                           </div>
 
-                          {/* 平台信息 */}
-                          {item.bookmark.platform && (
-                            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                              <Folder className="size-3" />
-                              <span>{item.bookmark.platform}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 右侧：强度和操作 */}
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge
-                            className={cn(
-                              "text-xs font-medium",
-                              getStrengthColor(item.link.strength),
+                          {/* 右侧：平台徽章、强度、打开链接 */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {item.bookmark.platform && (
+                              <PlatformBadge
+                                platform={item.bookmark.platform}
+                                size="sm"
+                              />
                             )}
-                          >
-                            {Math.round(item.link.strength * 100)}%
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(
-                                item.bookmark.url,
-                                "_blank",
-                                "noopener,noreferrer",
-                              );
-                            }}
-                          >
-                            <ExternalLink className="size-3 text-gray-400" />
-                          </Button>
+                            <Badge
+                              className={cn(
+                                "text-xs font-medium",
+                                getStrengthColor(item.link.strength),
+                              )}
+                            >
+                              {Math.round(item.link.strength * 100)}%
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(
+                                  item.bookmark.url,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
+                              }}
+                            >
+                              <ExternalLink className="size-3 text-gray-400" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
