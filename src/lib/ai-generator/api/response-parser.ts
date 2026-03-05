@@ -13,7 +13,6 @@ import {
   safeParseJson,
   type StructuredSummary,
 } from "@/lib/classification/types/ai-summary";
-import { getAISummaryConfig } from "@/lib/classification/config/ai-summary-config";
 import type { AIGenerateResult } from "../types";
 
 /**
@@ -61,18 +60,17 @@ export function parseAIResponseV2(content: string): AIGenerateResult {
       return parseAIResponse(content);
     }
 
-    let tags: string[] = [];
-    if (Array.isArray(parsed.keywords) && parsed.keywords.length > 0) {
-      tags = parsed.keywords
-        .filter((k): k is string => typeof k === "string")
-        .map((k) => k.trim())
-        .filter((k) => k.length > 0)
-        .slice(0, 5);
-    }
-
-    if (tags.length === 0 && parsed.key_points.length > 0) {
-      tags = getAISummaryConfig().fallbackTags;
-    }
+    // 兼容 API 返回 keywords 或 tags 字段（部分模型会返回 tags）
+    const rawTags = Array.isArray(parsed.keywords)
+      ? parsed.keywords
+      : Array.isArray((parsed as { tags?: unknown }).tags)
+        ? (parsed as { tags: unknown[] }).tags
+        : [];
+    const tags = rawTags
+      .filter((k): k is string => typeof k === "string")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0)
+      .slice(0, 5);
 
     const summaryJson = JSON.stringify({
       tldr: parsed.tldr,

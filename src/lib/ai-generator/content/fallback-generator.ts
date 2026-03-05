@@ -72,9 +72,8 @@ export function generateFallbackContent(
     }
   });
 
-  if (tags.length === 0) {
-    tags.push("收藏", "阅读");
-  }
+  // 无匹配关键词时不写入无意义的通用标签（如「收藏」「阅读」），保持空数组由用户或后续重试补充
+  // if (tags.length === 0) { tags.push("收藏", "阅读"); } — 已移除
 
   return {
     summary: summary.substring(0, max),

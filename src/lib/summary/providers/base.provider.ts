@@ -35,7 +35,6 @@ import {
 } from "../prompts";
 import { isJsonOutputEnabled } from "../summary.config";
 import { safeParseJson, detectContentType } from "../summary.types";
-import { getAISummaryConfig } from "@/lib/classification/config/ai-summary-config";
 import { isSummaryComplete } from "@/lib/utils/content-extractor";
 
 /**
@@ -602,20 +601,17 @@ export abstract class BaseProvider implements ISummaryProvider {
         return this.parseResponseV1(content);
       }
 
-      // 提取标签
-      let tags: string[] = [];
-      if (Array.isArray(parsed.keywords) && parsed.keywords.length > 0) {
-        tags = parsed.keywords
-          .filter((k): k is string => typeof k === "string")
-          .map((k) => k.trim())
-          .filter((k) => k.length > 0)
-          .slice(0, 5);
-      }
-
-      // 如果没有 keywords，使用配置中的回退标签
-      if (tags.length === 0 && parsed.key_points.length > 0) {
-        tags = getAISummaryConfig().fallbackTags;
-      }
+      // 提取标签（兼容 API 返回 keywords 或 tags 字段）
+      const rawTags = Array.isArray(parsed.keywords)
+        ? parsed.keywords
+        : Array.isArray((parsed as { tags?: unknown }).tags)
+          ? (parsed as { tags: unknown[] }).tags
+          : [];
+      const tags = rawTags
+        .filter((k): k is string => typeof k === "string")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0)
+        .slice(0, 5);
 
       // 构建结构化摘要
       const structured: StructuredSummary = {

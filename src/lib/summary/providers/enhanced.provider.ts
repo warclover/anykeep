@@ -345,8 +345,10 @@ export class EnhancedSummaryProvider implements ISummaryProvider {
       // 处理关键数据
       const keyData: KeyDataItem[] = this.processKeyData(parsed.key_data);
 
-      // 提取标签
-      const tags = this.extractTags(parsed.keywords);
+      // 提取标签（兼容 API 返回 keywords 或 tags 字段）
+      const tags = this.extractTags(
+        parsed.keywords ?? (parsed as { tags?: unknown }).tags,
+      );
 
       // 构建增强版摘要对象
       const enhanced: EnhancedSummary = {
@@ -469,7 +471,7 @@ export class EnhancedSummaryProvider implements ISummaryProvider {
    */
   private extractTags(keywords: unknown): string[] {
     if (!Array.isArray(keywords)) {
-      return ["收藏", "阅读"]; // 回退标签
+      return []; // 无效时不再使用无意义的「收藏」「阅读」，保持空由用户或重试补充
     }
 
     const tags = keywords
@@ -478,7 +480,7 @@ export class EnhancedSummaryProvider implements ISummaryProvider {
       .filter((k) => k.length > 0)
       .slice(0, 5);
 
-    return tags.length > 0 ? tags : ["收藏", "阅读"];
+    return tags; // 无有效标签时返回空数组，不再回退到「收藏」「阅读」
   }
 
   /**

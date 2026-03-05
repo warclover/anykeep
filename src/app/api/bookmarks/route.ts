@@ -351,13 +351,17 @@ async function generateBookmarkAIContent(
     }
 
     // 1. 生成 AI 摘要和标签（V2: 包含内容类型检测）
-    const aiResult = await generateAIContent({
-      title,
-      url,
-      description: description || undefined,
-      content: contentForAI,
-      existingFolderNames: folderNames,
-    });
+    // 传入 bookmarkId/userId 以启用新 SummaryService（USE_NEW_SUMMARY_SERVICE=true 时），否则走 DeepSeek 等旧路径
+    const aiResult = await generateAIContent(
+      {
+        title,
+        url,
+        description: description || undefined,
+        content: contentForAI,
+        existingFolderNames: folderNames,
+      },
+      { bookmarkId, userId },
+    );
 
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
