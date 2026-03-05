@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/utils/html-sanitizer";
+import { getLocalProxyUrl } from "@/lib/wechat-article/wechat-article.config";
 import { useWechatArticle } from "./hooks/use-wechat-article";
 import { useWechatArticleCrawl } from "./hooks/use-wechat-article-crawl";
 import { useReaderSettings } from "./hooks/use-reader-settings";
@@ -136,10 +137,17 @@ export function WechatArticleViewer({
   const { styleLevel, setStyleLevel, preferences, setRememberChoice } =
     useStylePreferences();
 
-  // XSS 防护：清理 HTML 内容（防御性深度）
+  // XSS 防护：清理 HTML 内容，并将微信图片域名改为本站代理，避免直连 mmbiz.qpic.cn 导致 ERR_NETWORK_CHANGED / 防盗链
   const sanitizedHtml = useMemo(() => {
     if (!article?.html) return "";
-    return sanitizeHtml(article.html, true);
+    let html = sanitizeHtml(article.html, true);
+    // 将 (src|data-src)="...mmbiz.qpic.cn/mmbiz.qlogo.cn..." 统一改为本站 /api/image-proxy
+    const wechatImgUrlRe =
+      /(src|data-src)="(https?:\/\/[^"]*mmbiz\.(?:qpic|qlogo)\.cn[^"]*)"/gi;
+    html = html.replace(wechatImgUrlRe, (_, attr, url) => {
+      return `${attr}="${getLocalProxyUrl(url)}"`;
+    });
+    return html;
   }, [article?.html]);
 
   // 首次自动抓取（使用用户偏好的 styleLevel）
