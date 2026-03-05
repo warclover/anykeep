@@ -16,18 +16,20 @@ import { ensureDefaultCategories } from "@/lib/folder/category-defaults";
 
 export default async function FoldersPage() {
   // 从 Middleware 预验证的 cookies 获取用户 ID（兼容页面路由）
-  const userId = await getAuthenticatedUserIdFromCookies();
-  if (!userId) {
+  const userIdResult = await getAuthenticatedUserIdFromCookies();
+  if (!userIdResult) {
     const { redirect } = await import("next/navigation");
     redirect("/login");
+    return; // 确保函数终止
   }
+  const userId: string = userIdResult; // 类型收窄
   const supabase = await createClient();
 
   // 获取用户的所有文件夹
   const { data: folders, error: foldersError } = (await supabase
     .from("folders")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId as string)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })) as unknown as {
     data: Folder[] | null;
