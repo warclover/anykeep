@@ -208,20 +208,36 @@ export class LinkRepository implements ILinkRepository {
       types?: LinkType[];
     },
   ): Promise<RelatedBookmark[]> {
+    const rpcParams = {
+      p_bookmark_id: bookmarkId,
+      p_user_id: userId,
+      p_limit: options?.limit || 10,
+      p_min_strength: options?.minStrength || 0.3,
+      p_link_types: (options?.types as unknown as string[]) || null,
+    };
+
+    logger.info(
+      { bookmarkId, userId, rpcParams },
+      "[LinkRepository] Calling get_related_bookmarks_with_details",
+    );
+
     const { data, error } = await this.supabase.rpc(
       "get_related_bookmarks_with_details",
-      {
-        p_bookmark_id: bookmarkId,
-        p_user_id: userId,
-        p_limit: options?.limit || 10,
-        p_min_strength: options?.minStrength || 0.3,
-        p_link_types: (options?.types as unknown as string[]) || null,
-      },
+      rpcParams,
     );
 
     if (error) {
+      logger.error(
+        { error, bookmarkId, userId, rpcParams },
+        "[LinkRepository] RPC call failed",
+      );
       throw new Error(`Failed to get related bookmarks: ${error.message}`);
     }
+
+    logger.info(
+      { bookmarkId, userId, resultCount: data?.length || 0, data },
+      "[LinkRepository] RPC call returned",
+    );
 
     // 映射数据库结果
     return (data || []).map((row) => ({
@@ -387,9 +403,15 @@ export class LinkRepository implements ILinkRepository {
 let linkRepositoryInstance: LinkRepository | null = null;
 
 /**
- * 获取 LinkRepository 单例
+ * 获取 LinkRepository
+ * @param supabase 可选；在 API Route 等服务端场景传入服务端 createClient()，以携带当前用户 session，否则使用浏览器客户端（RLS 可能无用户导致查不到数据）
  */
-export function getLinkRepository(): LinkRepository {
+export function getLinkRepository(
+  supabase?: SupabaseClient<Database>,
+): LinkRepository {
+  if (supabase) {
+    return new LinkRepository(supabase);
+  }
   if (!linkRepositoryInstance) {
     linkRepositoryInstance = new LinkRepository();
   }

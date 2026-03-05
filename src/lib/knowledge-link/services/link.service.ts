@@ -32,6 +32,8 @@ import {
   type IEntityMatcherService,
 } from "./entity-matcher.service";
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 // ============================================================================
 // Service Interface
@@ -565,9 +567,15 @@ export class LinkService implements ILinkService {
 let linkServiceInstance: LinkService | null = null;
 
 /**
- * 获取 LinkService 单例
+ * 获取 LinkService
+ * @param supabase 可选；在 API Route 等服务端场景传入服务端 createClient()，使知识关联查询使用当前用户 session，否则在服务端可能因无用户而返回空
  */
-export function getLinkService(): LinkService {
+export function getLinkService(
+  supabase?: SupabaseClient<Database>,
+): LinkService {
+  if (supabase) {
+    return new LinkService(getLinkRepository(supabase));
+  }
   if (!linkServiceInstance) {
     linkServiceInstance = new LinkService();
   }

@@ -91,18 +91,14 @@ export async function GET(
     }
 
     // 3. 验证书签所有权
-    // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkOwnerRow = { id: number; user_id: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    // 类型断言: Supabase 表类型手动维护，需要 any 绕过
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const { data: bookmark, error: bookmarkError } = (await supabase
+      .from("bookmarks")
       .select("id, user_id")
       .eq("id", bookmarkId)
-      .single()) as {
-      data: BookmarkOwnerRow | null;
-      error: { message: string } | null;
-    };
+      .single()) as any;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     if (bookmarkError || !bookmark) {
       return NextResponse.json(
@@ -130,13 +126,21 @@ export async function GET(
       ? (typesParam.split(",").filter(Boolean) as LinkType[])
       : undefined;
 
-    // 5. 获取相关书签
-    const linkService = getLinkService();
+    // 5. 获取相关书签（传入服务端 supabase 以携带当前用户 session，否则 RLS 下无用户会返回空）
+    const linkService = getLinkService(supabase);
+    logger.info(
+      { bookmarkId, userId: user.id, limit, minStrength, types },
+      "[API] Getting related bookmarks",
+    );
     const related = await linkService.getRelatedBookmarks(bookmarkId, user.id, {
       limit,
       minStrength,
       types,
     });
+    logger.info(
+      { bookmarkId, resultCount: related.length },
+      "[API] Related bookmarks result",
+    );
 
     return NextResponse.json(
       {
