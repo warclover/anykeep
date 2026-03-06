@@ -31,7 +31,12 @@ function buildFolderTree(flatFolders: FolderType[]): FolderTreeNode[] {
 
   // 第一遍：初始化所有节点，确保 children 数组存在
   for (const folder of flatFolders) {
-    map.set(folder.id, { ...folder, children: [] });
+    map.set(folder.id, {
+      ...folder,
+      children: [],
+      is_system: folder.is_system ?? false,
+      is_archived: folder.is_archived ?? false,
+    } as FolderTreeNode);
   }
 
   // 第二遍：连接父子关系

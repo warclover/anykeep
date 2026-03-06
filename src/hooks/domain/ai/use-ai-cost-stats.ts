@@ -154,21 +154,24 @@ export function useAiCostStats(): UseAiCostStatsReturn {
       const supabase = createClient();
 
       // 并行获取所有统计数据
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rpc = supabase.rpc.bind(supabase) as any;
       const [
         dailyCostResult,
         chatStatsResult,
         quotaStatsResult,
         entitlementResult,
-      ] = await Promise.all([
+      ] = (await Promise.all([
         // 获取每日 LLM 成本
-        supabase.rpc("get_user_daily_llm_cost", { p_days: 30 }),
+        rpc("get_user_daily_llm_cost", { p_days: 30 }),
         // 获取对话统计
-        supabase.rpc("get_user_chat_stats"),
+        rpc("get_user_chat_stats"),
         // 获取配额统计
-        supabase.rpc("get_unified_quota_stats"),
+        rpc("get_unified_quota_stats"),
         // 获取用户权益
-        supabase.rpc("get_user_entitlement"),
-      ]);
+        rpc("get_user_entitlement"),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ])) as { data: any; error: any }[];
 
       // 处理错误
       if (dailyCostResult.error) {

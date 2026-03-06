@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
 
     // 5. 并行计算每个智能列表的书签数量
     const smartListsWithCounts = await Promise.all(
-      (smartLists as SmartList[]).map(async (smartList) => {
+      (smartLists as unknown as SmartList[]).map(async (smartList) => {
         const bookmarkCount = await getBookmarkCount(
           supabase,
           smartList.filters as SmartListFilters,
@@ -343,27 +343,26 @@ export async function POST(request: NextRequest) {
     const newSortOrder = (maxOrder?.sort_order ?? -1) + 1;
 
     // 5. 插入新智能列表
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: smartList, error: insertError } = (await (
-      supabase.from("smart_lists") as any
-    )
-      .insert({
-        user_id: user.id,
-        name,
-        description: description || null,
-        icon,
-        color,
-        filters,
-        sort_by: sortBy,
-        view_mode: viewMode,
-        sort_order: newSortOrder,
-        is_preset: false,
-      })
-      .select()
-      .single()) as {
-      data: SmartList | null;
-      error: { message: string } | null;
-    };
+    const { data: smartList, error: insertError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from("smart_lists") as any)
+        .insert({
+          user_id: user.id,
+          name,
+          description: description || null,
+          icon,
+          color,
+          filters,
+          sort_by: sortBy,
+          view_mode: viewMode,
+          sort_order: newSortOrder,
+          is_preset: false,
+        })
+        .select()
+        .single()) as {
+        data: SmartList | null;
+        error: { message: string } | null;
+      };
 
     if (insertError || !smartList) {
       logger.error(

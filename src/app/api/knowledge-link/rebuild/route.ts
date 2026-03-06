@@ -11,6 +11,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/supabase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       bookmarkId2: number;
       linkType: string;
       strength: number;
-      evidence: object;
+      evidence: Record<string, unknown>;
     }> = [];
 
     for (let i = 0; i < bookmarkIds.length; i += batchSize) {
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
             target_bookmark_id: link.bookmarkId2,
             link_type: link.linkType,
             strength: link.strength,
-            evidence: link.evidence,
+            evidence: link.evidence as unknown as Json,
             algorithm: "rebuild-api",
           })),
         );

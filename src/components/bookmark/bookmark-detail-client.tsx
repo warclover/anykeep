@@ -18,9 +18,8 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-// V5.7: 按需导入图标，避免加载整个 lucide-react 图标库（~50KB gzipped）
-import Folder from "lucide-react/dist/esm/icons/folder";
-import Globe from "lucide-react/dist/esm/icons/globe";
+// V5.7: 按需导入图标
+import { Folder, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { SourceBadge, inferSourceType } from "./source-badge";
 import type { SourceInfo } from "./source-badge";

@@ -32,6 +32,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const { redirect } = await import("next/navigation");
     redirect("/login");
   }
+  // redirect() throws (returns never), so userId is guaranteed non-null after guard
+  const safeUserId = userId as string;
   const supabase = await createClient();
 
   // 如果有搜索关键词，验证并执行搜索
@@ -53,7 +55,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           // AI 语义搜索（混合搜索：关键词 + 向量相似度）
           const { data, error } = await searchBookmarksHybrid(
             supabase,
-            userId,
+            safeUserId,
             validatedQuery,
             {
               threshold: 0.5,
@@ -68,7 +70,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           // PostgreSQL 全文搜索（使用 ts_vector + GIN 索引）
           const { data, error } = await searchBookmarksFulltext(
             supabase,
-            userId,
+            safeUserId,
             validatedQuery,
             QUERY_LIMITS.SEARCH_RESULTS_PER_PAGE,
           );
@@ -93,7 +95,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       initialAIMode={params.ai === "true"}
       searchResults={serializedResults}
       error={searchError}
-      userId={userId}
+      userId={safeUserId}
     />
   );
 }

@@ -57,7 +57,7 @@ export interface FolderProfile {
 
 function deserializeProfile(raw: Record<string, unknown>): FolderProfile {
   return {
-    ...(raw as FolderProfile),
+    ...(raw as unknown as FolderProfile),
     lastBookmarkAt: raw.lastBookmarkAt
       ? new Date(raw.lastBookmarkAt as string)
       : null,

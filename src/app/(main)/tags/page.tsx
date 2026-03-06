@@ -23,6 +23,8 @@ export default async function TagsPage() {
     const { redirect } = await import("next/navigation");
     redirect("/login");
   }
+  // redirect() throws (returns never), so userId is guaranteed non-null after guard
+  const safeUserId = userId as string;
   const supabase = await createClient();
 
   // 获取所有收藏的标签
@@ -30,7 +32,7 @@ export default async function TagsPage() {
   const { data: bookmarks, error } = (await supabase
     .from("bookmarks")
     .select("ai_tags, user_tags")
-    .eq("user_id", userId)
+    .eq("user_id", safeUserId)
     .is("deleted_at", null)) as unknown as {
     data: { ai_tags: string[] | null; user_tags: string[] | null }[] | null;
     error: unknown;

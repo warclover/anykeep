@@ -48,9 +48,9 @@ export interface UseFolderHeatReturn {
 
 interface FolderHeatRpcResult {
   folder_id: number;
-  heat_score: number;
-  recent_additions: number;
-  updated_at: string;
+  heat_score: number | null;
+  recent_additions: number | null;
+  updated_at: string | null;
 }
 
 // ==================== 常量 ====================
@@ -92,7 +92,7 @@ async function fetchFolderHeats(): Promise<FolderHeat[]> {
     folderId: item.folder_id,
     heat: item.heat_score ?? 0,
     recentCount: item.recent_additions ?? 0,
-    lastUpdated: item.updated_at,
+    lastUpdated: item.updated_at ?? "",
   }));
 }
 

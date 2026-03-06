@@ -78,7 +78,7 @@ export function QuickAddPreview({
   const [isAbsorbed, setIsAbsorbed] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const targetRef = useRef<HTMLDivElement>(null);
+  const targetRef = useRef<HTMLButtonElement>(null);
 
   // Truncate title for display
   const displayTitle = title.length > 35 ? `${title.slice(0, 35)}...` : title;

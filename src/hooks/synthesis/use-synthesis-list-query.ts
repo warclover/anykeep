@@ -10,6 +10,7 @@
 
 "use client";
 
+import type { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { synthesisKeys, type SynthesisListFilters } from "@/hooks/queries/keys";

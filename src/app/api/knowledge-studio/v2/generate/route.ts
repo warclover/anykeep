@@ -107,6 +107,7 @@ interface GenerateV2SSEChunk {
     structuredOutput?: unknown;
     reportId?: string;
     message?: string;
+    totalContentLength?: number;
     error?: {
       code: string;
       message: string;

@@ -221,8 +221,13 @@ export function useNotificationCount(): UseNotificationCountReturn {
   const markReadMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("未登录");
       const { error } = await supabase.rpc("mark_notifications_read", {
         p_ids: ids,
+        p_user_id: user.id,
       });
       if (error) throw new Error(error.message);
     },

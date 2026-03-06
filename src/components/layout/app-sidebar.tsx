@@ -35,6 +35,7 @@ import {
   NAV_GROUPS,
   getDesktopItems,
   type NavItemConfig,
+  type NavGroupConfig,
 } from "@/lib/navigation/nav-config";
 import {
   Tooltip,
