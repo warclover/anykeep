@@ -69,9 +69,10 @@ export function useClusterDistribution(): UseClusterDistributionReturn {
     queryFn: async (): Promise<ClusterDistributionItem[]> => {
       const supabase = createClient();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
-        "get_cluster_size_distribution",
+      // RPC 函数未在 supabase.generated.ts 中定义，需手动类型断言
+      // TODO: 运行 supabase gen types 后移除此断言
+      const { data, error } = await supabase.rpc(
+        "get_cluster_size_distribution" as never,
       );
 
       if (error) {

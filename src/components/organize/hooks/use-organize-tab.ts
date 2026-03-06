@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DEFAULT_ORGANIZE_TAB,
   isValidOrganizeTabId,
@@ -59,17 +59,6 @@ export function useOrganizeTab({ urlTab }: UseOrganizeTabOptions) {
   );
 
   const currentTabConfig = useMemo(() => TAB_TITLES[activeTab], [activeTab]);
-
-  useEffect(() => {
-    if (
-      urlTab &&
-      isValidOrganizeTabId(urlTab) &&
-      urlTab !== DEFAULT_ORGANIZE_TAB
-    ) {
-      handleTabChange(urlTab);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return { activeTab, handleTabChange, currentTabConfig };
 }

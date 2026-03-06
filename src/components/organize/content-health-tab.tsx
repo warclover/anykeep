@@ -152,13 +152,6 @@ export function ContentHealthTab({ className }: ContentHealthTabProps) {
   const { overview, isLoading, error, refresh } = useHealthOverview();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuickFix, setShowQuickFix] = useState(false);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
-
-  // 切换卡片展开状态 - 必须在 early return 之前调用
-  const toggleCard = useCallback((cardId: string) => {
-    setExpandedCard((prev) => (prev === cardId ? null : cardId));
-  }, []);
-
   // 处理重新检测 - 必须在 early return 之前定义
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -269,40 +262,20 @@ export function ContentHealthTab({ className }: ContentHealthTabProps) {
           label={TEXT.brokenLinks}
           count={data.brokenLinks}
           colorClass="bg-red-500"
-          onClick={() => toggleCard("broken-links")}
         />
         <IssueQuickCard
           icon={<Copy className="h-4 w-4 text-white" />}
           label={TEXT.duplicates}
           count={data.duplicates}
           colorClass="bg-orange-500"
-          onClick={() => toggleCard("duplicates")}
         />
         <IssueQuickCard
           icon={<Clock className="h-4 w-4 text-white" />}
           label={TEXT.staleContent}
           count={data.staleContent}
           colorClass="bg-yellow-500"
-          onClick={() => toggleCard("stale-content")}
         />
       </div>
-
-      {/* 展开的问题详情提示 */}
-      {hasIssues && expandedCard && (
-        <Card className="bg-muted/50">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">
-              {TEXT.clickToExpand}
-              <Badge variant="outline" className="ml-2 text-xs">
-                {expandedCard === "broken-links" && data.brokenLinks}
-                {expandedCard === "duplicates" && data.duplicates}
-                {expandedCard === "stale-content" && data.staleContent}
-                {" 项"}
-              </Badge>
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* 无问题提示 */}
       {!hasIssues && (

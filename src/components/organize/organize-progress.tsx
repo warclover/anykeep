@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle, Circle, X } from "lucide-react";
 
 interface OrganizeProgressProps {
-  status: "analyzing" | "executing" | "complete";
+  status: "analyzing" | "executing";
   message?: string;
   currentStep?: number;
   progress?: number;

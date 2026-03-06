@@ -16,13 +16,7 @@ import {
 } from "@/lib/organize/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  TrendingUp,
-  TrendingDown,
-  RotateCcw,
-  Share2,
-} from "lucide-react";
+import { ArrowRight, TrendingUp, TrendingDown, RotateCcw } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -36,7 +30,6 @@ interface OrganizeComparisonProps {
   before: OrganizeSnapshot;
   after: OrganizeSnapshot;
   onReset?: () => void;
-  onShare?: () => void;
   className?: string;
 }
 
@@ -44,7 +37,6 @@ export function OrganizeComparison({
   before,
   after,
   onReset,
-  onShare,
   className,
 }: OrganizeComparisonProps) {
   // 安全获取数值，防止 NaN
@@ -60,7 +52,7 @@ export function OrganizeComparison({
   };
 
   const totalImproved = Object.values(improvements).reduce(
-    (a, b) => Math.max(0, a) + Math.max(0, b),
+    (sum, val) => sum + Math.max(0, val),
     0,
   );
   const beforeTotal = safeNum(before.total);
@@ -108,12 +100,6 @@ export function OrganizeComparison({
             )}
           </CardTitle>
           <div className="flex gap-2">
-            {onShare && (
-              <Button variant="outline" size="sm" onClick={onShare}>
-                <Share2 className="h-4 w-4 mr-1" />
-                分享成果
-              </Button>
-            )}
             {onReset && (
               <Button variant="outline" size="sm" onClick={onReset}>
                 <RotateCcw className="h-4 w-4 mr-1" />

@@ -7,30 +7,6 @@ import { clientLogger } from "@/lib/client-logger";
 import type { OrganizePageState, QuickActionType } from "@/lib/organize/types";
 import type { OrganizeSnapshot } from "@/lib/organize/types";
 
-export async function fetchWithRetry(
-  url: string,
-  options?: RequestInit,
-  maxRetries = 3,
-): Promise<Response> {
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok) return response;
-      if (response.status >= 400 && response.status < 500) {
-        return response;
-      }
-      lastError = new Error(`HTTP ${response.status}`);
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error("Network error");
-    }
-    if (attempt < maxRetries - 1) {
-      await new Promise((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
-    }
-  }
-  throw lastError || new Error("Request failed after retries");
-}
-
 const ACTION_MESSAGES: Record<QuickActionType, string> = {
   "one-click": "帮我一键整理收藏",
   "clean-duplicates": "清理重复的收藏",
@@ -155,7 +131,8 @@ export function useOrganizeFlow({ onAnalysisRefresh }: UseOrganizeFlowOptions) {
     setState("idle");
     setProgress({ message: "", percent: 0, step: 0 });
     setOrganizeError(null);
-  }, [cancel]);
+    resetSnapshots();
+  }, [cancel, resetSnapshots]);
 
   const isExecuting = state === "analyzing" || state === "executing";
 

@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { organizeKeys } from "@/hooks/queries/keys";
@@ -53,14 +53,13 @@ interface UseOrganizeCountsReturn {
   refresh: () => Promise<void>;
 }
 
-/** RPC 返回类型 */
+/** RPC 返回类型（与 Supabase CompositeTypes.inbox_counts_result 对齐） */
 interface OrganizeCountsRpcResult {
-  uncategorized: number;
-  unread: number;
-  high_value: number;
-  broken: number;
-  recent: number;
-  processing: number;
+  uncategorized: number | null;
+  unread: number | null;
+  high_value: number | null;
+  broken: number | null;
+  recent: number | null;
 }
 
 // ==================== 数据获取 ====================
@@ -80,19 +79,16 @@ async function fetchOrganizeCounts(): Promise<OrganizeCountsData> {
   }
 
   // 使用 RPC 函数一次查询获取所有计数
-  const { data, error } = await supabase.rpc(
-    "get_inbox_counts" as never,
-    {
-      p_user_id: user.id,
-    } as never,
-  );
+  const { data, error } = await supabase.rpc("get_inbox_counts", {
+    p_user_id: user.id,
+  });
 
   if (error) {
     // RPC 不可用时降级到并行查询
     return fetchOrganizeCountsFallback(supabase, user.id);
   }
 
-  const result = data as unknown as OrganizeCountsRpcResult | null;
+  const result = data as OrganizeCountsRpcResult | null;
 
   return {
     counts: {
@@ -103,7 +99,7 @@ async function fetchOrganizeCounts(): Promise<OrganizeCountsData> {
       recent: result?.recent ?? 0,
     },
     extendedStats: {
-      processing: result?.processing ?? 0,
+      processing: 0, // RPC 不返回 processing，与 fallback 保持一致
       highValue: result?.high_value ?? 0,
       pending: result?.uncategorized ?? 0,
       uncategorized: result?.uncategorized ?? 0, // 兼容旧组件
@@ -182,8 +178,6 @@ const STALE_TIME = 60 * 1000;
 const REFETCH_INTERVAL = 60 * 1000;
 
 export function useOrganizeCounts(): UseOrganizeCountsReturn {
-  const _queryClient = useQueryClient();
-
   const { data, error, isLoading, refetch } = useQuery<
     OrganizeCountsData,
     Error

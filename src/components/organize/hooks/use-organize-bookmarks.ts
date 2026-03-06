@@ -37,12 +37,14 @@ export function useOrganizeBookmarks({
   }, [refreshBookmarks]);
 
   const handleBookmarkDelete = useCallback(
-    (_id: number) => {
+    async (_id: number) => {
+      dataCache.invalidate(/^bookmarks:/);
       invalidateOrganizeItems();
+      await refreshItems();
       refreshCounts();
       toast.success("书签已删除");
     },
-    [invalidateOrganizeItems, refreshCounts],
+    [invalidateOrganizeItems, refreshItems, refreshCounts],
   );
 
   return {

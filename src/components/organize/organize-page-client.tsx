@@ -39,6 +39,7 @@ export function OrganizePageClient({
     urlTab,
   });
   const {
+    counts,
     extendedStats,
     isLoading: isCountsLoading,
     refresh: refreshCounts,
@@ -131,13 +132,18 @@ export function OrganizePageClient({
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <OrganizeTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        <OrganizeTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          counts={counts}
+          isCountsLoading={isCountsLoading}
+        />
         {showOrganizePanels && (
           <CompactStatsBar stats={extendedStats} isLoading={isCountsLoading} />
         )}
       </div>
 
-      {organizeError && state === "idle" && (
+      {organizeError && !isExecuting && (
         <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
           <CardContent className="p-4">
             <p className="text-sm text-red-600 dark:text-red-400">

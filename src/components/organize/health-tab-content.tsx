@@ -120,7 +120,7 @@ export function HealthTabContent({
 
           {isExecuting && (
             <OrganizeProgress
-              status={state as "analyzing" | "executing" | "complete"}
+              status={state as "analyzing" | "executing"}
               message={progress.message}
               progress={progress.percent}
               currentStep={progress.step}
@@ -184,8 +184,15 @@ export function HealthTabContent({
           onMerge={(groupIndex) => {
             const group = analysis.duplicateFolders[groupIndex];
             if (group && group.folders.length >= 2) {
-              const [source, target] = group.folders;
-              mergeFolders(source.id, target.id);
+              // 与 handleIssueAction 保持一致：优先使用 AI 推荐的合并目标
+              const suggestedTarget = group.folders.find((f) =>
+                group.suggestedMerge?.includes(f.name),
+              );
+              const target = suggestedTarget || group.folders[0];
+              const source = group.folders.find((f) => f.id !== target.id);
+              if (source) {
+                mergeFolders(source.id, target.id);
+              }
             }
           }}
           onDelete={(folderId) => deleteFolder(folderId)}

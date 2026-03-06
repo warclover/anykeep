@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { fetchWithRetry } from "./use-organize-flow";
+import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import { dataCache } from "@/lib/cache";
 
@@ -52,7 +52,7 @@ export function useOneClickOrganize({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ suggestionId: suggestion.id }),
             },
-            3,
+            { maxRetries: 3, requestId: "one-click-organize" },
           );
           if (!response.ok) {
             throw new Error(`Apply failed: ${response.status}`);

@@ -15,7 +15,7 @@ import {
   ORGANIZE_TABS,
   type OrganizeTabId,
 } from "@/lib/constants/organize-tabs";
-import { useOrganizeCounts } from "@/hooks/data/use-organize-counts";
+import type { OrganizeCounts } from "@/hooks/data/use-organize-counts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,6 +24,9 @@ import { Badge } from "@/components/ui/badge";
 interface OrganizeTabsProps {
   activeTab: OrganizeTabId;
   onTabChange: (tab: OrganizeTabId) => void;
+  /** 各 Tab 计数（由父组件传入，避免重复订阅） */
+  counts: OrganizeCounts;
+  isCountsLoading?: boolean;
   className?: string;
 }
 
@@ -40,10 +43,10 @@ interface OrganizeTabsProps {
 export function OrganizeTabs({
   activeTab,
   onTabChange,
+  counts,
+  isCountsLoading: isLoading = false,
   className,
 }: OrganizeTabsProps) {
-  const { counts, isLoading } = useOrganizeCounts();
-
   /**
    * 获取 Tab 计数
    */

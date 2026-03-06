@@ -45,9 +45,7 @@ export interface LibrarianPanelState {
 
 interface HealthDiagnosisPanelProps {
   className?: string;
-  /** 由父组件传入时使用，避免重复请求 /api/librarian/analysis */
-  analysis?: LibrarianAnalysis | null;
-  /** 完整状态由父组件传入时使用（organize 页仅传 analysis，其余用内部 hook 会重复请求，故传完整状态） */
+  /** 完整状态由父组件传入时使用，避免与父组件重复请求 /api/librarian/analysis */
   librarianState?: LibrarianPanelState;
   onViewAllIssues?: () => void;
   onIssueAction?: (type: IssueType, itemId: number, action: ActionType) => void;
@@ -67,7 +65,6 @@ const TAB_CONTENT = "content";
 
 export function HealthDiagnosisPanel({
   className,
-  analysis: analysisProp,
   librarianState,
   onViewAllIssues,
   onIssueAction,
@@ -88,8 +85,7 @@ export function HealthDiagnosisPanel({
   });
 
   // 优先使用父组件传入的状态，避免与父组件重复请求
-  const analysis =
-    librarianState?.analysis ?? analysisProp ?? hookState.analysis;
+  const analysis = librarianState?.analysis ?? hookState.analysis;
   const isLoading = librarianState?.isLoading ?? hookState.isLoading;
   const isAnalyzing = librarianState?.isAnalyzing ?? hookState.isAnalyzing;
   const error = librarianState?.error ?? hookState.error;
