@@ -1,12 +1,16 @@
 /**
  * Virtual Bookmark List
- * V4.2.1: 通用虚拟滚动书签列表组件
+ * V4.2.1: 通用虚拟滚动书��列表组件
  *
  * 基于 react-virtuoso 实现，支持：
  * - 多种视图模式 (card/list/compact)
  * - 无限滚动自动加载
  * - 智能预取（80%位置触发）
  * - 批量选择模式
+ *
+ * V4.2.32 性能优化：
+ * - 使用 ref 存储回调，减少 renderItem 依赖项（12→5）
+ * - 回调引用稳定化，避免 Virtuoso 不必要的重渲染
  */
 
 "use client";
@@ -255,11 +259,30 @@ export function VirtualBookmarkList({
     viewMode === "compact" && "space-y-2",
   );
 
-  // 使用 ref 存储 selectedIds，避免 renderItem 回调因 Set 引用变化而重建
+  // V4.2.32: 使用 ref 存储 selectedIds，避免 renderItem 回调因 Set 引用变化而重建
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
 
-  // 通用的 itemContent 渲染器（使用 ref 访问 selectedIds，减少依赖）
+  // V4.2.32: 使用 ref 存储所有回调，减少 renderItem 依赖项
+  const callbacksRef = useRef({
+    onEdit,
+    onDelete,
+    onMove,
+    onToggleRead,
+    onToggleStarred,
+    onToggleSelect,
+  });
+  callbacksRef.current = {
+    onEdit,
+    onDelete,
+    onMove,
+    onToggleRead,
+    onToggleStarred,
+    onToggleSelect,
+  };
+
+  // V4.2.32: 稳定的 itemContent 渲染器
+  // 依赖项从 12 个减少到 5 个（仅保留配置项，回调通过 ref 访问）
   const renderItem = useCallback(
     (_index: number, bookmark: BookmarkWithFolder) => (
       <BookmarkItem
@@ -267,29 +290,29 @@ export function VirtualBookmarkList({
         bookmark={bookmark}
         viewMode={viewMode}
         enableFlipCard={enableFlipCard}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onMove={onMove}
-        onToggleRead={onToggleRead}
-        onToggleStarred={onToggleStarred}
         isSelectionMode={isSelectionMode}
         isSelected={selectedIdsRef.current.has(bookmark.id)}
-        onToggleSelect={onToggleSelect}
         customUsageTags={customUsageTags}
         layoutMode={layoutMode}
         draggable={draggable}
+        // 回调通过 ref 访问，确保引用稳定
+        onEdit={(id) => callbacksRef.current.onEdit?.(id)}
+        onDelete={(id) => callbacksRef.current.onDelete?.(id)}
+        onMove={(id) => callbacksRef.current.onMove?.(id)}
+        onToggleRead={(id, isRead) =>
+          callbacksRef.current.onToggleRead?.(id, isRead)
+        }
+        onToggleStarred={(id, isStarred) =>
+          callbacksRef.current.onToggleStarred?.(id, isStarred)
+        }
+        onToggleSelect={(id) => callbacksRef.current.onToggleSelect?.(id)}
       />
     ),
+    // 仅保留"配置项"依赖，这些是低频变化的
     [
       viewMode,
       enableFlipCard,
-      onEdit,
-      onDelete,
-      onMove,
-      onToggleRead,
-      onToggleStarred,
       isSelectionMode,
-      onToggleSelect,
       customUsageTags,
       layoutMode,
       draggable,

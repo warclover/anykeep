@@ -6,7 +6,11 @@
  * - 响应式网格布局
  * - 无限滚动自动加载
  * - 智能预取（80%位置触发）
- * - 批量选择模式
+ * - 批��选择模式
+ *
+ * V4.2.32 性能优化：
+ * - 使用 ref 存储回调，减少 renderItem 依赖项（8→3）
+ * - 回调引用稳定化，避免 Virtuoso 不必要的重渲染
  */
 
 "use client";
@@ -216,37 +220,52 @@ export function VirtualBookmarkGrid({
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const prefetchTriggered = useRef(false);
 
-  // 使用 ref 存储 selectedIds，避免 itemContent 回调因 Set 引用变化而重建
+  // V4.2.32: 使用 ref 存储 selectedIds，避免 itemContent 回调因 Set 引用变化而重建
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
 
-  // 稳定的 itemContent 渲染器（通过 ref 访问 selectedIds，减少依赖）
+  // V4.2.32: 使用 ref 存储所有回调，减少 renderItem 依赖项
+  // 这样回调的引用变化不会导致 renderItem 重建，从而避免 Virtuoso 重渲染
+  const callbacksRef = useRef({
+    onEdit,
+    onDelete,
+    onToggleRead,
+    onToggleStarred,
+    onToggleSelect,
+  });
+  callbacksRef.current = {
+    onEdit,
+    onDelete,
+    onToggleRead,
+    onToggleStarred,
+    onToggleSelect,
+  };
+
+  // V4.2.32: 稳定的 itemContent 渲染器
+  // 依赖项从 8 个减少到 3 个（仅保留配置项，回调通过 ref 访问）
   const renderItem = useCallback(
     (_index: number, bookmark: BookmarkWithFolder) => (
       <GridBookmarkItem
         key={bookmark.id}
         bookmark={bookmark}
         enableFlipCard={enableFlipCard}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onToggleRead={onToggleRead}
-        onToggleStarred={onToggleStarred}
         isSelectionMode={isSelectionMode}
         isSelected={selectedIdsRef.current.has(bookmark.id)}
-        onToggleSelect={onToggleSelect}
         customUsageTags={customUsageTags}
+        // 回调通过 ref 访问，确保引用稳定
+        onEdit={(id) => callbacksRef.current.onEdit?.(id)}
+        onDelete={(id) => callbacksRef.current.onDelete?.(id)}
+        onToggleRead={(id, isRead) =>
+          callbacksRef.current.onToggleRead?.(id, isRead)
+        }
+        onToggleStarred={(id, isStarred) =>
+          callbacksRef.current.onToggleStarred?.(id, isStarred)
+        }
+        onToggleSelect={(id) => callbacksRef.current.onToggleSelect?.(id)}
       />
     ),
-    [
-      enableFlipCard,
-      onEdit,
-      onDelete,
-      onToggleRead,
-      onToggleStarred,
-      isSelectionMode,
-      onToggleSelect,
-      customUsageTags,
-    ],
+    // 仅保留"配置项"依赖，这些是低频变化的
+    [enableFlipCard, isSelectionMode, customUsageTags],
   );
 
   // 智能预取：当滚动到指定位置时提前加载

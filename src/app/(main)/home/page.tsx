@@ -14,6 +14,9 @@
  * V4.2.30 性能优化：
  * - 使用 unstable_cache 缓存用户设置（5 分钟）
  * - 减少重复数据库查询
+ *
+ * V4.2.32 性能优化：
+ * - 使用 Promise.all 并行获取书签和用户设置，减少首屏等待时间
  */
 
 import { Suspense, cache } from "react";
@@ -204,6 +207,10 @@ interface HomePageProps {
 /**
  * 异步数据加载组件
  * 被 Suspense 包裹，加载时显示骨架屏
+ *
+ * V4.2.32: 使用 Promise.all 并行获取书签和用户设置
+ * 优化前：串行等待，总耗时 = getInitialBookmarks + getUserSettings
+ * 优化后：并行执行，总耗时 ≈ max(getInitialBookmarks, getUserSettings)
  */
 async function HomePageWithData({
   platform,
@@ -214,17 +221,16 @@ async function HomePageWithData({
   sort: string;
   folder: string;
 }) {
-  const { bookmarks, error } = await getInitialBookmarks(
-    platform,
-    sort,
-    folder,
-  );
-  const userSettings = await getUserSettings();
+  // V4.2.32: 并行获取书签数据和用户设置，减少首屏等待时间
+  const [bookmarksResult, userSettings] = await Promise.all([
+    getInitialBookmarks(platform, sort, folder),
+    getUserSettings(),
+  ]);
 
   return (
     <HomePageClientLayered
-      initialBookmarks={bookmarks}
-      error={error}
+      initialBookmarks={bookmarksResult.bookmarks}
+      error={bookmarksResult.error}
       userSettings={userSettings}
     />
   );

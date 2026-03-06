@@ -175,11 +175,11 @@ const EMPTY_EXTENDED_STATS: OrganizeExtendedStats = {
   uncategorized: 0,
 };
 
-/** 缓存时间：30 秒（实时性数据） */
-const STALE_TIME = 30 * 1000;
+/** 缓存时间：60 秒（角标数据不需要高频刷新） */
+const STALE_TIME = 60 * 1000;
 
-/** 刷新间隔：30 秒 */
-const REFETCH_INTERVAL = 30 * 1000;
+/** 刷新间隔：60 秒（从 30s 延长，降低后台 CPU 占用） */
+const REFETCH_INTERVAL = 60 * 1000;
 
 export function useOrganizeCounts(): UseOrganizeCountsReturn {
   const _queryClient = useQueryClient();

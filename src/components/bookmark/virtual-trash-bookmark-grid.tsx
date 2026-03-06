@@ -7,6 +7,10 @@
  * - 无限滚动自动加载
  * - 批量选择模式
  * - 恢复/永久删除操作
+ *
+ * V4.2.32 性能优化：
+ * - 使用 ref 存储回调和 selectedIds，减少 itemContent 依赖项
+ * - 回调引用稳定化，避免 Virtuoso 不必要的重渲染
  */
 
 "use client";
@@ -165,6 +169,40 @@ export function VirtualTrashBookmarkGrid({
   const virtuosoRef = useRef<VirtuosoGridHandle>(null);
   const prefetchTriggered = useRef(false);
 
+  // V4.2.32: 使用 ref 存储 selectedIds，避免 itemContent 回调因 Set 引用变化而重建
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  // V4.2.32: 使用 ref 存储所有回调，减少 itemContent 依赖项
+  const callbacksRef = useRef({
+    onRestore,
+    onPermanentDelete,
+    onToggleSelect,
+  });
+  callbacksRef.current = {
+    onRestore,
+    onPermanentDelete,
+    onToggleSelect,
+  };
+
+  // V4.2.32: 稳定的 itemContent 渲染器
+  const renderItem = useCallback(
+    (_index: number, bookmark: BookmarkWithFolder) => (
+      <GridTrashBookmarkItem
+        key={bookmark.id}
+        bookmark={bookmark}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedIdsRef.current.has(bookmark.id)}
+        // 回调通过 ref 访问，确保引用稳定
+        onRestore={(id) => callbacksRef.current.onRestore?.(id)}
+        onPermanentDelete={(id) => callbacksRef.current.onPermanentDelete?.(id)}
+        onToggleSelect={(id) => callbacksRef.current.onToggleSelect?.(id)}
+      />
+    ),
+    // 仅保留"配置项"依赖
+    [isSelectionMode],
+  );
+
   // 智能预取：当滚动到指定位置时提前加载
   const handleRangeChanged = useCallback(
     ({ endIndex }: { startIndex: number; endIndex: number }) => {
@@ -242,17 +280,7 @@ export function VirtualTrashBookmarkGrid({
         endReached={handleEndReached}
         overscan={200}
         initialTopMostItemIndex={0}
-        itemContent={(index, bookmark) => (
-          <GridTrashBookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            onRestore={onRestore}
-            onPermanentDelete={onPermanentDelete}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedIds.has(bookmark.id)}
-            onToggleSelect={onToggleSelect}
-          />
-        )}
+        itemContent={renderItem}
         components={components}
       />
     );
@@ -272,17 +300,7 @@ export function VirtualTrashBookmarkGrid({
         endReached={handleEndReached}
         overscan={200}
         initialTopMostItemIndex={0}
-        itemContent={(index, bookmark) => (
-          <GridTrashBookmarkItem
-            key={bookmark.id}
-            bookmark={bookmark}
-            onRestore={onRestore}
-            onPermanentDelete={onPermanentDelete}
-            isSelectionMode={isSelectionMode}
-            isSelected={selectedIds.has(bookmark.id)}
-            onToggleSelect={onToggleSelect}
-          />
-        )}
+        itemContent={renderItem}
         components={components}
       />
     </div>

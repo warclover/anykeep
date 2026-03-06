@@ -219,13 +219,16 @@ export function HomeDataProvider({
   }, [platform, folder, mutate]);
 
   // ========== 智能轮询：自动更新 PROCESSING 状态的书签 ==========
+  // V4.2.32: 使用 updateCacheItem 替代 mutate，避免整列表引用变化
+  // updateCacheItem 内部已做 immutable 更新，仅更新单条记录
   const handleProcessingUpdate = useCallback(
     (updatedBookmark: Bookmark) => {
-      mutate((prev = []) =>
-        prev.map((b) => (b.id === updatedBookmark.id ? updatedBookmark : b)),
+      updateCacheItem(
+        updatedBookmark.id,
+        () => updatedBookmark as BookmarkWithFolder,
       );
     },
-    [mutate],
+    [updateCacheItem],
   );
 
   useProcessingPoller({
