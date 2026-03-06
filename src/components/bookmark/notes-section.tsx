@@ -2,6 +2,7 @@
 
 import { MessageSquare, ChevronDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 interface NotesSectionProps {
   notes: string;
@@ -31,13 +32,14 @@ export function NotesSection({
       <button
         type="button"
         onClick={() => setIsNotesExpanded(!isNotesExpanded)}
+        aria-expanded={isNotesExpanded}
         className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-purple-100/50 rounded-lg transition-colors"
       >
         <div className="flex items-center gap-2">
           <MessageSquare className="size-4" />
-          <span>个人笔记</span>
+          <span>{NOTES.SECTION.TITLE}</span>
           <span className="text-xs text-muted-foreground font-normal">
-            记录想法
+            {NOTES.SECTION.SUBTITLE}
           </span>
         </div>
         <ChevronDown
@@ -56,7 +58,7 @@ export function NotesSection({
       >
         <Textarea
           id="notes"
-          placeholder="记录想法..."
+          placeholder={NOTES.SECTION.PLACEHOLDER}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}

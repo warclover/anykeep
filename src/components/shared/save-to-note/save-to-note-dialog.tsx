@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import type { SaveSourceType } from "./types";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 interface SaveToNoteDialogProps {
   /** 是否打开 */
@@ -65,29 +66,29 @@ export function SaveToNoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>保存到我的笔记</DialogTitle>
+          <DialogTitle>{NOTES.DIALOG.TITLE}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="title">标题</Label>
+            <Label htmlFor="title">{NOTES.DIALOG.LABEL_TITLE}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="输入笔记标题"
+              placeholder={NOTES.DIALOG.PLACEHOLDER_TITLE}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>保存位置</Label>
+            <Label>{NOTES.DIALOG.LABEL_LOCATION}</Label>
             <div className="p-2 bg-muted rounded-md text-sm">
-              📁 AI 生成（默认）
+              {NOTES.DIALOG.DEFAULT_FOLDER}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>内容预览</Label>
+            <Label>{NOTES.DIALOG.LABEL_PREVIEW}</Label>
             <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground max-h-[150px] overflow-y-auto">
               {contentPreview}
             </div>
@@ -96,11 +97,11 @@ export function SaveToNoteDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {NOTES.DIALOG.CANCEL}
           </Button>
           <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            保存
+            {NOTES.DIALOG.SAVE}
           </Button>
         </DialogFooter>
       </DialogContent>

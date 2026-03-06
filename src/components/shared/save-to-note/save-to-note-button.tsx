@@ -20,6 +20,7 @@ import { SaveSuccessToast } from "./save-success-toast";
 import { toast } from "sonner";
 import type { SaveSourceType, SaveButtonState } from "./types";
 import { cn } from "@/lib/utils";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 interface SaveToNoteButtonProps {
   /** 要保存的内容 */
@@ -58,35 +59,35 @@ const buttonStates: Record<
 > = {
   idle: {
     icon: Save,
-    text: "保存",
+    text: NOTES.BUTTON.IDLE,
     className: "text-muted-foreground hover:text-foreground",
   },
   checking: {
     icon: Loader2,
-    text: "检查中",
+    text: NOTES.BUTTON.CHECKING,
     className: "text-muted-foreground",
     iconClassName: "animate-spin",
   },
   generating: {
     icon: Loader2,
-    text: "生成标题",
+    text: NOTES.BUTTON.GENERATING,
     className: "text-primary",
     iconClassName: "animate-spin",
   },
   saving: {
     icon: Loader2,
-    text: "保存中",
+    text: NOTES.BUTTON.SAVING,
     className: "text-primary",
     iconClassName: "animate-spin",
   },
   success: {
     icon: Check,
-    text: "已保存",
+    text: NOTES.BUTTON.SUCCESS,
     className: "text-green-500",
   },
   error: {
     icon: AlertCircle,
-    text: "失败",
+    text: NOTES.BUTTON.ERROR,
     className: "text-destructive",
   },
 };
@@ -123,7 +124,7 @@ export function SaveToNoteButton({
       onSaveSuccess?.(noteId, noteTitle);
     },
     onError: (error) => {
-      toast.error("保存失败", { description: error.message });
+      toast.error(NOTES.ERROR.SAVE_FAILED, { description: error.message });
       onSaveError?.(error);
     },
   });
@@ -191,7 +192,7 @@ export function SaveToNoteButton({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>保存到我的笔记</p>
+            <p>{NOTES.BUTTON.TOOLTIP}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

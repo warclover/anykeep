@@ -3,15 +3,18 @@
  *
  * 书签详情页的用户备注编辑区，支持内联编辑和保存。
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-24 (Phase 2.3.7)
+ *
+ * v1.1.0: 空状态显示"添加备注"按钮、提取硬编码文本到常量
  */
 
 "use client";
 
-import { Edit, Check, X } from "lucide-react";
+import { Edit, Check, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 // ============================================
 // 类型定义
@@ -50,21 +53,33 @@ export function DetailNotesEditor({
   onCancel,
   onSave,
 }: DetailNotesEditorProps) {
-  // 如果没有备注且不在编辑模式，不渲染
+  // 空状态：显示"添加备注"按钮
   if (!notes && !isEditing) {
-    return null;
+    return (
+      <div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onEdit}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Plus className="size-3 mr-1" />
+          {NOTES.EDITOR.ADD}
+        </Button>
+      </div>
+    );
   }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          我的备注
+          {NOTES.EDITOR.TITLE}
         </h3>
         {!isEditing && (
           <Button variant="ghost" size="sm" onClick={onEdit}>
             <Edit className="size-3 mr-1" />
-            编辑
+            {NOTES.EDITOR.EDIT}
           </Button>
         )}
       </div>
@@ -74,14 +89,14 @@ export function DetailNotesEditor({
           <Textarea
             value={editedNotes}
             onChange={(e) => onEditedNotesChange(e.target.value)}
-            placeholder="输入备注..."
+            placeholder={NOTES.EDITOR.PLACEHOLDER}
             rows={4}
             autoFocus
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={onSave} disabled={isSaving}>
               <Check className="size-3 mr-1" />
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving ? NOTES.EDITOR.SAVING : NOTES.EDITOR.SAVE}
             </Button>
             <Button
               size="sm"
@@ -90,7 +105,7 @@ export function DetailNotesEditor({
               disabled={isSaving}
             >
               <X className="size-3 mr-1" />
-              取消
+              {NOTES.EDITOR.CANCEL}
             </Button>
           </div>
         </div>

@@ -6,11 +6,13 @@
  * - 管理笔记的 CRUD 操作
  * - 支持笔记搜索和关联
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-25
  *
  * 注意：ai_notes 表类型尚未生成，使用类型断言绕过检查
  * 运行 `npm run supabase:gen:types` 后可移除类型断言
+ *
+ * v1.1.0: 支持依赖注入 Supabase Client，服务器端 API 路由可传入 server client
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +21,13 @@ import type {
   SaveNoteRequest,
   SaveNoteResponse,
 } from "@/components/ai/phase4/types";
+
+/**
+ * Supabase Client 类型（兼容 server/client 两种 client）
+ * 支持依赖注入，使服务在服务器端和客户端均可安全使用
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseClientLike = any;
 
 // =============================================================================
 // 类型定义
@@ -106,9 +115,15 @@ export interface NoteServiceResponse<T = void> {
  *
  * 注意：运行 `npm run supabase:gen:types` 后可直接使用 supabase.from("ai_notes")
  */
-function getNotesTable(supabase: ReturnType<typeof createClient>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase as any).from("ai_notes");
+function getNotesTable(supabase: SupabaseClientLike) {
+  return supabase.from("ai_notes");
+}
+
+/**
+ * 获取 Supabase client（优先使用注入的 client，回退到浏览器端 client）
+ */
+function resolveClient(injected?: SupabaseClientLike): SupabaseClientLike {
+  return injected ?? createClient();
 }
 
 // =============================================================================
@@ -118,12 +133,15 @@ function getNotesTable(supabase: ReturnType<typeof createClient>) {
 export class NoteService {
   /**
    * 保存笔记
+   * @param request - 保存请求参数
+   * @param supabaseClient - 可选的 Supabase client（服务器端调用时应传入 server client）
    */
   async saveNote(
     request: SaveNoteRequest,
+    supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse<SaveNoteResponse>> {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       // 获取当前用户
       const {
@@ -193,9 +211,12 @@ export class NoteService {
   /**
    * 获取笔记详情
    */
-  async getNote(noteId: string): Promise<NoteServiceResponse<NoteRecord>> {
+  async getNote(
+    noteId: string,
+    supabaseClient?: SupabaseClientLike,
+  ): Promise<NoteServiceResponse<NoteRecord>> {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -232,9 +253,10 @@ export class NoteService {
    */
   async listNotes(
     params: NoteListParams = {},
+    supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse<{ notes: NoteRecord[]; total: number }>> {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -308,9 +330,10 @@ export class NoteService {
       content?: string;
       tags?: string[];
     },
+    supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse> {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -363,9 +386,12 @@ export class NoteService {
   /**
    * 删除笔记
    */
-  async deleteNote(noteId: string): Promise<NoteServiceResponse> {
+  async deleteNote(
+    noteId: string,
+    supabaseClient?: SupabaseClientLike,
+  ): Promise<NoteServiceResponse> {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -401,13 +427,14 @@ export class NoteService {
    */
   async getRelatedBookmarks(
     noteId: string,
+    supabaseClient?: SupabaseClientLike,
   ): Promise<
     NoteServiceResponse<
       Array<{ id: number; title: string; url: string | null }>
     >
   > {
     try {
-      const supabase = createClient();
+      const supabase = resolveClient(supabaseClient);
 
       const {
         data: { user },

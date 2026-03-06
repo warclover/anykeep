@@ -103,8 +103,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 保存笔记
-    const result = await noteService.saveNote(validation.data);
+    // 保存笔记（传入 server client 确保服务器端认证正确）
+    const result = await noteService.saveNote(validation.data, supabase);
 
     if (!result.success) {
       logger.warn(
@@ -192,8 +192,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 获取笔记列表
-    const result = await noteService.listNotes(validation.data);
+    // 获取笔记列表（传入 server client 确保服务器端认证正确）
+    const result = await noteService.listNotes(validation.data, supabase);
 
     if (!result.success) {
       return Response.json(

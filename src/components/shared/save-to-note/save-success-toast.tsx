@@ -5,6 +5,7 @@
 
 import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 interface SaveSuccessToastProps {
   /** 笔记标题 */
@@ -28,7 +29,7 @@ export function SaveSuccessToast({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">
-          已保存到「{folderName}」
+          {NOTES.SUCCESS_TOAST.SAVED_TO(folderName)}
         </p>
         <p className="text-sm text-muted-foreground truncate mt-0.5">
           {noteTitle}
@@ -41,7 +42,7 @@ export function SaveSuccessToast({
         className="flex-shrink-0 text-primary"
         onClick={onViewNote}
       >
-        查看笔记
+        {NOTES.SUCCESS_TOAST.VIEW_NOTE}
         <ArrowRight className="w-3 h-3 ml-1" />
       </Button>
     </div>

@@ -2,7 +2,9 @@
 
 /**
  * Save to Note Hook
- * @description 管理保存到笔记的完整流程：重复检测 → 标题生成 → 保存
+ * @description 管理保存到笔记的完整流程：重复检测 -> 标题生成 -> 保存
+ *
+ * v1.1.0: 修复 setTimeout 内存泄漏、正则替换死循环风险
  */
 
 import * as React from "react";
@@ -14,6 +16,7 @@ import type {
   SaveResult,
 } from "@/components/shared/save-to-note/types";
 import { extractFallbackTitle } from "@/features/md-collections/lib";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 // =============================================================================
 // 辅助函数：将 JSON 对象转换为 Markdown
@@ -122,6 +125,52 @@ function formatKeyToLabel(key: string): string {
     .trim();
 }
 
+/**
+ * 安全地替换内容中的 JSON 代码块为 Markdown 格式
+ * 使用 replace with callback 避免 exec + replace 循环中 lastIndex 失效问题
+ */
+function replaceJsonCodeBlocks(content: string): string {
+  // 先处理 ```json 代码块
+  let result = content.replace(
+    /```json\s*\n([\s\S]*?)```/g,
+    (_match, jsonContent: string) => {
+      try {
+        const parsed = JSON.parse(jsonContent.trim());
+        if (typeof parsed === "object" && parsed !== null) {
+          return formatObjectToMarkdown(parsed);
+        }
+      } catch {
+        // JSON 解析失败，保持原样
+      }
+      return _match;
+    },
+  );
+
+  // 再处理普通代码块中的 JSON（不带语言标识）
+  result = result.replace(
+    /```\s*\n([\s\S]*?)```/g,
+    (_match, blockContent: string) => {
+      const trimmed = blockContent.trim();
+      if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (typeof parsed === "object" && parsed !== null) {
+            return formatObjectToMarkdown(parsed);
+          }
+        } catch {
+          // 不是有效的 JSON，保持原样
+        }
+      }
+      return _match;
+    },
+  );
+
+  return result;
+}
+
 // =============================================================================
 // Hook 定义
 // =============================================================================
@@ -165,6 +214,38 @@ export function useSaveToNote(
   const optionsRef = React.useRef(options);
   optionsRef.current = options;
 
+  // 跟踪组件挂载状态和定时器，防止内存泄漏
+  const mountedRef = React.useRef(true);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
+  /** 安全的 setState —— 仅在组件仍挂载时执行 */
+  const safeSetState = React.useCallback((newState: SaveButtonState) => {
+    if (mountedRef.current) {
+      setState(newState);
+    }
+  }, []);
+
+  /** 安全的延迟重置状态 */
+  const scheduleReset = React.useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      safeSetState("idle");
+    }, 3000);
+  }, [safeSetState]);
+
   /**
    * 将可能是 JSON 的内容转换为 Markdown
    * 如果内容是 JSON 字符串或对象，尝试转换为可读的 Markdown 格式
@@ -191,51 +272,9 @@ export function useSaveToNote(
         }
       }
 
-      // 2. 检测 Markdown 代码块中的 JSON
-      // 优先匹配 ```json 代码块，然后尝试匹配普通代码块
-      let result = trimmed;
-      let hasChanges = false;
-
-      // 先处理 ```json 代码块
-      const jsonBlockRegex = /```json\s*\n([\s\S]*?)```/g;
-      let match;
-      while ((match = jsonBlockRegex.exec(trimmed)) !== null) {
-        const jsonContent = match[1].trim();
-        try {
-          const parsed = JSON.parse(jsonContent);
-          if (typeof parsed === "object" && parsed !== null) {
-            hasChanges = true;
-            const formattedContent = formatObjectToMarkdown(parsed);
-            result = result.replace(match[0], formattedContent);
-          }
-        } catch {
-          // JSON 解析失败，保持原样
-        }
-      }
-
-      // 再处理普通代码块（```但不带语言标识或不是json）
-      const codeBlockRegex = /```\s*\n([\s\S]*?)```/g;
-      while ((match = codeBlockRegex.exec(result)) !== null) {
-        const blockContent = match[1].trim();
-        // 检查是否看起来像 JSON
-        if (
-          (blockContent.startsWith("{") && blockContent.endsWith("}")) ||
-          (blockContent.startsWith("[") && blockContent.endsWith("]"))
-        ) {
-          try {
-            const parsed = JSON.parse(blockContent);
-            if (typeof parsed === "object" && parsed !== null) {
-              hasChanges = true;
-              const formattedContent = formatObjectToMarkdown(parsed);
-              result = result.replace(match[0], formattedContent);
-            }
-          } catch {
-            // 不是有效的 JSON，保持原样
-          }
-        }
-      }
-
-      if (hasChanges) {
+      // 2. 检测 Markdown 代码块中的 JSON（使用 replace callback 避免死循环）
+      const result = replaceJsonCodeBlocks(trimmed);
+      if (result !== trimmed) {
         return result;
       }
 
@@ -250,7 +289,7 @@ export function useSaveToNote(
   const save = React.useCallback(
     async (payload: SaveToNotePayload): Promise<SaveResult> => {
       try {
-        setState("checking");
+        safeSetState("checking");
         setError(null);
         setDuplicateInfo(null);
 
@@ -283,7 +322,7 @@ export function useSaveToNote(
               title: existingNote.title,
               savedAt: existingNote.created_at,
             });
-            setState("idle");
+            safeSetState("idle");
             return {
               isDuplicate: true,
               duplicateInfo: {
@@ -297,7 +336,7 @@ export function useSaveToNote(
 
         // 2. 生成标题（如果未提供）
         // 使用规范化后的内容生成标题和保存
-        setState("generating");
+        safeSetState("generating");
         let title = payload.customTitle;
 
         if (!title) {
@@ -327,7 +366,7 @@ export function useSaveToNote(
         const formattedTitle = `${title} - ${date}`;
 
         // 3. 保存到 MD 收藏
-        setState("saving");
+        safeSetState("saving");
         const saveRes = await fetch("/api/md-collections", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -350,7 +389,7 @@ export function useSaveToNote(
               ? errorData.error?.message
               : errorData.error) ||
             errorData.message ||
-            "保存失败";
+            NOTES.ERROR.SAVE_FAILED;
           throw new Error(errorMessage);
         }
 
@@ -359,7 +398,7 @@ export function useSaveToNote(
         const noteId = noteData.id || noteData.data?.id;
 
         if (!noteId) {
-          throw new Error("保存返回数据异常");
+          throw new Error(NOTES.ERROR.SAVE_RETURN_ERROR);
         }
 
         // 4. 更新状态
@@ -371,25 +410,26 @@ export function useSaveToNote(
         };
 
         setSavedNote(savedNoteInfo);
-        setState("success");
+        safeSetState("success");
         optionsRef.current?.onSuccess?.(noteId, formattedTitle);
 
-        // 5. 3秒后重置状态
-        setTimeout(() => setState("idle"), 3000);
+        // 5. 3秒后重置状态（使用安全的延迟重置）
+        scheduleReset();
 
         return { isDuplicate: false, noteId, title: formattedTitle };
       } catch (err) {
-        const error = err instanceof Error ? err : new Error("保存失败");
+        const error =
+          err instanceof Error ? err : new Error(NOTES.ERROR.SAVE_FAILED);
         setError(error);
-        setState("error");
+        safeSetState("error");
         optionsRef.current?.onError?.(error);
 
         // 3秒后重置状态
-        setTimeout(() => setState("idle"), 3000);
+        scheduleReset();
         throw error;
       }
     },
-    [normalizeContentToMarkdown],
+    [normalizeContentToMarkdown, safeSetState, scheduleReset],
   );
 
   /**
@@ -402,7 +442,7 @@ export function useSaveToNote(
 
       // 安全检查：确保返回值有效
       if (!result.noteId || !result.title) {
-        throw new Error("保存返回数据异常");
+        throw new Error(NOTES.ERROR.SAVE_RETURN_ERROR);
       }
 
       return { noteId: result.noteId, title: result.title };
@@ -414,6 +454,10 @@ export function useSaveToNote(
    * 重置状态
    */
   const reset = React.useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setState("idle");
     setDuplicateInfo(null);
     setSavedNote(null);

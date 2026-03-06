@@ -1,6 +1,9 @@
 /**
  * NoteService - AI 笔记服务
  *
+ * @deprecated 此模块未被任何代码引用，已由 `src/lib/ai-skills/services/note.service.ts` 替代。
+ * 保留以防回退，后续版本可安全删除。
+ *
  * 职责：
  * - 保存 AI 生成的内容（总结、萃取、复习笔记等）
  * - 管理笔记的 CRUD 操作

@@ -1,16 +1,22 @@
 /**
- * Duplicate Warning Popover - 重复内容警告弹窗
+ * Duplicate Warning Dialog - 重复内容警告弹窗
  * @description 检测到重复内容时显示的警告弹窗
+ *
+ * v1.1.0: 从 Popover 改为 AlertDialog，解决 sr-only 触发器无法定位的问题
  */
 
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { DuplicateInfo } from "./types";
+import { NOTES } from "@/lib/constants/notes-messages";
 
 interface DuplicateWarningPopoverProps {
   /** 是否打开 */
@@ -47,36 +53,35 @@ export function DuplicateWarningPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <span className="sr-only">重复内容提示</span>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-[400px]">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <span className="font-medium">相似内容已存在</span>
-          </div>
+            {NOTES.DUPLICATE_WARNING.TITLE}
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="p-2 bg-muted rounded-md mt-2">
+              <p className="text-sm font-medium truncate">
+                {duplicateNote.title}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {NOTES.DUPLICATE_WARNING.SAVED_AT}{" "}
+                {formatDate(duplicateNote.savedAt)}
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-          <div className="p-2 bg-muted rounded-md">
-            <p className="text-sm font-medium truncate">
-              {duplicateNote.title}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              保存于 {formatDate(duplicateNote.savedAt)}
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onViewExisting}>
-              查看已有
-            </Button>
-            <Button size="sm" onClick={onSaveAnyway}>
-              仍然保存
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <AlertDialogFooter>
+          <Button variant="outline" size="sm" onClick={onViewExisting}>
+            {NOTES.DUPLICATE_WARNING.VIEW_EXISTING}
+          </Button>
+          <Button size="sm" onClick={onSaveAnyway}>
+            {NOTES.DUPLICATE_WARNING.SAVE_ANYWAY}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
