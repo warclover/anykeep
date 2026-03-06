@@ -85,6 +85,7 @@
     "waitingClassification": "Waiting for classification",
     "unclassifiedContent": "Unclassified content",
     "batchManagement": "Batch manage bookmarks",
+    "importData": "Import browser bookmarks",
     "exportData": "Export data",
     "distributionCenter": "Content distribution",
     "linkHealthCheck": "Check broken links",

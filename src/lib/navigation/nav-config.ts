@@ -26,6 +26,7 @@ import {
   Gauge,
   Zap,
   Download,
+  Upload,
   Share2,
   LinkIcon,
   GraduationCap,
@@ -153,6 +154,13 @@ const smartToolsGroup: NavGroupConfig = {
       href: "/data",
       icon: Database,
       visibility: "desktop",
+    },
+    {
+      name: "nav.import",
+      href: "/import",
+      icon: Upload,
+      description: "mobileMenu.importData",
+      visibility: "mobile",
     },
     {
       name: "nav.export",
