@@ -18,6 +18,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   useRef,
   useEffect,
 } from "react";
@@ -26,17 +27,13 @@ import type { Bookmark, CustomUsageTag } from "@/types/supabase";
 import { useBookmarksSWR, cachePerformanceTracker } from "@/lib/cache";
 import { useInitData } from "@/hooks/data";
 import { useAbortableFetch } from "@/hooks/core";
+import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { useProcessingPoller } from "@/hooks/ui";
 import { customTagKeys } from "@/hooks/queries/keys";
 import { getPageSizeByView } from "../constants";
-import type { ViewMode } from "../types";
-
-// 扩展的书签类型（包含文件夹信息）
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { ViewMode, BookmarkWithFolder } from "../types";
 
 // ============================================================================
 // 类型定义
@@ -240,7 +237,7 @@ export function HomeDataProvider({
   // ========== 加载更多 ==========
   const loadMore = useCallback(
     async (viewMode: ViewMode) => {
-      if (isLoadingMore || !hasMore) return;
+      if (isLoadingMore || !hasMore || bookmarks.length === 0) return;
 
       setIsLoadingMore(true);
       try {
@@ -252,6 +249,12 @@ export function HomeDataProvider({
 
         if (platform) {
           params.append("platform", platform);
+        }
+        if (sort) {
+          params.append("sort", sort);
+        }
+        if (folder) {
+          params.append("folder", folder);
         }
 
         const res = await fetchWithAbort(`/api/bookmarks?${params}`);
@@ -271,6 +274,7 @@ export function HomeDataProvider({
           return;
         }
         clientLogger.error({ error }, "Load more failed");
+        toast.error(error instanceof Error ? error.message : "加载失败");
       } finally {
         setIsLoadingMore(false);
       }
@@ -280,6 +284,8 @@ export function HomeDataProvider({
       hasMore,
       bookmarks,
       platform,
+      sort,
+      folder,
       fetchWithAbort,
       appendToCache,
     ],
@@ -314,24 +320,47 @@ export function HomeDataProvider({
     [mutate, refetch],
   );
 
-  const value: HomeDataContextValue = {
-    bookmarks: bookmarks || [],
-    isLoading,
-    isValidating,
-    isStale,
-    error: swrError?.message,
-    hasMore,
-    setBookmarks,
-    mutate: mutateWrapper,
-    refetch,
-    loadMore,
-    updateCacheItem,
-    removeCacheItem,
-    appendToCache,
-    setHasMore,
-    isLoadingMore,
-    setIsLoadingMore,
-  };
+  const safeBookmarks = bookmarks || [];
+  const errorMessage = swrError?.message;
+
+  const value: HomeDataContextValue = useMemo(
+    () => ({
+      bookmarks: safeBookmarks,
+      isLoading,
+      isValidating,
+      isStale,
+      error: errorMessage,
+      hasMore,
+      setBookmarks,
+      mutate: mutateWrapper,
+      refetch,
+      loadMore,
+      updateCacheItem,
+      removeCacheItem,
+      appendToCache,
+      setHasMore,
+      isLoadingMore,
+      setIsLoadingMore,
+    }),
+    [
+      safeBookmarks,
+      isLoading,
+      isValidating,
+      isStale,
+      errorMessage,
+      hasMore,
+      setBookmarks,
+      mutateWrapper,
+      refetch,
+      loadMore,
+      updateCacheItem,
+      removeCacheItem,
+      appendToCache,
+      setHasMore,
+      isLoadingMore,
+      setIsLoadingMore,
+    ],
+  );
 
   return (
     <HomeDataContext.Provider value={value}>

@@ -13,12 +13,7 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAbortableFetch } from "@/hooks/core";
 import { toast } from "sonner";
-import type { Bookmark } from "@/types/supabase";
-
-// 带文件夹信息的书签类型
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "../types";
 
 // ============================================================================
 // Hook 参数类型

@@ -10,11 +10,7 @@ import { useProcessingPoller } from "@/hooks/ui";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 import { DEFAULT_PAGE_SIZE } from "../constants";
-import type { Bookmark } from "@/types/supabase";
-
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "../types";
 
 interface UseHomeBookmarkDataOptions {
   currentPlatform: string;

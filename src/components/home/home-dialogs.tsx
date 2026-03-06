@@ -15,8 +15,8 @@
 
 import { lazy, Suspense, useTransition, memo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Bookmark } from "@/types/supabase";
 import { LazyErrorBoundary } from "@/components/ui/lazy-error-boundary";
+import type { BookmarkWithFolder } from "./types";
 
 // 懒加载 Dialog/Drawer 组件（按需显示，非首屏必需）
 const CreateBookmarkDrawer = lazy(() =>
@@ -48,11 +48,6 @@ const BrowserBookmarkImportDialog = lazy(() =>
 // ============================================================================
 // Props 类型定义
 // ============================================================================
-
-// 扩展的书签类型（包含文件夹信息）
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
 
 export interface HomeDialogsProps {
   // 对话框状态

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSelectionMode } from "@/hooks/core";
 import { useSnapshotFeature } from "@/components/snapshot";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
-import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
+import type { BookmarkWithFolder } from "./types";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
 import { useHomeMutations } from "./hooks/use-home-mutations";
 import { useHomeBatch } from "./hooks/use-home-batch";
@@ -20,7 +20,6 @@ import { HomeBookmarkList } from "./home-bookmark-list";
 import { HomeDialogsSection } from "./home-dialogs-section";
 import { SmartListView } from "@/components/smart-list";
 
-type BookmarkWithFolder = Bookmark & { folders?: { name: string } | null };
 interface HomePageClientProps {
   initialBookmarks?: BookmarkWithFolder[];
   error?: string;
@@ -101,6 +100,8 @@ export function HomePageClient({
     hasMore: bookmarkData.hasMore,
     viewMode,
     currentPlatform: urlSync.currentPlatform,
+    currentSort: urlSync.currentSort,
+    currentFolder: urlSync.currentFolder,
     appendToCache: bookmarkData.appendToCache,
   });
   const scrollContainerRef = useRef<HTMLDivElement>(null);

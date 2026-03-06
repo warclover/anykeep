@@ -11,18 +11,14 @@
 
 "use client";
 
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { HomePageProvider } from "@/contexts/home-page-context";
 import { HomeDataProvider } from "./providers/home-data-provider";
 import { HomeView } from "./home-view";
 import { SmartListView } from "@/components/smart-list";
-import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
-
-// 扩展的书签类型
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "./types";
 
 export interface HomePageClientLayeredProps {
   initialBookmarks?: BookmarkWithFolder[];
@@ -57,10 +53,11 @@ export function HomePageClientLayered({
   const urlUsageTags = searchParams?.get("usageTags") || "";
   const urlSort = searchParams?.get("sort") || "created_desc";
 
-  // 解析用途标签
-  const parsedUsageTags = urlUsageTags
-    ? urlUsageTags.split(",").filter(Boolean)
-    : [];
+  // 解析用途标签（缓存引用，避免每次渲染生成新数组触发子组件重渲染）
+  const parsedUsageTags = useMemo(
+    () => (urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : []),
+    [urlUsageTags],
+  );
 
   // 智能列表模式：直接渲染专用视图
   if (smartListId) {

@@ -116,10 +116,10 @@ class PageErrorBoundary extends Component<
 
 // ==================== 懒加载页面组件 ====================
 
-// 首页
+// 首页（使用分层架构版本）
 const HomePageClient = lazy(() =>
-  import("@/components/home/home-page-client").then((mod) => ({
-    default: mod.HomePageClient,
+  import("@/components/home/home-page-client-layered").then((mod) => ({
+    default: mod.HomePageClientLayered,
   })),
 );
 
@@ -316,6 +316,7 @@ function SearchPageRenderer() {
       initialQuery={initialQuery}
       initialAIMode={initialAIMode}
       searchResults={[]}
+      userId=""
     />
   );
 }

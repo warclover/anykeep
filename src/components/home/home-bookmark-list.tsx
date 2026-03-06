@@ -8,11 +8,7 @@ import { EmptyState } from "@/components/bookmark/empty-state";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { VirtualListSkeleton } from "./virtual-list-skeleton";
 import type { ViewMode, LayoutMode } from "./constants";
-import type { Bookmark } from "@/types/supabase";
-
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "./types";
 
 const VirtualBookmarkGrid = lazy(() =>
   import("@/components/bookmark/virtual-bookmark-grid").then((mod) => ({

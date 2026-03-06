@@ -4,12 +4,8 @@ import { lazy, Suspense } from "react";
 import { HomeDialogs } from "./home-dialogs";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
 import { SynthesisRecommendBubble } from "@/components/synthesis/synthesis-recommend-bubble";
-import type { Bookmark } from "@/types/supabase";
 import type { RecommendedTopic } from "@/lib/synthesis/types/recommend";
-
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "./types";
 
 const SynthesisConfirmDialog = lazy(() =>
   import("./synthesis-confirm-dialog").then((mod) => ({

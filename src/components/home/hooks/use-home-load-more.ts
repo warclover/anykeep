@@ -5,17 +5,15 @@ import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
 import { getPageSizeByView } from "../constants";
 import type { ViewMode } from "../constants";
-import type { Bookmark } from "@/types/supabase";
-
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { BookmarkWithFolder } from "../types";
 
 interface UseHomeLoadMoreOptions {
   bookmarks: BookmarkWithFolder[];
   hasMore: boolean;
   viewMode: ViewMode;
   currentPlatform: string;
+  currentSort?: string;
+  currentFolder?: string;
   appendToCache: (items: BookmarkWithFolder[], hasMore: boolean) => void;
 }
 
@@ -24,13 +22,15 @@ export function useHomeLoadMore({
   hasMore,
   viewMode,
   currentPlatform,
+  currentSort,
+  currentFolder,
   appendToCache,
 }: UseHomeLoadMoreOptions) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { fetchWithAbort } = useAbortableFetch();
 
   const handleLoadMore = async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || bookmarks.length === 0) return;
 
     setIsLoadingMore(true);
     try {
@@ -42,6 +42,12 @@ export function useHomeLoadMore({
 
       if (currentPlatform) {
         params.append("platform", currentPlatform);
+      }
+      if (currentSort) {
+        params.append("sort", currentSort);
+      }
+      if (currentFolder) {
+        params.append("folder", currentFolder);
       }
 
       const res = await fetchWithAbort(`/api/bookmarks?${params}`);

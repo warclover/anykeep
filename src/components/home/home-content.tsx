@@ -25,19 +25,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { ErrorMessage } from "@/components/ui/error-message";
-import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
+import {
+  SilentErrorBoundary,
+  LazyErrorBoundary,
+} from "@/components/ui/lazy-error-boundary";
 import { VirtualListSkeleton } from "./virtual-list-skeleton";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { EmptyState } from "@/components/bookmark/empty-state";
 import { useHomePageContext } from "@/contexts/home-page-context";
 import { useHomeData } from "./providers/home-data-provider";
-import type { ViewMode, LayoutMode } from "./types";
-import type { Bookmark } from "@/types/supabase";
-
-// 扩展的书签类型（包含文件夹信息）
-type BookmarkWithFolder = Bookmark & {
-  folders?: { name: string } | null;
-};
+import type { ViewMode, LayoutMode, BookmarkWithFolder } from "./types";
 
 // ============================================================================
 // 懒加载组件（性能优化）
@@ -498,8 +495,10 @@ export const HomeContent = memo(function HomeContent({
         userSettings={userSettings}
       />
 
-      {/* 内容区 */}
-      {renderContent()}
+      {/* 内容区（Error Boundary 防止渲染异常导致白屏） */}
+      <LazyErrorBoundary errorMessage="书签列表加载异常">
+        {renderContent()}
+      </LazyErrorBoundary>
     </div>
   );
 });

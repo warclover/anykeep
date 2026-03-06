@@ -17,6 +17,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   lazy,
   Suspense,
   useMemo,
@@ -28,7 +29,7 @@ import { useHomeData } from "./providers/home-data-provider";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
 import { useHomeMutations } from "./hooks/use-home-mutations";
 import { useHomeBatch } from "./hooks/use-home-batch";
-import { useDialogs, useSelectionMode } from "@/hooks/core";
+import { useDialogs, useSelectionMode, useAbortableFetch } from "@/hooks/core";
 import { useClassificationPolling } from "@/hooks/ui";
 import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
@@ -86,10 +87,11 @@ export interface HomeViewProps {
 export function HomeView({ initialError, userSettings }: HomeViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { fetchWithAbort } = useAbortableFetch();
 
   // ========== Context 状态 ==========
   const homeContext = useHomePageContext();
-  const { bookmarks, refetch, updateCacheItem, removeCacheItem } =
+  const { bookmarks, refetch, updateCacheItem, removeCacheItem, setBookmarks } =
     useHomeData();
 
   // ========== URL 参数同步 ==========
@@ -178,10 +180,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
     handleEdit,
   } = useHomeMutations({
     getBookmarks: () => bookmarks,
-    setBookmarks: (_updater) => {
-      // 由 SWR 管理，不需要手动设置
-      // 乐观更新通过 updateCacheItem 实现
-    },
+    setBookmarks,
     updateCacheItem,
     removeCacheItem,
   });
@@ -194,9 +193,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
     handleBatchCreateSnapshot,
   } = useHomeBatch({
     getBookmarks: () => bookmarks,
-    setBookmarks: (_updater) => {
-      // 由 SWR 管理
-    },
+    setBookmarks,
     removeCacheItem,
     selectedIds,
     exitSelectionMode,
@@ -294,12 +291,19 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
     openMoveDialog,
   ]);
 
-  // 响应选择模式切换
+  // 响应选择模式切换（使用 ref 防止循环触发）
+  const prevContextSelectionModeRef = useRef(
+    homeContext.selection.isSelectionMode,
+  );
   useEffect(() => {
     const contextSelectionMode = homeContext.selection.isSelectionMode;
-    if (contextSelectionMode !== isSelectionMode) {
+    if (
+      contextSelectionMode !== prevContextSelectionModeRef.current &&
+      contextSelectionMode !== isSelectionMode
+    ) {
       toggleSelectionMode();
     }
+    prevContextSelectionModeRef.current = contextSelectionMode;
   }, [
     homeContext.selection.isSelectionMode,
     isSelectionMode,
@@ -311,7 +315,8 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
   // 平台切换
   const handlePlatformChange = useCallback(
     (platformValue: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      // 在回调内部读取最新 searchParams，避免将 searchParams 对象作为依赖
+      const params = new URLSearchParams(window.location.search);
       if (platformValue) {
         params.set("platform", platformValue);
       } else {
@@ -319,17 +324,18 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       }
       router.replace(`/home?${params.toString()}`);
     },
-    [searchParams, router],
+    [router],
   );
 
   // 排序切换
   const handleSortChange = useCallback(
     (sortValue: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      // 在回调内部读取最新 searchParams，避免将 searchParams 对象作为依赖
+      const params = new URLSearchParams(window.location.search);
       params.set("sort", sortValue);
       router.replace(`/home?${params.toString()}`);
     },
-    [searchParams, router],
+    [router],
   );
 
   // 批量移动成功回调
@@ -362,7 +368,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
 
     setIsCreatingSynthesis(true);
     try {
-      const response = await fetch("/api/synthesis", {
+      const response = await fetchWithAbort("/api/synthesis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -377,32 +383,40 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       }
 
       const { data } = await response.json();
+      // 先清理状态再跳转，避免跳转后组件卸载时 setState 警告
+      setIsCreatingSynthesis(false);
+      setShowSynthesisDialog(false);
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       clientLogger.error({ error }, "Create synthesis error:");
       toast.error("创建综述失败");
-    } finally {
       setIsCreatingSynthesis(false);
       setShowSynthesisDialog(false);
     }
-  }, [selectedIds, router]);
+  }, [selectedIds, router, fetchWithAbort]);
 
   // 清空垃圾箱
   const handleEmptyTrash = useCallback(async () => {
     try {
-      const res = await fetch("/api/trash/empty", { method: "POST" });
+      const res = await fetchWithAbort("/api/trash/empty", { method: "POST" });
 
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error?.message || "清空垃圾箱失败");
       }
 
-      refetch();
+      await refetch();
       toast.success("垃圾箱已清空");
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "清空垃圾箱失败");
     }
-  }, [refetch]);
+  }, [refetch, fetchWithAbort]);
 
   // 重试
   const handleRetry = useCallback(() => {
