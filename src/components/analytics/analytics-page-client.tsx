@@ -43,217 +43,26 @@ import {
   FolderOpen,
   Download,
   Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
   Zap,
 } from "lucide-react";
 import { ClassificationHistoryCard } from "./classification-history-card";
 import { useRouter } from "next/navigation";
-import type { AnalyticsData, TimeComparison } from "@/lib/analytics";
+import type { AnalyticsData } from "@/lib/analytics";
+import {
+  DATE_RANGE_OPTIONS,
+  FOLDER_COLORS,
+  formatSkillName,
+  type DateRange,
+} from "./analytics-constants";
+import {
+  CustomTooltip,
+  CustomPieTooltip,
+  StatCard,
+} from "./analytics-components";
 
 interface AnalyticsPageClientProps {
   data: AnalyticsData;
   error?: string;
-}
-
-// 时间范围选项
-type DateRange = "7" | "14" | "30";
-
-const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
-  { value: "7", label: "最近 7 天" },
-  { value: "14", label: "最近 14 天" },
-  { value: "30", label: "最近 30 天" },
-];
-
-// 文件夹颜色
-const FOLDER_COLORS = [
-  "#8b5cf6",
-  "#06b6d4",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#ec4899",
-  "#6366f1",
-  "#84cc16",
-];
-
-// Skill 名称映射
-const SKILL_NAME_MAP: Record<string, string> = {
-  knowledge_review: "知识回顾",
-  data_export: "数据导出",
-  insight_report: "洞察报告",
-  batch_organize: "智能整理",
-  search: "智能搜索",
-  classify: "智能分类",
-  tag: "标签生成",
-  summary: "摘要生成",
-};
-
-/**
- * 格式化 Skill ID 为可读名称
- */
-function formatSkillName(skillId: string): string {
-  // 优先使用映射表
-  if (SKILL_NAME_MAP[skillId]) {
-    return SKILL_NAME_MAP[skillId];
-  }
-  // 将 snake_case 转换为可读格式
-  return skillId
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-// Tooltip 类型定义
-interface TooltipPayload {
-  value: number;
-  payload: {
-    date: string;
-    count: number;
-  };
-}
-
-interface TooltipProps {
-  active?: boolean;
-  payload?: TooltipPayload[];
-}
-
-interface PieTooltipPayload {
-  name: string;
-  value: number;
-}
-
-interface PieTooltipProps {
-  active?: boolean;
-  payload?: PieTooltipPayload[];
-}
-
-// 自定义 Tooltip 组件
-function CustomTooltip({
-  active,
-  payload,
-  formatDate,
-}: TooltipProps & { formatDate: (d: string) => string }) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {formatDate(payload[0].payload.date)}
-        </p>
-        <p className="text-base font-semibold text-gray-900 dark:text-white">
-          {payload[0].value} 篇收藏
-        </p>
-      </div>
-    );
-  }
-  return null;
-}
-
-function CustomPieTooltip({
-  active,
-  payload,
-  totalBookmarks,
-}: PieTooltipProps & { totalBookmarks: number }) {
-  if (active && payload && payload.length) {
-    const percentage = ((payload[0].value / totalBookmarks) * 100).toFixed(1);
-    return (
-      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">
-          {payload[0].name}
-        </p>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {payload[0].value} 篇 ({percentage}%)
-        </p>
-      </div>
-    );
-  }
-  return null;
-}
-
-// 趋势指示器组件
-function TrendIndicator({ comparison }: { comparison: TimeComparison }) {
-  const { changePercent, trend } = comparison;
-
-  if (trend === "flat") {
-    return (
-      <span className="flex items-center text-xs text-gray-500">
-        <Minus className="size-3 mr-0.5" />
-        持平
-      </span>
-    );
-  }
-
-  const isUp = trend === "up";
-  return (
-    <span
-      className={`flex items-center text-xs ${
-        isUp
-          ? "text-green-600 dark:text-green-400"
-          : "text-red-600 dark:text-red-400"
-      }`}
-    >
-      {isUp ? (
-        <ArrowUpRight className="size-3 mr-0.5" />
-      ) : (
-        <ArrowDownRight className="size-3 mr-0.5" />
-      )}
-      {Math.abs(changePercent).toFixed(1)}%
-    </span>
-  );
-}
-
-// 统计卡片组件（带对比）
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  iconBgClass,
-  iconClass,
-  comparison,
-  comparisonLabel,
-}: {
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  iconBgClass: string;
-  iconClass: string;
-  comparison?: TimeComparison;
-  comparisonLabel?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="py-1 px-4 sm:py-1 sm:px-5">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div
-            className={`w-10 h-10 sm:w-12 sm:h-12 ${iconBgClass} rounded-lg flex items-center justify-center`}
-          >
-            <Icon className={`size-5 sm:size-6 ${iconClass}`} />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              {title}
-            </p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                {value}
-              </p>
-              {comparison && (
-                <div className="flex flex-col">
-                  <TrendIndicator comparison={comparison} />
-                  {comparisonLabel && (
-                    <span className="text-[10px] text-gray-400">
-                      {comparisonLabel}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export function AnalyticsPageClient({ data, error }: AnalyticsPageClientProps) {

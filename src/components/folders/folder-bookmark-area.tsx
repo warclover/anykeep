@@ -24,11 +24,8 @@ import {
   Search,
   SortAsc,
   LayoutGrid,
-  List,
-  ListCollapse,
   Plus,
   Loader2,
-  FolderOpen,
   CheckSquare,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,18 +44,22 @@ import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
 import { useAbortableFetch } from "@/hooks/core";
-import { FOLDER_GROUPS, getCategoryEmoji } from "./constants";
 import type {
   FolderSelection,
   FolderWithStats,
   BookmarkWithFolder,
 } from "./types";
 import type { FolderCategory } from "@/types/domain";
+import {
+  SORT_OPTIONS,
+  VIEW_OPTIONS,
+  getSelectionInfo,
+  type SortOption,
+  type ViewMode,
+} from "./folder-bookmark-constants";
+import { FolderBookmarkEmpty } from "./folder-bookmark-empty";
 
 // ==================== 类型定义 ====================
-
-type SortOption = "created" | "title" | "updated";
-type ViewMode = "card" | "list" | "compact";
 
 interface FolderBookmarkAreaProps {
   /** 当前选择状态 */
@@ -110,99 +111,8 @@ interface FolderBookmarkAreaProps {
   className?: string;
 }
 
-// ==================== 排序配置 ====================
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "created", label: "添加时间" },
-  { value: "title", label: "标题" },
-  { value: "updated", label: "更新时间" },
-];
-
-const VIEW_OPTIONS: {
-  value: ViewMode;
-  label: string;
-  icon: typeof LayoutGrid;
-}[] = [
-  { value: "card", label: "卡片", icon: LayoutGrid },
-  { value: "list", label: "列表", icon: List },
-  { value: "compact", label: "紧凑", icon: ListCollapse },
-];
-
-// ==================== 工具函数 ====================
-
-/** 导出供页面工具栏使用 */
-export function getSelectionInfo(
-  selection: FolderSelection,
-  folders: FolderWithStats[],
-  categories: FolderCategory[] = [],
-): {
-  title: string;
-  titleEmoji: string | null;
-  icon: typeof FolderOpen;
-  colors: { gradient: { from: string; to: string } };
-  categoryColor: string | null;
-  bookmarkCount: number;
-} {
-  switch (selection.type) {
-    case "category": {
-      const category = categories.find((c) => c.id === selection.categoryId);
-      const catFolders = folders.filter(
-        (f) =>
-          !f.is_archived &&
-          !f.is_system &&
-          f.category_id === selection.categoryId,
-      );
-      const bookmarkCount = catFolders.reduce(
-        (sum, f) => sum + (f.bookmark_count || 0),
-        0,
-      );
-      return {
-        title: category?.name || "未知栏目",
-        titleEmoji: getCategoryEmoji(category?.icon),
-        icon: FolderOpen,
-        colors: FOLDER_GROUPS.other.colors,
-        categoryColor: category?.color || null,
-        bookmarkCount,
-      };
-    }
-    case "group": {
-      const config = FOLDER_GROUPS[selection.groupId];
-      const groupFolders = folders.filter(
-        (f) =>
-          !f.is_archived &&
-          !f.is_system &&
-          (f.folder_group || "other") === selection.groupId,
-      );
-      const bookmarkCount = groupFolders.reduce(
-        (sum, f) => sum + (f.bookmark_count || 0),
-        0,
-      );
-      return {
-        title: config?.label || "未知分组",
-        titleEmoji: null,
-        icon: config?.icon || FolderOpen,
-        colors: config?.colors || FOLDER_GROUPS.other.colors,
-        categoryColor: null,
-        bookmarkCount,
-      };
-    }
-    case "folder":
-    case "system": {
-      const folder = folders.find((f) => f.id === selection.folderId);
-      return {
-        title: folder?.name || "未知文件夹",
-        titleEmoji: null,
-        icon: FolderOpen,
-        colors: folder?.is_system
-          ? FOLDER_GROUPS.default.colors
-          : FOLDER_GROUPS[folder?.folder_group || "other"]?.colors ||
-            FOLDER_GROUPS.other.colors,
-        categoryColor: null,
-        bookmarkCount: folder?.bookmark_count || 0,
-      };
-    }
-  }
-}
+// Re-export for external consumers
+export { getSelectionInfo } from "./folder-bookmark-constants";
 
 // ==================== 主组件 ====================
 
@@ -738,54 +648,6 @@ export function FolderBookmarkArea({
         selectedIds={singleMoveIds}
         onSuccess={handleSingleMoveSuccess}
       />
-    </div>
-  );
-}
-
-// ==================== 空状态组件 ====================
-
-interface FolderBookmarkEmptyProps {
-  hasSearch: boolean;
-  selectionTitle: string;
-  selectionType?: FolderSelection["type"];
-  onCreateBookmark?: () => void;
-}
-
-function FolderBookmarkEmpty({
-  hasSearch,
-  selectionTitle,
-  selectionType,
-  onCreateBookmark,
-}: FolderBookmarkEmptyProps) {
-  if (hasSearch) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <Search className="size-12 mb-4 opacity-50" />
-        <p className="text-sm">没有找到匹配的书签</p>
-        <p className="text-xs mt-1">尝试使用不同的关键词搜索</p>
-      </div>
-    );
-  }
-
-  // 栏目下没有文件夹或文件夹为空时，给出区分提示
-  const isCategory = selectionType === "category" || selectionType === "group";
-  const hint = isCategory
-    ? "在此栏目下创建文件夹并添加收藏"
-    : "添加第一个收藏开始整理吧";
-
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-      <FolderOpen className="size-12 mb-4 opacity-50" />
-      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        「{selectionTitle}」暂无收藏
-      </p>
-      <p className="text-xs mt-1">{hint}</p>
-      {onCreateBookmark && (
-        <Button size="sm" className="mt-4" onClick={onCreateBookmark}>
-          <Plus className="size-4 mr-1" />
-          添加收藏
-        </Button>
-      )}
     </div>
   );
 }

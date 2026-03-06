@@ -36,8 +36,6 @@ import {
   Highlighter,
   Copy,
   Check,
-  Scissors,
-  Loader2,
   FileCode,
   FileJson,
 } from "lucide-react";
@@ -50,25 +48,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useSynthesisDetail } from "@/hooks/synthesis/use-synthesis-detail";
 import { useSynthesisHighlights } from "@/hooks/synthesis/use-synthesis-highlights";
 import { SynthesisShareDialog } from "./synthesis-share-dialog";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
 import { SynthesisQAPanel } from "./synthesis-qa-panel";
+import { useSynthesisCondense } from "./use-synthesis-condense";
+import { CondenseDialog } from "./synthesis-condense-dialog";
 import { SaveToNoteButton } from "@/components/shared/save-to-note";
-import {
-  CONDENSE_PRESETS,
-  type CondensePreset,
-} from "@/lib/knowledge-studio/refinement";
 
 // 拆分后的组件
 import {
@@ -234,12 +221,6 @@ export function SynthesisDetailPageClient({
     }
   }, [report?.fullMarkdown]);
 
-  // Phase 3.2: 精简状态
-  const [condenseDialogOpen, setCondenseDialogOpen] = useState(false);
-  const [isCondensing, setIsCondensing] = useState(false);
-  const [condenseProgress, setCondenseProgress] = useState(0);
-  const [condensedPreview, setCondensedPreview] = useState<string>("");
-
   // 判断是否为知识工坊报告
   const isKnowledgeStudioReport = useMemo(() => {
     if (!report) return false;
@@ -330,6 +311,20 @@ export function SynthesisDetailPageClient({
     [report, refetch],
   );
 
+  // Phase 3.2: 精简功能
+  const {
+    condenseDialogOpen,
+    setCondenseDialogOpen,
+    isCondensing,
+    condenseProgress,
+    condensedPreview,
+    handleCondense,
+  } = useSynthesisCondense({
+    content: report?.fullMarkdown || report?.overview || "",
+    wordCount,
+    onReportUpdate: handleReportUpdate,
+  });
+
   // 处理导出
   const handleExport = useCallback(
     (format: KSExportFormat) => {
@@ -346,124 +341,6 @@ export function SynthesisDetailPageClient({
       }
     },
     [ksReport],
-  );
-
-  // Phase 3.2: 处理精简（走服务端 API，以便使用 process.env 的 API Key）
-  const handleCondense = useCallback(
-    async (preset: CondensePreset) => {
-      const targetWords = CONDENSE_PRESETS[preset].targetWords;
-      const content = report?.fullMarkdown || report?.overview || "";
-
-      if (!content) {
-        toast.error("暂无可精简的内容");
-        return;
-      }
-
-      if (wordCount <= targetWords * 1.1) {
-        toast.info("当前内容已低于目标字数，无需精简");
-        return;
-      }
-
-      setIsCondensing(true);
-      setCondenseProgress(0);
-      setCondensedPreview("");
-
-      try {
-        const res = await fetch("/api/knowledge-studio/v2/condense", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content,
-            targetWords,
-            preset,
-            contentType: "article",
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          const msg = data?.error?.message || `请求失败: ${res.status}`;
-          toast.error(`精简失败: ${msg}`);
-          setIsCondensing(false);
-          return;
-        }
-
-        if (res.headers.get("content-type")?.includes("application/json")) {
-          const data = await res.json();
-          if (data.condensedContent != null) {
-            handleReportUpdate(data.condensedContent);
-            setCondenseDialogOpen(false);
-            toast.success("内容已在目标字数范围内，无需精简");
-          }
-          setIsCondensing(false);
-          return;
-        }
-
-        let accumulated = "";
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        if (!reader) {
-          toast.error("精简失败: 无法读取响应");
-          setIsCondensing(false);
-          return;
-        }
-
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const payload = JSON.parse(line.slice(6)) as {
-                type: string;
-                text?: string;
-                percent?: number;
-                originalWords?: number;
-                finalWords?: number;
-                compressionRatio?: number;
-                message?: string;
-              };
-              if (payload.type === "content" && payload.text != null) {
-                accumulated += payload.text;
-                setCondensedPreview(accumulated);
-              } else if (
-                payload.type === "progress" &&
-                payload.percent != null
-              ) {
-                setCondenseProgress(payload.percent);
-              } else if (payload.type === "done") {
-                setIsCondensing(false);
-                handleReportUpdate(accumulated);
-                setCondenseDialogOpen(false);
-                const ratio = payload.compressionRatio ?? 0;
-                toast.success(
-                  `已精简至 ${(payload.finalWords ?? 0).toLocaleString()} 字（压缩 ${Math.round((1 - ratio) * 100)}%）`,
-                );
-                return;
-              } else if (payload.type === "error") {
-                setIsCondensing(false);
-                toast.error(`精简失败: ${payload.message ?? "未知错误"}`);
-                return;
-              }
-            } catch {
-              // 忽略非 JSON 行
-            }
-          }
-        }
-        setIsCondensing(false);
-      } catch (err) {
-        clientLogger.error({ err }, "Condense API request failed");
-        setIsCondensing(false);
-        toast.error(
-          `精简失败: ${err instanceof Error ? err.message : "网络错误"}`,
-        );
-      }
-    },
-    [report, wordCount, handleReportUpdate],
   );
 
   if (isLoading) {
@@ -531,74 +408,15 @@ export function SynthesisDetailPageClient({
           {/* 精简按钮 */}
           {report.status === "completed" &&
             (report.fullMarkdown || report.overview) && (
-              <Dialog
+              <CondenseDialog
                 open={condenseDialogOpen}
                 onOpenChange={setCondenseDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Scissors className="mr-2 h-4 w-4" />
-                    精简
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>一键精简内容</DialogTitle>
-                    <DialogDescription>
-                      当前字数：{wordCount.toLocaleString()}{" "}
-                      字，选择目标字数进行精简
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3 py-4">
-                    {isCondensing ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">正在精简...</span>
-                        </div>
-                        <Progress value={condenseProgress} className="h-2" />
-                        {condensedPreview && (
-                          <div className="max-h-[200px] overflow-y-auto rounded border p-3 text-sm">
-                            <pre className="whitespace-pre-wrap">
-                              {condensedPreview.slice(0, 500)}...
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid gap-2">
-                        {(
-                          Object.keys(CONDENSE_PRESETS) as CondensePreset[]
-                        ).map((preset) => {
-                          const config = CONDENSE_PRESETS[preset];
-                          const isDisabled =
-                            wordCount <= config.targetWords * 1.1;
-                          return (
-                            <Button
-                              key={preset}
-                              variant="outline"
-                              className="justify-start h-auto py-3"
-                              disabled={isDisabled}
-                              onClick={() => handleCondense(preset)}
-                            >
-                              <div className="flex flex-col items-start">
-                                <span className="font-medium">
-                                  {config.label}（约{" "}
-                                  {config.targetWords.toLocaleString()} 字）
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {config.description}
-                                  {isDisabled && " · 已低于目标字数"}
-                                </span>
-                              </div>
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                wordCount={wordCount}
+                isCondensing={isCondensing}
+                condenseProgress={condenseProgress}
+                condensedPreview={condensedPreview}
+                onCondense={handleCondense}
+              />
             )}
           {/* 保存到笔记按钮 */}
           {report.status === "completed" &&
