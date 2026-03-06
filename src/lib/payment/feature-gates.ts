@@ -33,7 +33,6 @@ export const FEATURE_GATES = {
 
   // TTS 语音
   tts: { free: false, pro: true, pro_plus: true, lifetime: true },
-  "audio-library": { free: false, pro: true, pro_plus: true, lifetime: true },
 
   // 数据分析
   "advanced-analytics": {
@@ -130,7 +129,7 @@ export const FEATURE_CATEGORIES = {
     "ai-calls-daily-limit",
     "synthesis-monthly",
   ],
-  tts: ["tts", "audio-library", "tts-hours-monthly"],
+  tts: ["tts", "tts-hours-monthly"],
   analytics: [
     "advanced-analytics",
     "link-monitor-auto",
@@ -245,7 +244,6 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   "brain-sync": "Brain-Sync 复习",
   librarian: "智能管理员",
   tts: "TTS 语音朗读",
-  "audio-library": "音频库",
   "advanced-analytics": "高级数据分析",
   "link-monitor-auto": "自动链接监控",
   "export-csv": "CSV 导出",

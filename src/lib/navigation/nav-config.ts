@@ -25,7 +25,6 @@ import {
   Sparkles,
   Gauge,
   Zap,
-  Volume2,
   Download,
   Share2,
   LinkIcon,
@@ -112,11 +111,6 @@ const myContentGroup: NavGroupConfig = {
       href: "/md-collections",
       icon: FileText,
       description: "mobileMenu.markdownNotes",
-    },
-    {
-      name: "nav.myAudio",
-      href: "/audio-library",
-      icon: Volume2,
     },
   ],
 };
