@@ -276,7 +276,8 @@ export function DeleteFolderDialog({
                         删除全部收藏
                       </Label>
                       <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">
-                        ⚠️ 将永久删除 {bookmarkCount} 条收藏，此操作不可恢复
+                        将删除 {bookmarkCount}{" "}
+                        条收藏（移至回收站），文件夹将被删除
                       </p>
                     </div>
                   </div>
@@ -317,8 +318,8 @@ export function DeleteFolderDialog({
               <div className="text-sm text-red-700 dark:text-red-300">
                 {hasBookmarks ? (
                   <p>
-                    即将删除文件夹「{folder.name}」及其{" "}
-                    <strong>{bookmarkCount}</strong> 条收藏，此操作不可撤销！
+                    即将删除文件夹「{folder.name}」，其中{" "}
+                    <strong>{bookmarkCount}</strong> 条收藏将移至回收站
                   </p>
                 ) : (
                   <p>此操作不可撤销</p>

@@ -21,6 +21,7 @@ import {
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import type { FolderWithStats, FolderCategory } from "@/types/domain";
+import type { Folder } from "@/types/supabase";
 import { ensureDefaultCategories } from "@/lib/folder/category-defaults";
 import type { Bookmark } from "@/types/supabase";
 
@@ -182,7 +183,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 构建带统计的文件夹列表
-    const folders = foldersResult.data || [];
+    // 使用 Folder 类型（包含 category_id 扩展字段）
+    const folders = (foldersResult.data || []) as unknown as Folder[];
 
     // 分离系统文件夹和普通文件夹
     const systemFolders = folders.filter((f) => f.is_system);
@@ -217,9 +219,7 @@ export async function GET(request: NextRequest) {
       bookmark_count: countMap.get(folder.id) || 0,
       today_count: todayCountMap.get(folder.id) || 0,
       // 栏目字段
-      category_id:
-        ((folder as Record<string, unknown>).category_id as number | null) ??
-        null,
+      category_id: folder.category_id ?? null,
     }));
 
     monitor.mark("Aggregation", {

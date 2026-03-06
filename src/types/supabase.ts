@@ -293,8 +293,14 @@ export type BookmarkWithSnapshot = Bookmark & {
   last_snapshot_at?: string | null;
 };
 
-/** Folder 行类型 */
-export type Folder = Database["public"]["Tables"]["folders"]["Row"];
+/**
+ * Folder 行类型
+ * 注意：category_id 已通过数据库迁移添加，但未重新生成类型文件，
+ * 因此在此扩展以保证类型安全（避免各处使用 Record<string, unknown> 断言）
+ */
+export type Folder = Database["public"]["Tables"]["folders"]["Row"] & {
+  category_id?: number | null;
+};
 /** Folder 插入类型 */
 export type FolderInsert = Database["public"]["Tables"]["folders"]["Insert"];
 /** Folder 更新类型 */

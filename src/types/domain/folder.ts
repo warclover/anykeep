@@ -81,6 +81,8 @@ export interface FolderWithStats {
  * 用于类型断言
  */
 export interface FolderWithStatsDbRow extends FolderRow {
+  /** 栏目 ID（数据库迁移后新增，生成类型尚未包含） */
+  category_id?: number | null;
   bookmark_count?: number;
   today_count?: number;
 }
@@ -105,10 +107,7 @@ export function toFolderWithStats(row: FolderWithStatsDbRow): FolderWithStats {
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
     folder_group: row.folder_group,
-    category_id:
-      ((row as unknown as Record<string, unknown>).category_id as
-        | number
-        | null) ?? null,
+    category_id: row.category_id ?? null,
     sort_order: row.sort_order,
     source: row.source,
     system_type: row.system_type,

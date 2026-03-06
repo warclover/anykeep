@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import { useUser } from "@/contexts/user-context";
@@ -34,6 +34,17 @@ export function useFolderOptimisticUpdates({
   const [localFolders, setLocalFolders] = useState(initialFolders);
   const [localCategories, setLocalCategories] =
     useState<FolderCategory[]>(initialCategories);
+
+  // Ref 跟踪最新值，避免 useCallback 闭包过期问题
+  const localFoldersRef = useRef(localFolders);
+  const localCategoriesRef = useRef(localCategories);
+  useEffect(() => {
+    localFoldersRef.current = localFolders;
+  }, [localFolders]);
+  useEffect(() => {
+    localCategoriesRef.current = localCategories;
+  }, [localCategories]);
+
   const [lockStatusMap, setLockStatusMap] = useState<LockStatusMap>(() => {
     const map: LockStatusMap = {};
     for (const folder of initialFolders) {
@@ -103,9 +114,7 @@ export function useFolderOptimisticUpdates({
       is_ai_generated: newFolder.is_ai_generated ?? null,
       is_naming_pending: newFolder.is_naming_pending ?? null,
       origin_bookmark_ids: newFolder.origin_bookmark_ids ?? null,
-      category_id:
-        ((newFolder as Record<string, unknown>).category_id as number | null) ??
-        null,
+      category_id: newFolder.category_id ?? null,
       bookmark_count: 0,
       today_count: 0,
       is_locked: false,
@@ -131,13 +140,18 @@ export function useFolderOptimisticUpdates({
         (selection.type === "folder" || selection.type === "system") &&
         selection.folderId === deletedFolderId
       ) {
-        const remaining = localFolders.filter((f) => f.id !== deletedFolderId);
-        setSelection(getDefaultSelection(remaining, localCategories));
+        // 使用 ref 获取最新值，避免闭包过期
+        const remaining = localFoldersRef.current.filter(
+          (f) => f.id !== deletedFolderId,
+        );
+        setSelection(
+          getDefaultSelection(remaining, localCategoriesRef.current),
+        );
       }
 
       router.refresh();
     },
-    [router, selection, localFolders, localCategories, setSelection],
+    [router, selection, setSelection],
   );
 
   const handleFolderRenamed = useCallback(
@@ -193,13 +207,16 @@ export function useFolderOptimisticUpdates({
         selection?.type === "category" &&
         selection.categoryId === categoryId
       ) {
-        const remainingCats = localCategories.filter(
+        // 使用 ref 获取最新值，避免闭包过期
+        const remainingCats = localCategoriesRef.current.filter(
           (c) => c.id !== categoryId,
         );
-        setSelection(getDefaultSelection(localFolders, remainingCats));
+        setSelection(
+          getDefaultSelection(localFoldersRef.current, remainingCats),
+        );
       }
     },
-    [selection, localFolders, localCategories, setSelection],
+    [selection, setSelection],
   );
 
   const handleCategoryRenamed = useCallback(

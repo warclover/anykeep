@@ -158,15 +158,14 @@ export function FolderDropProvider({
     [moveBookmark],
   );
 
-  // 拖拽取消
+  // 拖拽取消（仅在悬停在目标文件夹上时才提示，避免误触产生多余 toast）
   const handleDragCancel = useCallback(() => {
-    // 只有正在拖拽时才显示取消提示
-    if (draggedBookmark) {
+    if (draggedBookmark && activeDropFolderId !== null) {
       toast.info("已取消移动", { duration: 1500 });
     }
     setDraggedBookmark(null);
     setActiveDropFolderId(null);
-  }, [draggedBookmark]);
+  }, [draggedBookmark, activeDropFolderId]);
 
   const contextValue: FolderDropContextValue = {
     draggedBookmark,

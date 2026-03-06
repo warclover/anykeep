@@ -14,8 +14,12 @@ import {
   useDeferredValue,
   useRef,
   useEffect,
-  useLayoutEffect,
+  useLayoutEffect as useReactLayoutEffect,
 } from "react";
+
+// SSR 兼容：服务端渲染时降级为 useEffect，避免 React 警告
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useReactLayoutEffect : useEffect;
 import {
   Search,
   SortAsc,
@@ -261,10 +265,12 @@ export function FolderBookmarkArea({
     ? (setViewModeProp ?? (() => {}))
     : setInternalViewMode;
 
-  // 持久化视图模式
+  // 持久化视图模式（仅在内部管理模式下写入，避免与外部 toolbar hook 重复写入）
   useEffect(() => {
-    localStorage.setItem("folder-bookmark-view-mode", viewMode);
-  }, [viewMode]);
+    if (!isToolbarExternal) {
+      localStorage.setItem("folder-bookmark-view-mode", viewMode);
+    }
+  }, [viewMode, isToolbarExternal]);
 
   // 滚动容器引用（useLayoutEffect 同步执行，确保 Virtuoso 挂载时滚动父元素已就绪）
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +278,7 @@ export function FolderBookmarkArea({
 
   // 使用 ResizeObserver 确保容器有有效高度后再设置 scrollParent
   // 这避免了 Virtuoso 在容器高度为 0 时初始化导致的 "Zero-sized element" 警告
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -673,6 +679,7 @@ export function FolderBookmarkArea({
           <FolderBookmarkEmpty
             hasSearch={!!searchQuery}
             selectionTitle={selectionInfo.title}
+            selectionType={selection.type}
             onCreateBookmark={onCreateBookmark}
           />
         ) : !scrollParent ? (
@@ -740,12 +747,14 @@ export function FolderBookmarkArea({
 interface FolderBookmarkEmptyProps {
   hasSearch: boolean;
   selectionTitle: string;
+  selectionType?: FolderSelection["type"];
   onCreateBookmark?: () => void;
 }
 
 function FolderBookmarkEmpty({
   hasSearch,
   selectionTitle,
+  selectionType,
   onCreateBookmark,
 }: FolderBookmarkEmptyProps) {
   if (hasSearch) {
@@ -758,13 +767,19 @@ function FolderBookmarkEmpty({
     );
   }
 
+  // 栏目下没有文件夹或文件夹为空时，给出区分提示
+  const isCategory = selectionType === "category" || selectionType === "group";
+  const hint = isCategory
+    ? "在此栏目下创建文件夹并添加收藏"
+    : "添加第一个收藏开始整理吧";
+
   return (
     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
       <FolderOpen className="size-12 mb-4 opacity-50" />
       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
         「{selectionTitle}」暂无收藏
       </p>
-      <p className="text-xs mt-1">添加第一个收藏开始整理吧</p>
+      <p className="text-xs mt-1">{hint}</p>
       {onCreateBookmark && (
         <Button size="sm" className="mt-4" onClick={onCreateBookmark}>
           <Plus className="size-4 mr-1" />

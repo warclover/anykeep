@@ -701,6 +701,18 @@ export function FolderNavPanel({
                         onClick={() => onSelectFolder(folder.id)}
                         folderColor={folder.color}
                         folderIcon={folder.icon}
+                        actionMenu={
+                          <FolderActionMenu
+                            folder={folder}
+                            allFolders={folders}
+                            categories={categories}
+                            initialLockStatus={lockStatusMap[folder.id]}
+                            onFolderDeleted={onFolderDeleted}
+                            onFolderRenamed={onFolderRenamed}
+                            onFolderMerged={onFolderMerged}
+                            onFolderCategoryChanged={onFolderCategoryChanged}
+                          />
+                        }
                       />
                     ))}
                   </div>

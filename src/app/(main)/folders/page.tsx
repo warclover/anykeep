@@ -42,8 +42,10 @@ export default async function FoldersPage() {
   if (folders && folders.length > 0) {
     const folderIds = folders.map((f) => f.id);
 
-    // V4.2.26: 获取今天的开始时间（UTC）
-    const today = new Date();
+    // V4.2.26: 获取今天的开始时间（使用 Asia/Shanghai 时区）
+    const today = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }),
+    );
     today.setHours(0, 0, 0, 0);
 
     // V4.2.26: 并行查询 - SQL 聚合统计 + 锁定状态
@@ -108,9 +110,7 @@ export default async function FoldersPage() {
         updated_at: folder.updated_at,
         deleted_at: folder.deleted_at,
         folder_group: folder.folder_group,
-        category_id:
-          ((folder as Record<string, unknown>).category_id as number | null) ??
-          null,
+        category_id: folder.category_id ?? null,
         sort_order: folder.sort_order,
         source: folder.source ?? null,
         system_type: folder.system_type,

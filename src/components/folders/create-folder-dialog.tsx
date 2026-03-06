@@ -77,7 +77,10 @@ export function CreateFolderDialog({
 
   useEffect(() => {
     if (open) {
+      setName("");
+      setColor("");
       setCategoryId(defaultCategoryId ? String(defaultCategoryId) : "");
+      setErrors({});
     }
   }, [open, defaultCategoryId]);
 
