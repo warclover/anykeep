@@ -27,8 +27,11 @@ interface UseFolderToolbarParams {
     ai_tags?: string[] | null;
   }>;
   isLoadingBookmarks: boolean;
+  /** 必须用 useCallback 包裹，否则会导致 toolbarElement → context → 重渲染无限循环 */
   onCreateCategory: () => void;
+  /** 必须用 useCallback 包裹，否则会导致 toolbarElement → context → 重渲染无限循环 */
   onCreateFolder: (defaultCategoryId?: number) => void;
+  /** 必须用 useCallback 包裹，否则会导致 toolbarElement → context → 重渲染无限循环 */
   onOpenAIAssistant: () => void;
 }
 
@@ -88,6 +91,8 @@ export function useFolderToolbar({
     return result.length;
   }, [bookmarks, searchQuery]);
 
+  // 回调直接传入 toolbarElement，调用方必须确保引用稳定（useCallback）
+  // 否则会导致 toolbarElement 重算 → setPageToolbar → context 更新 → 重渲染循环
   const toolbarElement = useMemo(() => {
     if (!selection || !selectionInfo) return null;
     return createElement(

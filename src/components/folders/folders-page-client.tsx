@@ -84,18 +84,31 @@ export function FoldersPageClient({
     refreshBookmarks,
   });
 
+  // 回调必须用 useCallback 包裹，否则每次渲染生成新引用 →
+  // toolbarElement useMemo 重算 → useEffect 调用 setPageToolbar → context 更新 →
+  // FoldersPageClient 重渲染 → 新回调 → 无限循环
+  const handleCreateCategory = useCallback(
+    () => setShowCreateCategoryDialog(true),
+    [],
+  );
+  const handleCreateFolder = useCallback((catId?: number) => {
+    setCreateFolderDefaultCategoryId(catId);
+    setShowCreateDialog(true);
+  }, []);
+  const handleOpenAIAssistant = useCallback(
+    () => setIsAIAssistantOpen(true),
+    [],
+  );
+
   const toolbar = useFolderToolbar({
     selection,
     localFolders: optimistic.localFolders,
     localCategories: optimistic.localCategories,
     bookmarks,
     isLoadingBookmarks,
-    onCreateCategory: () => setShowCreateCategoryDialog(true),
-    onCreateFolder: (catId?: number) => {
-      setCreateFolderDefaultCategoryId(catId);
-      setShowCreateDialog(true);
-    },
-    onOpenAIAssistant: () => setIsAIAssistantOpen(true),
+    onCreateCategory: handleCreateCategory,
+    onCreateFolder: handleCreateFolder,
+    onOpenAIAssistant: handleOpenAIAssistant,
   });
 
   const bmActions = useFolderBookmarkActions({

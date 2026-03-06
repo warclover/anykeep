@@ -224,31 +224,58 @@ export function VirtualBookmarkList({
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const prefetchTriggered = useRef(false);
 
+  // V4.2.33: 使用 ref 存储易变的加载状态，避免 rangeChanged/endReached 回调频繁重建
+  // 回调引用变化会导致 Virtuoso 内部 urx 流重订阅并重触发事件，形成无限循环
+  const loadStateRef = useRef({
+    hasMore,
+    isLoadingMore,
+    onLoadMore,
+    bookmarksLength: bookmarks.length,
+  });
+  loadStateRef.current = {
+    hasMore,
+    isLoadingMore,
+    onLoadMore,
+    bookmarksLength: bookmarks.length,
+  };
+
   // 智能预取：当滚动到指定位置时提前加载
+  // 依赖项仅保留 prefetchThreshold（配置项，几乎不变），其余通过 ref 访问
   const handleRangeChanged = useCallback(
     ({ endIndex }: { startIndex: number; endIndex: number }) => {
-      if (!hasMore || isLoadingMore || !onLoadMore) return;
+      const {
+        hasMore: _hasMore,
+        isLoadingMore: _isLoading,
+        onLoadMore: _onLoadMore,
+        bookmarksLength,
+      } = loadStateRef.current;
+      if (!_hasMore || _isLoading || !_onLoadMore) return;
 
-      const threshold = Math.floor(bookmarks.length * prefetchThreshold);
+      const threshold = Math.floor(bookmarksLength * prefetchThreshold);
 
       if (endIndex >= threshold && !prefetchTriggered.current) {
         prefetchTriggered.current = true;
-        onLoadMore();
+        _onLoadMore();
         // 加载完成后重置
         setTimeout(() => {
           prefetchTriggered.current = false;
         }, 1000);
       }
     },
-    [bookmarks.length, hasMore, isLoadingMore, onLoadMore, prefetchThreshold],
+    [prefetchThreshold],
   );
 
   // 兜底：滚动到底部时加载
   const handleEndReached = useCallback(() => {
-    if (hasMore && !isLoadingMore && onLoadMore) {
-      onLoadMore();
+    const {
+      hasMore: _hasMore,
+      isLoadingMore: _isLoading,
+      onLoadMore: _onLoadMore,
+    } = loadStateRef.current;
+    if (_hasMore && !_isLoading && _onLoadMore) {
+      _onLoadMore();
     }
-  }, [hasMore, isLoadingMore, onLoadMore]);
+  }, []);
 
   // 根据视图模式决定容器样式（保留以供未来使用）
   const _containerClassName = cn(
@@ -319,11 +346,16 @@ export function VirtualBookmarkList({
     ],
   );
 
-  // 通用的组件配置（使用 useMemo 避免重复创建导致 Virtuoso 重新挂载）
+  // V4.2.33: 使用 ref 存储 isLoadingMore，使 Footer 组件引用保持稳定
+  // 内联函数组件在 useMemo 依赖变化时会被 React 视为不同组件类型，
+  // 导致 unmount/remount → Virtuoso 重新测量 → urx 流循环 → 无限更新
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  isLoadingMoreRef.current = isLoadingMore;
+
   const components = useMemo(
     () => ({
       Footer: () =>
-        isLoadingMore ? (
+        isLoadingMoreRef.current ? (
           <div className="flex justify-center py-4">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
@@ -334,11 +366,11 @@ export function VirtualBookmarkList({
         </div>
       ),
     }),
-    [isLoadingMore],
+    [], // 空依赖 - 组件引用始终稳定，通过 ref 读取最新状态
   );
 
   // 根据视图模式计算估算项高度（优化 Virtuoso 渲染性能）
-  // compact: ~64px, list: ~80px（水平布局）, card: 动态高度（不使用固定值）
+  // V4.2.33: card 视图也提供默认值（200px），避免 undefined 导致 Virtuoso 初始测量不稳定
   const estimatedItemSize = useMemo(() => {
     switch (viewMode) {
       case "compact":
@@ -346,7 +378,7 @@ export function VirtualBookmarkList({
       case "list":
         return 96; // 80px 内容（水平布局） + 16px 间距
       default:
-        return undefined; // card 视图使用动态高度
+        return 200; // card 视图默认估算高度
     }
   }, [viewMode]);
 
