@@ -559,10 +559,17 @@ export abstract class BaseProvider implements ISummaryProvider {
 
   /**
    * 解析响应
+   *
+   * V4 Prompt 引擎生成的 Prompt 要求 LLM 输出结构化 JSON（tldr + key_points + keywords），
+   * 因此启用 V4 时必须使用 V2 解析器，与 Prompt 格式保持一致。
    */
   parseResponse(content: string): ParsedResponse {
-    const useJsonOutput = isJsonOutputEnabled();
+    // V4 Prompt 引擎输出结构化 JSON，必须使用 V2 解析
+    if (isPromptV4Enabled()) {
+      return this.parseResponseV2(content);
+    }
 
+    const useJsonOutput = isJsonOutputEnabled();
     if (useJsonOutput) {
       return this.parseResponseV2(content);
     } else {
