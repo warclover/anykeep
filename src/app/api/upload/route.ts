@@ -7,11 +7,10 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
   quotaExceededError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { UPLOAD, STORAGE } from "@/lib/constants/messages";
 
@@ -34,18 +33,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
  * POST /api/upload
  * 上传文件到 Supabase Storage
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析表单数据
     const formData = await request.formData();
@@ -76,27 +66,35 @@ export async function POST(request: NextRequest) {
 
     // 5. 检查用户存储配额
     // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileStorageRow = { storage_quota: number | null; storage_used: number | null };
+    type ProfileStorageRow = {
+      storage_quota: number | null;
+      storage_used: number | null;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
+    const { data: profile, error: profileError } = (await (
+      supabase.from("profiles") as any
+    )
       .select("storage_quota, storage_used")
-      .eq("id", user.id)
-      .single() as { data: ProfileStorageRow | null; error: { message: string } | null };
+      .eq("id", userId)
+      .single()) as {
+      data: ProfileStorageRow | null;
+      error: { message: string } | null;
+    };
 
     if (profileError) {
       logger.error(
         {
           error: profileError,
-          userId: user.id,
+          userId,
           operation: "get_profile",
         },
         "Get profile error",
       );
-      return internalError("获取用户信息失败");
+      throw new Error("获取用户信息失败");
     }
 
     if (!profile) {
-      return internalError("用户配置不存在");
+      throw new Error("用户配置不存在");
     }
 
     // 计算文件大小（字节转为 MB）
@@ -115,7 +113,7 @@ export async function POST(request: NextRequest) {
     const ext =
       ALLOWED_FILE_TYPES[file.type as keyof typeof ALLOWED_FILE_TYPES];
     const fileName = `${timestamp}-${randomStr}${ext}`;
-    const filePath = `${user.id}/${fileName}`;
+    const filePath = `${userId}/${fileName}`;
 
     // 7. 上传文件到 Supabase Storage
     const arrayBuffer = await file.arrayBuffer();
@@ -133,14 +131,14 @@ export async function POST(request: NextRequest) {
       logger.error(
         {
           error: uploadError,
-          userId: user.id,
+          userId,
           bucket,
           fileName,
           operation: "upload_file",
         },
         "Upload error",
       );
-      return internalError("文件上传失败");
+      throw new Error("文件上传失败");
     }
 
     // 8. 获取公开访问 URL
@@ -150,17 +148,17 @@ export async function POST(request: NextRequest) {
 
     // 9. 更新用户存储使用量
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase.from("profiles") as any)
+    const { error: updateError } = (await (supabase.from("profiles") as any)
       .update({
         storage_used: (profile?.storage_used ?? 0) + fileSizeInMB,
       })
-      .eq("id", user.id) as { error: { message: string } | null };
+      .eq("id", userId)) as { error: { message: string } | null };
 
     if (updateError) {
       logger.error(
         {
           error: updateError,
-          userId: user.id,
+          userId,
           operation: "update_storage_used",
         },
         "Update storage used error",
@@ -176,35 +174,16 @@ export async function POST(request: NextRequest) {
       type: file.type,
       bucket,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "upload",
-      },
-      "POST /api/upload error",
-    );
-    return internalError(UPLOAD.UPLOAD_ERROR);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/upload
  * 删除已上传的文件
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const DELETE = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析请求体
     const body = await request.json();
@@ -219,7 +198,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 3. 验证文件所有权（文件路径应以用户 ID 开头）
-    if (!path.startsWith(`${user.id}/`)) {
+    if (!path.startsWith(`${userId}/`)) {
       return badRequestError("无权删除此文件");
     }
 
@@ -232,30 +211,16 @@ export async function DELETE(request: NextRequest) {
       logger.error(
         {
           error: deleteError,
-          userId: user.id,
+          userId,
           bucket,
           path,
           operation: "delete_file",
         },
         "Delete file error",
       );
-      return internalError("删除文件失败");
+      throw new Error("删除文件失败");
     }
 
-    // 5. 更新用户存储使用量（需要先获取文件大小）
-    // 注意：这里简化处理，实际应该记录文件大小
-    // 可以在上传时将文件信息存储到数据库中
-
     return successResponse({ deleted: true, path });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_upload",
-      },
-      "DELETE /api/upload error",
-    );
-    return internalError(UPLOAD.UPLOAD_ERROR);
-  }
-}
+  },
+);

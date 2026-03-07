@@ -13,38 +13,26 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 
 /**
  * GET /api/link-health/status
  * 获取链接健康状态
  */
-export async function GET(_request: NextRequest) {
-  try {
-    // 1. 身份验证
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 获取最近一次检测记录
+    // 1. 获取最近一次检测记录
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lastCheck, error: checkError } = await (supabase as any)
       .from("link_health_checks")
       .select(
         "id, scope, status, total_checked, healthy_count, failed_count, slow_count, redirect_count, progress, completed_at, created_at",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -53,14 +41,14 @@ export async function GET(_request: NextRequest) {
       // PGRST116 = no rows
       logger.error(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           error: checkError.message,
         },
         "Link Health Status API: Failed to get last check",
       );
     }
 
-    // 3. 获取当前书签健康状态统计（使用 RPC 函数）
+    // 2. 获取当前书签健康状态统计（使用 RPC 函数）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: stats, error: statsError } = await (supabase as any).rpc(
       "get_user_health_stats",
@@ -69,14 +57,14 @@ export async function GET(_request: NextRequest) {
     if (statsError) {
       logger.error(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           error: statsError.message,
         },
         "Link Health Status API: Failed to get stats",
       );
 
       // 回退：手动计算统计
-      const fallbackStats = await getFallbackStats(supabase, user.id);
+      const fallbackStats = await getFallbackStats(supabase, userId);
       return successResponse({
         lastCheck: lastCheck || null,
         stats: fallbackStats,
@@ -85,7 +73,7 @@ export async function GET(_request: NextRequest) {
 
     logger.debug(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         hasLastCheck: !!lastCheck,
         stats,
       },
@@ -102,17 +90,8 @@ export async function GET(_request: NextRequest) {
         unknown: 0,
       },
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Link Health Status API: Request failed",
-    );
-
-    return databaseError("获取健康状态失败");
-  }
-}
+  },
+);
 
 /**
  * 回退统计计算（当 RPC 函数不可用时）

@@ -6,35 +6,27 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createCategorySchema } from "@/lib/validation";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
 
 /**
  * GET /api/folder-categories
  * 获取当前用户的所有栏目
  */
-export async function GET() {
-  try {
-    const { user, error: authError } = await getCachedUser();
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: categories, error: queryError } = await (supabase as any)
       .from("folder_categories")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
@@ -43,29 +35,15 @@ export async function GET() {
     }
 
     return successResponse(categories || []);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        operation: "get_folder_categories",
-      },
-      "GET /api/folder-categories error",
-    );
-    return internalError("加载栏目失败");
-  }
-}
+  },
+);
 
 /**
  * POST /api/folder-categories
  * 创建新栏目
  */
-export async function POST(request: NextRequest) {
-  try {
-    const { user, error: authError } = await getCachedUser();
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
 
     const body = await request.json();
@@ -83,7 +61,7 @@ export async function POST(request: NextRequest) {
     const { data: maxOrderRow } = await sb
       .from("folder_categories")
       .select("sort_order")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("sort_order", { ascending: false })
       .limit(1)
       .single();
@@ -93,7 +71,7 @@ export async function POST(request: NextRequest) {
     const { data: category, error: createError } = await sb
       .from("folder_categories")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         name,
         icon: icon || null,
         color: color || null,
@@ -108,14 +86,5 @@ export async function POST(request: NextRequest) {
     }
 
     return successResponse(category);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        operation: "create_folder_category",
-      },
-      "POST /api/folder-categories error",
-    );
-    return internalError("创建栏目失败");
-  }
-}
+  },
+);

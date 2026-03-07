@@ -10,11 +10,12 @@
  * @since 2025-12-25
  */
 
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { noteService } from "@/lib/ai-skills/services";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 保存笔记请求 Schema
@@ -72,152 +73,96 @@ const listNotesRequestSchema = z.object({
  * POST /api/ai/notes
  * 保存 AI 笔记
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const POST = withAuthMiddleware(async (request, { userId }) => {
+  // 解析请求体
+  const body = await request.json();
+  const validation = saveNoteRequestSchema.safeParse(body);
 
-    if (authError || !user) {
-      return Response.json(
-        { success: false, error: "请先登录" },
-        { status: 401 },
-      );
-    }
-
-    // 解析请求体
-    const body = await request.json();
-    const validation = saveNoteRequestSchema.safeParse(body);
-
-    if (!validation.success) {
-      return Response.json(
-        {
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.issues,
-        },
-        { status: 400 },
-      );
-    }
-
-    // 保存笔记（传入 server client 确保服务器端认证正确）
-    const result = await noteService.saveNote(validation.data, supabase);
-
-    if (!result.success) {
-      logger.warn(
-        { sourceType: validation.data.sourceType, error: result.error },
-        "AI Notes API: Save failed",
-      );
-      return Response.json(
-        { success: false, error: result.error },
-        { status: 400 },
-      );
-    }
-
-    logger.info(
+  if (!validation.success) {
+    return NextResponse.json(
       {
-        userId: user.id.slice(0, 8) + "...",
-        noteId: result.data?.id,
-        sourceType: validation.data.sourceType,
-        contentLength: validation.data.content.length,
+        success: false,
+        error: "请求参数无效",
+        details: validation.error.issues,
       },
-      "AI Notes API: Note saved",
-    );
-
-    return Response.json({
-      success: true,
-      data: result.data,
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "AI Notes API: POST unexpected error",
-    );
-
-    return Response.json(
-      { success: false, error: "系统错误" },
-      { status: 500 },
+      { status: 400 },
     );
   }
-}
+
+  // 保存笔记（传入 server client 确保服务器端认证正确）
+  const supabase = await createClient();
+  const result = await noteService.saveNote(validation.data, supabase);
+
+  if (!result.success) {
+    logger.warn(
+      { sourceType: validation.data.sourceType, error: result.error },
+      "AI Notes API: Save failed",
+    );
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: 400 },
+    );
+  }
+
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
+      noteId: result.data?.id,
+      sourceType: validation.data.sourceType,
+      contentLength: validation.data.content.length,
+    },
+    "AI Notes API: Note saved",
+  );
+
+  return NextResponse.json({
+    success: true,
+    data: result.data,
+  });
+});
 
 /**
  * GET /api/ai/notes
  * 获取 AI 笔记列表
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request) => {
+  // 解析查询参数
+  const searchParams = request.nextUrl.searchParams;
+  const limitParam = searchParams.get("limit");
+  const offsetParam = searchParams.get("offset");
+  const params = {
+    sourceType: searchParams.get("sourceType") || undefined,
+    tags: searchParams.get("tags")?.split(",").filter(Boolean) || undefined,
+    search: searchParams.get("search") || undefined,
+    limit: limitParam ? parseInt(limitParam, 10) : undefined,
+    offset: offsetParam ? parseInt(offsetParam, 10) : undefined,
+  };
 
-    if (authError || !user) {
-      return Response.json(
-        { success: false, error: "请先登录" },
-        { status: 401 },
-      );
-    }
+  const validation = listNotesRequestSchema.safeParse(params);
 
-    // 解析查询参数
-    const searchParams = request.nextUrl.searchParams;
-    const limitParam = searchParams.get("limit");
-    const offsetParam = searchParams.get("offset");
-    const params = {
-      sourceType: searchParams.get("sourceType") || undefined,
-      tags: searchParams.get("tags")?.split(",").filter(Boolean) || undefined,
-      search: searchParams.get("search") || undefined,
-      limit: limitParam ? parseInt(limitParam, 10) : undefined,
-      offset: offsetParam ? parseInt(offsetParam, 10) : undefined,
-    };
-
-    const validation = listNotesRequestSchema.safeParse(params);
-
-    if (!validation.success) {
-      return Response.json(
-        {
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.issues,
-        },
-        { status: 400 },
-      );
-    }
-
-    // 获取笔记列表（传入 server client 确保服务器端认证正确）
-    const result = await noteService.listNotes(validation.data, supabase);
-
-    if (!result.success) {
-      return Response.json(
-        { success: false, error: result.error },
-        { status: 400 },
-      );
-    }
-
-    return Response.json({
-      success: true,
-      data: result.data,
-    });
-  } catch (error) {
-    logger.error(
+  if (!validation.success) {
+    return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        success: false,
+        error: "请求参数无效",
+        details: validation.error.issues,
       },
-      "AI Notes API: GET unexpected error",
-    );
-
-    return Response.json(
-      { success: false, error: "系统错误" },
-      { status: 500 },
+      { status: 400 },
     );
   }
-}
+
+  // 获取笔记列表（传入 server client 确保服务器端认证正确）
+  const supabase = await createClient();
+  const result = await noteService.listNotes(validation.data, supabase);
+
+  if (!result.success) {
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: 400 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: result.data,
+  });
+});

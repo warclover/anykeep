@@ -5,25 +5,12 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { operationLogService } from "@/lib/classification/services/server";
 import type { OperationSnapshotAction } from "@/types/supabase";
-import { logger } from "@/lib/logger";
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
@@ -38,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取操作历史
-    const operations = await operationLogService.getOperationHistory(user.id, {
+    const operations = await operationLogService.getOperationHistory(userId, {
       limit: Math.min(limit, 100), // 最大 100 条
       includeUndone,
       includeExpired,
@@ -46,7 +33,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 获取可撤销操作数量
-    const undoableCount = await operationLogService.getUndoableCount(user.id);
+    const undoableCount = await operationLogService.getUndoableCount(userId);
 
     return NextResponse.json({
       success: true,
@@ -56,14 +43,5 @@ export async function GET(request: NextRequest) {
         total: operations.length,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[API] folder-evolution/history error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "获取操作历史失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

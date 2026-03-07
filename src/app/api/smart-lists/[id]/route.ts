@@ -14,39 +14,25 @@ import {
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   notFoundError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { SmartList } from "@/types/smart-list";
 import { toSmartListClient } from "@/types/smart-list";
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * GET /api/smart-lists/:id
  * 获取智能列表详情
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 验证 ID 参数
-    const params = await context.params;
-    const paramValidation = smartListIdParamSchema.safeParse({ id: params.id });
+    const { id: rawId } = await params;
+    const paramValidation = smartListIdParamSchema.safeParse({ id: rawId });
     if (!paramValidation.success) {
       return handleValidationError(paramValidation.error);
     }
@@ -58,7 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .from("smart_lists")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single();
 
@@ -71,42 +57,23 @@ export async function GET(request: NextRequest, context: RouteContext) {
     await (supabase.from("smart_lists") as any)
       .update({ last_accessed_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     return successResponse(toSmartListClient(smartList as SmartList));
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_smart_list",
-      },
-      "GET /api/smart-lists/:id error",
-    );
-    return internalError("获取智能列表失败");
-  }
-}
+  },
+);
 
 /**
  * PATCH /api/smart-lists/:id
  * 更新智能列表
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  try {
-    // 1. 验证用户身份
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 验证 ID 参数
-    const params = await context.params;
-    const paramValidation = smartListIdParamSchema.safeParse({ id: params.id });
+    const { id: rawId } = await params;
+    const paramValidation = smartListIdParamSchema.safeParse({ id: rawId });
     if (!paramValidation.success) {
       return handleValidationError(paramValidation.error);
     }
@@ -127,12 +94,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ExistingSmartListRow = { id: string; is_preset: boolean };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = await (supabase.from("smart_lists") as any)
+    const { data: existing, error: checkError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .select("id, is_preset")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
-      .single() as { data: ExistingSmartListRow | null; error: { message: string } | null };
+      .single()) as {
+      data: ExistingSmartListRow | null;
+      error: { message: string } | null;
+    };
 
     if (checkError || !existing) {
       return notFoundError("智能列表不存在");
@@ -150,12 +122,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updatedPreset, error: updateError } = await (supabase.from("smart_lists") as any)
+      const { data: updatedPreset, error: updateError } = (await (
+        supabase.from("smart_lists") as any
+      )
         .update(allowedUpdates)
         .eq("id", id)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .select()
-        .single() as { data: SmartList | null; error: { message: string } | null };
+        .single()) as {
+        data: SmartList | null;
+        error: { message: string } | null;
+      };
 
       if (updateError) {
         return databaseError("更新智能列表失败", updateError);
@@ -169,7 +146,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const { data: nameExists } = await supabase
         .from("smart_lists")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("name", updates.name)
         .neq("id", id)
         .is("deleted_at", null)
@@ -194,12 +171,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // 8. 执行更新
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: smartList, error: updateError } = await (supabase.from("smart_lists") as any)
+    const { data: smartList, error: updateError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .update(updateData)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
-      .single() as { data: SmartList | null; error: { message: string } | null };
+      .single()) as {
+      data: SmartList | null;
+      error: { message: string } | null;
+    };
 
     if (updateError) {
       return databaseError("更新智能列表失败", updateError);
@@ -207,7 +189,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         smartListId: id,
         updates: Object.keys(updateData),
         action: "smart_list_updated",
@@ -216,39 +198,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
 
     return successResponse(toSmartListClient(smartList as SmartList));
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "update_smart_list",
-      },
-      "PATCH /api/smart-lists/:id error",
-    );
-    return internalError("更新智能列表失败");
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/smart-lists/:id
  * 删除智能列表（软删除）
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    // 1. 验证用户身份
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 验证 ID 参数
-    const params = await context.params;
-    const paramValidation = smartListIdParamSchema.safeParse({ id: params.id });
+    const { id: rawId } = await params;
+    const paramValidation = smartListIdParamSchema.safeParse({ id: rawId });
     if (!paramValidation.success) {
       return handleValidationError(paramValidation.error);
     }
@@ -257,14 +220,23 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 3. 检查智能列表是否存在
     // 类型断言: 手动维护类型文件时需要此断言
-    type ExistingSmartListDeleteRow = { id: string; is_preset: boolean; name: string };
+    type ExistingSmartListDeleteRow = {
+      id: string;
+      is_preset: boolean;
+      name: string;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = await (supabase.from("smart_lists") as any)
+    const { data: existing, error: checkError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .select("id, is_preset, name")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
-      .single() as { data: ExistingSmartListDeleteRow | null; error: { message: string } | null };
+      .single()) as {
+      data: ExistingSmartListDeleteRow | null;
+      error: { message: string } | null;
+    };
 
     if (checkError || !existing) {
       return notFoundError("智能列表不存在");
@@ -277,10 +249,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 5. 软删除
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = await (supabase.from("smart_lists") as any)
+    const { error: deleteError } = (await (supabase.from("smart_lists") as any)
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
-      .eq("user_id", user.id) as { error: { message: string } | null };
+      .eq("user_id", userId)) as { error: { message: string } | null };
 
     if (deleteError) {
       return databaseError("删除智能列表失败", deleteError);
@@ -288,7 +260,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         smartListId: id,
         name: existing.name,
         action: "smart_list_deleted",
@@ -297,15 +269,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     );
 
     return successResponse({ success: true });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_smart_list",
-      },
-      "DELETE /api/smart-lists/:id error",
-    );
-    return internalError("删除智能列表失败");
-  }
-}
+  },
+);

@@ -4,18 +4,14 @@
  * @description 报告详情、更新、删除
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
 import type { Database } from "@/types/supabase";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 const logger = createLogger("api:knowledge-studio:reports:[id]");
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * 更新报告 Schema
@@ -40,27 +36,15 @@ const UpdateReportSchema = z.object({
  * GET /api/knowledge-studio/reports/[id]
  * 获取报告详情
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    const { id: reportId } = await context.params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    const { id: reportId } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const { data: report, error } = await supabase
       .from("synthesis_reports")
       .select("*")
       .eq("id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (error || !report) {
@@ -71,38 +55,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json({ data: report });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Get report failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "获取报告失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * PUT /api/knowledge-studio/reports/[id]
  * 更新报告
  */
-export async function PUT(request: NextRequest, context: RouteContext) {
-  try {
-    const { id: reportId } = await context.params;
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
+    const { id: reportId } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const body = await request.json();
     const parseResult = UpdateReportSchema.safeParse(body);
 
@@ -126,7 +89,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .from("synthesis_reports")
       .select("id, version")
       .eq("id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single<Pick<SynthesisReportRow, "id" | "version">>();
 
     if (!existing) {
@@ -149,81 +112,51 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .from("synthesis_reports")
       .update(updateData)
       .eq("id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single<SynthesisReportRow>();
 
     if (error) {
       logger.error(
-        { userId: user.id, reportId, error },
+        { userId: userId, reportId, error },
         "Failed to update report",
       );
       throw error;
     }
 
     logger.info(
-      { userId: user.id, reportId, version: report?.version },
+      { userId: userId, reportId, version: report?.version },
       "Report updated",
     );
 
     return NextResponse.json({ data: report });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Update report failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "更新报告失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/knowledge-studio/reports/[id]
  * 删除报告
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    const { id: reportId } = await context.params;
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    const { id: reportId } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const { error } = await supabase
       .from("synthesis_reports")
       .delete()
       .eq("id", reportId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       logger.error(
-        { userId: user.id, reportId, error },
+        { userId: userId, reportId, error },
         "Failed to delete report",
       );
       throw error;
     }
 
-    logger.info({ userId: user.id, reportId }, "Report deleted");
+    logger.info({ userId: userId, reportId }, "Report deleted");
 
     return NextResponse.json({ data: { success: true } });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Delete report failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "删除报告失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

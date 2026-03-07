@@ -10,9 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 /**
@@ -33,59 +32,43 @@ const aiSettingsSchema = z.object({
  * GET /api/settings/ai-folder
  * Get user's AI folder settings
  */
-export async function GET() {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
 
     // Get settings using RPC function (with defaults) - V4.2 RPC
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("get_ai_folder_settings", {
-      p_user_id: user.id,
-    }) as { data: Record<string, unknown> | null; error: { message: string } | null };
+    const { data, error } = (await (supabase.rpc as any)(
+      "get_ai_folder_settings",
+      {
+        p_user_id: userId,
+      },
+    )) as {
+      data: Record<string, unknown> | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error(
         { error: error.message },
         "GET /api/settings/ai-folder: Failed to get settings",
       );
-      return internalError("获取设置失败");
+      throw new Error("获取设置失败");
     }
 
     return successResponse({
       settings: data,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "GET /api/settings/ai-folder error",
-    );
-    return internalError("获取设置失败");
-  }
-}
+  },
+);
 
 /**
  * PUT /api/settings/ai-folder
  * Update user's AI folder settings
  */
-export async function PUT(request: NextRequest) {
-  try {
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
 
     // Validate request body
     const body = await request.json();
@@ -97,21 +80,27 @@ export async function PUT(request: NextRequest) {
 
     // Update settings using RPC function - V4.2 RPC
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)("update_ai_folder_settings", {
-      p_user_id: user.id,
-      p_settings: validation.data,
-    }) as { data: Record<string, unknown> | null; error: { message: string } | null };
+    const { data, error } = (await (supabase.rpc as any)(
+      "update_ai_folder_settings",
+      {
+        p_user_id: userId,
+        p_settings: validation.data,
+      },
+    )) as {
+      data: Record<string, unknown> | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error(
         { error: error.message },
         "PUT /api/settings/ai-folder: Failed to update settings",
       );
-      return internalError("更新设置失败");
+      throw new Error("更新设置失败");
     }
 
     logger.info(
-      { userId: user.id, settings: validation.data },
+      { userId, settings: validation.data },
       "AI folder settings updated",
     );
 
@@ -119,11 +108,5 @@ export async function PUT(request: NextRequest) {
       settings: data,
       message: "设置已保存",
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "PUT /api/settings/ai-folder error",
-    );
-    return internalError("更新设置失败");
-  }
-}
+  },
+);

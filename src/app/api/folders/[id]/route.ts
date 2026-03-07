@@ -9,15 +9,14 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { updateFolderSchema } from "@/lib/validation";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   notFoundError,
   forbiddenError,
   databaseError,
-  internalError,
   badRequestError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -42,11 +41,8 @@ interface DeleteFolderCascadeResult {
  * GET /api/folders/[id]
  * 获取单个文件夹详情及其统计信息
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const folderId = parseInt(id);
 
@@ -54,16 +50,7 @@ export async function GET(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 查询文件夹详情
     // 类型断言: 手动维护类型文件时需要此断言
@@ -81,7 +68,7 @@ export async function GET(
       .from("folders")
       .select("*")
       .eq("id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single()) as unknown as {
       data: FolderRow | null;
@@ -104,7 +91,7 @@ export async function GET(
       .from("bookmarks")
       .select("*", { count: "exact", head: true })
       .eq("folder_id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     if (countError) {
@@ -123,28 +110,15 @@ export async function GET(
       ...folder,
       bookmark_count: bookmarkCount || 0,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_folder",
-      },
-      "GET /api/folders/[id] error",
-    );
-    return internalError(FOLDER.LOAD_ERROR);
-  }
-}
+  },
+);
 
 /**
  * PUT /api/folders/[id]
  * 更新文件夹信息
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const folderId = parseInt(id);
 
@@ -152,16 +126,7 @@ export async function PUT(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析并验证请求体
     const body = await request.json();
@@ -204,7 +169,7 @@ export async function PUT(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    if (existingFolder.user_id !== user.id) {
+    if (existingFolder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -219,7 +184,7 @@ export async function PUT(
         supabase,
         folderId,
         parentId,
-        user.id,
+        userId,
       );
 
       if (hasCircularReference) {
@@ -258,7 +223,7 @@ export async function PUT(
     // 7. 如果文件夹名称变更，异步更新 Profile（不阻塞响应）
     if (name !== undefined && name !== existingFolder.name) {
       // 【新增】保留旧名称为别名，确保旧名称仍可匹配
-      preserveOldNameAsAlias(folderId, existingFolder.name, user.id).catch(
+      preserveOldNameAsAlias(folderId, existingFolder.name, userId).catch(
         (err) => {
           logger.warn(
             { error: err, folderId, oldName: existingFolder.name },
@@ -268,7 +233,7 @@ export async function PUT(
       );
 
       // 更新名称嵌入向量
-      initializeFolderNameProfile(folderId, name, user.id).catch((err) => {
+      initializeFolderNameProfile(folderId, name, userId).catch((err) => {
         logger.warn(
           { error: err, folderId },
           "Failed to update folder name profile after rename",
@@ -277,28 +242,15 @@ export async function PUT(
     }
 
     return successResponse(updatedFolder);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "update_folder",
-      },
-      "PUT /api/folders/[id] error",
-    );
-    return internalError(FOLDER.UPDATE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/folders/[id]
  * 删除文件夹（软删除）
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const folderId = parseInt(id);
 
@@ -306,16 +258,7 @@ export async function DELETE(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 检查文件夹是否存在且属于当前用户
     // 类型断言: 手动维护类型文件时需要此断言
@@ -345,7 +288,7 @@ export async function DELETE(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    if (existingFolder.user_id !== user.id) {
+    if (existingFolder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -359,7 +302,7 @@ export async function DELETE(
       .from("bookmarks")
       .select("*", { count: "exact", head: true })
       .eq("folder_id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     if (countError) {
@@ -377,7 +320,7 @@ export async function DELETE(
       "delete_folder_cascade",
       {
         p_folder_id: folderId,
-        p_user_id: user.id,
+        p_user_id: userId,
         p_delete_bookmarks: false, // 已验证文件夹为空
       },
     )) as { data: unknown; error: { message: string } | null };
@@ -414,7 +357,7 @@ export async function DELETE(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         folderId,
         folderName: result.folderName,
         action: "folder_deleted",
@@ -427,18 +370,8 @@ export async function DELETE(
       deleted: true,
       folderName: result.folderName,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_folder",
-      },
-      "DELETE /api/folders/[id] error",
-    );
-    return internalError(FOLDER.DELETE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * 检查是否存在循环引用

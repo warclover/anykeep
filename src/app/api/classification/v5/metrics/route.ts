@@ -9,10 +9,10 @@
  * - 支持时间范围筛选
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 指标记录类型
@@ -72,109 +72,87 @@ interface MetricsSummary {
  * GET /api/classification/v5/metrics
  * 查询分类指标
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthMiddleware(async (request, { userId }) => {
   const logger = new LoggerService({}, { module: "MetricsAPI" });
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // 2. 获取查询参数
-    const days = parseInt(request.nextUrl.searchParams.get("days") || "7");
-    if (days < 1 || days > 90) {
-      return NextResponse.json(
-        { error: "Invalid days parameter (must be 1-90)" },
-        { status: 400 },
-      );
-    }
-
-    logger.info("Fetching metrics", { userId: user.id, days });
-
-    // 3. 计算时间范围
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    // 4. 查询指标数据
-    const { data: metrics, error: metricsError } = await supabase
-      .from("classification_metrics_v5")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("created_at", startDate.toISOString());
-
-    if (metricsError) {
-      logger.error("Failed to fetch metrics", metricsError);
-      return NextResponse.json(
-        { error: "Failed to fetch metrics" },
-        { status: 500 },
-      );
-    }
-
-    if (!metrics || metrics.length === 0) {
-      // 没有数据，返回空指标
-      const emptyMetrics: MetricsSummary = {
-        days,
-        totalClassifications: 0,
-        t0: {
-          count: 0,
-          accuracy: null,
-          avgLatency: 0,
-          p95Latency: 0,
-          avgConfidence: 0,
-        },
-        t1: {
-          count: 0,
-          accuracy: null,
-          avgLatency: 0,
-          p95Latency: 0,
-          avgConfidence: 0,
-        },
-        llmCallRate: 0,
-        cost: {
-          embeddingCost: 0,
-          llmCost: 0,
-          totalCost: 0,
-        },
-        degradation: {
-          v5Count: 0,
-          v4Count: 0,
-          ruleCount: 0,
-          degradationRate: 0,
-        },
-      };
-
-      return NextResponse.json(emptyMetrics);
-    }
-
-    // 5. 计算指标
-    const summary = calculateMetricsSummary(metrics, days);
-
-    logger.info("Metrics calculated", {
-      userId: user.id,
-      totalClassifications: summary.totalClassifications,
-    });
-
-    return NextResponse.json(summary);
-  } catch (error) {
-    logger.error(
-      "Metrics API error",
-      error instanceof Error ? error : undefined,
-    );
+  // 2. 获取查询参数
+  const days = parseInt(request.nextUrl.searchParams.get("days") || "7");
+  if (days < 1 || days > 90) {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
+      { error: "Invalid days parameter (must be 1-90)" },
+      { status: 400 },
+    );
+  }
+
+  logger.info("Fetching metrics", { userId, days });
+
+  // 3. 计算时间范围
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  // 4. 查询指标数据
+  const { data: metrics, error: metricsError } = await supabase
+    .from("classification_metrics_v5")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("created_at", startDate.toISOString());
+
+  if (metricsError) {
+    logger.error("Failed to fetch metrics", metricsError);
+    return NextResponse.json(
+      { error: "Failed to fetch metrics" },
       { status: 500 },
     );
   }
-}
+
+  if (!metrics || metrics.length === 0) {
+    // 没有数据，返回空指标
+    const emptyMetrics: MetricsSummary = {
+      days,
+      totalClassifications: 0,
+      t0: {
+        count: 0,
+        accuracy: null,
+        avgLatency: 0,
+        p95Latency: 0,
+        avgConfidence: 0,
+      },
+      t1: {
+        count: 0,
+        accuracy: null,
+        avgLatency: 0,
+        p95Latency: 0,
+        avgConfidence: 0,
+      },
+      llmCallRate: 0,
+      cost: {
+        embeddingCost: 0,
+        llmCost: 0,
+        totalCost: 0,
+      },
+      degradation: {
+        v5Count: 0,
+        v4Count: 0,
+        ruleCount: 0,
+        degradationRate: 0,
+      },
+    };
+
+    return NextResponse.json(emptyMetrics);
+  }
+
+  // 5. 计算指标
+  const summary = calculateMetricsSummary(metrics, days);
+
+  logger.info("Metrics calculated", {
+    userId,
+    totalClassifications: summary.totalClassifications,
+  });
+
+  return NextResponse.json(summary);
+});
 
 /**
  * 计算指标摘要

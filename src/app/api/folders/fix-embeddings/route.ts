@@ -13,8 +13,10 @@
  * @since 2025-12-22
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { initializeFolderNameProfile } from "@/lib/classification/server";
 import { logger } from "@/lib/logger";
 
@@ -54,16 +56,9 @@ interface FixResult {
 // GET - 获取缺失向量的文件夹统计
 // ============================================================================
 
-export async function GET(): Promise<NextResponse> {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 查询缺失 name_embedding 的文件夹
     // 使用 LEFT JOIN 检查 folder_profiles 表
@@ -74,22 +69,22 @@ export async function GET(): Promise<NextResponse> {
       created_at: string | null;
       folder_profiles: { name_embedding: unknown } | null;
     };
-    const { data: missingFolders, error: missingError } = await supabase
+    const { data: missingFolders, error: missingError } = (await supabase
       .from("folders")
       .select(
         `
-        id,
-        name,
-        created_at,
-        folder_profiles!left (
-          name_embedding
-        )
-      `,
+      id,
+      name,
+      created_at,
+      folder_profiles!left (
+        name_embedding
       )
-      .eq("user_id", user.id)
+    `,
+      )
+      .eq("user_id", userId)
       .eq("is_system", false)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false }) as unknown as {
+      .order("created_at", { ascending: false })) as unknown as {
       data: FolderWithProfile[] | null;
       error: { message: string } | null;
     };
@@ -128,32 +123,16 @@ export async function GET(): Promise<NextResponse> {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "FixEmbeddings API: GET error",
-    );
-    return NextResponse.json(
-      { error: "Failed to get status" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================================================
 // POST - 批量修复缺失向量的文件夹
 // ============================================================================
 
-export async function POST(request: Request): Promise<NextResponse> {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 解析请求参数
     const body = await request.json().catch(() => ({}));
@@ -168,22 +147,22 @@ export async function POST(request: Request): Promise<NextResponse> {
       name: string;
       folder_profiles: { name_embedding: unknown } | null;
     };
-    const { data: folders, error: queryError } = await supabase
+    const { data: folders, error: queryError } = (await supabase
       .from("folders")
       .select(
         `
-        id,
-        name,
-        folder_profiles!left (
-          name_embedding
-        )
-      `,
+      id,
+      name,
+      folder_profiles!left (
+        name_embedding
       )
-      .eq("user_id", user.id)
+    `,
+      )
+      .eq("user_id", userId)
       .eq("is_system", false)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
-      .limit(batchSize * 2) as unknown as {
+      .limit(batchSize * 2)) as unknown as {
       data: FolderWithProfile[] | null;
       error: { message: string } | null;
     }; // 查询更多，因为部分可能已有 embedding
@@ -224,7 +203,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     for (const folder of foldersToFix) {
       try {
-        await initializeFolderNameProfile(folder.id, folder.name, user.id);
+        await initializeFolderNameProfile(folder.id, folder.name, userId);
         successCount++;
 
         logger.info(
@@ -250,7 +229,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         requested: batchSize,
         processed: foldersToFix.length,
         success: successCount,
@@ -268,14 +247,5 @@ export async function POST(request: Request): Promise<NextResponse> {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "FixEmbeddings API: POST error",
-    );
-    return NextResponse.json(
-      { error: "Failed to fix embeddings" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -8,14 +8,14 @@
  * - 匹配来源（向量相似、规则匹配、来源匹配等）
  * - 备选方案
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // ============================================================================
 // 类型定义
@@ -155,23 +155,8 @@ const MATCH_SOURCE_INFO: Record<
 // GET - 获取分类决策理由
 // ============================================================================
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ bookmarkId: string }> },
-) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
-
+export const GET = withAuthMiddleware<{ bookmarkId: string }>(
+  async (_request, { userId, params }) => {
     const { bookmarkId } = await params;
     const id = parseInt(bookmarkId, 10);
 
@@ -181,6 +166,8 @@ export async function GET(
         { status: 400 },
       );
     }
+
+    const supabase = await createClient();
 
     // 获取书签信息（使用存在的字段）
     const { data: bookmark, error: bookmarkError } = (await supabase
@@ -204,7 +191,7 @@ export async function GET(
       `,
       )
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single()) as unknown as {
       data: DBBookmark | null;
@@ -392,16 +379,5 @@ export async function GET(
       success: true,
       data: response,
     });
-  } catch (error) {
-    logger.error({ error }, "Failed to get classification reason");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "获取分类理由失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

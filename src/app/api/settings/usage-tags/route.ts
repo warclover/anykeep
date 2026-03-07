@@ -7,13 +7,13 @@
  */
 
 import type { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { CUSTOM_TAG_COLOR_LIST } from "@/types/supabase";
 import type { CustomUsageTag, CustomTagColor } from "@/types/supabase";
 import { CUSTOM_USAGE_TAG_LIMIT } from "@/types/supabase";
@@ -22,10 +22,8 @@ import {
   createCustomUsageTag,
 } from "@/lib/constants/usage-tags";
 import {
-  getAuthenticatedUser,
   getUserSettings,
   updateUserCustomTags,
-  logApiError,
 } from "@/lib/utils/usage-tags-api-helpers";
 import { createLogger } from "@/lib/logger";
 
@@ -50,18 +48,14 @@ const USAGE_TAGS_CACHE = "private, max-age=60, stale-while-revalidate=120";
  * GET /api/settings/usage-tags
  * 获取用户的自定义用途标签
  */
-export async function GET() {
-  const handlerStart = performance.now();
-  try {
-    // 认证（内部已使用 getCachedUser）
-    const authResult = await getAuthenticatedUser();
-    if (!authResult.success) {
-      return unauthorizedError();
-    }
-    const { supabase, user } = authResult;
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
+    const handlerStart = performance.now();
+
+    const supabase = await createClient();
 
     // 获取设置
-    const settingsResult = await getUserSettings(supabase, user.id);
+    const settingsResult = await getUserSettings(supabase, userId);
     if (!settingsResult.success) {
       return databaseError(MESSAGES.LOAD_ERROR, settingsResult.error);
     }
@@ -81,24 +75,16 @@ export async function GET() {
     });
     res.headers.set("Cache-Control", USAGE_TAGS_CACHE);
     return res;
-  } catch (error) {
-    logApiError(error, "get_usage_tags", "GET /api/settings/usage-tags");
-    return internalError(MESSAGES.LOAD_ERROR);
-  }
-}
+  },
+);
 
 /**
  * POST /api/settings/usage-tags
  * 创建新的自定义用途标签
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 认证
-    const authResult = await getAuthenticatedUser();
-    if (!authResult.success) {
-      return unauthorizedError();
-    }
-    const { supabase, user } = authResult;
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
     // 解析请求体
     const body = await request.json();
@@ -113,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取设置
-    const settingsResult = await getUserSettings(supabase, user.id);
+    const settingsResult = await getUserSettings(supabase, userId);
     if (!settingsResult.success) {
       return databaseError(MESSAGES.CREATE_ERROR, settingsResult.error);
     }
@@ -137,7 +123,7 @@ export async function POST(request: NextRequest) {
     // 更新设置
     const updateResult = await updateUserCustomTags(
       supabase,
-      user.id,
+      userId,
       settings,
       updatedTags,
     );
@@ -153,24 +139,16 @@ export async function POST(request: NextRequest) {
       },
       201,
     );
-  } catch (error) {
-    logApiError(error, "create_usage_tag", "POST /api/settings/usage-tags");
-    return internalError(MESSAGES.CREATE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * PUT /api/settings/usage-tags
  * 更新自定义用途标签
  */
-export async function PUT(request: NextRequest) {
-  try {
-    // 认证
-    const authResult = await getAuthenticatedUser();
-    if (!authResult.success) {
-      return unauthorizedError();
-    }
-    const { supabase, user } = authResult;
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
     // 解析请求体
     const body = await request.json();
@@ -186,7 +164,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 获取设置
-    const settingsResult = await getUserSettings(supabase, user.id);
+    const settingsResult = await getUserSettings(supabase, userId);
     if (!settingsResult.success) {
       return databaseError(MESSAGES.UPDATE_ERROR, settingsResult.error);
     }
@@ -230,7 +208,7 @@ export async function PUT(request: NextRequest) {
     // 更新设置
     const updateResult = await updateUserCustomTags(
       supabase,
-      user.id,
+      userId,
       settings,
       updatedTags,
     );
@@ -242,24 +220,16 @@ export async function PUT(request: NextRequest) {
       tag: updatedTag,
       customUsageTags: updatedTags,
     });
-  } catch (error) {
-    logApiError(error, "update_usage_tag", "PUT /api/settings/usage-tags");
-    return internalError(MESSAGES.UPDATE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/settings/usage-tags
  * 删除自定义用途标签
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    // 认证
-    const authResult = await getAuthenticatedUser();
-    if (!authResult.success) {
-      return unauthorizedError();
-    }
-    const { supabase, user } = authResult;
+export const DELETE = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
     // 从 URL 参数获取标签 ID
     const { searchParams } = new URL(request.url);
@@ -270,7 +240,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 获取设置
-    const settingsResult = await getUserSettings(supabase, user.id);
+    const settingsResult = await getUserSettings(supabase, userId);
     if (!settingsResult.success) {
       return databaseError(MESSAGES.DELETE_ERROR, settingsResult.error);
     }
@@ -293,7 +263,7 @@ export async function DELETE(request: NextRequest) {
     // 更新设置
     const updateResult = await updateUserCustomTags(
       supabase,
-      user.id,
+      userId,
       settings,
       updatedTags,
     );
@@ -305,8 +275,5 @@ export async function DELETE(request: NextRequest) {
       customUsageTags: updatedTags,
       remaining: CUSTOM_USAGE_TAG_LIMIT - updatedTags.length,
     });
-  } catch (error) {
-    logApiError(error, "delete_usage_tag", "DELETE /api/settings/usage-tags");
-    return internalError(MESSAGES.DELETE_ERROR);
-  }
-}
+  },
+);

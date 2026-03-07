@@ -4,12 +4,12 @@
  * @description 更新学习会话（结束会话）
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 const logger = createLogger("api:knowledge-studio:mastery:sessions:[id]");
 
 // 类型定义
@@ -17,30 +17,14 @@ type SessionRow = Database["public"]["Tables"]["ks_learning_sessions"]["Row"];
 type SessionUpdate =
   Database["public"]["Tables"]["ks_learning_sessions"]["Update"];
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * PUT /api/knowledge-studio/mastery/sessions/[id]
  * 更新学习会话（通常用于结束会话）
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const body = await request.json();
     const {
       endSession = false,
@@ -52,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     } = body;
 
     logger.info(
-      { userId: user.id, sessionId: id, endSession },
+      { userId: userId, sessionId: id, endSession },
       "Updating session",
     );
 
@@ -61,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("ks_learning_sessions")
       .select("id, started_at")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (checkError || !existing) {
@@ -100,7 +84,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("ks_learning_sessions")
       .update(updates)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single();
 
@@ -116,14 +100,5 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const session = data as SessionRow | null;
 
     return NextResponse.json({ data: session });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Update session failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "更新学习会话失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

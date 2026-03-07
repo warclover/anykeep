@@ -4,33 +4,20 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
-  internalError,
   badRequestError,
   safeParseInt,
 } from "@/lib/utils/api-response";
 import { splitService } from "@/lib/classification/services/split.service";
-import { logger } from "@/lib/logger";
 
 /**
  * GET /api/folder-evolution/split-suggestions
  * Get folders that are candidates for splitting
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // Get folder ID from query params (optional - for specific folder analysis)
     const { searchParams } = new URL(request.url);
     const folderIdParam = searchParams.get("folderId");
@@ -43,7 +30,7 @@ export async function GET(request: NextRequest) {
 
       // Analyze specific folder
       const suggestion = await splitService.analyzeSplitOptions(
-        user.id,
+        userId,
         folderId,
       );
 
@@ -53,13 +40,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all split candidates
-    const candidates = await splitService.getSplitCandidates(user.id);
+    const candidates = await splitService.getSplitCandidates(userId);
 
     // For each candidate, get detailed analysis
     const suggestions = await Promise.all(
       candidates.slice(0, 5).map(async (candidate) => {
         const analysis = await splitService.analyzeSplitOptions(
-          user.id,
+          userId,
           candidate.id,
         );
         return analysis;
@@ -70,11 +57,5 @@ export async function GET(request: NextRequest) {
       suggestions: suggestions.filter(Boolean),
       candidateCount: candidates.length,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "GET /api/folder-evolution/split-suggestions error",
-    );
-    return internalError("获取分拆建议失败");
-  }
-}
+  },
+);

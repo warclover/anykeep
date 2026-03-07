@@ -4,14 +4,10 @@
  * PUT  /api/user/settings - 更新用户设置
  */
 
+import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, databaseError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import {
   mergeWithDefaults,
@@ -19,67 +15,51 @@ import {
 } from "@/types/user-settings";
 import type { UserSettings } from "@/types/user-settings";
 import type { Json } from "@/types/supabase";
-import type { NextRequest } from "next/server";
 
 /**
  * GET /api/user/settings
  * 获取当前用户的设置
  */
-export async function GET() {
-  try {
-    // 验证用户身份（使用缓存认证，性能优化）
-    const { user, error: authError } = await getCachedUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  // 创建 Supabase 客户端用于数据库操作
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return unauthorizedError();
+  // 从 profiles 表获取设置
+  // 类型断言: 手动维护类型文件时需要此断言
+  type ProfileSettingsRow = { settings: Json | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile, error: profileError } = (await (
+    supabase.from("profiles") as any
+  )
+    .select("settings")
+    .eq("id", userId)
+    .single()) as {
+    data: ProfileSettingsRow | null;
+    error: { code?: string; message: string } | null;
+  };
+
+  if (profileError) {
+    // 如果是新用户，profiles 可能不存在
+    if (profileError.code === "PGRST116") {
+      return successResponse(DEFAULT_USER_SETTINGS);
     }
-
-    // 创建 Supabase 客户端用于数据库操作
-    const supabase = await createClient();
-
-    // 从 profiles 表获取设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileSettingsRow = { settings: Json | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
-      .select("settings")
-      .eq("id", user.id)
-      .single() as { data: ProfileSettingsRow | null; error: { code?: string; message: string } | null };
-
-    if (profileError) {
-      // 如果是新用户，profiles 可能不存在
-      if (profileError.code === "PGRST116") {
-        return successResponse(DEFAULT_USER_SETTINGS);
-      }
-      return databaseError("获取设置失败", profileError);
-    }
-
-    // 合并默认值（处理旧版设置结构）
-    const settings = mergeWithDefaults(
-      profile?.settings as Partial<UserSettings> | null,
-    );
-
-    return successResponse(settings);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/user/settings error");
-    return internalError("获取设置失败");
+    return databaseError("获取设置失败", profileError);
   }
-}
+
+  // 合并默认值（处理旧版设置结构）
+  const settings = mergeWithDefaults(
+    profile?.settings as Partial<UserSettings> | null,
+  );
+
+  return successResponse(settings);
+});
 
 /**
  * PUT /api/user/settings
  * 更新当前用户的设置
  */
-export async function PUT(request: NextRequest) {
-  try {
-    // 验证用户身份（使用缓存认证，避免重复验证）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -90,10 +70,10 @@ export async function PUT(request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileSettingsRow = { settings: Json | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
+    const { data: profile } = (await (supabase.from("profiles") as any)
       .select("settings")
-      .eq("id", user.id)
-      .single() as { data: ProfileSettingsRow | null };
+      .eq("id", userId)
+      .single()) as { data: ProfileSettingsRow | null };
 
     // 合并设置
     const currentSettings = mergeWithDefaults(
@@ -112,9 +92,11 @@ export async function PUT(request: NextRequest) {
     // 更新或插入设置（将 UserSettings 转换为 Json 类型）
     // 类型断言: 手动维护类型文件时需要此断言
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (supabase.from("profiles") as any).upsert(
+    const { error: upsertError } = await (
+      supabase.from("profiles") as any
+    ).upsert(
       {
-        id: user.id,
+        id: userId,
         settings: newSettings as unknown as Json,
         updated_at: new Date().toISOString(),
       },
@@ -129,16 +111,12 @@ export async function PUT(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         action: "settings_updated",
       },
       "User settings updated",
     );
 
     return successResponse(newSettings);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "PUT /api/user/settings error");
-    return internalError("保存设置失败");
-  }
-}
+  },
+);

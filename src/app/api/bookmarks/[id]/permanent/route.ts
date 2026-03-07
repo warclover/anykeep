@@ -1,25 +1,22 @@
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import {
   successResponse,
   notFoundError,
-  unauthorizedError,
   forbiddenError,
   databaseError,
 } from "@/lib/utils/api-response";
 import { AUTH, BOOKMARK } from "@/lib/constants/error-messages";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * DELETE /api/bookmarks/[id]/permanent
  * 永久删除收藏（仅限垃圾箱中的收藏）
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
 
@@ -35,43 +32,22 @@ export async function DELETE(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    logger.debug(
-      {
-        userId: user?.id,
-        authError: authError?.message,
-        action: "auth_check",
-      },
-      "DELETE: User authentication",
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
     // 1.5 速率限制检查（高风险操作：每小时 2 次）
-    const rateLimitResult = checkRateLimit(user.id, "/api/bookmarks/permanent");
+    const rateLimitResult = checkRateLimit(userId, "/api/bookmarks/permanent");
     if (!rateLimitResult.allowed) {
       logger.warn(
-        { userId: user.id, bookmarkId, resetMs: rateLimitResult.resetMs },
+        { userId, bookmarkId, resetMs: rateLimitResult.resetMs },
         "Permanent delete rate limited",
       );
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           error: "操作过于频繁，请稍后再试",
           retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
-        }),
+        },
         {
           status: 429,
           headers: {
-            "Content-Type": "application/json",
             "X-RateLimit-Limit": rateLimitResult.limit.toString(),
             "X-RateLimit-Remaining": "0",
             "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
@@ -81,14 +57,20 @@ export async function DELETE(
     }
 
     // 2. 检查收藏是否存在于垃圾箱中
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
-    const { data: existingBookmark, error: checkError } = await supabase
+    const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
       .select("id, user_id, is_in_trash, is_locked")
       .eq("id", bookmarkId)
       .is("deleted_at", null)
-      .single() as unknown as {
-      data: { id: number; user_id: string; is_in_trash: boolean; is_locked: boolean } | null;
+      .single()) as unknown as {
+      data: {
+        id: number;
+        user_id: string;
+        is_in_trash: boolean;
+        is_locked: boolean;
+      } | null;
       error: { code?: string; message: string } | null;
     };
 
@@ -112,7 +94,7 @@ export async function DELETE(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    if (existingBookmark.user_id !== user.id) {
+    if (existingBookmark.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -127,9 +109,11 @@ export async function DELETE(
     // 4. 永久删除（设置 deleted_at）
     const serviceClient = await createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = await (serviceClient.from("bookmarks") as any)
+    const { error: deleteError } = (await (
+      serviceClient.from("bookmarks") as any
+    )
       .update({ deleted_at: new Date().toISOString() })
-      .eq("id", bookmarkId) as { error: { message: string } | null };
+      .eq("id", bookmarkId)) as { error: { message: string } | null };
 
     logger.debug(
       {
@@ -145,12 +129,12 @@ export async function DELETE(
 
     // 5. 减少用户存储计数
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: decrementError } = await (serviceClient.rpc as any)(
+    const { error: decrementError } = (await (serviceClient.rpc as any)(
       "decrement_storage_used",
       {
-        target_user_id: user.id,
+        target_user_id: userId,
       },
-    ) as { error: { message: string } | null };
+    )) as { error: { message: string } | null };
 
     logger.debug(
       {
@@ -165,7 +149,7 @@ export async function DELETE(
       logger.error(
         {
           error: decrementError,
-          userId: user.id,
+          userId,
           operation: "decrement_storage",
         },
         "Failed to decrement storage count",
@@ -187,15 +171,5 @@ export async function DELETE(
       permanent: true,
       message: "已永久删除",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "permanent_delete_bookmark",
-      },
-      "DELETE /api/bookmarks/[id]/permanent error",
-    );
-    return databaseError(BOOKMARK.DELETE_ERROR(1), error);
-  }
-}
+  },
+);

@@ -4,12 +4,12 @@
  * @description 单个模板的读取、更新、删除
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import type { Database, Json } from "@/types/supabase";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 const logger = createLogger("api:knowledge-studio:templates:[id]");
 
 // 类型定义
@@ -17,38 +17,22 @@ type TemplateRow = Database["public"]["Tables"]["ks_custom_templates"]["Row"];
 type TemplateUpdate =
   Database["public"]["Tables"]["ks_custom_templates"]["Update"];
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET /api/knowledge-studio/templates/[id]
  * 获取单个模板详情
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
-    logger.info({ userId: user.id, templateId: id }, "Fetching template");
+    logger.info({ userId: userId, templateId: id }, "Fetching template");
 
     // 使用标准 Supabase 查询模式
     const { data, error } = await supabase
       .from("ks_custom_templates")
       .select("*")
       .eq("id", id)
-      .or(`user_id.eq.${user.id},visibility.eq.public`)
+      .or(`user_id.eq.${userId},visibility.eq.public`)
       .single();
 
     if (error) {
@@ -69,38 +53,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const template = data as TemplateRow | null;
 
     return NextResponse.json({ data: template });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Get template failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "获取模板失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * PUT /api/knowledge-studio/templates/[id]
  * 更新模板
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const body = await request.json();
     const {
       name,
@@ -117,7 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     } = body;
 
     logger.info(
-      { userId: user.id, templateId: id, incrementVersion },
+      { userId: userId, templateId: id, incrementVersion },
       "Updating template",
     );
 
@@ -126,7 +89,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("ks_custom_templates")
       .select("id, version")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (checkError || !existing) {
@@ -162,7 +125,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from("ks_custom_templates")
       .update(updates)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single();
 
@@ -178,46 +141,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const template = data as TemplateRow | null;
 
     return NextResponse.json({ data: template });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Update template failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "更新模板失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/knowledge-studio/templates/[id]
  * 删除模板
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
-    logger.info({ userId: user.id, templateId: id }, "Deleting template");
+    logger.info({ userId: userId, templateId: id }, "Deleting template");
 
     // 使用标准 Supabase 删除模式
     const { error } = await supabase
       .from("ks_custom_templates")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       logger.error({ error: error.message }, "Delete template failed");
@@ -228,14 +170,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Delete template failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "删除模板失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

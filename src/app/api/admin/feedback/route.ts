@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
 
 // 使用 Service Role Key 创建 Admin Client 以绕过 RLS
 // 注意：实际项目中必须配合严格的权限检查，防止普通用户调用此接口
@@ -10,38 +13,27 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY as string,
 );
 
-export async function GET(request: Request) {
-  // 1. 身份验证 (使用标准 Server Client)
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId, user }) => {
+    // 权限检查 - 验证是否为管理员
+    if (!user?.email) {
+      return forbiddenError("无权限访问");
+    }
+    if (!isAdminUser(user.email)) {
+      logger.warn(
+        { userId, email: user.email },
+        "[AdminFeedback] 非管理员访问尝试",
+      );
+      return forbiddenError("无权限访问");
+    }
 
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const pageSize = parseInt(searchParams.get("page_size") || "20");
+    const type = searchParams.get("type");
+    const status = searchParams.get("status");
+    const priority = searchParams.get("priority");
 
-  // 2. 权限检查 - 验证是否为管理员
-  if (!isAdminUser(user.email)) {
-    logger.warn(
-      { userId: user.id, email: user.email },
-      "[AdminFeedback] 非管理员访问尝试",
-    );
-    return Response.json(
-      { success: false, error: "无权限访问" },
-      { status: 403 },
-    );
-  }
-
-  const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const pageSize = parseInt(searchParams.get("page_size") || "20");
-  const type = searchParams.get("type");
-  const status = searchParams.get("status");
-  const priority = searchParams.get("priority");
-
-  try {
     let query = supabaseAdmin
       .from("user_feedbacks")
       .select("*, profiles(nickname, phone)", { count: "exact" }) // 关联查询用户信息(如果有 profiles 表)
@@ -56,7 +48,7 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: {
         feedbacks: data,
@@ -65,11 +57,5 @@ export async function GET(request: Request) {
         page_size: pageSize,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[AdminFeedback] 查询失败");
-    return Response.json(
-      { success: false, error: "查询失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

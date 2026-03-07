@@ -5,30 +5,12 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { operationLogService } from "@/lib/classification/services/server";
-import { logger } from "@/lib/logger";
 
-interface RouteParams {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id: snapshotId } = await params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
-    }
 
     if (!snapshotId) {
       return NextResponse.json({ error: "缺少快照 ID" }, { status: 400 });
@@ -36,7 +18,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 获取快照详情
     const snapshot = await operationLogService.getSnapshotById(
-      user.id,
+      userId,
       snapshotId,
     );
 
@@ -80,14 +62,5 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         },
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[API] folder-evolution/snapshot error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "获取快照详情失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

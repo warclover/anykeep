@@ -2,40 +2,28 @@
  * 智能分类 v5.0 - 获取文件夹画像 API
  *
  * GET /api/classification/v5/folder-profile/[folderId]
+ *
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { FolderProfilerService } from "@/lib/classification/strategies/modern/folder-profiler";
 import { EmbeddingService } from "@/lib/classification/infrastructure/shared-services/embedding";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * GET /api/classification/v5/folder-profile/:folderId
  * 获取指定文件夹的画像信息
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { folderId: string } },
-) {
-  const logger = createLogger("FolderProfileAPI");
+export const GET = withAuthMiddleware<{ folderId: string }>(
+  async (_request, { userId, params }) => {
+    const logger = createLogger("FolderProfileAPI");
 
-  try {
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      logger.warn("未授权访问", { error: authError?.message });
-      return NextResponse.json({ error: "未授权" }, { status: 401 });
-    }
-
-    // 2. 获取并验证 folderId
-    const { folderId: folderIdStr } = params;
+    const { folderId: folderIdStr } = await params;
 
     if (!folderIdStr) {
       logger.warn("缺少 folderId");
@@ -49,16 +37,16 @@ export async function GET(
     }
 
     logger.info("获取文件夹画像", {
-      userId: user.id,
+      userId,
       folderId: folderId.toString(),
     });
 
-    // 3. 验证文件夹所有权
+    // 验证文件夹所有权
     const { data: folder, error: folderError } = await supabase
       .from("folders")
       .select("id, name, user_id")
       .eq("id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (folderError || !folder) {
@@ -72,7 +60,7 @@ export async function GET(
       );
     }
 
-    // 4. 初始化服务
+    // 初始化服务
     const embeddingService = new EmbeddingService(logger, {});
     const profilerService = new FolderProfilerService(
       logger,
@@ -80,8 +68,8 @@ export async function GET(
       embeddingService,
     );
 
-    // 5. 获取文件夹画像
-    const profile = await profilerService.getProfile(user.id, Number(folderId));
+    // 获取文件夹画像
+    const profile = await profilerService.getProfile(userId, Number(folderId));
 
     if (!profile) {
       logger.info("文件夹画像不存在", { folderId: folderId.toString() });
@@ -96,13 +84,12 @@ export async function GET(
     }
 
     logger.info("文件夹画像获取成功", {
-      userId: user.id,
+      userId,
       folderId: folderId.toString(),
       alphaCoefficient: profile.alphaCoefficient,
       bookmarkCount: profile.bookmarkCount,
     });
 
-    // 6. 返回结果
     return NextResponse.json({
       success: true,
       data: {
@@ -116,18 +103,5 @@ export async function GET(
         needsUpdate: profile.needsUpdate,
       },
     });
-  } catch (error) {
-    logger.error(
-      "获取文件夹画像失败",
-      error instanceof Error ? error : new Error(String(error)),
-    );
-
-    return NextResponse.json(
-      {
-        error: "获取文件夹画像失败",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

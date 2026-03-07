@@ -12,13 +12,14 @@
  * @since 2026-01-08
  */
 
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { getContentFetcherService } from "@/lib/summary/services/content-fetcher.service";
 import { extractKeyContent } from "@/lib/utils/content-extractor";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // =============================================================================
 // Request Schema
@@ -95,11 +96,6 @@ function validateUrlSafety(urlString: string): {
       return { valid: false, error: "禁止访问内网地址" };
     }
 
-    // 4. 禁止非标准端口（可选，根据需求）
-    // if (parsed.port && !["80", "443", ""].includes(parsed.port)) {
-    //   return { valid: false, error: "仅支持标准端口" };
-    // }
-
     return { valid: true };
   } catch {
     return { valid: false, error: "无效的 URL 格式" };
@@ -110,248 +106,202 @@ function validateUrlSafety(urlString: string): {
 // API Handler
 // =============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 2. 频率限制检查
+  const rateLimitResult = checkRateLimit(
+    userId,
+    "/api/bookmarks/fetch-content",
+  );
 
-    if (authError || !user) {
-      return Response.json(
-        { success: false, error: "请先登录" },
-        { status: 401 },
-      );
-    }
-
-    // 2. 频率限制检查
-    const rateLimitResult = checkRateLimit(
-      user.id,
-      "/api/bookmarks/fetch-content",
-    );
-
-    if (!rateLimitResult.allowed) {
-      logger.warn(
-        {
-          userId: user.id.slice(0, 8),
-          remaining: rateLimitResult.remaining,
-          resetMs: rateLimitResult.resetMs,
-        },
-        "fetch-content: Rate limit exceeded",
-      );
-
-      return Response.json(
-        {
-          success: false,
-          error: "请求过于频繁，请稍后再试",
-          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.ceil(rateLimitResult.resetMs / 1000)),
-            "X-RateLimit-Remaining": String(rateLimitResult.remaining),
-            "X-RateLimit-Limit": String(rateLimitResult.limit),
-          },
-        },
-      );
-    }
-
-    // 3. 解析请求体
-    const body = await request.json();
-    const validation = requestSchema.safeParse(body);
-
-    if (!validation.success) {
-      return Response.json(
-        {
-          success: false,
-          error: "参数无效",
-          details: validation.error.issues,
-        },
-        { status: 400 },
-      );
-    }
-
-    const { bookmarkId, url } = validation.data;
-
-    // 4. 验证书签所有权
-    const { data: bookmark, error: bookmarkError } = await supabase
-      .from("bookmarks")
-      .select("id, user_id, title, ai_summary, description")
-      .eq("id", bookmarkId)
-      .single();
-
-    if (bookmarkError || !bookmark) {
-      logger.warn(
-        { bookmarkId, userId: user.id.slice(0, 8), error: bookmarkError },
-        "fetch-content: Bookmark not found",
-      );
-
-      return Response.json(
-        { success: false, error: "书签不存在" },
-        { status: 404 },
-      );
-    }
-
-    if (bookmark.user_id !== user.id) {
-      logger.warn(
-        {
-          bookmarkId,
-          userId: user.id.slice(0, 8),
-          ownerId: bookmark.user_id.slice(0, 8),
-        },
-        "fetch-content: Unauthorized access attempt",
-      );
-
-      return Response.json(
-        { success: false, error: "无权访问此书签" },
-        { status: 403 },
-      );
-    }
-
-    // 5. 检查是否已有内容（避免重复抓取）
-    if (bookmark.ai_summary && bookmark.ai_summary.trim()) {
-      return Response.json({
-        success: true,
-        content: bookmark.ai_summary,
-        source: "ai_summary",
-        cached: true,
-      });
-    }
-
-    if (bookmark.description && bookmark.description.trim()) {
-      return Response.json({
-        success: true,
-        content: bookmark.description,
-        source: "description",
-        cached: true,
-      });
-    }
-
-    // 6. URL 安全验证（防 SSRF）
-    const urlValidation = validateUrlSafety(url);
-    if (!urlValidation.valid) {
-      logger.warn(
-        {
-          bookmarkId,
-          url,
-          error: urlValidation.error,
-          userId: user.id.slice(0, 8),
-        },
-        "fetch-content: URL validation failed (SSRF protection)",
-      );
-
-      return Response.json(
-        { success: false, error: urlValidation.error },
-        { status: 400 },
-      );
-    }
-
-    // 7. 实时抓取内容
-    logger.info(
-      { bookmarkId, url, userId: user.id.slice(0, 8) },
-      "fetch-content: Fetching URL content",
-    );
-
-    const fetcher = getContentFetcherService();
-
-    const fetchResult = await fetcher.fetch(url, {
-      timeoutMs: FETCH_TIMEOUT_MS,
-      extractContent: true,
-      maxContentLength: MAX_CONTENT_LENGTH * 2, // 抓取更多，后续截断
-    });
-
-    // 7. 处理抓取结果
-    let content = fetchResult.content || fetchResult.description || "";
-
-    if (!content) {
-      logger.warn(
-        { bookmarkId, url },
-        "fetch-content: No content extracted from URL",
-      );
-
-      return Response.json({
-        success: true,
-        content: null,
-        source: "none",
-        message: "无法提取页面内容",
-      });
-    }
-
-    // 8. 提取关键内容（如果过长）
-    if (content.length > MAX_CONTENT_LENGTH) {
-      content = extractKeyContent(content, MAX_CONTENT_LENGTH);
-    }
-
-    // 9. 可选：更新书签的 ai_summary（异步，不阻塞响应）
-    supabase
-      .from("bookmarks")
-      .update({ ai_summary: content })
-      .eq("id", bookmarkId)
-      .then(({ error }) => {
-        if (error) {
-          logger.warn(
-            { bookmarkId, error },
-            "fetch-content: Failed to update ai_summary",
-          );
-        } else {
-          logger.debug({ bookmarkId }, "fetch-content: ai_summary updated");
-        }
-      });
-
-    const elapsed = Date.now() - startTime;
-
-    logger.info(
+  if (!rateLimitResult.allowed) {
+    logger.warn(
       {
-        bookmarkId,
-        contentLength: content.length,
-        elapsed,
-        userId: user.id.slice(0, 8),
+        userId: userId.slice(0, 8),
+        remaining: rateLimitResult.remaining,
+        resetMs: rateLimitResult.resetMs,
       },
-      "fetch-content: Content fetched successfully",
+      "fetch-content: Rate limit exceeded",
     );
 
-    return Response.json({
-      success: true,
-      content,
-      source: "fetched",
-      contentLength: content.length,
-      fetchTimeMs: elapsed,
-    });
-  } catch (error) {
-    const elapsed = Date.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        elapsed,
-      },
-      "fetch-content: Unexpected error",
-    );
-
-    // 区分超时错误
-    if (error instanceof Error && error.name === "TimeoutError") {
-      return Response.json(
-        {
-          success: false,
-          error: "内容抓取超时，请稍后重试",
-          retryable: true,
-        },
-        { status: 504 },
-      );
-    }
-
-    return Response.json(
+    return NextResponse.json(
       {
         success: false,
-        error: "内容抓取失败",
-        retryable: true,
+        error: "请求过于频繁，请稍后再试",
+        retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
       },
-      { status: 500 },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(rateLimitResult.resetMs / 1000)),
+          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+          "X-RateLimit-Limit": String(rateLimitResult.limit),
+        },
+      },
     );
   }
-}
+
+  // 3. 解析请求体
+  const body = await request.json();
+  const validation = requestSchema.safeParse(body);
+
+  if (!validation.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "参数无效",
+        details: validation.error.issues,
+      },
+      { status: 400 },
+    );
+  }
+
+  const { bookmarkId, url } = validation.data;
+
+  // 4. 验证书签所有权
+  const supabase = await createClient();
+  const { data: bookmark, error: bookmarkError } = await supabase
+    .from("bookmarks")
+    .select("id, user_id, title, ai_summary, description")
+    .eq("id", bookmarkId)
+    .single();
+
+  if (bookmarkError || !bookmark) {
+    logger.warn(
+      { bookmarkId, userId: userId.slice(0, 8), error: bookmarkError },
+      "fetch-content: Bookmark not found",
+    );
+
+    return NextResponse.json(
+      { success: false, error: "书签不存在" },
+      { status: 404 },
+    );
+  }
+
+  if (bookmark.user_id !== userId) {
+    logger.warn(
+      {
+        bookmarkId,
+        userId: userId.slice(0, 8),
+        ownerId: bookmark.user_id.slice(0, 8),
+      },
+      "fetch-content: Unauthorized access attempt",
+    );
+
+    return NextResponse.json(
+      { success: false, error: "无权访问此书签" },
+      { status: 403 },
+    );
+  }
+
+  // 5. 检查是否已有内容（避免重复抓取）
+  if (bookmark.ai_summary && bookmark.ai_summary.trim()) {
+    return NextResponse.json({
+      success: true,
+      content: bookmark.ai_summary,
+      source: "ai_summary",
+      cached: true,
+    });
+  }
+
+  if (bookmark.description && bookmark.description.trim()) {
+    return NextResponse.json({
+      success: true,
+      content: bookmark.description,
+      source: "description",
+      cached: true,
+    });
+  }
+
+  // 6. URL 安全验证（防 SSRF）
+  const urlValidation = validateUrlSafety(url);
+  if (!urlValidation.valid) {
+    logger.warn(
+      {
+        bookmarkId,
+        url,
+        error: urlValidation.error,
+        userId: userId.slice(0, 8),
+      },
+      "fetch-content: URL validation failed (SSRF protection)",
+    );
+
+    return NextResponse.json(
+      { success: false, error: urlValidation.error },
+      { status: 400 },
+    );
+  }
+
+  // 7. 实时抓取内容
+  logger.info(
+    { bookmarkId, url, userId: userId.slice(0, 8) },
+    "fetch-content: Fetching URL content",
+  );
+
+  const fetcher = getContentFetcherService();
+
+  const fetchResult = await fetcher.fetch(url, {
+    timeoutMs: FETCH_TIMEOUT_MS,
+    extractContent: true,
+    maxContentLength: MAX_CONTENT_LENGTH * 2, // 抓取更多，后续截断
+  });
+
+  // 7. 处理抓取结果
+  let content = fetchResult.content || fetchResult.description || "";
+
+  if (!content) {
+    logger.warn(
+      { bookmarkId, url },
+      "fetch-content: No content extracted from URL",
+    );
+
+    return NextResponse.json({
+      success: true,
+      content: null,
+      source: "none",
+      message: "无法提取页面内容",
+    });
+  }
+
+  // 8. 提取关键内容（如果过长）
+  if (content.length > MAX_CONTENT_LENGTH) {
+    content = extractKeyContent(content, MAX_CONTENT_LENGTH);
+  }
+
+  // 9. 可选：更新书签的 ai_summary（异步，不阻塞响应）
+  supabase
+    .from("bookmarks")
+    .update({ ai_summary: content })
+    .eq("id", bookmarkId)
+    .then(({ error }) => {
+      if (error) {
+        logger.warn(
+          { bookmarkId, error },
+          "fetch-content: Failed to update ai_summary",
+        );
+      } else {
+        logger.debug({ bookmarkId }, "fetch-content: ai_summary updated");
+      }
+    });
+
+  const elapsed = Date.now() - startTime;
+
+  logger.info(
+    {
+      bookmarkId,
+      contentLength: content.length,
+      elapsed,
+      userId: userId.slice(0, 8),
+    },
+    "fetch-content: Content fetched successfully",
+  );
+
+  return Response.json({
+    success: true,
+    content,
+    source: "fetched",
+    contentLength: content.length,
+    fetchTimeMs: elapsed,
+  });
+});

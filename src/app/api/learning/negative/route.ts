@@ -10,36 +10,22 @@
  * @since 2025-12-11
  */
 
-import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  badRequestError,
-  unauthorizedError,
-  internalError,
-} from "@/lib/utils/api-response";
+import type { NextRequest } from "next/server";
+import { successResponse, badRequestError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   negativeSampleService,
   type ExclusionType,
   type CreatedFrom,
 } from "@/lib/classification/learning/negative-sample.service";
 import { learningEventHandler } from "@/lib/classification/learning/learning-event-handler";
-import type { NextRequest } from "next/server";
 
 /**
  * GET /api/learning/negative
  * 获取用户的排除规则列表
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const folderId = searchParams.get("folderId");
     const exclusionType = searchParams.get("type") as ExclusionType | null;
@@ -48,7 +34,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     // 获取排除规则
-    const exclusions = await negativeSampleService.getUserExclusions(user.id, {
+    const exclusions = await negativeSampleService.getUserExclusions(userId, {
       folderId: folderId ? parseInt(folderId, 10) : undefined,
       exclusionType: exclusionType || undefined,
       includeExpired,
@@ -57,7 +43,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 获取统计信息
-    const stats = await negativeSampleService.getUserStats(user.id);
+    const stats = await negativeSampleService.getUserStats(userId);
 
     return successResponse({
       exclusions,
@@ -68,27 +54,15 @@ export async function GET(request: NextRequest) {
         total: stats.total,
       },
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`获取排除规则失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * POST /api/learning/negative
  * 手动创建排除规则或从操作中学习
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const body = await request.json();
     const { action } = body;
 
@@ -107,7 +81,7 @@ export async function POST(request: NextRequest) {
         }
 
         const exclusion = await negativeSampleService.createExclusion({
-          userId: user.id,
+          userId,
           folderId,
           exclusionType: type as ExclusionType,
           excludedValue: value,
@@ -133,11 +107,13 @@ export async function POST(request: NextRequest) {
         } = body;
 
         if (!bookmarkId || !sourceFolderId || !targetFolderId) {
-          return badRequestError("缺少必要参数: bookmarkId, sourceFolderId, targetFolderId");
+          return badRequestError(
+            "缺少必要参数: bookmarkId, sourceFolderId, targetFolderId",
+          );
         }
 
         const result = await learningEventHandler.learnFromBookmarkMove({
-          userId: user.id,
+          userId,
           bookmarkId,
           sourceFolderId,
           targetFolderId,
@@ -162,11 +138,13 @@ export async function POST(request: NextRequest) {
         } = body;
 
         if (!bookmarkIds || !sourceFolderId || !targetFolderId) {
-          return badRequestError("缺少必要参数: bookmarkIds, sourceFolderId, targetFolderId");
+          return badRequestError(
+            "缺少必要参数: bookmarkIds, sourceFolderId, targetFolderId",
+          );
         }
 
         const result = await learningEventHandler.learnFromBulkMove({
-          userId: user.id,
+          userId,
           bookmarkIds,
           sourceFolderId,
           targetFolderId,
@@ -189,7 +167,7 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await negativeSampleService.createBatchExclusions({
-          userId: user.id,
+          userId,
           folderId,
           exclusions: exclusions.map(
             (e: { type: ExclusionType; value: string; weight?: number }) => ({
@@ -211,27 +189,15 @@ export async function POST(request: NextRequest) {
       default:
         return badRequestError(`未知操作: ${action}`);
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`操作失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/learning/negative
  * 删除排除规则
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const DELETE = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const action = searchParams.get("action");
@@ -255,7 +221,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 获取规则验证权限
-    const exclusions = await negativeSampleService.getUserExclusions(user.id, {
+    const exclusions = await negativeSampleService.getUserExclusions(userId, {
       limit: 1000,
     });
     const exclusion = exclusions.find((e) => e.id === exclusionId);
@@ -270,8 +236,5 @@ export async function DELETE(request: NextRequest) {
       success: true,
       deleted: exclusionId,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`删除失败: ${message}`);
-  }
-}
+  },
+);

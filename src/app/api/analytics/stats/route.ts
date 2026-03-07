@@ -12,12 +12,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import {
-  unauthorizedError,
-  databaseError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { databaseError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import type { AnalyticsData } from "@/lib/analytics";
@@ -67,26 +63,17 @@ function createEmptyAnalyticsData(): AnalyticsData {
  * GET /api/analytics/stats
  * 获取用户数据统计（服务端聚合优化版）
  */
-export async function GET(_request: NextRequest) {
-  const monitor = new PerformanceMonitor("AnalyticsStats");
-
-  try {
-    // 1. 验证用户身份
-    const { user, error: authError } = await monitor.measure("CachedAuth", () =>
-      getCachedUser(),
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
+    const monitor = new PerformanceMonitor("AnalyticsStats");
 
     const supabase = await monitor.measure("CreateClient", () =>
       createClient(),
     );
 
-    monitor.mark("AuthComplete", { userId: user.id });
+    monitor.mark("AuthComplete", { userId });
 
-    // 2. 计算时间范围
+    // 1. 计算时间范围
     const now = new Date();
     const todayStart = new Date(
       now.getFullYear(),
@@ -100,12 +87,12 @@ export async function GET(_request: NextRequest) {
 
     const queryStart = performance.now();
 
-    // 3. 获取书签数据（只获取统计所需字段，最多 10000 条防止内存溢出）
+    // 2. 获取书签数据（只获取统计所需字段，最多 10000 条防止内存溢出）
     const BOOKMARK_FETCH_LIMIT = 10000;
     const { data: bookmarks, error: queryError } = await supabase
       .from("bookmarks")
       .select("id, platform, folder_id, created_at, ai_tags")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true })
       .limit(BOOKMARK_FETCH_LIMIT);
@@ -118,7 +105,7 @@ export async function GET(_request: NextRequest) {
 
     if (bookmarks?.length === BOOKMARK_FETCH_LIMIT) {
       logger.warn(
-        { userId: user.id, limit: BOOKMARK_FETCH_LIMIT },
+        { userId, limit: BOOKMARK_FETCH_LIMIT },
         "Analytics stats hit fetch limit — statistics may be approximate",
       );
     }
@@ -140,7 +127,7 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // 4. 服务端聚合计算
+    // 3. 服务端聚合计算
     const aggregateStart = performance.now();
 
     // 分离内容收藏和浏览器书签
@@ -163,7 +150,7 @@ export async function GET(_request: NextRequest) {
     ).length;
     const unclassifiedCount = bookmarks.filter((b) => !b.folder_id).length;
 
-    // 5. 收藏趋势数据
+    // 4. 收藏趋势数据
     const trendDaysAgo = new Date();
     trendDaysAgo.setDate(trendDaysAgo.getDate() - ANALYTICS_TREND_DAYS);
 
@@ -201,7 +188,7 @@ export async function GET(_request: NextRequest) {
       });
     }
 
-    // 6. 平台分布数据
+    // 5. 平台分布数据
     const platformMap = new Map<string, number>();
     bookmarks.forEach((bookmark) => {
       const platform = bookmark.platform as Platform;
@@ -233,7 +220,7 @@ export async function GET(_request: NextRequest) {
       }))
       .sort((a, b) => b.value - a.value);
 
-    // 7. 热门标签数据
+    // 6. 热门标签数据
     const tagMap = new Map<string, number>();
     contentBookmarks.forEach((bookmark) => {
       bookmark.ai_tags?.forEach((tag: string) => {
@@ -246,7 +233,7 @@ export async function GET(_request: NextRequest) {
       .slice(0, ANALYTICS_TOP_TAGS_COUNT)
       .map(([tag, count]) => ({ tag, count }));
 
-    // 8. 内容类型统计
+    // 7. 内容类型统计
     const typeMap: Record<string, number> = {
       文章: 0,
       视频: 0,
@@ -277,7 +264,7 @@ export async function GET(_request: NextRequest) {
       durationMs: Math.round(performance.now() - aggregateStart),
     });
 
-    // 9. 构建响应
+    // 8. 构建响应
     const analyticsData: AnalyticsData = {
       stats: {
         totalBookmarks: bookmarks.length,
@@ -307,7 +294,7 @@ export async function GET(_request: NextRequest) {
     const perfReport = monitor.getReport();
     logger.info(
       {
-        userId: user.id,
+        userId,
         bookmarkCount: bookmarks.length,
         performance: {
           totalMs: Math.round(perfReport.totalDuration),
@@ -334,20 +321,5 @@ export async function GET(_request: NextRequest) {
         headers: { "Cache-Control": CACHE_CONTROL_HEADER },
       },
     );
-  } catch (error) {
-    const perfReport = monitor.getReport();
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_analytics_stats",
-        performance: {
-          totalMs: Math.round(perfReport.totalDuration),
-          failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
-        },
-      },
-      "GET /api/analytics/stats error",
-    );
-    return internalError("加载统计数据失败");
-  }
-}
+  },
+);

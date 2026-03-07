@@ -5,37 +5,19 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { operationLogService } from "@/lib/classification/services/server";
-import { logger } from "@/lib/logger";
 
-interface RouteParams {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id: snapshotId } = await params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
-    }
 
     if (!snapshotId) {
       return NextResponse.json({ error: "缺少操作 ID" }, { status: 400 });
     }
 
     // 执行撤销操作
-    const result = await operationLogService.undoOperation(user.id, snapshotId);
+    const result = await operationLogService.undoOperation(userId, snapshotId);
 
     if (!result.success) {
       return NextResponse.json(
@@ -55,14 +37,5 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         restoredBookmarks: result.restoredBookmarks,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[API] folder-evolution/undo error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "撤销操作失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

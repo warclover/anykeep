@@ -10,6 +10,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   type SynthesisReport,
@@ -17,10 +18,6 @@ import {
   mapRowToReport,
   SynthesisErrorCode,
 } from "@/lib/synthesis";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 type ExportFormat = "markdown" | "html" | "json";
 
@@ -30,20 +27,17 @@ type ExportFormat = "markdown" | "html" | "json";
 function generateMarkdown(report: SynthesisReport): string {
   const lines: string[] = [];
 
-  // 标题
   lines.push(`# ${report.title}`);
   lines.push("");
   lines.push(`> 生成于 ${new Date(report.createdAt).toLocaleString("zh-CN")}`);
   lines.push(`> 来源：${report.sourceCount} 篇收藏`);
   lines.push("");
 
-  // 概述
   lines.push("## 📋 概述");
   lines.push("");
   lines.push(report.overview || "暂无概述");
   lines.push("");
 
-  // 共识
   if (report.consensus && report.consensus.length > 0) {
     lines.push("## ✅ 共识观点");
     lines.push("");
@@ -63,7 +57,6 @@ function generateMarkdown(report: SynthesisReport): string {
     }
   }
 
-  // 分歧
   if (report.divergence && report.divergence.length > 0) {
     lines.push("## ⚖️ 分歧观点");
     lines.push("");
@@ -71,7 +64,6 @@ function generateMarkdown(report: SynthesisReport): string {
       lines.push(`### ${point.topic}`);
       lines.push("");
 
-      // 观点 A
       lines.push("**观点 A**:");
       lines.push(`> ${point.point_a}`);
       lines.push("");
@@ -80,7 +72,6 @@ function generateMarkdown(report: SynthesisReport): string {
         lines.push("");
       }
 
-      // 观点 B
       lines.push("**观点 B**:");
       lines.push(`> ${point.point_b}`);
       lines.push("");
@@ -89,7 +80,6 @@ function generateMarkdown(report: SynthesisReport): string {
         lines.push("");
       }
 
-      // AI 分析
       if (point.analysis) {
         lines.push("**分析**:");
         lines.push(point.analysis);
@@ -98,7 +88,6 @@ function generateMarkdown(report: SynthesisReport): string {
     }
   }
 
-  // 盲区
   if (report.blindSpots && report.blindSpots.length > 0) {
     lines.push("## 🔍 盲区提示");
     lines.push("");
@@ -123,7 +112,6 @@ function generateMarkdown(report: SynthesisReport): string {
 function generateHTML(report: SynthesisReport): string {
   const markdown = generateMarkdown(report);
 
-  // 简单的 Markdown 到 HTML 转换（实际项目可用 marked 等库）
   const htmlContent = markdown
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")
@@ -176,25 +164,11 @@ function generateHTML(report: SynthesisReport): string {
 /**
  * GET /api/synthesis/[id]/export - 导出综述
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
 
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
-    }
-
-    // 解析导出格式
     const searchParams = request.nextUrl.searchParams;
     const format = (searchParams.get("format") || "markdown") as ExportFormat;
 
@@ -208,8 +182,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 获取综述详情
-    // 类型断言: 手动维护类型文件时需要此断言
     type SynthesisReportSelectRow = {
       status: string;
       [key: string]: unknown;
@@ -218,7 +190,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { data, error } = (await (supabase.from("synthesis_reports") as any)
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single()) as {
       data: SynthesisReportSelectRow | null;
       error: { message: string } | null;
@@ -231,7 +203,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 检查是否已完成
     if (data.status !== "completed") {
       return NextResponse.json(
         { error: "Report not yet completed", code: "NOT_COMPLETED" },
@@ -242,7 +213,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const report = mapRowToReport(data as unknown as SynthesisReportRow);
     const filename = `${report.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_")}`;
 
-    // 根据格式生成内容
     let content: string;
     let contentType: string;
     let extension: string;
@@ -272,25 +242,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         extension = "md";
     }
 
-    logger.info(
-      { reportId: id, userId: user.id, format },
-      "Synthesis report exported",
-    );
+    logger.info({ reportId: id, userId, format }, "Synthesis report exported");
 
-    return new Response(content, {
+    return new NextResponse(content, {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${filename}.${extension}"`,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis export API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

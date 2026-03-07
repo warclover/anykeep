@@ -5,13 +5,10 @@
  * POST /api/librarian/patrol - 执行新的巡检
  */
 
+import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-  notFoundError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, notFoundError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { createLibrarianPatrolService } from "@/lib/classification/services/advanced";
 
@@ -23,22 +20,13 @@ import { createLibrarianPatrolService } from "@/lib/classification/services/adva
  * GET /api/librarian/patrol
  * 获取最新巡检报告
  */
-export async function GET() {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 获取最新报告
+    // 获取最新报告
     const patrolService = createLibrarianPatrolService(supabase);
-    const report = await patrolService.getUserReport(user.id);
+    const report = await patrolService.getUserReport(userId);
 
     if (!report) {
       return notFoundError("暂无巡检报告");
@@ -46,7 +34,7 @@ export async function GET() {
 
     logger.debug(
       {
-        userId: user.id,
+        userId,
         reportId: report.reportId,
         overallScore: report.overallScore,
       },
@@ -54,42 +42,24 @@ export async function GET() {
     );
 
     return successResponse(report);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/librarian/patrol error",
-    );
-    return internalError("获取巡检报告失败");
-  }
-}
+  },
+);
 
 /**
  * POST /api/librarian/patrol
  * 执行新的巡检
  */
-export async function POST() {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 执行巡检
+    // 执行巡检
     const patrolService = createLibrarianPatrolService(supabase);
-    const report = await patrolService.patrolUser(user.id);
+    const report = await patrolService.patrolUser(userId);
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         reportId: report.reportId,
         overallScore: report.overallScore,
         totalIssues: report.totalIssues,
@@ -100,14 +70,5 @@ export async function POST() {
     );
 
     return successResponse(report);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/librarian/patrol error",
-    );
-    return internalError("巡检失败");
-  }
-}
+  },
+);

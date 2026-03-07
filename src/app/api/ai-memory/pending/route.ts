@@ -8,9 +8,8 @@
  * @since 2026-01-13
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { getEpisodicMemoryService } from "@/lib/ai-agent/memory/episodic-memory";
 import { logger } from "@/lib/logger";
 
@@ -18,48 +17,24 @@ import { logger } from "@/lib/logger";
 // DELETE - 完成待办事项
 // ============================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const DELETE = withAuthMiddleware(async (request, { userId }) => {
+  const body = await request.json();
+  const { task } = body;
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
-    }
-
-    const body = await request.json();
-    const { task } = body;
-
-    if (!task || typeof task !== "string") {
-      return NextResponse.json(
-        { success: false, error: "Missing or invalid task parameter" },
-        { status: 400 },
-      );
-    }
-
-    const episodicMemory = getEpisodicMemoryService();
-    await episodicMemory.removePendingIntent(user.id, task);
-
-    logger.info({ userId: user.id, task }, "Pending task completed via API");
-
-    return NextResponse.json({
-      success: true,
-      data: { completed: true, task },
-    });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to complete pending task",
-    );
-
+  if (!task || typeof task !== "string") {
     return NextResponse.json(
-      { success: false, error: "Failed to complete pending task" },
-      { status: 500 },
+      { success: false, error: "Missing or invalid task parameter" },
+      { status: 400 },
     );
   }
-}
+
+  const episodicMemory = getEpisodicMemoryService();
+  await episodicMemory.removePendingIntent(userId, task);
+
+  logger.info({ userId, task }, "Pending task completed via API");
+
+  return NextResponse.json({
+    success: true,
+    data: { completed: true, task },
+  });
+});

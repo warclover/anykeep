@@ -9,13 +9,12 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";
-import type { NextRequest } from "next/server";
 import type { Json } from "@/types/supabase";
 
 // =============================================================================
@@ -41,20 +40,9 @@ interface UpdateMessagesRequest {
  * PUT /api/conversations/[id]/messages
  * Update conversation messages
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
     const { id: conversationId } = await params;
 
     // Parse request body
@@ -117,7 +105,7 @@ export async function PUT(
         last_intent: lastIntent,
         updated_at: new Date().toISOString(),
       })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("conversation_id", conversationId);
 
     if (error) {
@@ -126,7 +114,7 @@ export async function PUT(
         const { error: insertError } = await supabase
           .from("ai_session_memory")
           .insert({
-            user_id: user.id,
+            user_id: userId,
             conversation_id: conversationId,
             state: { messages: messagesJson } as Json,
             message_count: validMessages.length,
@@ -148,8 +136,5 @@ export async function PUT(
       messageCount: validMessages.length,
       lastIntent,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`Failed to save messages: ${message}`);
-  }
-}
+  },
+);

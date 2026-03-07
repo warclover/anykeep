@@ -6,36 +6,25 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { updateCategorySchema } from "@/lib/validation";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   badRequestError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
 
 /**
  * PATCH /api/folder-categories/[id]
  * 更新栏目信息
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id: idStr } = await params;
     const categoryId = parseInt(idStr, 10);
     if (isNaN(categoryId)) {
       return badRequestError("Invalid category ID");
-    }
-
-    const { user, error: authError } = await getCachedUser();
-    if (authError || !user) {
-      return unauthorizedError();
     }
 
     const supabase = await createClient();
@@ -69,7 +58,7 @@ export async function PATCH(
       .from("folder_categories")
       .update(updateData)
       .eq("id", categoryId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single();
 
@@ -82,36 +71,19 @@ export async function PATCH(
     }
 
     return successResponse(category);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        operation: "update_folder_category",
-      },
-      "PATCH /api/folder-categories/[id] error",
-    );
-    return internalError("更新栏目失败");
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/folder-categories/[id]
  * 删除栏目（栏目下的文件夹会变为未分类）
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id: idStr } = await params;
     const categoryId = parseInt(idStr, 10);
     if (isNaN(categoryId)) {
       return badRequestError("Invalid category ID");
-    }
-
-    const { user, error: authError } = await getCachedUser();
-    if (authError || !user) {
-      return unauthorizedError();
     }
 
     const supabase = await createClient();
@@ -123,27 +95,18 @@ export async function DELETE(
       .from("folders")
       .update({ category_id: null, updated_at: new Date().toISOString() })
       .eq("category_id", categoryId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     const { error: deleteError } = await sb
       .from("folder_categories")
       .delete()
       .eq("id", categoryId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (deleteError) {
       return databaseError("删除栏目失败", deleteError);
     }
 
     return successResponse({ success: true, message: "栏目已删除" });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        operation: "delete_folder_category",
-      },
-      "DELETE /api/folder-categories/[id] error",
-    );
-    return internalError("删除栏目失败");
-  }
-}
+  },
+);

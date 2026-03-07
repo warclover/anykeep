@@ -14,71 +14,57 @@ import { updateMonitorSchema, type MonitorDetailResponse } from "../validation";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   notFoundError,
   databaseError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * GET /api/monitors/[id]
  * 获取单个监控的详细信息
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const monitorId = parseInt(id, 10);
 
     if (isNaN(monitorId) || monitorId <= 0) {
       return badRequestError("无效的监控 ID");
     }
 
-    // 1. 身份验证
+    // 1. 获取监控详情
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 获取监控详情
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: monitor, error: queryError } = await (supabase as any)
       .from("page_monitors")
       .select(
         `
+      id,
+      bookmark_id,
+      check_interval,
+      custom_interval_hours,
+      status,
+      change_count,
+      last_checked_at,
+      next_check_at,
+      consecutive_failures,
+      last_error_message,
+      notification_enabled,
+      baseline_snapshot_id,
+      baseline_content_hash,
+      created_at,
+      updated_at,
+      bookmarks!inner (
         id,
-        bookmark_id,
-        check_interval,
-        custom_interval_hours,
-        status,
-        change_count,
-        last_checked_at,
-        next_check_at,
-        consecutive_failures,
-        last_error_message,
-        notification_enabled,
-        baseline_snapshot_id,
-        baseline_content_hash,
-        created_at,
-        updated_at,
-        bookmarks!inner (
-          id,
-          title,
-          url
-        )
-      `,
+        title,
+        url
+      )
+    `,
       )
       .eq("id", monitorId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted")
       .single();
 
@@ -86,26 +72,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return notFoundError("监控不存在或无权访问");
     }
 
-    // 3. 获取最近的检查记录
+    // 2. 获取最近的检查记录
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: recentLogs } = await (supabase as any)
       .from("monitor_check_logs")
       .select(
         `
-        id,
-        check_result,
-        checked_at,
-        similarity_score,
-        change_summary,
-        error_message,
-        duration_ms
-      `,
+      id,
+      check_result,
+      checked_at,
+      similarity_score,
+      change_summary,
+      error_message,
+      duration_ms
+    `,
       )
       .eq("monitor_id", monitorId)
       .order("checked_at", { ascending: false })
       .limit(10);
 
-    // 4. 转换响应格式
+    // 3. 转换响应格式
     const response: MonitorDetailResponse = {
       id: monitor.id,
       bookmarkId: monitor.bookmark_id,
@@ -136,40 +122,23 @@ export async function GET(request: NextRequest, context: RouteContext) {
     };
 
     return successResponse(response);
-  } catch (error) {
-    logger.error({
-      operation: "get_monitor_detail",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("获取监控详情失败");
-  }
-}
+  },
+);
 
 /**
  * PUT /api/monitors/[id]
  * 更新监控设置
  */
-export async function PUT(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const monitorId = parseInt(id, 10);
 
     if (isNaN(monitorId) || monitorId <= 0) {
       return badRequestError("无效的监控 ID");
     }
 
-    // 1. 身份验证
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 请求验证
+    // 1. 请求验证
     const body = await request.json();
     const parseResult = updateMonitorSchema.safeParse(body);
 
@@ -180,13 +149,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const { checkInterval, customIntervalHours, notificationEnabled } =
       parseResult.data;
 
-    // 3. 验证监控所有权
+    // 2. 验证监控所有权
+    const supabase = await createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing, error: existError } = await (supabase as any)
       .from("page_monitors")
       .select("id, status, check_interval")
       .eq("id", monitorId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted")
       .single();
 
@@ -194,15 +164,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return notFoundError("监控不存在或无权操作");
     }
 
-    // 4. 检查会员权限（如果更改检查间隔）
+    // 3. 检查会员权限（如果更改检查间隔）
     if (checkInterval) {
       // 类型断言: 手动维护类型文件时需要此断言
       type ProfileRow = { membership_type: string | null };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = await (supabase.from("profiles") as any)
+      const { data: profile } = (await (supabase.from("profiles") as any)
         .select("membership_type")
-        .eq("id", user.id)
-        .single() as { data: ProfileRow | null };
+        .eq("id", userId)
+        .single()) as { data: ProfileRow | null };
 
       const membershipType =
         (profile?.membership_type as "FREE" | "PRO") || "FREE";
@@ -215,7 +185,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       }
     }
 
-    // 5. 构建更新数据
+    // 4. 构建更新数据
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -244,7 +214,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       updateData.notification_enabled = notificationEnabled;
     }
 
-    // 6. 执行更新
+    // 5. 执行更新
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("page_monitors")
@@ -254,7 +224,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (updateError) {
       logger.error({
         operation: "update_monitor",
-        userId: user.id,
+        userId,
         monitorId,
         error: updateError.message,
       });
@@ -263,7 +233,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     logger.info({
       operation: "update_monitor",
-      userId: user.id,
+      userId,
       monitorId,
       changes: Object.keys(updateData),
     });
@@ -272,46 +242,30 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       id: monitorId,
       message: "监控设置已更新",
     });
-  } catch (error) {
-    logger.error({
-      operation: "update_monitor",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("更新监控失败");
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/monitors/[id]
  * 删除监控（软删除）
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const monitorId = parseInt(id, 10);
 
     if (isNaN(monitorId) || monitorId <= 0) {
       return badRequestError("无效的监控 ID");
     }
 
-    // 1. 身份验证
+    // 1. 验证监控所有权
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 验证监控所有权
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing, error: existError } = await (supabase as any)
       .from("page_monitors")
       .select("id, status")
       .eq("id", monitorId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted")
       .single();
 
@@ -319,7 +273,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return notFoundError("监控不存在或无权操作");
     }
 
-    // 3. 执行软删除
+    // 2. 执行软删除
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: deleteError } = await (supabase as any)
       .from("page_monitors")
@@ -332,7 +286,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (deleteError) {
       logger.error({
         operation: "delete_monitor",
-        userId: user.id,
+        userId,
         monitorId,
         error: deleteError.message,
       });
@@ -341,7 +295,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     logger.info({
       operation: "delete_monitor",
-      userId: user.id,
+      userId,
       monitorId,
     });
 
@@ -349,11 +303,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       id: monitorId,
       message: "监控已删除",
     });
-  } catch (error) {
-    logger.error({
-      operation: "delete_monitor",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("删除监控失败");
-  }
-}
+  },
+);

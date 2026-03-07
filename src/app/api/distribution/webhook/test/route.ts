@@ -6,22 +6,10 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
-export async function POST(request: NextRequest) {
-  // 验证用户登录
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "请先登录" }, { status: 401 });
-  }
-
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId: _userId }) => {
     const body = await request.json();
     const { url, method = "POST", headers = {}, secretKey } = body;
 
@@ -122,8 +110,5 @@ export async function POST(request: NextRequest) {
 
       throw fetchError;
     }
-  } catch (error) {
-    logger.error({ error }, "Webhook test error:");
-    return NextResponse.json({ error: "测试请求失败" }, { status: 500 });
-  }
-}
+  },
+);

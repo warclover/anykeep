@@ -5,13 +5,12 @@
 
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   notFoundError,
   forbiddenError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { AUTH, FOLDER } from "@/lib/constants/messages";
@@ -20,11 +19,8 @@ import { AUTH, FOLDER } from "@/lib/constants/messages";
  * DELETE /api/folders/[id]/bookmarks
  * 软删除文件夹中的所有书签
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const folderId = parseInt(id);
 
@@ -32,16 +28,7 @@ export async function DELETE(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 检查文件夹是否存在且属于当前用户
     // 类型断言: 手动维护类型文件时需要此断言
@@ -71,7 +58,7 @@ export async function DELETE(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    if (folder.user_id !== user.id) {
+    if (folder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -80,7 +67,7 @@ export async function DELETE(
       .from("bookmarks")
       .select("*", { count: "exact", head: true })
       .eq("folder_id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     if (countError) {
@@ -98,7 +85,7 @@ export async function DELETE(
       )
         .update({ deleted_at: new Date().toISOString() })
         .eq("folder_id", folderId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null)) as { error: { message: string } | null };
 
       if (deleteError) {
@@ -108,7 +95,7 @@ export async function DELETE(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         folderId,
         bookmarksDeleted: bookmarkCount || 0,
         action: "folder_bookmarks_deleted",
@@ -121,15 +108,5 @@ export async function DELETE(
       folderName: folder.name,
       bookmarksDeleted: bookmarkCount || 0,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_folder_bookmarks",
-      },
-      "DELETE /api/folders/[id]/bookmarks error",
-    );
-    return internalError("删除书签失败");
-  }
-}
+  },
+);

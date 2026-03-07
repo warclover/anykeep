@@ -6,16 +6,12 @@
  *
  * @version 1.1.0
  * @since 2025-12-29
- *
- * V4.2.28: 添加登录后 session 同步延迟的回退机制
- * - 优先使用 Middleware 注入的 x-user-id header
- * - 回退到 getUser()，再回退到 getSession()
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   type SynthesisListQuery,
@@ -33,70 +29,15 @@ import {
   SYNTHESIS_LIST_FIELDS,
 } from "@/lib/synthesis/constants";
 
-/** UUID 正则表达式 */
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * 获取已验证的用户 ID（V4.2.28 回退机制）
- *
- * 认证优先级：
- * 1. Middleware 注入的 x-user-id header（最快）
- * 2. supabase.auth.getUser()（标准方式）
- * 3. supabase.auth.getSession()（回退，解决登录后同步延迟）
- */
-async function getAuthenticatedUserId(
-  request: NextRequest,
-  supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<string | null> {
-  // 1. 优先使用 Middleware 预验证的 header
-  const headerUserId = request.headers.get("x-user-id");
-  const isVerified = request.headers.get("x-user-verified") === "true";
-
-  if (isVerified && headerUserId && UUID_REGEX.test(headerUserId)) {
-    return headerUserId;
-  }
-
-  // 2. 回退到 getUser()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user?.id) {
-    return user.id;
-  }
-
-  // 3. 最终回退到 getSession()（解决登录后 session 同步延迟）
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return session?.user?.id || null;
-}
-
 /** 列表 GET 短期缓存，减少重复请求 */
 const LIST_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60";
 
 /**
  * GET /api/synthesis - 获取综述列表
- * P1: 优先 getCachedUser 鉴权（与 bookmarks 一致），并返回短期缓存头
  */
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    // P1: 优先使用缓存认证（~1-5ms），失败再回退到 request+supabase 鉴权
-    const { user: cachedUser } = await getCachedUser();
-    let userId: string | null = cachedUser?.id ?? null;
-    if (!userId) {
-      userId = await getAuthenticatedUserId(request, supabase);
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
-    }
 
     // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
@@ -188,34 +129,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response, {
       headers: { "Cache-Control": LIST_CACHE_CONTROL },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis list API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * POST /api/synthesis - 创建综述（异步启动）
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    // V4.2.28: 使用回退机制获取用户 ID
-    const userId = await getAuthenticatedUserId(request, supabase);
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
-    }
 
     // 解析请求体
     const body: CreateSynthesisRequest = await request.json();
@@ -345,14 +267,5 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis create API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

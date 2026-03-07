@@ -8,13 +8,9 @@
  * @since 2025-12-31
  */
 
-import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  unauthorizedError,
-  internalError,
   handleValidationError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -22,6 +18,7 @@ import {
   createAsyncAnalysisService,
   createAsyncAnalysisBriefingIntegration,
 } from "@/lib/ai-agent/async-analysis";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // =============================================================================
 // 支持的分析类型
@@ -102,77 +99,56 @@ interface AnalysisStatusResponse {
  * POST /api/agent/analysis
  * 手动触发异步分析任务
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
+  // 1. 解析请求体
+  let body: unknown;
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析请求体
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
-    }
-
-    // 3. 验证请求体
-    const parseResult = TriggerAnalysisSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return handleValidationError(parseResult.error);
-    }
-
-    const { types, priority } = parseResult.data;
-
-    // 4. 创建服务并触发分析
-    const analysisService = createAsyncAnalysisService();
-    const integration = createAsyncAnalysisBriefingIntegration(analysisService);
-
-    const taskIds = await integration.triggerAnalysis(user.id, types);
-
-    // 5. 清理资源
-    integration.dispose();
-
-    const response: TriggerAnalysisResponse = {
-      taskIds,
-      message:
-        taskIds.length > 0
-          ? `已创建 ${taskIds.length} 个分析任务`
-          : "没有需要执行的分析任务",
-    };
-
-    logger.info(
-      {
-        userId: user.id,
-        types,
-        priority,
-        taskCount: taskIds.length,
-        duration: Date.now() - startTime,
-      },
-      "POST /api/agent/analysis - Analysis triggered",
-    );
-
-    return successResponse(response);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "POST /api/agent/analysis error",
-    );
-    return internalError("触发分析失败");
+    body = await request.json();
+  } catch {
+    body = {};
   }
-}
+
+  // 2. 验证请求体
+  const parseResult = TriggerAnalysisSchema.safeParse(body);
+
+  if (!parseResult.success) {
+    return handleValidationError(parseResult.error);
+  }
+
+  const { types, priority } = parseResult.data;
+
+  // 3. 创建服务并触发分析
+  const analysisService = createAsyncAnalysisService();
+  const integration = createAsyncAnalysisBriefingIntegration(analysisService);
+
+  const taskIds = await integration.triggerAnalysis(userId, types);
+
+  // 4. 清理资源
+  integration.dispose();
+
+  const response: TriggerAnalysisResponse = {
+    taskIds,
+    message:
+      taskIds.length > 0
+        ? `已创建 ${taskIds.length} 个分析任务`
+        : "没有需要执行的分析任务",
+  };
+
+  logger.info(
+    {
+      userId,
+      types,
+      priority,
+      taskCount: taskIds.length,
+      duration: Date.now() - startTime,
+    },
+    "POST /api/agent/analysis - Analysis triggered",
+  );
+
+  return successResponse(response);
+});
 
 // =============================================================================
 // GET Handler - 获取状态
@@ -182,79 +158,58 @@ export async function POST(request: NextRequest) {
  * GET /api/agent/analysis
  * 获取分析任务状态和最近结果
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  // 1. 解析查询参数
+  const { searchParams } = new URL(request.url);
+  const parseResult = GetStatusQuerySchema.safeParse({
+    type: searchParams.get("type"),
+    limit: searchParams.get("limit"),
+  });
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析查询参数
-    const { searchParams } = new URL(request.url);
-    const parseResult = GetStatusQuerySchema.safeParse({
-      type: searchParams.get("type"),
-      limit: searchParams.get("limit"),
-    });
-
-    if (!parseResult.success) {
-      return handleValidationError(parseResult.error);
-    }
-
-    const { type, limit } = parseResult.data;
-
-    // 3. 创建服务并获取状态
-    const analysisService = createAsyncAnalysisService();
-    const integration = createAsyncAnalysisBriefingIntegration(analysisService);
-
-    // 获取队列统计
-    const stats = integration.getQueueStats();
-
-    // 获取最近的分析洞察
-    const recentInsights = integration
-      .getAnalysisInsights(user.id)
-      .slice(0, limit)
-      .map((insight) => ({
-        id: insight.id,
-        type: insight.type,
-        title: insight.title,
-        createdAt: insight.createdAt,
-      }));
-
-    // 清理资源
-    integration.dispose();
-
-    const response: AnalysisStatusResponse = {
-      pendingCount: stats.pending,
-      runningCount: stats.running,
-      completedCount: stats.completed,
-      failedCount: stats.failed,
-      byType: stats.byType,
-      recentInsights,
-    };
-
-    logger.debug(
-      {
-        userId: user.id,
-        type,
-        stats,
-      },
-      "GET /api/agent/analysis",
-    );
-
-    return successResponse(response);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "GET /api/agent/analysis error",
-    );
-    return internalError("获取分析状态失败");
+  if (!parseResult.success) {
+    return handleValidationError(parseResult.error);
   }
-}
+
+  const { type, limit } = parseResult.data;
+
+  // 2. 创建服务并获取状态
+  const analysisService = createAsyncAnalysisService();
+  const integration = createAsyncAnalysisBriefingIntegration(analysisService);
+
+  // 获取队列统计
+  const stats = integration.getQueueStats();
+
+  // 获取最近的分析洞察
+  const recentInsights = integration
+    .getAnalysisInsights(userId)
+    .slice(0, limit)
+    .map((insight) => ({
+      id: insight.id,
+      type: insight.type,
+      title: insight.title,
+      createdAt: insight.createdAt,
+    }));
+
+  // 清理资源
+  integration.dispose();
+
+  const response: AnalysisStatusResponse = {
+    pendingCount: stats.pending,
+    runningCount: stats.running,
+    completedCount: stats.completed,
+    failedCount: stats.failed,
+    byType: stats.byType,
+    recentInsights,
+  };
+
+  logger.debug(
+    {
+      userId,
+      type,
+      stats,
+    },
+    "GET /api/agent/analysis",
+  );
+
+  return successResponse(response);
+});

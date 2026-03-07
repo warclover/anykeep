@@ -12,10 +12,9 @@
  * @since 2025-12-26
  */
 
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { createClient } from "@/lib/supabase/server";
 // Note: KnowledgeAgent imports removed - using UnifiedEngine instead
 import {
   getUnifiedEngine,
@@ -25,6 +24,7 @@ import {
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import type { ToolType } from "@/components/ai/phase4/types";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // =============================================================================
 // 请求验证 Schema
@@ -85,136 +85,104 @@ const regenerateRequestSchema = z.object({
 // POST /api/agent/regenerate
 // =============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return Response.json(
-        { success: false, error: "请先登录" },
-        { status: 401 },
-      );
-    }
-
-    // 2. 速率限制检查
-    const rateLimitResult = checkRateLimit(user.id, "agent_regenerate");
-    if (!rateLimitResult.allowed) {
-      logger.warn(
-        {
-          userId: user.id.slice(0, 8) + "...",
-          remaining: rateLimitResult.remaining,
+  // 1. 速率限制检查
+  const rateLimitResult = checkRateLimit(userId, "agent_regenerate");
+  if (!rateLimitResult.allowed) {
+    logger.warn(
+      {
+        userId: userId.slice(0, 8) + "...",
+        remaining: rateLimitResult.remaining,
+      },
+      "Agent Regenerate: Rate limit exceeded",
+    );
+    const retryAfterSec = Math.ceil(rateLimitResult.resetMs / 1000);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "请求过于频繁，请稍后再试",
+        retryAfter: retryAfterSec,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSec),
         },
-        "Agent Regenerate: Rate limit exceeded",
-      );
-      const retryAfterSec = Math.ceil(rateLimitResult.resetMs / 1000);
-      return Response.json(
-        {
-          success: false,
-          error: "请求过于频繁，请稍后再试",
-          retryAfter: retryAfterSec,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSec),
-          },
-        },
-      );
-    }
+      },
+    );
+  }
 
-    // 3. 解析并验证请求体
-    const body = await request.json();
-    const validation = regenerateRequestSchema.safeParse(body);
+  // 2. 解析并验证请求体
+  const body = await request.json();
+  const validation = regenerateRequestSchema.safeParse(body);
 
-    if (!validation.success) {
-      return Response.json(
-        {
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.issues,
-        },
-        { status: 400 },
-      );
-    }
+  if (!validation.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "请求参数无效",
+        details: validation.error.issues,
+      },
+      { status: 400 },
+    );
+  }
 
-    const {
-      originalMessage,
+  const {
+    originalMessage,
+    conversationId,
+    originalMessageId,
+    bookmarkIds,
+    folderId,
+    explicitTool,
+    contextReferences,
+    streaming,
+  } = validation.data;
+
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
       conversationId,
       originalMessageId,
-      bookmarkIds,
-      folderId,
-      explicitTool,
-      contextReferences,
+      hasExplicitTool: !!explicitTool,
       streaming,
-    } = validation.data;
+    },
+    "Agent Regenerate: Request received",
+  );
 
-    logger.info(
-      {
-        userId: user.id.slice(0, 8) + "...",
-        conversationId,
-        originalMessageId,
-        hasExplicitTool: !!explicitTool,
-        streaming,
-      },
-      "Agent Regenerate: Request received",
-    );
+  // 3. 准备请求参数（复用 unified API 的逻辑）
+  const messageId = randomUUID();
 
-    // 4. 准备请求参数（复用 unified API 的逻辑）
-    const messageId = randomUUID();
-
-    // 5. 流式响应处理
-    if (streaming) {
-      return handleStreamingRegenerate({
-        userId: user.id,
-        message: originalMessage,
-        conversationId,
-        messageId,
-        originalMessageId,
-        bookmarkIds,
-        folderId,
-        explicitTool,
-        contextReferences,
-        startTime,
-      });
-    }
-
-    // 6. 非流式响应（简化版）
-    return handleNonStreamingRegenerate({
-      userId: user.id,
+  // 4. 流式响应处理
+  if (streaming) {
+    return handleStreamingRegenerate({
+      userId,
       message: originalMessage,
       conversationId,
       messageId,
+      originalMessageId,
       bookmarkIds,
       folderId,
       explicitTool,
       contextReferences,
       startTime,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/agent/regenerate error",
-    );
-
-    return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "重新生成失败",
-      },
-      { status: 500 },
-    );
   }
-}
+
+  // 5. 非流式响应（简化版）
+  return handleNonStreamingRegenerate({
+    userId,
+    message: originalMessage,
+    conversationId,
+    messageId,
+    bookmarkIds,
+    folderId,
+    explicitTool,
+    contextReferences,
+    startTime,
+  });
+});
 
 // =============================================================================
 // 流式响应处理
@@ -235,7 +203,7 @@ interface RegenerateParams {
 
 async function handleStreamingRegenerate(
   params: RegenerateParams,
-): Promise<Response> {
+): Promise<NextResponse> {
   const {
     userId,
     message,
@@ -352,7 +320,7 @@ async function handleStreamingRegenerate(
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -368,7 +336,7 @@ async function handleStreamingRegenerate(
 
 async function handleNonStreamingRegenerate(
   params: RegenerateParams,
-): Promise<Response> {
+): Promise<NextResponse> {
   const {
     userId,
     message,
@@ -381,69 +349,50 @@ async function handleNonStreamingRegenerate(
     startTime,
   } = params;
 
-  try {
-    const engine = getUnifiedEngine();
+  const engine = getUnifiedEngine();
 
-    // 收集所有流式响应
-    const chunks: UnifiedStreamChunk[] = [];
-    let fullText = "";
+  // 收集所有流式响应
+  const chunks: UnifiedStreamChunk[] = [];
+  let fullText = "";
 
-    const streamGenerator = engine.execute(message, {
-      userId,
-      conversationId,
-      bookmarkIds,
-      folderId,
-    });
+  const streamGenerator = engine.execute(message, {
+    userId,
+    conversationId,
+    bookmarkIds,
+    folderId,
+  });
 
-    for await (const chunk of streamGenerator) {
-      chunks.push(chunk);
-      if (chunk.type === "text" && chunk.data.text) {
-        fullText += chunk.data.text;
-      }
+  for await (const chunk of streamGenerator) {
+    chunks.push(chunk);
+    if (chunk.type === "text" && chunk.data.text) {
+      fullText += chunk.data.text;
     }
-
-    // 提取交付物
-    const deliverables = chunks
-      .filter((c) => c.type === "deliverable")
-      .map((c) => c.data);
-
-    logger.info(
-      {
-        userId: userId.slice(0, 8) + "...",
-        conversationId,
-        messageId,
-        durationMs: Date.now() - startTime,
-        textLength: fullText.length,
-        deliverableCount: deliverables.length,
-      },
-      "Agent Regenerate: Non-streaming complete",
-    );
-
-    return Response.json({
-      success: true,
-      data: {
-        messageId,
-        content: fullText,
-        deliverables,
-        durationMs: Date.now() - startTime,
-      },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        userId: userId.slice(0, 8) + "...",
-        conversationId,
-      },
-      "Agent Regenerate: Non-streaming error",
-    );
-
-    return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "重新生成失败",
-      },
-      { status: 500 },
-    );
   }
+
+  // 提取交付物
+  const deliverables = chunks
+    .filter((c) => c.type === "deliverable")
+    .map((c) => c.data);
+
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
+      conversationId,
+      messageId,
+      durationMs: Date.now() - startTime,
+      textLength: fullText.length,
+      deliverableCount: deliverables.length,
+    },
+    "Agent Regenerate: Non-streaming complete",
+  );
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      messageId,
+      content: fullText,
+      deliverables,
+      durationMs: Date.now() - startTime,
+    },
+  });
 }

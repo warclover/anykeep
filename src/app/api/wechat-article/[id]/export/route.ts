@@ -7,7 +7,7 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { wechatArticleService } from "@/lib/wechat-article";
 import {
   exportToMarkdown,
@@ -15,8 +15,8 @@ import {
   isPuppeteerAvailable,
   type ArticleMetadata,
 } from "@/lib/wechat-article/export";
-import { errorResponse, unauthorizedError } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
+import { errorResponse } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +24,8 @@ export const dynamic = "force-dynamic";
 // GET: 导出文章
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const snapshotId = parseInt(id, 10);
 
@@ -44,16 +41,7 @@ export async function GET(
     }
 
     // 获取 Supabase 客户端
-    const supabase = await createServerSupabaseClient();
-
-    // 检查用户认证
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError();
-    }
+    const supabase = await createClient();
 
     // 验证快照所有权并获取基本信息
     interface SnapshotWithBookmark {
@@ -72,19 +60,19 @@ export async function GET(
       .from("bookmark_snapshots")
       .select(
         `
-        id,
-        readable_title,
-        original_url,
-        captured_at,
-        bookmarks!inner(
-          title,
-          url,
-          user_id
-        )
-      `,
+      id,
+      readable_title,
+      original_url,
+      captured_at,
+      bookmarks!inner(
+        title,
+        url,
+        user_id
+      )
+    `,
       )
       .eq("id", snapshotId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single()) as { data: SnapshotWithBookmark | null; error: unknown };
 
     if (snapshotError || !snapshot) {
@@ -148,13 +136,5 @@ export async function GET(
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[ExportAPI] Export failed");
-
-    return errorResponse(
-      "EXPORT_FAILED",
-      error instanceof Error ? error.message : "导出失败",
-      500,
-    );
-  }
-}
+  },
+);

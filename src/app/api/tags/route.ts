@@ -14,9 +14,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-import { unauthorizedError } from "@/lib/utils/api-response";
 
 interface TagInfo {
   name: string;
@@ -37,16 +36,9 @@ interface _TagsResponse {
  * GET /api/tags
  * 获取用户的所有标签及其使用计数
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    // 2. 解析查询参数
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 1. 解析查询参数
     const { searchParams } = new URL(request.url);
     const limit = Math.min(
       Math.max(parseInt(searchParams.get("limit") || "100", 10), 1),
@@ -55,17 +47,25 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get("sort") || "count";
     const type = searchParams.get("type") || "all";
 
-    // 3. 查询标签数据
+    // 2. 查询标签数据
     const supabase = await createClient();
 
     // 构建查询 - 获取用户的书签中所有标签
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkTagsRow = { user_tags: string[] | null; ai_tags: string[] | null };
+    type BookmarkTagsRow = {
+      user_tags: string[] | null;
+      ai_tags: string[] | null;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: queryError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmarks, error: queryError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("user_tags, ai_tags")
-      .eq("user_id", user.id)
-      .eq("is_deleted", false) as { data: BookmarkTagsRow[] | null; error: { message: string } | null };
+      .eq("user_id", userId)
+      .eq("is_deleted", false)) as {
+      data: BookmarkTagsRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       logger.error({ error: queryError.message }, "Failed to fetch tags");
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. 统计标签使用频率
+    // 3. 统计标签使用频率
     const userTagCounts = new Map<string, number>();
     const aiTagCounts = new Map<string, number>();
 
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 5. 合并并分类标签
+    // 4. 合并并分类标签
     const tagMap = new Map<string, TagInfo>();
 
     // 根据 type 过滤
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 6. 排序
+    // 5. 排序
     let tags = Array.from(tagMap.values());
 
     switch (sort) {
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // 7. 应用限制
+    // 6. 应用限制
     const total = tags.length;
     tags = tags.slice(0, limit);
 
@@ -158,15 +158,5 @@ export async function GET(request: NextRequest) {
         total,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Failed to get tags",
-    );
-
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

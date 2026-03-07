@@ -11,11 +11,8 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 
 /**
@@ -60,18 +57,9 @@ interface FolderSimilarityItem {
  * GET /api/folders/connections
  * 获取文件夹之间的内容关联
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
 
     // 2. 解析查询参数
     const { searchParams } = new URL(request.url);
@@ -106,13 +94,13 @@ export async function GET(request: NextRequest) {
       const { data: matrixData, error: matrixError } = (await (
         supabase.rpc /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
       )("get_folder_similarity_matrix", {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_min_bookmarks: minBookmarks,
       })) as { data: MatrixRow[] | null; error: { message: string } | null };
 
       if (matrixError) {
         logger.error(
-          { error: matrixError, userId: user.id },
+          { error: matrixError, userId },
           "Failed to get folder similarity matrix",
         );
         return internalError("获取文件夹相似度矩阵失败");
@@ -148,7 +136,7 @@ export async function GET(request: NextRequest) {
 
       logger.debug(
         {
-          userId: user.id,
+          userId,
           matrixSize: matrix.length,
           mergeSuggestionsCount: mergeSuggestions.length,
         },
@@ -180,7 +168,7 @@ export async function GET(request: NextRequest) {
       const { data: connectionsData, error: connectionsError } = (await (
         supabase.rpc /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
       )("find_cross_folder_connections", {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_folder_id: folderId ?? undefined,
         p_min_similarity: minSimilarity,
         p_limit: limit,
@@ -191,7 +179,7 @@ export async function GET(request: NextRequest) {
 
       if (connectionsError) {
         logger.error(
-          { error: connectionsError, userId: user.id, folderId },
+          { error: connectionsError, userId, folderId },
           "Failed to find cross folder connections",
         );
         return internalError("获取文件夹关联失败");
@@ -256,7 +244,7 @@ export async function GET(request: NextRequest) {
 
       logger.debug(
         {
-          userId: user.id,
+          userId,
           folderId,
           connectionsCount: connections.length,
         },
@@ -274,14 +262,5 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/folders/connections error",
-    );
-    return internalError("获取文件夹关联失败");
-  }
-}
+  },
+);

@@ -9,11 +9,11 @@
  * @since 2025-12-26
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { IntentType, CorrectionSignalType } from "@/lib/ai-learning/types";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // =============================================================================
 // 类型定义
@@ -43,123 +43,95 @@ interface CorrectionResponse {
 // API Handler
 // =============================================================================
 
-export async function POST(
-  request: NextRequest,
-): Promise<NextResponse<CorrectionResponse>> {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   const log = logger.child({ requestId, route: "ai/learning/correction" });
 
-  try {
-    // 1. 认证检查
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 解析请求体
+  const body: CorrectionRequest = await request.json();
+  const {
+    wrongIntent,
+    correctIntent,
+    messageId,
+    conversationId,
+    signal,
+    confidence,
+    originalInput,
+  } = body;
 
-    if (authError || !user) {
-      log.warn({ authError }, "Unauthorized request");
-      return NextResponse.json(
-        { success: false, error: "未登录" },
-        { status: 401 },
-      );
-    }
+  log.info(
+    { wrongIntent, correctIntent, signal, confidence },
+    "Recording intent correction",
+  );
 
-    // 2. 解析请求体
-    const body: CorrectionRequest = await request.json();
-    const {
-      wrongIntent,
-      correctIntent,
-      messageId,
-      conversationId,
-      signal,
-      confidence,
-      originalInput,
-    } = body;
-
-    log.info(
-      { wrongIntent, correctIntent, signal, confidence },
-      "Recording intent correction",
+  // 验证参数
+  if (!wrongIntent || !correctIntent) {
+    return NextResponse.json<CorrectionResponse>(
+      { success: false, error: "缺少必需参数" },
+      { status: 400 },
     );
+  }
 
-    // 3. 验证参数
-    if (!wrongIntent || !correctIntent) {
-      return NextResponse.json(
-        { success: false, error: "缺少必需参数" },
-        { status: 400 },
-      );
-    }
+  if (wrongIntent === correctIntent) {
+    return NextResponse.json<CorrectionResponse>(
+      { success: false, error: "纠正前后意图相同" },
+      { status: 400 },
+    );
+  }
 
-    if (wrongIntent === correctIntent) {
-      return NextResponse.json(
-        { success: false, error: "纠正前后意图相同" },
-        { status: 400 },
-      );
-    }
-
-    // 4. 存储纠正记录
-    // 注意：intent_corrections 表需要先执行数据库迁移
-    // 如果表不存在，会优雅降级返回 503
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error: insertError } = await (supabase as any)
-      .from("intent_corrections")
-      .insert({
-        user_id: user.id,
-        original_input: originalInput || "",
-        wrong_intent: wrongIntent,
-        correct_intent: correctIntent,
-        signal: signal || "negative_feedback",
-        confidence: confidence || 0.9,
-        applied_count: 0,
-        metadata: {
-          messageId,
-          conversationId,
-        },
-      })
-      .select("id, created_at")
-      .single();
-
-    if (insertError) {
-      log.error({ error: insertError }, "Failed to insert correction");
-
-      // 检查是否是表不存在错误
-      if (insertError.code === "42P01") {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "学习功能尚未启用，请先执行数据库迁移",
-          },
-          { status: 503 },
-        );
-      }
-
-      return NextResponse.json(
-        { success: false, error: "记录失败" },
-        { status: 500 },
-      );
-    }
-
-    const result = data as { id: string; created_at: string } | null;
-    log.info({ correctionId: result?.id }, "Correction recorded successfully");
-
-    return NextResponse.json({
-      success: true,
-      data: result
-        ? {
-            id: result.id,
-            createdAt: result.created_at,
-          }
-        : undefined,
-    });
-  } catch (error) {
-    log.error({ error }, "Unexpected error in correction API");
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "服务器错误",
+  // 存储纠正记录
+  // 注意：intent_corrections 表需要先执行数据库迁移
+  // 如果表不存在，会优雅降级返回 503
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error: insertError } = await (supabase as any)
+    .from("intent_corrections")
+    .insert({
+      user_id: userId,
+      original_input: originalInput || "",
+      wrong_intent: wrongIntent,
+      correct_intent: correctIntent,
+      signal: signal || "negative_feedback",
+      confidence: confidence || 0.9,
+      applied_count: 0,
+      metadata: {
+        messageId,
+        conversationId,
       },
+    })
+    .select("id, created_at")
+    .single();
+
+  if (insertError) {
+    log.error({ error: insertError }, "Failed to insert correction");
+
+    // 检查是否是表不存在错误
+    if (insertError.code === "42P01") {
+      return NextResponse.json<CorrectionResponse>(
+        {
+          success: false,
+          error: "学习功能尚未启用，请先执行数据库迁移",
+        },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json<CorrectionResponse>(
+      { success: false, error: "记录失败" },
       { status: 500 },
     );
   }
-}
+
+  const result = data as { id: string; created_at: string } | null;
+  log.info({ correctionId: result?.id }, "Correction recorded successfully");
+
+  return NextResponse.json<CorrectionResponse>({
+    success: true,
+    data: result
+      ? {
+          id: result.id,
+          createdAt: result.created_at,
+        }
+      : undefined,
+  });
+});

@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { DistributionRegistry, DistributionService } from "@/lib/distribution";
 import {
   ObsidianAdapter,
@@ -16,22 +17,10 @@ import {
   RssFeedAdapter,
 } from "@/lib/distribution/adapters";
 import type { IDistributionAdapter } from "@/lib/distribution/interfaces";
-import { logger } from "@/lib/logger";
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId: _userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const { targetType, targetConfig } = body;
@@ -60,14 +49,5 @@ export async function POST(request: NextRequest) {
     const result = await service.testConnection(targetType, targetConfig);
 
     return NextResponse.json(result);
-  } catch (error) {
-    logger.error({ error }, "Test connection error:");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "测试连接失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

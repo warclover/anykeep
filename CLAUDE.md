@@ -265,9 +265,45 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 ### 代码组织原则
 
 1. 单一职责：每个文件专注一个功能
-2. 模块化：组件和工具函数可复���
+2. 模块化：组件和工具函数可复用
 3. 类型安全：充分利用 TypeScript
 4. 可测试性：业务逻辑与 UI 分离
+
+### API 路由认证规范
+
+所有需要认证的 API 路由**必须**使用 `withAuthMiddleware`，禁止手写认证逻辑。
+
+```typescript
+// ✅ 标准模式
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { createClient } from "@/lib/supabase/server";
+
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const supabase = await createClient();
+  // 业务逻辑...
+});
+
+// ✅ 带路由参数
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
+    const { id } = await params;
+    // ...
+  },
+);
+
+// ✅ 需要 user.email（admin 路由等）
+export const GET = withAuthMiddleware(async (request, { userId, user }) => {
+  if (!user?.email) return forbiddenError();
+  // ...
+});
+```
+
+**不使用 `withAuthMiddleware` 的例外**：
+
+- 公开路由（health、image-proxy、share-target）
+- 内部路由（使用 `withInternalAuth`）
+- OAuth 回调路由
+- Token 鉴权路由（如 RSS feed）
 
 ---
 

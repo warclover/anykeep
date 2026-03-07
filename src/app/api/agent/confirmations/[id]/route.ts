@@ -9,213 +9,186 @@
  * @since 2026-01-09
  */
 
-import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   badRequestError,
   notFoundError,
-  unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";
 import { confirmationHandler } from "@/lib/ai-agent/core/confirmation-handler";
 import { confirmationInterceptor } from "@/lib/ai-agent/safety/confirmation-interceptor";
 import { logger } from "@/lib/logger";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * GET /api/agent/confirmations/[id]
  * 获取单个确认详情
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    try {
+      const { id: confirmationId } = await params;
 
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
-    const { id: confirmationId } = await params;
-
-    // 使用 interceptor 检查状态（包含过期处理）
-    const status = await confirmationInterceptor.checkConfirmationStatus(
-      confirmationId,
-      user.id,
-    );
-
-    if (status.status === "not_found" || !status.confirmation) {
-      return notFoundError("确认操作不存在或无权访问");
-    }
-
-    const confirmation = status.confirmation;
-
-    logger.debug(
-      {
-        userId: user.id.slice(0, 8) + "...",
+      // 使用 interceptor 检查状态（包含过期处理）
+      const status = await confirmationInterceptor.checkConfirmationStatus(
         confirmationId,
-        status: status.status,
-      },
-      "Agent confirmation: Retrieved",
-    );
+        userId,
+      );
 
-    return successResponse({
-      confirmationId: confirmation.confirmationId,
-      toolName: confirmation.toolName,
-      description: confirmation.description,
-      impactSummary: confirmation.impactSummary,
-      riskLevel: confirmation.riskLevel,
-      affectedItems: confirmation.affectedItems,
-      params: confirmation.params,
-      expiresAt: confirmation.expiresAt.toISOString(),
-      status: status.status,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error({ error: message }, "Agent confirmation: Get failed");
-    return internalError(`获取确认详情失败: ${message}`);
-  }
-}
+      if (status.status === "not_found" || !status.confirmation) {
+        return notFoundError("确认操作不存在或无权访问");
+      }
+
+      const confirmation = status.confirmation;
+
+      logger.debug(
+        {
+          userId: userId.slice(0, 8) + "...",
+          confirmationId,
+          status: status.status,
+        },
+        "Agent confirmation: Retrieved",
+      );
+
+      return successResponse({
+        confirmationId: confirmation.confirmationId,
+        toolName: confirmation.toolName,
+        description: confirmation.description,
+        impactSummary: confirmation.impactSummary,
+        riskLevel: confirmation.riskLevel,
+        affectedItems: confirmation.affectedItems,
+        params: confirmation.params,
+        expiresAt: confirmation.expiresAt.toISOString(),
+        status: status.status,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error({ error: message }, "Agent confirmation: Get failed");
+      return internalError(`获取确认详情失败: ${message}`);
+    }
+  },
+);
 
 /**
  * PUT /api/agent/confirmations/[id]
  * 响应确认（确认/取消）
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
+    try {
+      const { id: confirmationId } = await params;
+      const body = await request.json();
+      const { action } = body;
 
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
-    const { id: confirmationId } = await params;
-    const body = await request.json();
-    const { action } = body;
-
-    if (!action || !["confirm", "cancel"].includes(action)) {
-      return badRequestError(
-        "缺少 action 参数或操作类型无效（confirm/cancel）",
-      );
-    }
-
-    // 分别处理 confirm 和 cancel 以获得正确的类型推断
-    if (action === "confirm") {
-      const result = await confirmationInterceptor.confirm(
-        confirmationId,
-        user.id,
-      );
-
-      if (!result.success) {
-        return badRequestError(result.error || "确认失败");
+      if (!action || !["confirm", "cancel"].includes(action)) {
+        return badRequestError(
+          "缺少 action 参数或操作类型无效（confirm/cancel）",
+        );
       }
 
-      logger.info(
-        {
-          userId: user.id.slice(0, 8) + "...",
+      // 分别处理 confirm 和 cancel 以获得正确的类型推断
+      if (action === "confirm") {
+        const result = await confirmationInterceptor.confirm(
+          confirmationId,
+          userId,
+        );
+
+        if (!result.success) {
+          return badRequestError(result.error || "确认失败");
+        }
+
+        logger.info(
+          {
+            userId: userId.slice(0, 8) + "...",
+            confirmationId,
+            action,
+            toolName: result.confirmation?.toolName,
+          },
+          "Agent confirmation: Confirmed",
+        );
+
+        return successResponse({
           confirmationId,
           action,
-          toolName: result.confirmation?.toolName,
-        },
-        "Agent confirmation: Confirmed",
-      );
+          success: true,
+          confirmation: result.confirmation
+            ? {
+                toolName: result.confirmation.toolName,
+                description: result.confirmation.description,
+                riskLevel: result.confirmation.riskLevel,
+              }
+            : undefined,
+        });
+      } else {
+        // action === "cancel"
+        const result = await confirmationInterceptor.cancel(
+          confirmationId,
+          userId,
+        );
 
-      return successResponse({
-        confirmationId,
-        action,
-        success: true,
-        confirmation: result.confirmation
-          ? {
-              toolName: result.confirmation.toolName,
-              description: result.confirmation.description,
-              riskLevel: result.confirmation.riskLevel,
-            }
-          : undefined,
-      });
-    } else {
-      // action === "cancel"
-      const result = await confirmationInterceptor.cancel(
-        confirmationId,
-        user.id,
-      );
+        if (!result.success) {
+          return badRequestError(result.error || "取消失败");
+        }
 
-      if (!result.success) {
-        return badRequestError(result.error || "取消失败");
+        logger.info(
+          {
+            userId: userId.slice(0, 8) + "...",
+            confirmationId,
+            action,
+          },
+          "Agent confirmation: Cancelled",
+        );
+
+        return successResponse({
+          confirmationId,
+          action,
+          success: true,
+        });
       }
-
-      logger.info(
-        {
-          userId: user.id.slice(0, 8) + "...",
-          confirmationId,
-          action,
-        },
-        "Agent confirmation: Cancelled",
-      );
-
-      return successResponse({
-        confirmationId,
-        action,
-        success: true,
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error({ error: message }, "Agent confirmation: Action failed");
+      return internalError(`操作确认失败: ${message}`);
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error({ error: message }, "Agent confirmation: Action failed");
-    return internalError(`操作确认失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/agent/confirmations/[id]
  * 删除确认记录
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    try {
+      const { id: confirmationId } = await params;
 
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
+      // 先检查确认是否存在且属于当前用户
+      const stored = confirmationHandler.get(confirmationId, userId);
 
-    const { id: confirmationId } = await params;
+      if (!stored) {
+        return notFoundError("确认操作不存在或无权访问");
+      }
 
-    // 先检查确认是否存在且属于当前用户
-    const stored = confirmationHandler.get(confirmationId, user.id);
+      // 删除记录
+      confirmationHandler.delete(confirmationId);
 
-    if (!stored) {
-      return notFoundError("确认操作不存在或无权访问");
-    }
+      logger.info(
+        {
+          userId: userId.slice(0, 8) + "...",
+          confirmationId,
+          toolName: stored.confirmation.toolName,
+        },
+        "Agent confirmation: Deleted",
+      );
 
-    // 删除记录
-    confirmationHandler.delete(confirmationId);
-
-    logger.info(
-      {
-        userId: user.id.slice(0, 8) + "...",
+      return successResponse({
+        deleted: true,
         confirmationId,
-        toolName: stored.confirmation.toolName,
-      },
-      "Agent confirmation: Deleted",
-    );
-
-    return successResponse({
-      deleted: true,
-      confirmationId,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error({ error: message }, "Agent confirmation: Delete failed");
-    return internalError(`删除确认失败: ${message}`);
-  }
-}
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error({ error: message }, "Agent confirmation: Delete failed");
+      return internalError(`删除确认失败: ${message}`);
+    }
+  },
+);

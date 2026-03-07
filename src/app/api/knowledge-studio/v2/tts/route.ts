@@ -7,13 +7,12 @@
  * @since 2026-01-07
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { getTTSService, TTSError, TTS_ERROR_CODES } from "@/lib/tts";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 // ============================================
 // 常量
 // ============================================
@@ -91,31 +90,11 @@ function preprocessText(text: string): string {
 /**
  * POST /api/knowledge-studio/v2/tts
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: TTS_ERROR_CODES.UNAUTHORIZED,
-            message: "请先登录",
-          },
-        },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析和验证请求体
+    // 1. 解析和验证请求体
     let body: unknown;
     try {
       body = await request.json();
@@ -151,7 +130,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         module: MODULE_NAME,
-        userId: user.id,
+        userId: userId,
         textLength: text.length,
         speed,
         voiceGender,
@@ -216,7 +195,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         module: MODULE_NAME,
-        userId: user.id,
+        userId: userId,
         charCount: ttsResult.charCount,
         durationSec: ttsResult.durationSec,
         latencyMs,
@@ -281,4 +260,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

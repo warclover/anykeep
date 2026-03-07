@@ -13,10 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
-  internalError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   getQualityTrackerService,
   getSummaryConfigService,
@@ -61,20 +59,12 @@ function getTimeRange(range: string): { start: Date; end: Date } | undefined {
  * GET /api/summary/stats/providers
  * 获取 Provider 使用详细统计
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析查询参数
+    // 解析查询参数
     const { searchParams } = new URL(request.url);
     const validation = timeRangeSchema.safeParse({
       range: searchParams.get("range") || undefined,
@@ -86,25 +76,25 @@ export async function GET(request: NextRequest) {
 
     const timeRange = getTimeRange(validation.data.range);
 
-    // 3. 获取 Provider 使用统计
+    // 获取 Provider 使用统计
     const qualityTracker = getQualityTrackerService(supabase);
     const providerStats = await qualityTracker.getProviderUsageStats(
-      user.id,
+      userId,
       timeRange,
     );
 
-    // 4. 获取 Provider 健康状态
+    // 获取 Provider 健康状态
     const configService = getSummaryConfigService();
     const healthMap = configService.getAllProviderHealth();
 
-    // 5. 计算汇总数据
+    // 计算汇总数据
     let totalTokens = 0;
     let totalCostCents = 0;
     let primaryProvider: string | null = null;
     let maxCalls = 0;
     let fallbackCalls = 0;
 
-    // 6. 构建响应
+    // 构建响应
     const providers = Object.entries(providerStats.byProvider || {}).map(
       ([name, stats]) => {
         const health = healthMap.get(
@@ -164,7 +154,7 @@ export async function GET(request: NextRequest) {
         ? Number(((fallbackCalls / providerStats.totalCalls) * 100).toFixed(2))
         : 0;
 
-    // 7. 返回结果
+    // 返回结果
     return successResponse({
       providers,
       summary: {
@@ -182,14 +172,5 @@ export async function GET(request: NextRequest) {
           }
         : "all",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/summary/stats/providers error",
-    );
-    return internalError("获取 Provider 统计失败");
-  }
-}
+  },
+);

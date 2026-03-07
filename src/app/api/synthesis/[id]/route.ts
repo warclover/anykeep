@@ -8,9 +8,9 @@
  * @since 2025-12-29
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   type SynthesisReportRow,
@@ -18,37 +18,19 @@ import {
   SynthesisErrorCode,
 } from "@/lib/synthesis";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET /api/synthesis/[id] - 获取综述详情
  */
-export async function GET(_request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    const { id } = await params;
     const supabase = await createClient();
 
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
-    }
-
-    // 获取报告
     const { data, error } = await supabase
       .from("synthesis_reports")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (error || !data) {
@@ -58,7 +40,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 调试：记录原始数据
     logger.info(
       {
         reportId: id,
@@ -77,7 +58,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     const report = mapRowToReport(data as unknown as SynthesisReportRow);
 
-    // 调试：记录映射后的数据
     logger.info(
       {
         reportId: id,
@@ -92,45 +72,22 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     );
 
     return NextResponse.json({ data: report });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis detail API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/synthesis/[id] - 删除综述
  */
-export async function DELETE(_request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    const { id } = await params;
     const supabase = await createClient();
 
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: SynthesisErrorCode.UNAUTHORIZED },
-        { status: 401 },
-      );
-    }
-
-    // 删除报告
     const { error } = await supabase
       .from("synthesis_reports")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       logger.error({ error }, "Failed to delete synthesis report");
@@ -140,17 +97,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    logger.info({ reportId: id, userId: user.id }, "Synthesis report deleted");
+    logger.info({ reportId: id, userId }, "Synthesis report deleted");
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis delete API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -9,11 +9,10 @@
  * @since 2025-12-11
  */
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
   internalError,
 } from "@/lib/utils/api-response";
@@ -72,15 +71,8 @@ interface ConfirmationsQueryParams {
  * GET /api/classification/confirmations
  * 获取当前用户的待确认列表
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 使用缓存认证，避免重复验证
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -101,16 +93,16 @@ export async function GET(request: NextRequest) {
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select(
         `
-        *,
-        bookmarks:bookmark_id (
-          id,
-          title,
-          url
-        )
-      `,
+      *,
+      bookmarks:bookmark_id (
+        id,
+        title,
+        url
+      )
+    `,
         { count: "exact" },
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     // 过滤条件
@@ -134,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error(
-        { error: error.message, userId: user.id },
+        { error: error.message, userId },
         "Failed to fetch confirmations",
       );
       return internalError("获取待确认列表失败");
@@ -173,15 +165,8 @@ export async function GET(request: NextRequest) {
       limit: params.limit,
       offset: params.offset,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "GET /api/classification/confirmations error",
-    );
-    return internalError("获取待确认列表失败");
-  }
-}
+  },
+);
 
 // ============================================================================
 // POST - 创建待确认项
@@ -202,15 +187,8 @@ interface CreateConfirmationBody {
  * POST /api/classification/confirmations
  * 创建待确认项（通常由分类服务内部调用）
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 使用缓存认证，避免重复验证
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -239,7 +217,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await (supabase as any)
       .from(PENDING_CONFIRMATIONS_TABLE)
       .insert({
-        user_id: user.id,
+        user_id: userId,
         bookmark_id: body.bookmarkId,
         confirmation_type: body.type,
         status: "pending",
@@ -256,7 +234,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       logger.error(
-        { error: error.message, userId: user.id },
+        { error: error.message, userId },
         "Failed to create confirmation",
       );
       return internalError("创建待确认项失败");
@@ -264,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         confirmationId: data.id,
         type: body.type,
         action: "confirmation_created",
@@ -276,12 +254,5 @@ export async function POST(request: NextRequest) {
       id: data.id,
       message: "待确认项已创建",
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "POST /api/classification/confirmations error",
-    );
-    return internalError("创建待确认项失败");
-  }
-}
+  },
+);

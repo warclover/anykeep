@@ -5,11 +5,10 @@
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   internalError,
   badRequestError,
   safeParseJson,
@@ -37,18 +36,8 @@ const confirmSplitSchema = z.object({
  * POST /api/folder-evolution/confirm-split
  * Execute folder split based on user confirmation
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // Validate request body
     const { data: body, error: parseError } = await safeParseJson(request);
     if (parseError) {
@@ -64,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Execute split
     const result = await splitService.executeSplit(
-      user.id,
+      userId,
       folderId,
       subClusters,
     );
@@ -75,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         folderId,
         newFoldersCount: result.newFolders?.length,
       },
@@ -87,11 +76,5 @@ export async function POST(request: NextRequest) {
       message: result.message,
       newFolders: result.newFolders,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "POST /api/folder-evolution/confirm-split error",
-    );
-    return internalError("分拆文件夹失败");
-  }
-}
+  },
+);

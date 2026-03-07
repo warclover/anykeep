@@ -12,14 +12,13 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   getUserSummaryMode,
   setUserSummaryMode,
   getAISummaryConfig,
 } from "@/lib/classification/config/ai-summary-config";
 import type { SummaryMode } from "@/lib/classification/types/ai-summary";
-import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 摘要模式信息
@@ -73,70 +72,31 @@ function isValidSummaryMode(mode: unknown): mode is SummaryMode {
 // GET - 获取摘要模式
 // ============================================================================
 
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  const config = getAISummaryConfig();
+  const currentMode = await getUserSummaryMode(userId);
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
-
-    const config = getAISummaryConfig();
-    const currentMode = await getUserSummaryMode(user.id);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        mode: currentMode,
-        modeInfo: SUMMARY_MODE_INFO[currentMode],
-        availableModes: Object.entries(SUMMARY_MODE_INFO).map(
-          ([key, info]) => ({
-            value: key,
-            ...info,
-          }),
-        ),
-        allowModeSwitch: config.allowModeSwitch,
-        enhancedConfig: config.enhancedMode,
-      },
-    });
-  } catch (error) {
-    logger.error({ error }, "Failed to get summary mode");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "获取摘要模式失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  return NextResponse.json({
+    success: true,
+    data: {
+      mode: currentMode,
+      modeInfo: SUMMARY_MODE_INFO[currentMode],
+      availableModes: Object.entries(SUMMARY_MODE_INFO).map(([key, info]) => ({
+        value: key,
+        ...info,
+      })),
+      allowModeSwitch: config.allowModeSwitch,
+      enhancedConfig: config.enhancedMode,
+    },
+  });
+});
 
 // ============================================================================
 // PUT - 更新摘要模式
 // ============================================================================
 
-export async function PUT(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
-
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 检查是否允许切换模式
     const config = getAISummaryConfig();
     if (!config.allowModeSwitch) {
@@ -168,7 +128,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const success = await setUserSummaryMode(user.id, mode);
+    const success = await setUserSummaryMode(userId, mode);
 
     if (!success) {
       return NextResponse.json(
@@ -191,16 +151,5 @@ export async function PUT(request: NextRequest) {
       },
       message: `已切换到「${SUMMARY_MODE_INFO[mode].label}」`,
     });
-  } catch (error) {
-    logger.error({ error }, "Failed to update summary mode");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "更新摘要模式失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

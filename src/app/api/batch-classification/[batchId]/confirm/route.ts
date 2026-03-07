@@ -4,17 +4,17 @@
  * POST /api/batch-classification/[batchId]/confirm
  *
  * @module api/batch-classification/[batchId]/confirm
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2026-02-01
  * @updated 2026-02-02 - 安全修复：使用 Zod 进行请求验证
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // ============================================
 // 常量
@@ -73,38 +73,25 @@ function validateRequest(body: unknown): RequestBody {
 // API Handler
 // ============================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ batchId: string }> },
-) {
-  try {
+export const POST = withAuthMiddleware<{ batchId: string }>(
+  async (request, { userId, params }) => {
     const { batchId } = await params;
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // 2. 验证 batchId
+    // 1. 验证 batchId
     if (!batchId) {
       return NextResponse.json({ error: "Missing batchId" }, { status: 400 });
     }
 
-    // 3. 解析请求体
+    // 2. 解析请求体
     const body = await request.json();
     const { decisions } = validateRequest(body);
 
-    // 4. 确认分类
+    // 3. 确认分类
+    const supabase = await createClient();
     const coordinator = new BatchClassificationCoordinator(supabase);
-    await coordinator.confirmResults(batchId, decisions, user.id);
+    await coordinator.confirmResults(batchId, decisions, userId);
 
-    // 5. 返回成功
+    // 4. 返回成功
     return NextResponse.json({
       success: true,
       message: "Classification confirmed",
@@ -113,24 +100,5 @@ export async function POST(
       ).length,
       rejectedCount: decisions.filter((d) => d.action === "reject").length,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Failed to confirm batch classification",
-    );
-
-    if (error instanceof Error && error.message === "Transaction not found") {
-      return NextResponse.json(
-        { error: "Transaction not found" },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -10,13 +10,12 @@
 
 import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   notFoundError,
   forbiddenError,
   databaseError,
-  internalError,
   badRequestError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -40,11 +39,8 @@ interface MergeFoldersAtomicResult {
  * Body:
  * - targetFolderId: number - 目标文件夹 ID
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const sourceFolderId = parseInt(id);
 
@@ -52,16 +48,7 @@ export async function POST(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析请求体
     const body = await request.json();
@@ -83,12 +70,12 @@ export async function POST(
       name: string;
       is_system: boolean;
     };
-    const { data: sourceFolder, error: sourceError } = await supabase
+    const { data: sourceFolder, error: sourceError } = (await supabase
       .from("folders")
       .select("id, user_id, name, is_system")
       .eq("id", sourceFolderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: FolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -104,7 +91,7 @@ export async function POST(
       return notFoundError("源文件夹不存在");
     }
 
-    if (sourceFolder.user_id !== user.id) {
+    if (sourceFolder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -113,12 +100,12 @@ export async function POST(
     }
 
     // 4. 检查目标文件夹
-    const { data: targetFolder, error: targetError } = await supabase
+    const { data: targetFolder, error: targetError } = (await supabase
       .from("folders")
       .select("id, user_id, name, is_system")
       .eq("id", targetFolderId)
       .is("deleted_at", null)
-      .single() as unknown as {
+      .single()) as unknown as {
       data: FolderType | null;
       error: { code?: string; message: string } | null;
     };
@@ -134,7 +121,7 @@ export async function POST(
       return notFoundError("目标文件夹不存在");
     }
 
-    if (targetFolder.user_id !== user.id) {
+    if (targetFolder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -143,14 +130,13 @@ export async function POST(
     const serviceClient = await createServiceClient();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rpcResult, error: rpcError } = await (serviceClient.rpc as any)(
-      "merge_folders_atomic",
-      {
-        p_source_folder_id: sourceFolderId,
-        p_target_folder_id: targetFolderId,
-        p_user_id: user.id,
-      },
-    ) as { data: unknown; error: { message: string } | null };
+    const { data: rpcResult, error: rpcError } = (await (
+      serviceClient.rpc as any
+    )("merge_folders_atomic", {
+      p_source_folder_id: sourceFolderId,
+      p_target_folder_id: targetFolderId,
+      p_user_id: userId,
+    })) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -183,7 +169,7 @@ export async function POST(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         sourceFolderId,
         targetFolderId,
         bookmarksMoved: result.bookmarksMoved || 0,
@@ -200,18 +186,5 @@ export async function POST(
       targetFolderName: result.targetFolderName || targetFolder.name,
       bookmarksMoved: result.bookmarksMoved || 0,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    logger.error(
-      {
-        error: errorMessage,
-        stack: errorStack,
-        operation: "merge_folder",
-      },
-      "POST /api/folders/[id]/merge error",
-    );
-    // 临时返回详细错误信息以便调试
-    return internalError(`合并文件夹失败: ${errorMessage}`);
-  }
-}
+  },
+);

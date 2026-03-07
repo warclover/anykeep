@@ -12,8 +12,10 @@
  * @since 2025-12-12
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createMultiVectorEmbeddingService } from "@/lib/embedding";
 import { logger } from "@/lib/logger";
 
@@ -47,22 +49,15 @@ interface MigrationResult {
 // GET - 获取迁移状态
 // ============================================================================
 
-export async function GET(): Promise<NextResponse> {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }): Promise<NextResponse> => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 获取待迁移数量
     const { count: pendingCount } = await supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .or("title_embedding.is.null,tag_embedding.is.null");
 
@@ -70,7 +65,7 @@ export async function GET(): Promise<NextResponse> {
     const { count: migratedCount } = await supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .not("title_embedding", "is", null)
       .not("tag_embedding", "is", null);
@@ -79,7 +74,7 @@ export async function GET(): Promise<NextResponse> {
     const { count: totalCount } = await supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     const pending = pendingCount ?? 0;
@@ -94,32 +89,16 @@ export async function GET(): Promise<NextResponse> {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Migration API: Failed to get status",
-    );
-    return NextResponse.json(
-      { error: "Failed to get migration status" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================================================
 // POST - 开始迁移
 // ============================================================================
 
-export async function POST(request: Request): Promise<NextResponse> {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }): Promise<NextResponse> => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 解析请求参数
     const body = await request.json().catch(() => ({}));
@@ -134,7 +113,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // 获取待迁移书签
     const pendingBookmarks = await multiVectorService.getPendingBookmarks(
-      user.id,
+      userId,
       batchSize,
     );
 
@@ -156,7 +135,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         requested: batchSize,
         processed: pendingBookmarks.length,
         success: result.successCount,
@@ -174,14 +153,5 @@ export async function POST(request: Request): Promise<NextResponse> {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Migration API: Failed to migrate",
-    );
-    return NextResponse.json(
-      { error: "Failed to migrate bookmarks" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

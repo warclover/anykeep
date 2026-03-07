@@ -17,6 +17,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { SynthesisSourceType } from "@/lib/synthesis";
 import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
@@ -84,19 +85,9 @@ const DEFAULT_PAGE_SIZE = 20;
 /**
  * GET /api/synthesis/preview - 获取待综述的书签列表
  */
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
@@ -132,7 +123,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" },
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     // 根据来源类型添加过滤条件
@@ -144,7 +135,7 @@ export async function GET(request: NextRequest) {
       const { data: rpcData, error: rpcError } = (await (supabase as any).rpc(
         "get_bookmarks_by_tag_with_folder",
         {
-          p_user_id: user.id,
+          p_user_id: userId,
           p_tag_name: sourceId,
           p_offset: (page - 1) * pageSize,
           p_limit: pageSize + 1, // 多取一条用于判断 hasMore
@@ -173,7 +164,7 @@ export async function GET(request: NextRequest) {
       const { count } = await (supabase as any)
         .from("bookmark_tags")
         .select("bookmark_id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tag_name", sourceId);
 
       // 转换数据格式
@@ -290,14 +281,5 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Synthesis preview API error",
-    );
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

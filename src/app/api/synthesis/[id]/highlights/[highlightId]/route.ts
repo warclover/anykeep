@@ -9,9 +9,9 @@
  * @since 2025-12-29
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   toHighlight,
@@ -19,35 +19,21 @@ import {
   type SynthesisHighlightRow,
 } from "@/lib/synthesis/types/highlight";
 
-interface RouteContext {
-  params: Promise<{ id: string; highlightId: string }>;
-}
-
 /**
  * GET /api/synthesis/[id]/highlights/[highlightId]
  * 获取单个标注
  */
-export async function GET(_request: NextRequest, context: RouteContext) {
-  try {
+export const GET = withAuthMiddleware<{ id: string; highlightId: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const { highlightId } = await context.params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const { highlightId } = await params;
 
     // 查询标注
     const { data, error } = await supabase
       .from("synthesis_highlights")
       .select("*")
       .eq("id", highlightId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (error || !data) {
@@ -57,33 +43,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const highlight = toHighlight(data as SynthesisHighlightRow);
 
     return NextResponse.json({ data: highlight });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Highlight API: Unexpected error in GET",
-    );
-    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
-  }
-}
+  },
+);
 
 /**
  * PATCH /api/synthesis/[id]/highlights/[highlightId]
  * 更新标注（note 或 color）
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string; highlightId: string }>(
+  async (request, { userId, params }) => {
     const supabase = await createClient();
-    const { highlightId } = await context.params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const { highlightId } = await params;
 
     // 解析请求体
     const body: UpdateHighlightRequest = await request.json();
@@ -106,12 +76,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // 更新标注
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("synthesis_highlights") as any)
+    const { data, error } = (await (
+      supabase.from("synthesis_highlights") as any
+    )
       .update(updateData)
       .eq("id", highlightId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
-      .single() as { data: SynthesisHighlightRow | null; error: { code?: string; message: string } | null };
+      .single()) as {
+      data: SynthesisHighlightRow | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -124,40 +99,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const highlight = toHighlight(data as SynthesisHighlightRow);
 
     return NextResponse.json({ data: highlight });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Highlight API: Unexpected error in PATCH",
-    );
-    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/synthesis/[id]/highlights/[highlightId]
  * 删除标注
  */
-export async function DELETE(_request: NextRequest, context: RouteContext) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string; highlightId: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const { highlightId } = await context.params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const { highlightId } = await params;
 
     // 删除标注
     const { error } = await supabase
       .from("synthesis_highlights")
       .delete()
       .eq("id", highlightId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       logger.error({ error, highlightId }, "Highlight API: Delete error");
@@ -165,11 +124,5 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Highlight API: Unexpected error in DELETE",
-    );
-    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
-  }
-}
+  },
+);

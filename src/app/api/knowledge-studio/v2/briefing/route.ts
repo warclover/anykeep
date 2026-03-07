@@ -4,7 +4,8 @@
  * @description Get briefing questions for a specified blueprint
  */
 
-import type { NextRequest } from "next/server";
+import type { NextResponse } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
@@ -48,128 +49,93 @@ interface BriefingResponse {
  * POST /api/knowledge-studio/v2/briefing
  * Get briefing questions for a specified blueprint
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const requestId = crypto.randomUUID();
+  const supabase = await createClient();
   logger.info({ requestId }, "Briefing request received");
 
-  try {
-    // 1. Auth check
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 1. Parse request body
+  const body = await request.json();
+  const parseResult = BriefingRequestSchema.safeParse(body);
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 2. Parse request body
-    const body = await request.json();
-    const parseResult = BriefingRequestSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "INVALID_REQUEST",
-            message: "请求参数无效",
-            details: parseResult.error.flatten(),
-          },
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const { blueprintId } = parseResult.data;
-
-    // 3. Get blueprint from registry
-    const registry = getBlueprintRegistry();
-    const blueprint = registry.getById(blueprintId);
-
-    if (!blueprint) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "BLUEPRINT_NOT_FOUND",
-            message: `模板 "${blueprintId}" 不存在`,
-          },
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 4. Check access permission
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_type")
-      .eq("id", user.id)
-      .single<Database["public"]["Tables"]["profiles"]["Row"]>();
-
-    const membershipType = profile?.membership_type?.toLowerCase() || "free";
-    const userTier: BlueprintTier =
-      membershipType === "enterprise"
-        ? "enterprise"
-        : membershipType === "pro"
-          ? "pro"
-          : "free";
-
-    if (!registry.canAccess(blueprintId, userTier)) {
-      const accessInfo = registry.getAccessInfo(blueprintId, userTier);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "ACCESS_DENIED",
-            message: accessInfo?.upgradeMessage || "您没有权限使用此模板",
-          },
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 5. Get briefing questions
-    const metadata = blueprint.getBlueprintMetadata();
-    const questions = blueprint.getBriefingQuestions();
-
-    const response: BriefingResponse = {
-      enabled: metadata.briefingEnabled,
-      questions,
-      skipAllowed: true, // All blueprints allow skipping briefing for quick mode
-      blueprintId: metadata.blueprintId,
-      blueprintName: metadata.displayName,
-    };
-
-    logger.info(
-      { requestId, blueprintId, questionCount: questions.length },
-      "Briefing questions returned",
-    );
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Briefing request failed",
-    );
-
+  if (!parseResult.success) {
     return new Response(
       JSON.stringify({
         error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
+          code: "INVALID_REQUEST",
+          message: "请求参数无效",
+          details: parseResult.error.flatten(),
         },
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
   }
-}
+
+  const { blueprintId } = parseResult.data;
+
+  // 2. Get blueprint from registry
+  const registry = getBlueprintRegistry();
+  const blueprint = registry.getById(blueprintId);
+
+  if (!blueprint) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "BLUEPRINT_NOT_FOUND",
+          message: `模板 "${blueprintId}" 不存在`,
+        },
+      }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  // 3. Check access permission
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("membership_type")
+    .eq("id", userId)
+    .single<Database["public"]["Tables"]["profiles"]["Row"]>();
+
+  const membershipType = profile?.membership_type?.toLowerCase() || "free";
+  const userTier: BlueprintTier =
+    membershipType === "enterprise"
+      ? "enterprise"
+      : membershipType === "pro"
+        ? "pro"
+        : "free";
+
+  if (!registry.canAccess(blueprintId, userTier)) {
+    const accessInfo = registry.getAccessInfo(blueprintId, userTier);
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "ACCESS_DENIED",
+          message: accessInfo?.upgradeMessage || "您没有权限使用此模板",
+        },
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  // 4. Get briefing questions
+  const metadata = blueprint.getBlueprintMetadata();
+  const questions = blueprint.getBriefingQuestions();
+
+  const response: BriefingResponse = {
+    enabled: metadata.briefingEnabled,
+    questions,
+    skipAllowed: true, // All blueprints allow skipping briefing for quick mode
+    blueprintId: metadata.blueprintId,
+    blueprintName: metadata.displayName,
+  };
+
+  logger.info(
+    { requestId, blueprintId, questionCount: questions.length },
+    "Briefing questions returned",
+  );
+
+  return new Response(JSON.stringify(response), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  }) as unknown as NextResponse;
+});

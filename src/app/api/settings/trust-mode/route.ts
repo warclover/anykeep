@@ -9,17 +9,12 @@
  * @since 2025-12-11
  */
 
-import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  badRequestError,
-  internalError,
-} from "@/lib/utils/api-response";
+import type { NextRequest } from "next/server";
+import { successResponse, badRequestError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import type { TrustMode } from "@/types/trust-mode";
-import type { NextRequest } from "next/server";
 
 // ============================================================================
 // GET - 获取托管模式设置
@@ -29,32 +24,18 @@ import type { NextRequest } from "next/server";
  * GET /api/settings/trust-mode
  * 获取当前用户的托管模式设置
  */
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     // 获取有效的托管模式配置（已包含统计信息）
-    const effectiveConfig = await trustModeService.getEffectiveConfig(user.id);
+    const effectiveConfig = await trustModeService.getEffectiveConfig(userId);
 
     return successResponse({
       mode: effectiveConfig.mode,
       config: effectiveConfig.config,
       stats: effectiveConfig.stats,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/settings/trust-mode error");
-    return internalError("获取托管模式设置失败");
-  }
-}
+  },
+);
 
 // ============================================================================
 // PUT - 更新托管模式设置
@@ -71,23 +52,16 @@ interface UpdateTrustModeBody {
  * PUT /api/settings/trust-mode
  * 更新用户的托管模式设置
  */
-export async function PUT(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 解析请求体
     const body = (await request.json()) as UpdateTrustModeBody;
 
     // 验证模式值
-    if (!body.mode || !["full_auto", "semi_auto", "manual"].includes(body.mode)) {
+    if (
+      !body.mode ||
+      !["full_auto", "semi_auto", "manual"].includes(body.mode)
+    ) {
       return badRequestError("无效的托管模式");
     }
 
@@ -107,7 +81,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 更新托管模式
-    await trustModeService.updateTrustMode(user.id, body.mode);
+    await trustModeService.updateTrustMode(userId, body.mode);
 
     // 如果有配置覆盖，单独更新
     const hasOverrides =
@@ -124,7 +98,7 @@ export async function PUT(request: NextRequest) {
       }
       if (body.requireConfirmForNewFolder !== undefined) {
         overrides.classification = {
-          ...(overrides.classification as Record<string, unknown> || {}),
+          ...((overrides.classification as Record<string, unknown>) || {}),
           requireConfirmForNewFolder: body.requireConfirmForNewFolder,
         };
       }
@@ -134,15 +108,15 @@ export async function PUT(request: NextRequest) {
         };
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await trustModeService.updateOverrides(user.id, overrides as any);
+      await trustModeService.updateOverrides(userId, overrides as any);
     }
 
     // 获取更新后的配置
-    const effectiveConfig = await trustModeService.getEffectiveConfig(user.id);
+    const effectiveConfig = await trustModeService.getEffectiveConfig(userId);
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         action: "trust_mode_updated",
         mode: body.mode,
       },
@@ -154,9 +128,5 @@ export async function PUT(request: NextRequest) {
       config: effectiveConfig,
       message: "托管模式设置已更新",
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "PUT /api/settings/trust-mode error");
-    return internalError("更新托管模式设置失败");
-  }
-}
+  },
+);

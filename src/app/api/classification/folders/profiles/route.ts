@@ -6,21 +6,20 @@
  * GET /api/classification/folders/profiles?id=X - 单个文件夹详细画像
  * POST /api/classification/folders/profiles - 计算/更新文件夹画像
  *
- * @version 2.0.0 - Merged /[id] and /summary routes
+ * @version 2.1.0 - Merged /[id] and /summary routes
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
-import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   notFoundError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { FolderProfileRepository } from "@/lib/classification/repositories";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 计算文件夹画像 Schema
@@ -35,46 +34,26 @@ const computeProfileSchema = z.object({
  * @query type - 'list' (default), 'summary' for overview
  * @query id - folder ID for single folder detail
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
+  // Parse query parameters
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get("type");
+  const folderId = searchParams.get("id");
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type");
-    const folderId = searchParams.get("id");
-
-    // Route to appropriate handler
-    if (folderId) {
-      return handleSingleFolder(supabase, user.id, parseInt(folderId, 10));
-    }
-
-    if (type === "summary") {
-      return handleSummary(supabase, user.id);
-    }
-
-    // Default: list all profiles
-    return handleList(supabase, user.id);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/classification/folders/profiles error",
-    );
-    return internalError("获取文件夹画像失败");
+  // Route to appropriate handler
+  if (folderId) {
+    return handleSingleFolder(supabase, userId, parseInt(folderId, 10));
   }
-}
+
+  if (type === "summary") {
+    return handleSummary(supabase, userId);
+  }
+
+  // Default: list all profiles
+  return handleList(supabase, userId);
+});
 
 /**
  * Handle list all profiles (default)
@@ -107,13 +86,13 @@ async function handleSummary(
     folder_group: string | null;
     created_at: string;
   };
-  const { data: folders, error: foldersError } = await supabase
+  const { data: folders, error: foldersError } = (await supabase
     .from("folders")
     .select("id, name, folder_group, created_at")
     .eq("user_id", userId)
     .eq("is_system", false)
     .is("deleted_at", null)
-    .order("name") as unknown as {
+    .order("name")) as unknown as {
     data: FolderWithGroup[] | null;
     error: { message: string } | null;
   };
@@ -138,11 +117,11 @@ async function handleSummary(
   // 获取每个文件夹的书签数量
   // 类型断言: 手动维护类型文件时需要此断言
   type BookmarkFolderId = { folder_id: number | null };
-  const { data: bookmarkCounts } = await supabase
+  const { data: bookmarkCounts } = (await supabase
     .from("bookmarks")
     .select("folder_id")
     .eq("user_id", userId)
-    .is("deleted_at", null) as unknown as {
+    .is("deleted_at", null)) as unknown as {
     data: BookmarkFolderId[] | null;
     error: unknown;
   };
@@ -156,12 +135,12 @@ async function handleSummary(
 
   // 获取每个文件夹的最近书签时间
   type BookmarkActivity = { folder_id: number | null; created_at: string };
-  const { data: recentBookmarks } = await supabase
+  const { data: recentBookmarks } = (await supabase
     .from("bookmarks")
     .select("folder_id, created_at")
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false }) as unknown as {
+    .order("created_at", { ascending: false })) as unknown as {
     data: BookmarkActivity[] | null;
     error: unknown;
   };
@@ -292,13 +271,13 @@ async function handleSingleFolder(
     is_system: boolean;
     folder_group: string | null;
   };
-  const { data: folder, error: folderError } = await supabase
+  const { data: folder, error: folderError } = (await supabase
     .from("folders")
     .select("id, name, created_at, is_system, folder_group")
     .eq("id", folderId)
     .eq("user_id", userId)
     .is("deleted_at", null)
-    .single() as unknown as {
+    .single()) as unknown as {
     data: SingleFolderType | null;
     error: { message: string } | null;
   };
@@ -522,92 +501,72 @@ function getActivityLevel(
  * POST /api/classification/folders/profiles
  * 计算/更新文件夹画像
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const POST = withAuthMiddleware(async (request, { userId }) => {
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
+  // 1. 解析并验证请求体
+  const body = await request.json();
+  const validation = computeProfileSchema.safeParse(body);
 
-    // 2. 解析并验证请求体
-    const body = await request.json();
-    const validation = computeProfileSchema.safeParse(body);
-
-    if (!validation.success) {
-      return handleValidationError(validation.error);
-    }
-
-    const { folderId, all } = validation.data;
-    const folderProfileRepo = new FolderProfileRepository(supabase);
-
-    let computedCount = 0;
-
-    if (all) {
-      // 计算所有文件夹画像
-      computedCount = await folderProfileRepo.computeUserProfiles(user.id);
-
-      logger.info(
-        {
-          userId: user.id,
-          computedCount,
-        },
-        "All folder profiles computed",
-      );
-    } else if (folderId) {
-      // 计算单个文件夹画像
-      const { data: folder, error: folderError } = await supabase
-        .from("folders")
-        .select("id")
-        .eq("id", folderId)
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .single();
-
-      if (folderError || !folder) {
-        return notFoundError("文件夹不存在或无权访问");
-      }
-
-      await folderProfileRepo.computeProfile(folderId);
-      computedCount = 1;
-
-      logger.info(
-        {
-          userId: user.id,
-          folderId,
-        },
-        "Folder profile computed",
-      );
-    } else {
-      return handleValidationError(
-        new z.ZodError([
-          {
-            code: "custom",
-            message: "请指定 folderId 或 all=true",
-            path: [],
-          },
-        ]),
-      );
-    }
-
-    // 返回计算结果
-    return successResponse({
-      success: true,
-      computedCount,
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/classification/folders/profiles error",
-    );
-    return internalError("计算文件夹画像失败");
+  if (!validation.success) {
+    return handleValidationError(validation.error);
   }
-}
+
+  const { folderId, all } = validation.data;
+  const folderProfileRepo = new FolderProfileRepository(supabase);
+
+  let computedCount = 0;
+
+  if (all) {
+    // 计算所有文件夹画像
+    computedCount = await folderProfileRepo.computeUserProfiles(userId);
+
+    logger.info(
+      {
+        userId,
+        computedCount,
+      },
+      "All folder profiles computed",
+    );
+  } else if (folderId) {
+    // 计算单个文件夹画像
+    const { data: folder, error: folderError } = await supabase
+      .from("folders")
+      .select("id")
+      .eq("id", folderId)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .single();
+
+    if (folderError || !folder) {
+      return notFoundError("文件夹不存在或无权访问");
+    }
+
+    await folderProfileRepo.computeProfile(folderId);
+    computedCount = 1;
+
+    logger.info(
+      {
+        userId,
+        folderId,
+      },
+      "Folder profile computed",
+    );
+  } else {
+    return handleValidationError(
+      new z.ZodError([
+        {
+          code: "custom",
+          message: "请指定 folderId 或 all=true",
+          path: [],
+        },
+      ]),
+    );
+  }
+
+  // 返回计算结果
+  return successResponse({
+    success: true,
+    computedCount,
+  });
+});

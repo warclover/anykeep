@@ -8,9 +8,9 @@
  * @since 2025-12-29
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   toHighlight,
@@ -19,35 +19,21 @@ import {
   type SynthesisHighlightRow,
 } from "@/lib/synthesis/types/highlight";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET /api/synthesis/[id]/highlights
  * 获取报告的所有标注
  */
-export async function GET(_request: NextRequest, context: RouteContext) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const { id: reportId } = await context.params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const { id: reportId } = await params;
 
     // 查询标注
     const { data, error } = await supabase
       .from("synthesis_highlights")
       .select("*")
       .eq("report_id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -69,33 +55,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       data: highlights,
       total: highlights.length,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Highlights API: Unexpected error in GET",
-    );
-    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
-  }
-}
+  },
+);
 
 /**
  * POST /api/synthesis/[id]/highlights
  * 创建新标注
  */
-export async function POST(request: NextRequest, context: RouteContext) {
-  try {
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const supabase = await createClient();
-    const { id: reportId } = await context.params;
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const { id: reportId } = await params;
 
     // 解析请求体
     const body: CreateHighlightRequest = await request.json();
@@ -113,7 +83,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .from("synthesis_reports")
       .select("id")
       .eq("id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (reportError || !report) {
@@ -124,12 +94,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 创建标注
-    const row = toHighlightRow(body, reportId, user.id);
+    const row = toHighlightRow(body, reportId, userId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from("synthesis_highlights") as any)
+    const { data, error } = (await (
+      supabase.from("synthesis_highlights") as any
+    )
       .insert(row)
       .select()
-      .single() as { data: SynthesisHighlightRow | null; error: { message: string } | null };
+      .single()) as {
+      data: SynthesisHighlightRow | null;
+      error: { message: string } | null;
+    };
 
     if (error) {
       logger.error({ error, reportId }, "Highlights API: Insert error");
@@ -139,11 +114,5 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const highlight = toHighlight(data as SynthesisHighlightRow);
 
     return NextResponse.json({ data: highlight }, { status: 201 });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Highlights API: Unexpected error in POST",
-    );
-    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
-  }
-}
+  },
+);

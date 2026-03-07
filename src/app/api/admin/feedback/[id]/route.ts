@@ -1,41 +1,32 @@
 import { createClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const { id } = params;
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, user, params }) => {
+    const { id } = await params;
 
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
+    // 权限检查 - 验证是否为管理员
+    if (!user?.email) {
+      return forbiddenError("无权限访问");
+    }
+    if (!isAdminUser(user.email)) {
+      logger.warn(
+        { userId, email: user.email, feedbackId: id },
+        "[AdminFeedback] 非管理员更新尝试",
+      );
+      return forbiddenError("无权限访问");
+    }
 
-  // 权限检查 - 验证是否为管理员
-  if (!isAdminUser(user.email)) {
-    logger.warn(
-      { userId: user.id, email: user.email, feedbackId: id },
-      "[AdminFeedback] 非管理员更新尝试",
-    );
-    return Response.json(
-      { success: false, error: "无权限访问" },
-      { status: 403 },
-    );
-  }
-
-  try {
     const body = await request.json();
     const { status, resolution, admin_notes, priority } = body;
 
@@ -69,46 +60,28 @@ export async function PATCH(
 
     if (error) throw error;
 
-    logger.info({ id, adminId: user.id, updates }, "[AdminFeedback] 更新成功");
+    logger.info({ id, adminId: userId, updates }, "[AdminFeedback] 更新成功");
 
-    return Response.json({ success: true, data });
-  } catch (error) {
-    logger.error({ error, id }, "[AdminFeedback] 更新失败");
-    return Response.json(
-      { success: false, error: "更新失败" },
-      { status: 500 },
-    );
-  }
-}
+    return NextResponse.json({ success: true, data });
+  },
+);
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const { id } = params;
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, user, params }) => {
+    const { id } = await params;
 
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
+    // 权限检查 - 验证是否为管理员
+    if (!user?.email) {
+      return forbiddenError("无权限访问");
+    }
+    if (!isAdminUser(user.email)) {
+      logger.warn(
+        { userId, email: user.email, feedbackId: id },
+        "[AdminFeedback] 非管理员查看尝试",
+      );
+      return forbiddenError("无权限访问");
+    }
 
-  // 权限检查 - 验证是否为管理员
-  if (!isAdminUser(user.email)) {
-    logger.warn(
-      { userId: user.id, email: user.email, feedbackId: id },
-      "[AdminFeedback] 非管理员查看尝试",
-    );
-    return Response.json(
-      { success: false, error: "无权限访问" },
-      { status: 403 },
-    );
-  }
-
-  try {
     // 获取详情，包含用户信息
     // 注意：Supabase JS 客户端联表查询需要外键存在。user_id 是外键指向 auth.users，但 auth schema 通常不可访问。
     // 如果有 profiles 表关联 user_id，可以查 profiles。
@@ -120,17 +93,11 @@ export async function GET(
 
     if (error) throw error;
     if (!data)
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: "未找到" },
         { status: 404 },
       );
 
-    return Response.json({ success: true, data });
-  } catch (error) {
-    logger.error({ error, id }, "[AdminFeedback] 获取详情失败");
-    return Response.json(
-      { success: false, error: "获取详情失败" },
-      { status: 500 },
-    );
-  }
-}
+    return NextResponse.json({ success: true, data });
+  },
+);

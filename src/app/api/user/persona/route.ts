@@ -8,14 +8,13 @@
  * @since 2025-12-28
  */
 
+import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   databaseError,
   badRequestError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { isPersonaFeatureEnabled } from "@/lib/ai-agent/config";
@@ -27,7 +26,6 @@ import type {
   PersonaPreferences,
 } from "@/lib/ai-agent/personas/types";
 import { PERSONA_GROUP_MAP } from "@/lib/ai-agent/personas/types";
-import type { NextRequest } from "next/server";
 import type { Json } from "@/types/supabase";
 import { z } from "zod";
 
@@ -182,104 +180,94 @@ function buildBehaviorData(
  * - bookmarkCount: 收藏数量
  * - featureEnabled: 功能是否启用
  */
-export async function GET(): Promise<Response> {
-  try {
-    // 验证用户身份
-    const { user, error: authError } = await getCachedUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  // 检查功能是否启用
+  const featureEnabled = isPersonaFeatureEnabled(userId);
 
-    if (authError || !user) {
-      return unauthorizedError();
-    }
+  // 创建 Supabase 客户端
+  const supabase = await createClient();
 
-    // 检查功能是否启用
-    const featureEnabled = isPersonaFeatureEnabled(user.id);
+  // 获取存储的设置
+  // 类型断言: 手动维护类型文件时需要此断言
+  type ProfilePersonaRow = { persona_settings: Json | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profileResult = (await (supabase.from("profiles") as any)
+    .select("persona_settings")
+    .eq("id", userId)
+    .single()) as {
+    data: ProfilePersonaRow | null;
+    error: { code?: string; message: string } | null;
+  };
 
-    // 创建 Supabase 客户端
-    const supabase = await createClient();
+  const profileError = profileResult.error;
+  const profile = profileResult.data;
 
-    // 获取存储的设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfilePersonaRow = { persona_settings: Json | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profileResult = await (supabase.from("profiles") as any)
-      .select("persona_settings")
-      .eq("id", user.id)
-      .single() as { data: ProfilePersonaRow | null; error: { code?: string; message: string } | null };
+  if (profileError && profileError.code !== "PGRST116") {
+    return databaseError("获取画像设置失败", profileError);
+  }
 
-    const profileError = profileResult.error;
-    const profile = profileResult.data;
+  const stored = profile?.persona_settings as StoredPersonaSettings | null;
 
-    if (profileError && profileError.code !== "PGRST116") {
-      return databaseError("获取画像设置失败", profileError);
-    }
-
-    const stored = profile?.persona_settings as StoredPersonaSettings | null;
-
-    // 如果功能未启用，只返回存储的设置
-    if (!featureEnabled) {
-      const response: PersonaApiResponse = {
-        stored,
-        inferred: null,
-        bookmarkCount: 0,
-        featureEnabled: false,
-      };
-      return successResponse(response);
-    }
-
-    // 获取收藏数据用于推断
-    const { data: bookmarks, error: bookmarksError } = await supabase
-      .from("bookmarks")
-      .select("ai_tags, platform, url, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    if (bookmarksError) {
-      logger.warn(
-        { error: bookmarksError },
-        "Failed to fetch bookmarks for persona inference",
-      );
-    }
-
-    // 如果没有足够的收藏数据，返回空推断结果
-    const bookmarkCount = bookmarks?.length || 0;
-    if (bookmarkCount < 10) {
-      const response: PersonaApiResponse = {
-        stored,
-        inferred: null,
-        bookmarkCount,
-        featureEnabled: true,
-      };
-      return successResponse(response);
-    }
-
-    // 构建行为数据并执行推断
-    const behaviorData = buildBehaviorData(bookmarks || []);
-    const inferenceResult = await defaultInferenceEngine.infer(behaviorData);
-
+  // 如果功能未启用，只返回存储的设置
+  if (!featureEnabled) {
     const response: PersonaApiResponse = {
       stored,
-      inferred: {
-        primaryType: inferenceResult.recommendedPersona,
-        group: inferenceResult.recommendedGroup,
-        confidence: Math.round(inferenceResult.confidence * 100),
-        alternatives: inferenceResult.alternatives.map((alt) => ({
-          persona: alt.persona,
-          group: alt.group,
-          confidence: Math.round(alt.confidence * 100),
-        })),
-      },
+      inferred: null,
+      bookmarkCount: 0,
+      featureEnabled: false,
+    };
+    return successResponse(response);
+  }
+
+  // 获取收藏数据用于推断
+  const { data: bookmarks, error: bookmarksError } = await supabase
+    .from("bookmarks")
+    .select("ai_tags, platform, url, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (bookmarksError) {
+    logger.warn(
+      { error: bookmarksError },
+      "Failed to fetch bookmarks for persona inference",
+    );
+  }
+
+  // 如果没有足够的收藏数据，返回空推断结果
+  const bookmarkCount = bookmarks?.length || 0;
+  if (bookmarkCount < 10) {
+    const response: PersonaApiResponse = {
+      stored,
+      inferred: null,
       bookmarkCount,
       featureEnabled: true,
     };
-
     return successResponse(response);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "GET /api/user/persona error");
-    return internalError("获取画像失败");
   }
-}
+
+  // 构建行为数据并执行推断
+  const behaviorData = buildBehaviorData(bookmarks || []);
+  const inferenceResult = await defaultInferenceEngine.infer(behaviorData);
+
+  const response: PersonaApiResponse = {
+    stored,
+    inferred: {
+      primaryType: inferenceResult.recommendedPersona,
+      group: inferenceResult.recommendedGroup,
+      confidence: Math.round(inferenceResult.confidence * 100),
+      alternatives: inferenceResult.alternatives.map((alt) => ({
+        persona: alt.persona,
+        group: alt.group,
+        confidence: Math.round(alt.confidence * 100),
+      })),
+    },
+    bookmarkCount,
+    featureEnabled: true,
+  };
+
+  return successResponse(response);
+});
 
 // =============================================================================
 // PUT /api/user/persona
@@ -288,17 +276,10 @@ export async function GET(): Promise<Response> {
 /**
  * 更新用户画像设置
  */
-export async function PUT(request: NextRequest): Promise<Response> {
-  try {
-    // 验证用户身份
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 检查功能是否启用
-    if (!isPersonaFeatureEnabled(user.id, "settingsUI")) {
+    if (!isPersonaFeatureEnabled(userId, "settingsUI")) {
       return badRequestError("画像设置功能未启用");
     }
 
@@ -339,9 +320,11 @@ export async function PUT(request: NextRequest): Promise<Response> {
     // 更新或插入设置
     // 类型断言: 手动维护类型文件时需要此断言
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (supabase.from("profiles") as any).upsert(
+    const { error: upsertError } = await (
+      supabase.from("profiles") as any
+    ).upsert(
       {
-        id: user.id,
+        id: userId,
         persona_settings: settings as unknown as Json,
         updated_at: now,
       },
@@ -356,7 +339,7 @@ export async function PUT(request: NextRequest): Promise<Response> {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         primaryType,
         group,
         source,
@@ -365,12 +348,8 @@ export async function PUT(request: NextRequest): Promise<Response> {
     );
 
     return successResponse({ success: true, data: settings });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "PUT /api/user/persona error");
-    return internalError("保存画像设置失败");
-  }
-}
+  },
+);
 
 // =============================================================================
 // DELETE /api/user/persona
@@ -379,38 +358,25 @@ export async function PUT(request: NextRequest): Promise<Response> {
 /**
  * 清除用户画像设置（重置为 AI 推断）
  */
-export async function DELETE(): Promise<Response> {
-  try {
-    // 验证用户身份
-    const { user, error: authError } = await getCachedUser();
+export const DELETE = withAuthMiddleware(async (_request, { userId }) => {
+  // 创建 Supabase 客户端
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return unauthorizedError();
-    }
+  // 清除设置
+  // 类型断言: 手动维护类型文件时需要此断言
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateError } = await (supabase.from("profiles") as any)
+    .update({
+      persona_settings: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
 
-    // 创建 Supabase 客户端
-    const supabase = await createClient();
-
-    // 清除设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase.from("profiles") as any)
-      .update({
-        persona_settings: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      return databaseError("清除画像设置失败", updateError);
-    }
-
-    logger.info({ userId: user.id }, "User persona settings cleared");
-
-    return successResponse({ success: true });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "DELETE /api/user/persona error");
-    return internalError("清除画像设置失败");
+  if (updateError) {
+    return databaseError("清除画像设置失败", updateError);
   }
-}
+
+  logger.info({ userId }, "User persona settings cleared");
+
+  return successResponse({ success: true });
+});

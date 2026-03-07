@@ -7,7 +7,6 @@
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
 import {
   createSmartListSchema,
   getSmartListsQuerySchema,
@@ -15,10 +14,9 @@ import {
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { SmartList, SmartListFilters } from "@/types/smart-list";
 import { toSmartListClient } from "@/types/smart-list";
@@ -185,15 +183,8 @@ async function getBookmarkCount(
  * GET /api/smart-lists
  * 获取用户的智能列表（含预设）
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份（使用缓存认证，性能优化）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -217,7 +208,7 @@ export async function GET(request: NextRequest) {
       .select(
         "id, user_id, name, description, icon, color, filters, sort_by, view_mode, sort_order, is_pinned, is_preset, last_accessed_at, created_at, updated_at, deleted_at",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null);
 
     // 如果不包含预设，只查询自定义列表
@@ -261,7 +252,7 @@ export async function GET(request: NextRequest) {
         const bookmarkCount = await getBookmarkCount(
           supabase,
           smartList.filters as SmartListFilters,
-          user.id,
+          userId,
         );
         return { ...smartList, bookmark_count: bookmarkCount };
       }),
@@ -273,32 +264,15 @@ export async function GET(request: NextRequest) {
     return successResponse({
       smartLists: clientSmartLists,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_smart_lists",
-      },
-      "GET /api/smart-lists error",
-    );
-    return internalError("获取智能列表失败");
-  }
-}
+  },
+);
 
 /**
  * POST /api/smart-lists
  * 创建新智能列表
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份（使用缓存认证，避免重复验证）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -319,7 +293,7 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing } = (await (supabase.from("smart_lists") as any)
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("name", name)
       .is("deleted_at", null)
       .single()) as { data: SmartListExistingRow | null };
@@ -334,7 +308,7 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: maxOrder } = (await (supabase.from("smart_lists") as any)
       .select("sort_order")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .order("sort_order", { ascending: false })
       .limit(1)
@@ -347,7 +321,7 @@ export async function POST(request: NextRequest) {
       (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from("smart_lists") as any)
         .insert({
-          user_id: user.id,
+          user_id: userId,
           name,
           description: description || null,
           icon,
@@ -368,7 +342,7 @@ export async function POST(request: NextRequest) {
       logger.error(
         {
           error: insertError,
-          userId: user.id,
+          userId,
           name,
           operation: "create_smart_list",
         },
@@ -379,7 +353,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         smartListId: smartList.id,
         name,
         action: "smart_list_created",
@@ -388,15 +362,5 @@ export async function POST(request: NextRequest) {
     );
 
     return successResponse(toSmartListClient(smartList as SmartList), 201);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "create_smart_list",
-      },
-      "POST /api/smart-lists error",
-    );
-    return internalError("创建智能列表失败");
-  }
-}
+  },
+);

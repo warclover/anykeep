@@ -15,10 +15,9 @@
  * @updated 2025-12-27 - 添加请求取消支持
  */
 
-import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { createClient } from "@/lib/supabase/server";
 import {
   KnowledgeAgent,
   agentMemory,
@@ -55,6 +54,7 @@ import {
   parseDebugOverrides,
   getOverridesSummary,
 } from "@/lib/ai-agent/config/feature-flag-overrides";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 请求体 Schema
@@ -161,278 +161,246 @@ const UNIFIED_ENGINE_ENABLED =
  * POST /api/agent/unified
  * 统一智能入口
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "请先登录" }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 1.5 速率限制检查
-    const rateLimitResult = checkRateLimit(user.id, "/api/agent/unified");
-    if (!rateLimitResult.allowed) {
-      logger.warn(
-        {
-          userId: user.id.slice(0, 8) + "...",
-          remaining: rateLimitResult.remaining,
-          resetMs: rateLimitResult.resetMs,
+export const POST = withAuthMiddleware(async (request, { userId }) => {
+  // 1. 速率限制检查
+  const rateLimitResult = checkRateLimit(userId, "/api/agent/unified");
+  if (!rateLimitResult.allowed) {
+    logger.warn(
+      {
+        userId: userId.slice(0, 8) + "...",
+        remaining: rateLimitResult.remaining,
+        resetMs: rateLimitResult.resetMs,
+      },
+      "Unified API: Rate limit exceeded",
+    );
+    return new NextResponse(
+      JSON.stringify({
+        success: false,
+        error: "请求过于频繁，请稍后再试",
+        retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
         },
-        "Unified API: Rate limit exceeded",
-      );
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "请求过于频繁，请稍后再试",
-          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
-            "X-RateLimit-Remaining": "0",
-            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
-          },
-        },
-      );
-    }
+      },
+    );
+  }
 
-    // 2. 解析调试覆盖配置（从 Cookie）
-    const debugOverrides = parseDebugOverrides(request);
-    if (debugOverrides?.enabled) {
-      logger.debug(
-        {
-          userId: user.id.slice(0, 8) + "...",
-          overrides: getOverridesSummary(debugOverrides),
-        },
-        "Unified API: Debug overrides detected",
-      );
-    }
+  // 2. 解析调试覆盖配置（从 Cookie）
+  const debugOverrides = parseDebugOverrides(request);
+  if (debugOverrides?.enabled) {
+    logger.debug(
+      {
+        userId: userId.slice(0, 8) + "...",
+        overrides: getOverridesSummary(debugOverrides),
+      },
+      "Unified API: Debug overrides detected",
+    );
+  }
 
-    // 3. 解析并验证请求体
-    const body = await request.json();
-    const validation = unifiedChatRequestSchema.safeParse(body);
+  // 3. 解析并验证请求体
+  const body = await request.json();
+  const validation = unifiedChatRequestSchema.safeParse(body);
 
-    if (!validation.success) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.issues,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
+  if (!validation.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "请求参数无效",
+        details: validation.error.issues,
+      },
+      { status: 400 },
+    );
+  }
 
-    const {
+  const {
+    message,
+    conversationId: providedConversationId,
+    messageHistory,
+    bookmarkIds,
+    folderId,
+    explicitTool,
+    contextReferences,
+    attachmentContext,
+    attachmentBookmarkIds,
+    attachmentMetadata,
+    options,
+  } = validation.data;
+
+  // 确保有会话 ID（用于记忆功能）
+  const conversationId = providedConversationId || randomUUID();
+
+  const isStream = options?.streaming ?? true;
+  const enableUnified =
+    UNIFIED_ENGINE_ENABLED && (options?.enableUnified ?? true);
+
+  // Phase 4: 处理显式工具选择
+  // P1-8 修复：显式类型声明以支持 workflow 模式
+  let forceMode: "atomic" | "orchestration" | "workflow" | undefined =
+    options?.forceMode;
+  let forceSkill = options?.forceSkill;
+
+  if (explicitTool?.skipIntentClassification) {
+    const explicitRoute = explicitToolRouter.route({
+      tool: explicitTool.toolId as ToolType,
       message,
-      conversationId: providedConversationId,
-      messageHistory,
-      bookmarkIds,
-      folderId,
-      explicitTool,
-      contextReferences,
-      attachmentContext,
-      attachmentBookmarkIds,
-      attachmentMetadata,
-      options,
-    } = validation.data;
+      userId,
+      conversationId,
+      contextReferences: contextReferences
+        ? {
+            bookmarkIds: contextReferences.bookmarkIds,
+            folderIds: contextReferences.folderIds,
+            previousOutputId: contextReferences.previousOutputId,
+          }
+        : undefined,
+    });
 
-    // 确保有会话 ID（用于记忆功能）
-    const conversationId = providedConversationId || randomUUID();
-
-    const isStream = options?.streaming ?? true;
-    const enableUnified =
-      UNIFIED_ENGINE_ENABLED && (options?.enableUnified ?? true);
-
-    // Phase 4: 处理显式工具选择
-    // P1-8 修复：显式类型声明以支持 workflow 模式
-    let forceMode: "atomic" | "orchestration" | "workflow" | undefined =
-      options?.forceMode;
-    let forceSkill = options?.forceSkill;
-
-    if (explicitTool?.skipIntentClassification) {
-      const explicitRoute = explicitToolRouter.route({
-        tool: explicitTool.toolId as ToolType,
-        message,
-        userId: user.id,
-        conversationId,
-        contextReferences: contextReferences
-          ? {
-              bookmarkIds: contextReferences.bookmarkIds,
-              folderIds: contextReferences.folderIds,
-              previousOutputId: contextReferences.previousOutputId,
-            }
-          : undefined,
-      });
-
-      forceMode = explicitRoute.mode;
-      forceSkill = explicitRoute.suggestedSkill || undefined;
-
-      logger.info(
-        {
-          explicitTool: explicitTool.toolId,
-          routedMode: forceMode,
-          routedSkill: forceSkill,
-          routingDurationMs: explicitRoute.routingDurationMs,
-        },
-        "Unified API: Explicit tool routing applied",
-      );
-    }
-
-    // 合并上下文引用中的书签 ID
-    const allBookmarkIds = [
-      ...(bookmarkIds || []),
-      ...(contextReferences?.bookmarkIds || []),
-    ];
+    forceMode = explicitRoute.mode;
+    forceSkill = explicitRoute.suggestedSkill || undefined;
 
     logger.info(
       {
-        userId: user.id.slice(0, 8) + "...",
-        messageLength: message.length,
-        conversationId,
-        enableUnified,
-        isStream,
-        forceMode,
-        forceSkill,
-        hasExplicitTool: !!explicitTool,
-        hasContextReferences: !!contextReferences,
+        explicitTool: explicitTool.toolId,
+        routedMode: forceMode,
+        routedSkill: forceSkill,
+        routingDurationMs: explicitRoute.routingDurationMs,
       },
-      "Unified API: Request received",
-    );
-
-    // 3. 获取用户数据统计
-    const quickStats = await getQuickStats(user.id);
-    const statsContext = formatStatsForPrompt(quickStats);
-
-    // 3.5 获取情景记忆（如果启用）
-    let episodicMemory = undefined;
-    if (FeatureFlags.ENABLE_EPISODIC_MEMORY) {
-      try {
-        const memoryService = getEpisodicMemoryService();
-        const memoryContext = await memoryService.getMemoryContext(user.id);
-        if (!isEmptyMemoryContext(memoryContext)) {
-          episodicMemory = memoryContext;
-          logger.debug(
-            {
-              userId: user.id.slice(0, 8) + "...",
-              hasSummaries: memoryContext.recentSummaries.length > 0,
-              pendingIntents: memoryContext.pendingIntents.length,
-              hasPreferences: !!memoryContext.preferences,
-            },
-            "Unified API: Loaded episodic memory",
-          );
-        }
-      } catch (error) {
-        // 情景记忆加载失败不应阻塞主流程
-        logger.warn(
-          {
-            error: error instanceof Error ? error.message : String(error),
-            userId: user.id.slice(0, 8) + "...",
-          },
-          "Unified API: Failed to load episodic memory, continuing without it",
-        );
-      }
-    }
-
-    // 4. 决定使用哪种模式
-    const unifiedEngine = getUnifiedEngine();
-
-    if (enableUnified && unifiedEngine.isReady()) {
-      // 使用统一引擎
-      return handleUnifiedEngine(
-        message,
-        {
-          userId: user.id,
-          conversationId,
-          bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
-          folderId: folderId || contextReferences?.folderIds?.[0],
-          messageHistory: messageHistory?.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
-          totalBookmarks: quickStats.totalBookmarks,
-          totalFolders: quickStats.folderCount,
-          debug: options?.includeRoutingInfo,
-          attachmentContext,
-          attachmentBookmarkIds,
-          attachmentMetadata,
-          episodicMemory, // 传递情景记忆
-          debugOverrides, // 传递调试覆盖配置
-
-          // P0-4 新增：增强置信度计算所需的用户数据
-          recentWeekCount: quickStats.recentAdded,
-          topFolders: quickStats.topFolders,
-          topPlatform: quickStats.platformDistribution[0]
-            ? {
-                name: quickStats.platformDistribution[0].name,
-                code: quickStats.platformDistribution[0].platform,
-                count: quickStats.platformDistribution[0].count,
-              }
-            : undefined,
-          frequentTags: Object.entries(quickStats.tagFrequency)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 20)
-            .map(([tag]) => tag),
-        },
-        {
-          includeRoutingInfo: options?.includeRoutingInfo,
-          forceMode,
-          forceSkill,
-        },
-        isStream,
-        user.id,
-      );
-    } else {
-      // 回退到原有 KnowledgeAgent
-      return handleKnowledgeAgent(
-        message,
-        {
-          userId: user.id,
-          conversationId,
-          bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
-          messageHistory: messageHistory?.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
-          systemPrompt: statsContext,
-          attachmentContext,
-        },
-        {
-          streaming: isStream,
-          maxToolRounds: options?.maxToolRounds || 5,
-          temperature: options?.temperature || 0.7,
-        },
-        user.id,
-      );
-    }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/agent/unified error",
-    );
-
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "请求处理失败",
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      "Unified API: Explicit tool routing applied",
     );
   }
-}
+
+  // 合并上下文引用中的书签 ID
+  const allBookmarkIds = [
+    ...(bookmarkIds || []),
+    ...(contextReferences?.bookmarkIds || []),
+  ];
+
+  logger.info(
+    {
+      userId: userId.slice(0, 8) + "...",
+      messageLength: message.length,
+      conversationId,
+      enableUnified,
+      isStream,
+      forceMode,
+      forceSkill,
+      hasExplicitTool: !!explicitTool,
+      hasContextReferences: !!contextReferences,
+    },
+    "Unified API: Request received",
+  );
+
+  // 4. 获取用户数据统计
+  const quickStats = await getQuickStats(userId);
+  const statsContext = formatStatsForPrompt(quickStats);
+
+  // 4.5 获取情景记忆（如果启用）
+  let episodicMemory = undefined;
+  if (FeatureFlags.ENABLE_EPISODIC_MEMORY) {
+    try {
+      const memoryService = getEpisodicMemoryService();
+      const memoryContext = await memoryService.getMemoryContext(userId);
+      if (!isEmptyMemoryContext(memoryContext)) {
+        episodicMemory = memoryContext;
+        logger.debug(
+          {
+            userId: userId.slice(0, 8) + "...",
+            hasSummaries: memoryContext.recentSummaries.length > 0,
+            pendingIntents: memoryContext.pendingIntents.length,
+            hasPreferences: !!memoryContext.preferences,
+          },
+          "Unified API: Loaded episodic memory",
+        );
+      }
+    } catch (error) {
+      // 情景记忆加载失败不应阻塞主流程
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId: userId.slice(0, 8) + "...",
+        },
+        "Unified API: Failed to load episodic memory, continuing without it",
+      );
+    }
+  }
+
+  // 5. 决定使用哪种模式
+  const unifiedEngine = getUnifiedEngine();
+
+  if (enableUnified && unifiedEngine.isReady()) {
+    // 使用统一引擎
+    return handleUnifiedEngine(
+      message,
+      {
+        userId,
+        conversationId,
+        bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
+        folderId: folderId || contextReferences?.folderIds?.[0],
+        messageHistory: messageHistory?.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        totalBookmarks: quickStats.totalBookmarks,
+        totalFolders: quickStats.folderCount,
+        debug: options?.includeRoutingInfo,
+        attachmentContext,
+        attachmentBookmarkIds,
+        attachmentMetadata,
+        episodicMemory, // 传递情景记忆
+        debugOverrides, // 传递调试覆盖配置
+
+        // P0-4 新增：增强置信度计算所需的用户数据
+        recentWeekCount: quickStats.recentAdded,
+        topFolders: quickStats.topFolders,
+        topPlatform: quickStats.platformDistribution[0]
+          ? {
+              name: quickStats.platformDistribution[0].name,
+              code: quickStats.platformDistribution[0].platform,
+              count: quickStats.platformDistribution[0].count,
+            }
+          : undefined,
+        frequentTags: Object.entries(quickStats.tagFrequency)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 20)
+          .map(([tag]) => tag),
+      },
+      {
+        includeRoutingInfo: options?.includeRoutingInfo,
+        forceMode,
+        forceSkill,
+      },
+      isStream,
+      userId,
+    );
+  } else {
+    // 回退到原有 KnowledgeAgent
+    return handleKnowledgeAgent(
+      message,
+      {
+        userId,
+        conversationId,
+        bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
+        messageHistory: messageHistory?.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        systemPrompt: statsContext,
+        attachmentContext,
+      },
+      {
+        streaming: isStream,
+        maxToolRounds: options?.maxToolRounds || 5,
+        temperature: options?.temperature || 0.7,
+      },
+      userId,
+    );
+  }
+});
 
 /**
  * 使用统一引擎处理请求
@@ -443,7 +411,7 @@ async function handleUnifiedEngine(
   options: Parameters<ReturnType<typeof getUnifiedEngine>["execute"]>[2],
   isStream: boolean,
   userId: string,
-): Promise<Response> {
+): Promise<NextResponse> {
   const unifiedEngine = getUnifiedEngine();
   const registry = getRequestRegistry();
 
@@ -606,7 +574,7 @@ async function handleUnifiedEngine(
       },
     });
 
-    return new Response(stream, {
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -630,8 +598,8 @@ async function handleUnifiedEngine(
       // 查找最后的 done 块
       const doneChunk = chunks.find((c) => c.type === "done");
 
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: doneChunk?.data?.success ?? false,
           requestId,
           data: {
@@ -639,11 +607,10 @@ async function handleUnifiedEngine(
             summary: doneChunk?.data?.summary,
             mode: doneChunk?.data?.mode,
           },
-        }),
+        },
         {
           status: 200,
           headers: {
-            "Content-Type": "application/json",
             "X-Request-Id": requestId,
           },
         },
@@ -674,7 +641,7 @@ async function handleKnowledgeAgent(
     temperature: number;
   },
   userId: string,
-): Promise<Response> {
+): Promise<NextResponse> {
   const agent = new KnowledgeAgent({}, agentMemory);
 
   // 构建完整的 System Prompt（包含附件上下文）
@@ -742,7 +709,7 @@ async function handleKnowledgeAgent(
       },
     });
 
-    return new Response(stream, {
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -752,14 +719,13 @@ async function handleKnowledgeAgent(
   } else {
     const result = await agent.execute(message, agentContext, options);
 
-    return new Response(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         success: result.success,
         data: result,
-      }),
+      },
       {
         status: result.success ? 200 : 500,
-        headers: { "Content-Type": "application/json" },
       },
     );
   }

@@ -5,34 +5,13 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { snapshotService } from "@/lib/snapshot";
 import type { SnapshotDetailResponse } from "@/lib/snapshot";
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    // 1. 验证用户认证
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析快照 ID
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    // 解析快照 ID
     const { id } = await params;
     const snapshotId = parseInt(id, 10);
 
@@ -46,8 +25,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 3. 获取快照详情
-    const snapshot = await snapshotService.getSnapshotById(user.id, snapshotId);
+    // 获取快照详情
+    const snapshot = await snapshotService.getSnapshotById(userId, snapshotId);
 
     if (!snapshot) {
       return NextResponse.json(
@@ -59,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 4. 检查是否过期
+    // 检查是否过期
     if (snapshot.status === "expired") {
       return NextResponse.json(
         {
@@ -70,7 +49,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 5. 构建响应
+    // 构建响应
     const response: SnapshotDetailResponse = {
       success: true,
       data: {
@@ -97,37 +76,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "INTERNAL_ERROR", message: "获取快照失败" },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
-    // 1. 验证用户认证
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析快照 ID
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    // 解析快照 ID
     const { id } = await params;
     const snapshotId = parseInt(id, 10);
 
@@ -141,8 +95,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 3. 删除快照
-    const deleted = await snapshotService.deleteSnapshot(user.id, snapshotId);
+    // 删除快照
+    const deleted = await snapshotService.deleteSnapshot(userId, snapshotId);
 
     if (!deleted) {
       return NextResponse.json(
@@ -155,13 +109,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "INTERNAL_ERROR", message: "删除快照失败" },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

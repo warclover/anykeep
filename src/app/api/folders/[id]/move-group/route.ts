@@ -8,11 +8,10 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   databaseError,
-  internalError,
   badRequestError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -31,11 +30,8 @@ interface MoveGroupRequest {
  * PATCH /api/folders/[id]/move-group
  * 移动文件夹到其他栏目（category_id）或旧类别（folder_group，兼容）
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id: folderIdStr } = await params;
     const folderId = parseInt(folderIdStr, 10);
 
@@ -44,14 +40,6 @@ export async function PATCH(
     }
 
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     const body = (await request.json()) as MoveGroupRequest;
 
@@ -96,7 +84,7 @@ export async function PATCH(
       return badRequestError("文件夹不存在");
     }
 
-    if (existingFolder.user_id !== user.id) {
+    if (existingFolder.user_id !== userId) {
       return badRequestError("无权操作此文件夹");
     }
 
@@ -119,7 +107,7 @@ export async function PATCH(
     const { error: updateError } = (await (supabase.from("folders") as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update(updatePayload)
       .eq("id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)) as { error: { message: string } | null };
 
     if (updateError) {
@@ -148,15 +136,5 @@ export async function PATCH(
       success: true,
       message: "移动成功",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "move_folder_group",
-      },
-      "PATCH /api/folders/[id]/move-group error",
-    );
-    return internalError("移动失败");
-  }
-}
+  },
+);

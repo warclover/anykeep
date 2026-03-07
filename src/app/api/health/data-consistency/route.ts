@@ -15,6 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
@@ -46,17 +47,16 @@ async function checkEmbeddingCoverage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
-  // 类型断言: 手动维护类型文件时需要此断言
   type BookmarkEmbeddingType = {
     id: number;
     embedding: unknown;
     status: string;
   };
-  const { data, error } = await supabase
+  const { data, error } = (await supabase
     .from("bookmarks")
     .select("id, embedding, status", { count: "exact" })
     .eq("user_id", userId)
-    .is("deleted_at", null) as unknown as {
+    .is("deleted_at", null)) as unknown as {
     data: BookmarkEmbeddingType[] | null;
     error: { message: string } | null;
   };
@@ -112,13 +112,12 @@ async function checkFolderProfiles(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
-  // 类型断言: 手动维护类型文件时需要此断言
   type FolderWithProfileType = {
     id: number;
     name: string;
     folder_profiles: { name_embedding: unknown } | null;
   };
-  const { data, error } = await supabase
+  const { data, error } = (await supabase
     .from("folders")
     .select(
       `
@@ -131,7 +130,7 @@ async function checkFolderProfiles(
     )
     .eq("user_id", userId)
     .eq("is_system", false)
-    .is("deleted_at", null) as unknown as {
+    .is("deleted_at", null)) as unknown as {
     data: FolderWithProfileType[] | null;
     error: { message: string } | null;
   };
@@ -184,19 +183,21 @@ async function checkStuckProcessing(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
-  // 超过 1 小时还在 PROCESSING 状态视为卡住
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-  // 类型断言: 手动维护类型文件时需要此断言
-  type StuckBookmarkType = { id: number; title: string | null; created_at: string };
-  const { data, error, count } = await supabase
+  type StuckBookmarkType = {
+    id: number;
+    title: string | null;
+    created_at: string;
+  };
+  const { data, error, count } = (await supabase
     .from("bookmarks")
     .select("id, title, created_at", { count: "exact" })
     .eq("user_id", userId)
     .eq("status", "PROCESSING")
     .lt("created_at", oneHourAgo)
     .is("deleted_at", null)
-    .limit(10) as unknown as {
+    .limit(10)) as unknown as {
     data: StuckBookmarkType[] | null;
     error: { message: string } | null;
     count: number | null;
@@ -233,23 +234,19 @@ async function checkStuckProcessing(
 
 /**
  * 检查孤立数据
- * 使用直接查询而非 RPC（RPC 可能未创建）
  */
 async function checkOrphanedData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<HealthCheck> {
   try {
-    // 方法 1: 查询 folder_id 不为 null 但对应文件夹不存在的书签
-    // 由于 Supabase 不直接支持 NOT EXISTS，我们使用 left join 并检查 null
-    // 类型断言: 手动维护类型文件时需要此断言
     type OrphanedBookmarkType = {
       id: number;
       title: string | null;
       folder_id: number | null;
       folders: { id: number } | null;
     };
-    const { data: orphanedBookmarks, error } = await supabase
+    const { data: orphanedBookmarks, error } = (await supabase
       .from("bookmarks")
       .select(
         `
@@ -262,7 +259,7 @@ async function checkOrphanedData(
       .eq("user_id", userId)
       .not("folder_id", "is", null)
       .is("deleted_at", null)
-      .limit(100) as unknown as {
+      .limit(100)) as unknown as {
       data: OrphanedBookmarkType[] | null;
       error: { message: string } | null;
     };
@@ -275,7 +272,6 @@ async function checkOrphanedData(
       };
     }
 
-    // 筛选出 folder 为 null 的书签（意味着 folder_id 引用的文件夹不存在）
     const orphaned =
       orphanedBookmarks?.filter(
         (b) => b.folder_id !== null && b.folders === null,
@@ -309,73 +305,47 @@ async function checkOrphanedData(
 // API Handler
 // ============================================================================
 
-export async function GET(): Promise<NextResponse> {
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const startTime = Date.now();
+  const supabase = await createClient();
 
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  // 并行执行所有检查
+  const checks = await Promise.all([
+    checkEmbeddingCoverage(supabase, userId),
+    checkFolderProfiles(supabase, userId),
+    checkStuckProcessing(supabase, userId),
+    checkOrphanedData(supabase, userId),
+  ]);
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // 计算整体状态
+  const hasCritical = checks.some((c) => c.status === "critical");
+  const hasWarning = checks.some((c) => c.status === "warning");
 
-    // 并行执行所有检查
-    const checks = await Promise.all([
-      checkEmbeddingCoverage(supabase, user.id),
-      checkFolderProfiles(supabase, user.id),
-      checkStuckProcessing(supabase, user.id),
-      checkOrphanedData(supabase, user.id),
-    ]);
-
-    // 计算整体状态
-    const hasCritical = checks.some((c) => c.status === "critical");
-    const hasWarning = checks.some((c) => c.status === "warning");
-
-    let overallStatus: HealthCheckResponse["status"] = "healthy";
-    if (hasCritical) {
-      overallStatus = "critical";
-    } else if (hasWarning) {
-      overallStatus = "degraded";
-    }
-
-    const durationMs = Date.now() - startTime;
-
-    const response: HealthCheckResponse = {
-      status: overallStatus,
-      checks,
-      timestamp: new Date().toISOString(),
-      durationMs,
-    };
-
-    logger.info(
-      {
-        userId: user.id,
-        status: overallStatus,
-        durationMs,
-        checkResults: checks.map((c) => ({ name: c.name, status: c.status })),
-      },
-      "Data consistency health check completed",
-    );
-
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Data consistency health check failed",
-    );
-
-    return NextResponse.json(
-      {
-        status: "critical",
-        checks: [],
-        error: "Health check failed",
-        timestamp: new Date().toISOString(),
-        durationMs: Date.now() - startTime,
-      },
-      { status: 500 },
-    );
+  let overallStatus: HealthCheckResponse["status"] = "healthy";
+  if (hasCritical) {
+    overallStatus = "critical";
+  } else if (hasWarning) {
+    overallStatus = "degraded";
   }
-}
+
+  const durationMs = Date.now() - startTime;
+
+  const response: HealthCheckResponse = {
+    status: overallStatus,
+    checks,
+    timestamp: new Date().toISOString(),
+    durationMs,
+  };
+
+  logger.info(
+    {
+      userId,
+      status: overallStatus,
+      durationMs,
+      checkResults: checks.map((c) => ({ name: c.name, status: c.status })),
+    },
+    "Data consistency health check completed",
+  );
+
+  return NextResponse.json(response);
+});

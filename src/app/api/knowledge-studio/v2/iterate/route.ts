@@ -6,8 +6,8 @@
  * Phase 4: 草稿迭代与反馈驱动优化
  */
 
-import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import type { NextResponse } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createLogger } from "@/lib/logger";
 import { createSSESender } from "@/lib/utils/sse-helper";
 import { z } from "zod";
@@ -145,227 +145,188 @@ function countWords(text: string): number {
 // POST Handler
 // ============================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const requestId = crypto.randomUUID();
   logger.info({ requestId }, "Iterate request received");
 
-  // 1. Auth check
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // 1. Parse request body
+  const body = await request.json();
+  const parseResult = IterateRequestSchema.safeParse(body);
 
-  if (authError || !user) {
-    return new Response(
-      JSON.stringify({
-        error: { code: "UNAUTHORIZED", message: "请先登录" },
-      }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  try {
-    // 2. Parse request body
-    const body = await request.json();
-    const parseResult = IterateRequestSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "INVALID_REQUEST",
-            message: "请求参数无效",
-            details: parseResult.error.flatten(),
-          },
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const {
-      originalContent,
-      feedback,
-      blueprintId,
-      platformStyle,
-      outlineJson,
-      materialsSummary,
-    } = parseResult.data;
-
-    // 3. Check quota before iteration
-    const quotaCheck = await quotaManager.checkQuota(
-      user.id,
-      ITERATE_QUOTA_COST,
-    );
-    if (!quotaCheck.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "QUOTA_EXCEEDED",
-            message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
-          },
-        }),
-        { status: 402, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const originalWords = countWords(originalContent);
-
-    logger.info(
-      {
-        requestId,
-        userId: user.id,
-        blueprintId,
-        feedbackType: feedback.type,
-        feedbackRating: feedback.rating,
-        originalWords,
-      },
-      "Starting content iteration",
-    );
-
-    // 3. Build iteration prompt
-    const iterationPrompt = buildIterationPrompt(
-      originalContent,
-      feedback as DraftFeedback,
-      { platformStyle, outlineJson, materialsSummary },
-    );
-
-    // 4. Get AI model
-    const router = AIProviderRouter.getInstance();
-    const selection = router.selectProvider({
-      taskType: "chat",
-      preferredProvider: "deepseek",
-    });
-
-    if (!selection?.model) {
-      throw new Error("无法获取 AI 模型");
-    }
-
-    const model = selection.model;
-
-    // 5. Create SSE stream
-    const encoder = new TextEncoder();
-    let accumulatedText = "";
-    let lastProgressPercent = 0;
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = createSSESender<IterateSSEChunk>(controller, encoder);
-
-        try {
-          // Send initial progress
-          sendEvent({
-            type: "progress",
-            data: { percent: 5 },
-            timestamp: new Date().toISOString(),
-            requestId,
-          });
-
-          // Stream the iteration
-          const result = streamText({
-            model,
-            prompt: iterationPrompt,
-            maxOutputTokens: 8192,
-            temperature: 0.7,
-          });
-
-          // Process the stream
-          for await (const chunk of (await result).textStream) {
-            accumulatedText += chunk;
-
-            // Send content chunk
-            sendEvent({
-              type: "content",
-              data: { text: chunk },
-              timestamp: new Date().toISOString(),
-              requestId,
-            });
-
-            // Update progress based on accumulated length
-            const currentWords = countWords(accumulatedText);
-            const estimatedProgress = Math.min(
-              90,
-              Math.floor((currentWords / originalWords) * 80) + 10,
-            );
-
-            if (estimatedProgress > lastProgressPercent + 5) {
-              lastProgressPercent = estimatedProgress;
-              sendEvent({
-                type: "progress",
-                data: { percent: estimatedProgress },
-                timestamp: new Date().toISOString(),
-                requestId,
-              });
-            }
-          }
-
-          // Send completion
-          const finalWords = countWords(accumulatedText);
-
-          sendEvent({
-            type: "done",
-            data: {
-              originalWords,
-              finalWords,
-              iterationType: feedback.type,
-            },
-            timestamp: new Date().toISOString(),
-            requestId,
-          });
-
-          logger.info(
-            {
-              requestId,
-              originalWords,
-              finalWords,
-              iterationType: feedback.type,
-            },
-            "Iteration completed successfully",
-          );
-
-          controller.close();
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "迭代失败";
-
-          sendEvent({
-            type: "error",
-            data: { message: errorMessage },
-            timestamp: new Date().toISOString(),
-            requestId,
-          });
-
-          logger.error({ requestId, error: errorMessage }, "Iteration failed");
-
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Iterate request failed",
-    );
-
+  if (!parseResult.success) {
     return new Response(
       JSON.stringify({
         error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
+          code: "INVALID_REQUEST",
+          message: "请求参数无效",
+          details: parseResult.error.flatten(),
         },
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
   }
-}
+
+  const {
+    originalContent,
+    feedback,
+    blueprintId,
+    platformStyle,
+    outlineJson,
+    materialsSummary,
+  } = parseResult.data;
+
+  // 2. Check quota before iteration
+  const quotaCheck = await quotaManager.checkQuota(userId, ITERATE_QUOTA_COST);
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "QUOTA_EXCEEDED",
+          message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
+        },
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  const originalWords = countWords(originalContent);
+
+  logger.info(
+    {
+      requestId,
+      userId,
+      blueprintId,
+      feedbackType: feedback.type,
+      feedbackRating: feedback.rating,
+      originalWords,
+    },
+    "Starting content iteration",
+  );
+
+  // 3. Build iteration prompt
+  const iterationPrompt = buildIterationPrompt(
+    originalContent,
+    feedback as DraftFeedback,
+    { platformStyle, outlineJson, materialsSummary },
+  );
+
+  // 4. Get AI model
+  const router = AIProviderRouter.getInstance();
+  const selection = router.selectProvider({
+    taskType: "chat",
+    preferredProvider: "deepseek",
+  });
+
+  if (!selection?.model) {
+    throw new Error("无法获取 AI 模型");
+  }
+
+  const model = selection.model;
+
+  // 5. Create SSE stream
+  const encoder = new TextEncoder();
+  let accumulatedText = "";
+  let lastProgressPercent = 0;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const sendEvent = createSSESender<IterateSSEChunk>(controller, encoder);
+
+      try {
+        // Send initial progress
+        sendEvent({
+          type: "progress",
+          data: { percent: 5 },
+          timestamp: new Date().toISOString(),
+          requestId,
+        });
+
+        // Stream the iteration
+        const result = streamText({
+          model,
+          prompt: iterationPrompt,
+          maxOutputTokens: 8192,
+          temperature: 0.7,
+        });
+
+        // Process the stream
+        for await (const chunk of (await result).textStream) {
+          accumulatedText += chunk;
+
+          // Send content chunk
+          sendEvent({
+            type: "content",
+            data: { text: chunk },
+            timestamp: new Date().toISOString(),
+            requestId,
+          });
+
+          // Update progress based on accumulated length
+          const currentWords = countWords(accumulatedText);
+          const estimatedProgress = Math.min(
+            90,
+            Math.floor((currentWords / originalWords) * 80) + 10,
+          );
+
+          if (estimatedProgress > lastProgressPercent + 5) {
+            lastProgressPercent = estimatedProgress;
+            sendEvent({
+              type: "progress",
+              data: { percent: estimatedProgress },
+              timestamp: new Date().toISOString(),
+              requestId,
+            });
+          }
+        }
+
+        // Send completion
+        const finalWords = countWords(accumulatedText);
+
+        sendEvent({
+          type: "done",
+          data: {
+            originalWords,
+            finalWords,
+            iterationType: feedback.type,
+          },
+          timestamp: new Date().toISOString(),
+          requestId,
+        });
+
+        logger.info(
+          {
+            requestId,
+            originalWords,
+            finalWords,
+            iterationType: feedback.type,
+          },
+          "Iteration completed successfully",
+        );
+
+        controller.close();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "迭代失败";
+
+        sendEvent({
+          type: "error",
+          data: { message: errorMessage },
+          timestamp: new Date().toISOString(),
+          requestId,
+        });
+
+        logger.error({ requestId, error: errorMessage }, "Iteration failed");
+
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  }) as unknown as NextResponse;
+});

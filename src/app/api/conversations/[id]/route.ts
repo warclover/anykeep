@@ -10,13 +10,12 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
   notFoundError,
-  unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";
-import type { NextRequest } from "next/server";
 
 // =============================================================================
 // Types
@@ -78,20 +77,9 @@ function extractTitle(state: SessionMemoryRow["state"]): string {
  * GET /api/conversations/[id]
  * Get conversation detail with full messages
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
     const { id: conversationId } = await params;
 
     // Query conversation from ai_session_memory
@@ -107,7 +95,7 @@ export async function GET(
         updated_at
       `,
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("conversation_id", conversationId)
       .single();
 
@@ -139,11 +127,8 @@ export async function GET(
     };
 
     return successResponse({ conversation });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`Failed to fetch conversation: ${message}`);
-  }
-}
+  },
+);
 
 // =============================================================================
 // DELETE /api/conversations/[id]
@@ -153,27 +138,16 @@ export async function GET(
  * DELETE /api/conversations/[id]
  * Delete a conversation
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
     const { id: conversationId } = await params;
 
     // Delete conversation from ai_session_memory
     const { error } = await supabase
       .from("ai_session_memory")
       .delete()
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("conversation_id", conversationId);
 
     if (error) {
@@ -181,8 +155,5 @@ export async function DELETE(
     }
 
     return successResponse({ deleted: true, conversationId });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`Failed to delete conversation: ${message}`);
-  }
-}
+  },
+);

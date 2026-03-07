@@ -8,38 +8,27 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 // ============================================
 // GET - 获取重复内容分组
 // ============================================
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
 
-    // 获取重复内容记录（指定字段避免 select *，限制最大记录数防止内存溢出）
+    // 获取重复内容记录
     const DUPLICATE_FETCH_LIMIT = 2000;
     const { data, error } = await supabase
       .from("health_check_cache")
       .select("id, bookmark_id, details, detected_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("check_type", "duplicate")
       .eq("status", "issue")
       .order("detected_at", { ascending: false })
@@ -47,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error(
-        { error: error.message, userId: user.id },
+        { error: error.message, userId },
         "Duplicates API: Failed to fetch",
       );
       return NextResponse.json(
@@ -138,43 +127,22 @@ export async function GET(request: NextRequest) {
         totalDuplicates: allBookmarkIds.length,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Duplicates API: Unexpected error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================
 // POST - 批量处理重复内容
 // ============================================
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const { action, groupId, keepBookmarkId, deleteBookmarkIds } = body;
 
     logger.info(
-      { action, groupId, keepBookmarkId, deleteBookmarkIds, userId: user.id },
+      { action, groupId, keepBookmarkId, deleteBookmarkIds, userId },
       "Duplicates API: Processing request",
     );
 
@@ -196,7 +164,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // 移入回收站（使用 serviceClient 绕过 RLS）
         const serviceClient = await createServiceClient();
         const { error: deleteError } = await serviceClient
           .from("bookmarks")
@@ -205,12 +172,11 @@ export async function POST(request: NextRequest) {
             trashed_at: new Date().toISOString(),
           })
           .in("id", deleteBookmarkIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         if (deleteError) {
           result.errors.push(deleteError.message);
         } else {
-          // 更新问题状态：整个组的所有书签（含被保留的）都标记为 resolved
           const allBookmarkIds = [keepBookmarkId, ...deleteBookmarkIds];
           await supabase
             .from("health_check_cache")
@@ -219,7 +185,7 @@ export async function POST(request: NextRequest) {
               resolved_at: new Date().toISOString(),
               resolution_action: "merged",
             })
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .eq("check_type", "duplicate")
             .in("bookmark_id", allBookmarkIds);
 
@@ -242,7 +208,7 @@ export async function POST(request: NextRequest) {
             status: "ignored",
             ignored_at: new Date().toISOString(),
           })
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("check_type", "duplicate")
           .filter("details->groupId", "eq", groupId);
 
@@ -265,14 +231,5 @@ export async function POST(request: NextRequest) {
       success: result.errors.length === 0,
       data: result,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Duplicates API: Unexpected error in POST",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

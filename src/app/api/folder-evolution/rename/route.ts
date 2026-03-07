@@ -6,28 +6,15 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { renameService } from "@/lib/classification/services/rename.service";
 import { safeParseJson, safeParseInt } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取文件夹重命名建议
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 获取查询参数
     const { searchParams } = new URL(request.url);
     const folderIdParam = searchParams.get("folderId");
@@ -39,7 +26,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "无效的文件夹 ID" }, { status: 400 });
       }
       // 分析单个文件夹
-      const suggestion = await renameService.analyzeFolder(user.id, folderId);
+      const suggestion = await renameService.analyzeFolder(userId, folderId);
 
       return NextResponse.json({
         success: true,
@@ -48,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 分析所有文件夹
-    const suggestions = await renameService.analyzeAllFolders(user.id, {
+    const suggestions = await renameService.analyzeAllFolders(userId, {
       limit,
       minBookmarks: 5,
     });
@@ -57,35 +44,14 @@ export async function GET(request: NextRequest) {
       success: true,
       data: suggestions,
     });
-  } catch (error) {
-    logger.error({ error }, "[API] folder-evolution/rename GET error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "获取重命名建议失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * POST - 执行文件夹重命名
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { data: body, error: parseError } = await safeParseJson(request);
     if (parseError || !body) {
       return NextResponse.json(
@@ -114,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     // 执行重命名
     const result = await renameService.executeRename(
-      user.id,
+      userId,
       folderId,
       newName.trim(),
     );
@@ -135,14 +101,5 @@ export async function POST(request: NextRequest) {
         snapshotId: result.snapshotId,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[API] folder-evolution/rename POST error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "重命名失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

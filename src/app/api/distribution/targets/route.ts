@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { z } from "zod";
 import {
   getDistributionTargetsTable,
@@ -32,26 +33,15 @@ const createTargetSchema = z.object({
 /**
  * GET - 获取分发目标列表
  */
-export async function GET() {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const { data: targets, error } = (await getDistributionTargetsTable(
       supabase,
     )
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })) as {
       data: DistributionTargetRow[] | null;
       error: Error | null;
@@ -86,32 +76,15 @@ export async function GET() {
     }));
 
     return NextResponse.json({ success: true, targets: formattedTargets });
-  } catch (error) {
-    logger.error({ error }, "Get distribution targets error:");
-    return NextResponse.json(
-      { success: false, error: "获取分发目标失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * POST - 创建分发目标
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const validation = createTargetSchema.safeParse(body);
@@ -130,7 +103,7 @@ export async function POST(request: NextRequest) {
     const { targetType, name, targetConfig, trigger } = validation.data;
 
     const insertData: DistributionTargetInsert = {
-      user_id: user.id,
+      user_id: userId,
       target_type: targetType,
       name,
       target_config: targetConfig,
@@ -180,11 +153,5 @@ export async function POST(request: NextRequest) {
         updatedAt: target.updated_at,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "Create distribution target error:");
-    return NextResponse.json(
-      { success: false, error: "创建分发目标失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -8,8 +8,8 @@
  * @since 2025-12-15
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import { getLinkService } from "@/lib/knowledge-link";
 import type { LinkType } from "@/lib/knowledge-link";
@@ -18,12 +18,6 @@ import { logger } from "@/lib/logger";
 // ============================================================================
 // Types
 // ============================================================================
-
-interface RouteParams {
-  params: Promise<{
-    bookmarkId: string;
-  }>;
-}
 
 interface GetRelatedResponse {
   success: boolean;
@@ -60,24 +54,12 @@ interface GetRelatedResponse {
  * - minStrength: number (default: 0.3, range: 0-1)
  * - types: string[] (comma-separated, e.g., "semantic,entity,tag")
  */
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams,
-): Promise<NextResponse<GetRelatedResponse>> {
-  try {
-    // 1. 认证检查
+export const GET = withAuthMiddleware<{ bookmarkId: string }>(
+  async (
+    request,
+    { userId, params },
+  ): Promise<NextResponse<GetRelatedResponse>> => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
-    }
 
     // 2. 解析路由参数
     const { bookmarkId: bookmarkIdStr } = await params;
@@ -107,7 +89,7 @@ export async function GET(
       );
     }
 
-    if (bookmark.user_id !== user.id) {
+    if (bookmark.user_id !== userId) {
       return NextResponse.json(
         { success: false, error: "Forbidden" },
         { status: 403 },
@@ -129,10 +111,10 @@ export async function GET(
     // 5. 获取相关书签（传入服务端 supabase 以携带当前用户 session，否则 RLS 下无用户会返回空）
     const linkService = getLinkService(supabase);
     logger.info(
-      { bookmarkId, userId: user.id, limit, minStrength, types },
+      { bookmarkId, userId, limit, minStrength, types },
       "[API] Getting related bookmarks",
     );
-    const related = await linkService.getRelatedBookmarks(bookmarkId, user.id, {
+    const related = await linkService.getRelatedBookmarks(bookmarkId, userId, {
       limit,
       minStrength,
       types,
@@ -156,14 +138,5 @@ export async function GET(
         },
       },
     );
-  } catch (error) {
-    logger.error({ error }, "[API] Failed to get related bookmarks");
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

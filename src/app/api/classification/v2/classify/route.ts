@@ -11,12 +11,11 @@
  * @since 2026-01-24 Phase 3
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import { getClassificationFacade } from "@/lib/classification/facade";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 请求体验证 Schema
@@ -42,126 +41,90 @@ const classifySchema = z.object({
  * POST /api/classification/v2/classify
  * 统一分类入口
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 2. 解析并验证请求体
+  const body = await request.json();
+  const validation = classifySchema.safeParse(body);
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析并验证请求体
-    const body = await request.json();
-    const validation = classifySchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.flatten().fieldErrors,
-        },
-        { status: 400 },
-      );
-    }
-
-    const {
-      bookmarkId,
-      title,
-      url,
-      description,
-      summary,
-      tags,
-      optimistic,
-      quick,
-    } = validation.data;
-
-    // 3. 获取分类门面并执行分类
-    const facade = getClassificationFacade();
-
-    const classificationRequest = {
-      userId: user.id,
-      bookmarkId,
-      title,
-      url: url ?? "",
-      description,
-      summary,
-      tags,
-    };
-
-    let result;
-
-    if (quick || optimistic) {
-      // 快速模式：仅 T0，用于 Optimistic UI
-      result = await facade.classifyQuick(classificationRequest);
-    } else {
-      // 标准模式：完整 L0→T0→T1 流程
-      result = await facade.classify(classificationRequest);
-    }
-
-    const latencyMs = Date.now() - startTime;
-
-    logger.info(
-      {
-        userId: user.id,
-        bookmarkId,
-        title: title.substring(0, 50),
-        folderId: result.folderId,
-        confidence: result.confidence,
-        action: result.action,
-        latencyMs,
-        mode: quick || optimistic ? "quick" : "standard",
-      },
-      "Classification v2 completed",
-    );
-
-    // 4. 返回统一格式的结果
-    return NextResponse.json({
-      success: true,
-      data: {
-        folderId: result.folderId,
-        folderName: result.folderName,
-        confidence: result.confidence,
-        action: result.action,
-        reason: result.reason,
-        suggestionId: result.suggestionId,
-        // 延迟信息
-        latency: {
-          total: latencyMs,
-        },
-        // T1 相关（如果有）
-        usedT1: result.usedT1,
-      },
-    });
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        latencyMs,
-      },
-      "Classification v2 failed",
-    );
-
+  if (!validation.success) {
     return NextResponse.json(
       {
         success: false,
-        error: "分类失败",
-        message: error instanceof Error ? error.message : "未知错误",
+        error: "请求参数无效",
+        details: validation.error.flatten().fieldErrors,
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
-}
+
+  const {
+    bookmarkId,
+    title,
+    url,
+    description,
+    summary,
+    tags,
+    optimistic,
+    quick,
+  } = validation.data;
+
+  // 3. 获取分类门面并执行分类
+  const facade = getClassificationFacade();
+
+  const classificationRequest = {
+    userId,
+    bookmarkId,
+    title,
+    url: url ?? "",
+    description,
+    summary,
+    tags,
+  };
+
+  let result;
+
+  if (quick || optimistic) {
+    // 快速模式：仅 T0，用于 Optimistic UI
+    result = await facade.classifyQuick(classificationRequest);
+  } else {
+    // 标准模式：完整 L0→T0→T1 流程
+    result = await facade.classify(classificationRequest);
+  }
+
+  const latencyMs = Date.now() - startTime;
+
+  logger.info(
+    {
+      userId,
+      bookmarkId,
+      title: title.substring(0, 50),
+      folderId: result.folderId,
+      confidence: result.confidence,
+      action: result.action,
+      latencyMs,
+      mode: quick || optimistic ? "quick" : "standard",
+    },
+    "Classification v2 completed",
+  );
+
+  // 4. 返回统一格式的结果
+  return NextResponse.json({
+    success: true,
+    data: {
+      folderId: result.folderId,
+      folderName: result.folderName,
+      confidence: result.confidence,
+      action: result.action,
+      reason: result.reason,
+      suggestionId: result.suggestionId,
+      // 延迟信息
+      latency: {
+        total: latencyMs,
+      },
+      // T1 相关（如果有）
+      usedT1: result.usedT1,
+    },
+  });
+});

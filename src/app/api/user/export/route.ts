@@ -14,8 +14,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import { unauthorizedError, internalError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { internalError } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
@@ -76,250 +76,247 @@ interface ExportBrowserBookmark {
  * POST /api/user/export
  * 导出用户所有数据
  */
-export async function POST() {
-  try {
-    // 1. 验证用户身份
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    // 1.5 速率限制检查（高风险操作：每小时 2 次）
-    const rateLimitResult = checkRateLimit(user.id, "/api/user/export");
-    if (!rateLimitResult.allowed) {
-      logger.warn(
-        { userId: user.id, resetMs: rateLimitResult.resetMs },
-        "Data export rate limited",
-      );
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "操作过于频繁，请稍后再试",
-          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
-            "X-RateLimit-Remaining": "0",
-            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
-          },
+export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
+  // 1. 速率限制检查（高风险操作：每小时 2 次）
+  const rateLimitResult = checkRateLimit(userId, "/api/user/export");
+  if (!rateLimitResult.allowed) {
+    logger.warn(
+      { userId, resetMs: rateLimitResult.resetMs },
+      "Data export rate limited",
+    );
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "操作过于频繁，请稍后再试",
+        retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
         },
-      );
-    }
+      },
+    );
+  }
 
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    // 2. 获取用户文件夹
-    // 类型断言: 手动维护类型文件时需要此断言
-    type FolderExportRow = {
-      id: number;
-      name: string;
-      parent_id: number | null;
-      is_system: boolean | null;
-      created_at: string | null;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: folders, error: foldersError } = await (supabase.from("folders") as any)
-      .select("id, name, parent_id, is_system, created_at")
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true }) as { data: FolderExportRow[] | null; error: { message: string } | null };
+  // 2. 获取用户文件夹
+  // 类型断言: 手动维护类型文件时需要此断言
+  type FolderExportRow = {
+    id: number;
+    name: string;
+    parent_id: number | null;
+    is_system: boolean | null;
+    created_at: string | null;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: folders, error: foldersError } = (await (
+    supabase.from("folders") as any
+  )
+    .select("id, name, parent_id, is_system, created_at")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })) as {
+    data: FolderExportRow[] | null;
+    error: { message: string } | null;
+  };
 
-    if (foldersError) {
-      logger.error(
-        { error: foldersError.message, userId: user.id },
-        "Export: Failed to get folders",
-      );
-      return internalError("获取文件夹失败");
-    }
+  if (foldersError) {
+    logger.error(
+      { error: foldersError.message, userId },
+      "Export: Failed to get folders",
+    );
+    return internalError("获取文件夹失败");
+  }
 
-    // 3. 获取用户书签（含文件夹名称）
-    type BookmarkExportRow = {
-      id: number;
-      title: string;
-      url: string;
-      description: string | null;
-      platform: string | null;
-      folder_id: number | null;
-      ai_tags: unknown;
-      ai_summary: string | null;
-      user_tags: unknown;
-      created_at: string | null;
-      updated_at: string | null;
-      folders: { name: string }[] | null;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
-      .select(
-        `
+  // 3. 获取用户书签（含文件夹名称）
+  type BookmarkExportRow = {
+    id: number;
+    title: string;
+    url: string;
+    description: string | null;
+    platform: string | null;
+    folder_id: number | null;
+    ai_tags: unknown;
+    ai_summary: string | null;
+    user_tags: unknown;
+    created_at: string | null;
+    updated_at: string | null;
+    folders: { name: string }[] | null;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: bookmarks, error: bookmarksError } = (await (
+    supabase.from("bookmarks") as any
+  )
+    .select(
+      `
         id, title, url, description, platform, folder_id,
         ai_tags, ai_summary, user_tags, created_at, updated_at,
         folders (name)
       `,
-      )
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }) as { data: BookmarkExportRow[] | null; error: { message: string } | null };
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })) as {
+    data: BookmarkExportRow[] | null;
+    error: { message: string } | null;
+  };
 
-    if (bookmarksError) {
-      logger.error(
-        { error: bookmarksError.message, userId: user.id },
-        "Export: Failed to get bookmarks",
-      );
-      return internalError("获取书签失败");
-    }
+  if (bookmarksError) {
+    logger.error(
+      { error: bookmarksError.message, userId },
+      "Export: Failed to get bookmarks",
+    );
+    return internalError("获取书签失败");
+  }
 
-    // 4. 获取浏览器书签
-    interface BrowserBookmarkRow {
-      id: number;
-      title: string;
-      url: string;
-      folder_id: number | null;
-      source: string;
-      created_at: string;
-      browser_bookmark_folders: { name: string } | null;
-    }
+  // 4. 获取浏览器书签
+  interface BrowserBookmarkRow {
+    id: number;
+    title: string;
+    url: string;
+    folder_id: number | null;
+    source: string;
+    created_at: string;
+    browser_bookmark_folders: { name: string } | null;
+  }
 
-    let browserBookmarks: BrowserBookmarkRow[] = [];
-    try {
-      // browser_bookmarks 表可能不在当前类型定义中
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: browserBookmarksError } = await (supabase as any)
-        .from("browser_bookmarks")
-        .select(
-          `
+  let browserBookmarks: BrowserBookmarkRow[] = [];
+  try {
+    // browser_bookmarks 表可能不在当前类型定义中
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: browserBookmarksError } = await (supabase as any)
+      .from("browser_bookmarks")
+      .select(
+        `
           id, title, url, folder_id, source, created_at,
           browser_bookmark_folders (name)
         `,
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-      if (browserBookmarksError) {
-        logger.warn(
-          { error: browserBookmarksError.message, userId: user.id },
-          "Export: Failed to get browser bookmarks",
-        );
-      } else if (data) {
-        browserBookmarks = data as unknown as BrowserBookmarkRow[];
-      }
-    } catch (browserError) {
+    if (browserBookmarksError) {
       logger.warn(
-        {
-          error:
-            browserError instanceof Error
-              ? browserError.message
-              : String(browserError),
-        },
-        "Export: Exception getting browser bookmarks",
+        { error: browserBookmarksError.message, userId },
+        "Export: Failed to get browser bookmarks",
       );
-      // 浏览器书签失败不阻塞导出
+    } else if (data) {
+      browserBookmarks = data as unknown as BrowserBookmarkRow[];
     }
-
-    // 5. 获取用户设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileSettingsRow = { settings: Record<string, unknown> | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
-      .select("settings")
-      .eq("id", user.id)
-      .single() as { data: ProfileSettingsRow | null };
-
-    // 6. 构建文件夹路径映射
-    const folderMap = new Map<number, string>();
-    const buildFolderPath = (folderId: number | null): string | null => {
-      if (!folderId) return null;
-      const cached = folderMap.get(folderId);
-      if (cached) return cached;
-
-      const folder = folders?.find((f) => f.id === folderId);
-      if (!folder) return null;
-
-      const parentPath = folder.parent_id
-        ? buildFolderPath(folder.parent_id)
-        : null;
-      const path = parentPath ? `${parentPath}/${folder.name}` : folder.name;
-      folderMap.set(folderId, path);
-      return path;
-    };
-
-    // 7. 格式化导出数据
-    const exportData: ExportData = {
-      exportedAt: new Date().toISOString(),
-      version: "1.0.0",
-      user: {
-        id: user.id,
-        email: user.email || "",
-      },
-      statistics: {
-        bookmarkCount: bookmarks?.length || 0,
-        folderCount: folders?.length || 0,
-        browserBookmarkCount: browserBookmarks.length,
-      },
-      folders: (folders || []).map((f) => ({
-        id: f.id,
-        name: f.name,
-        parentId: f.parent_id,
-        isSystem: f.is_system ?? false,
-        createdAt: f.created_at,
-      })),
-      bookmarks: (bookmarks || []).map((b) => ({
-        id: b.id,
-        title: b.title,
-        url: b.url,
-        description: b.description,
-        platform: b.platform,
-        folderId: b.folder_id,
-        folderName:
-          Array.isArray(b.folders) && b.folders[0]
-            ? (b.folders[0] as { name: string }).name
-            : null,
-        aiTags: b.ai_tags as string[] | null,
-        aiSummary: b.ai_summary,
-        userTags: b.user_tags as string[] | null,
-        createdAt: b.created_at,
-        updatedAt: b.updated_at,
-      })),
-      browserBookmarks: browserBookmarks.map((b) => ({
-        id: b.id,
-        title: b.title,
-        url: b.url,
-        folderId: b.folder_id,
-        folderPath: buildFolderPath(b.folder_id),
-        source: b.source,
-        createdAt: b.created_at,
-      })),
-      settings: (profile?.settings as Record<string, unknown>) || {},
-    };
-
-    // 8. 生成文件名
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `anykeep-export-${timestamp}.json`;
-
-    logger.info(
+  } catch (browserError) {
+    logger.warn(
       {
-        userId: user.id,
-        bookmarkCount: exportData.statistics.bookmarkCount,
-        folderCount: exportData.statistics.folderCount,
+        error:
+          browserError instanceof Error
+            ? browserError.message
+            : String(browserError),
       },
-      "User data exported",
+      "Export: Exception getting browser bookmarks",
     );
-
-    // 9. 返回 JSON 文件
-    return new NextResponse(JSON.stringify(exportData, null, 2), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMessage }, "POST /api/user/export error");
-    return internalError("导出数据失败");
+    // 浏览器书签失败不阻塞导出
   }
-}
+
+  // 5. 获取用户设置
+  // 类型断言: 手动维护类型文件时需要此断言
+  type ProfileSettingsRow = { settings: Record<string, unknown> | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = (await (supabase.from("profiles") as any)
+    .select("settings")
+    .eq("id", userId)
+    .single()) as { data: ProfileSettingsRow | null };
+
+  // 6. 构建文件夹路径映射
+  const folderMap = new Map<number, string>();
+  const buildFolderPath = (folderId: number | null): string | null => {
+    if (!folderId) return null;
+    const cached = folderMap.get(folderId);
+    if (cached) return cached;
+
+    const folder = folders?.find((f) => f.id === folderId);
+    if (!folder) return null;
+
+    const parentPath = folder.parent_id
+      ? buildFolderPath(folder.parent_id)
+      : null;
+    const path = parentPath ? `${parentPath}/${folder.name}` : folder.name;
+    folderMap.set(folderId, path);
+    return path;
+  };
+
+  // 7. 格式化导出数据
+  const exportData: ExportData = {
+    exportedAt: new Date().toISOString(),
+    version: "1.0.0",
+    user: {
+      id: userId,
+      email: user?.email || "",
+    },
+    statistics: {
+      bookmarkCount: bookmarks?.length || 0,
+      folderCount: folders?.length || 0,
+      browserBookmarkCount: browserBookmarks.length,
+    },
+    folders: (folders || []).map((f) => ({
+      id: f.id,
+      name: f.name,
+      parentId: f.parent_id,
+      isSystem: f.is_system ?? false,
+      createdAt: f.created_at,
+    })),
+    bookmarks: (bookmarks || []).map((b) => ({
+      id: b.id,
+      title: b.title,
+      url: b.url,
+      description: b.description,
+      platform: b.platform,
+      folderId: b.folder_id,
+      folderName:
+        Array.isArray(b.folders) && b.folders[0]
+          ? (b.folders[0] as { name: string }).name
+          : null,
+      aiTags: b.ai_tags as string[] | null,
+      aiSummary: b.ai_summary,
+      userTags: b.user_tags as string[] | null,
+      createdAt: b.created_at,
+      updatedAt: b.updated_at,
+    })),
+    browserBookmarks: browserBookmarks.map((b) => ({
+      id: b.id,
+      title: b.title,
+      url: b.url,
+      folderId: b.folder_id,
+      folderPath: buildFolderPath(b.folder_id),
+      source: b.source,
+      createdAt: b.created_at,
+    })),
+    settings: (profile?.settings as Record<string, unknown>) || {},
+  };
+
+  // 8. 生成文件名
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const filename = `anykeep-export-${timestamp}.json`;
+
+  logger.info(
+    {
+      userId,
+      bookmarkCount: exportData.statistics.bookmarkCount,
+      folderCount: exportData.statistics.folderCount,
+    },
+    "User data exported",
+  );
+
+  // 9. 返回 JSON 文件
+  return new NextResponse(JSON.stringify(exportData, null, 2), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "no-store",
+    },
+  });
+});

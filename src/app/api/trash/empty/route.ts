@@ -1,19 +1,17 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-} from "@/lib/utils/api-response";
+import { successResponse, databaseError } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 /**
  * POST /api/trash/empty
  * 清空垃圾箱（永久删除所有垃圾箱中的收藏）
  */
-export async function POST(_request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     logger.debug(
       {
         action: "empty_trash_start",
@@ -21,34 +19,16 @@ export async function POST(_request: NextRequest) {
       "POST: Empty trash",
     );
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    logger.debug(
-      {
-        userId: user?.id,
-        authError: authError?.message,
-        action: "auth_check",
-      },
-      "POST: User authentication",
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    // 1.5 速率限制检查（高风险操作：每小时 2 次）
-    const rateLimitResult = checkRateLimit(user.id, "/api/trash/empty");
+    // 1. 速率限制检查（高风险操作：每小时 2 次）
+    const rateLimitResult = checkRateLimit(userId, "/api/trash/empty");
     if (!rateLimitResult.allowed) {
       logger.warn(
-        { userId: user.id, resetMs: rateLimitResult.resetMs },
+        { userId, resetMs: rateLimitResult.resetMs },
         "Empty trash rate limited",
       );
-      return new Response(
+      return new NextResponse(
         JSON.stringify({
           success: false,
           error: "操作过于频繁，请稍后再试",
@@ -70,11 +50,16 @@ export async function POST(_request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type TrashItemRow = { id: number };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: trashItems, error: fetchError } = await (supabase.from("bookmarks") as any)
+    const { data: trashItems, error: fetchError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("is_in_trash", true)
-      .is("deleted_at", null) as { data: TrashItemRow[] | null; error: { message: string } | null };
+      .is("deleted_at", null)) as {
+      data: TrashItemRow[] | null;
+      error: { message: string } | null;
+    };
 
     logger.debug(
       {
@@ -99,10 +84,10 @@ export async function POST(_request: NextRequest) {
     // 3. 批量永久删除（使用普通客户端 + 显式 user_id 检查，不绕过 RLS）
     const itemIds = trashItems.map((item) => item.id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = await (supabase.from("bookmarks") as any)
+    const { error: deleteError } = (await (supabase.from("bookmarks") as any)
       .update({ deleted_at: new Date().toISOString() })
       .in("id", itemIds)
-      .eq("user_id", user.id) as { error: { message: string } | null }; // 显式验证所有权，配合 RLS 双重保护
+      .eq("user_id", userId)) as { error: { message: string } | null }; // 显式验证所有权，配合 RLS 双重保护
 
     logger.debug(
       {
@@ -122,7 +107,7 @@ export async function POST(_request: NextRequest) {
     const { error: decrementError } = await (supabase.rpc as any)(
       "decrement_storage_used",
       {
-        target_user_id: user.id,
+        target_user_id: userId,
         count: trashItems.length,
       },
     );
@@ -141,7 +126,7 @@ export async function POST(_request: NextRequest) {
       logger.error(
         {
           error: decrementError,
-          userId: user.id,
+          userId,
           count: trashItems.length,
           operation: "decrement_storage",
         },
@@ -162,15 +147,5 @@ export async function POST(_request: NextRequest) {
       deleted: trashItems.length,
       message: `已永久删除 ${trashItems.length} 个收藏`,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "empty_trash",
-      },
-      "POST /api/trash/empty error",
-    );
-    return databaseError("清空垃圾箱失败", error);
-  }
-}
+  },
+);

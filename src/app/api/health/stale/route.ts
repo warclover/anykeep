@@ -8,7 +8,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { staleContentDetector } from "@/lib/ai-skills/skills/health-check/detectors/stale-detector";
 import { HEALTH_CHECK_CONFIG } from "@/lib/ai-skills/skills/health-check/types";
 
@@ -16,22 +16,8 @@ import { HEALTH_CHECK_CONFIG } from "@/lib/ai-skills/skills/health-check/types";
 // GET - 获取过期内容列表
 // ============================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const days = parseInt(
       searchParams.get("days") ||
@@ -41,7 +27,7 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
 
     // 使用检测器获取过期内容
-    const allStaleContent = await staleContentDetector.detect(user.id, {
+    const allStaleContent = await staleContentDetector.detect(userId, {
       thresholdDays: days,
       limit: 500,
     });
@@ -60,37 +46,16 @@ export async function GET(request: NextRequest) {
         thresholds: HEALTH_CHECK_CONFIG.STALE_THRESHOLDS,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Stale API: Unexpected error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================
 // POST - 批量处理过期内容
 // ============================================
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const { action, bookmarkIds } = body;
@@ -106,11 +71,10 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "archive": {
-        // 移动到归档文件夹（如果存在）
         const { data: archiveFolder } = await supabase
           .from("folders")
           .select("id")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("is_system", true)
           .eq("system_type", "archive")
           .single();
@@ -123,7 +87,7 @@ export async function POST(request: NextRequest) {
               is_archived: true,
             })
             .in("id", bookmarkIds)
-            .eq("user_id", user.id);
+            .eq("user_id", userId);
 
           if (archiveError) {
             result.errors.push(archiveError.message);
@@ -131,7 +95,6 @@ export async function POST(request: NextRequest) {
             result.processed = bookmarkIds.length;
           }
         } else {
-          // 没有归档文件夹，移入回收站代替归档
           const serviceClient = await createServiceClient();
           const { error: archiveError } = await serviceClient
             .from("bookmarks")
@@ -140,7 +103,7 @@ export async function POST(request: NextRequest) {
               trashed_at: new Date().toISOString(),
             })
             .in("id", bookmarkIds)
-            .eq("user_id", user.id);
+            .eq("user_id", userId);
 
           if (archiveError) {
             result.errors.push(archiveError.message);
@@ -149,7 +112,6 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 更新健康缓存状态
         await supabase
           .from("health_check_cache")
           .update({
@@ -157,7 +119,7 @@ export async function POST(request: NextRequest) {
             resolved_at: new Date().toISOString(),
             resolution_action: "archived",
           })
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("check_type", "stale")
           .in("bookmark_id", bookmarkIds);
 
@@ -173,7 +135,7 @@ export async function POST(request: NextRequest) {
             trashed_at: new Date().toISOString(),
           })
           .in("id", bookmarkIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         if (deleteError) {
           result.errors.push(deleteError.message);
@@ -181,7 +143,6 @@ export async function POST(request: NextRequest) {
           result.processed = bookmarkIds.length;
         }
 
-        // 更新健康缓存状态
         await supabase
           .from("health_check_cache")
           .update({
@@ -189,7 +150,7 @@ export async function POST(request: NextRequest) {
             resolved_at: new Date().toISOString(),
             resolution_action: "deleted",
           })
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("check_type", "stale")
           .in("bookmark_id", bookmarkIds);
 
@@ -197,7 +158,6 @@ export async function POST(request: NextRequest) {
       }
 
       case "mark_important": {
-        // 更新访问时间，表示用户认为这些内容仍然重要
         const { error: updateError } = await supabase
           .from("bookmarks")
           .update({
@@ -205,7 +165,7 @@ export async function POST(request: NextRequest) {
             is_starred: true,
           })
           .in("id", bookmarkIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         if (updateError) {
           result.errors.push(updateError.message);
@@ -213,7 +173,6 @@ export async function POST(request: NextRequest) {
           result.processed = bookmarkIds.length;
         }
 
-        // 更新健康缓存状态
         await supabase
           .from("health_check_cache")
           .update({
@@ -221,7 +180,7 @@ export async function POST(request: NextRequest) {
             resolved_at: new Date().toISOString(),
             resolution_action: "marked_important",
           })
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("check_type", "stale")
           .in("bookmark_id", bookmarkIds);
 
@@ -235,7 +194,7 @@ export async function POST(request: NextRequest) {
             status: "ignored",
             ignored_at: new Date().toISOString(),
           })
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("check_type", "stale")
           .in("bookmark_id", bookmarkIds);
 
@@ -258,14 +217,5 @@ export async function POST(request: NextRequest) {
       success: result.errors.length === 0,
       data: result,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Stale API: Unexpected error in POST",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

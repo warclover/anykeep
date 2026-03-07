@@ -5,11 +5,10 @@
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   internalError,
   badRequestError,
   safeParseJson,
@@ -30,18 +29,8 @@ const confirmMergeSchema = z.object({
  * POST /api/folder-evolution/confirm-merge
  * Execute folder merge based on user confirmation
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // Validate request body
     const { data: body, error: parseError } = await safeParseJson(request);
     if (parseError) {
@@ -66,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Execute merge
     const result = await mergeService.executeMerge(
-      user.id,
+      userId,
       filteredSourceIds,
       targetFolderId,
       newName,
@@ -78,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         sourceFolderIds: filteredSourceIds,
         targetFolderId,
         mergedCount: result.mergedCount,
@@ -92,11 +81,5 @@ export async function POST(request: NextRequest) {
       targetFolderId: result.targetFolderId,
       mergedCount: result.mergedCount,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "POST /api/folder-evolution/confirm-merge error",
-    );
-    return internalError("合并文件夹失败");
-  }
-}
+  },
+);

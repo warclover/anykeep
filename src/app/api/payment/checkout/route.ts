@@ -6,9 +6,9 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import type { Currency, PlanTier, PaymentProvider } from "@/lib/payment/types";
 import { PRICING, ORDER_CONFIG } from "@/lib/payment/config";
-import { logger } from "@/lib/logger";
 
 interface CheckoutRequest {
   planTier: PlanTier;
@@ -16,19 +16,9 @@ interface CheckoutRequest {
   interval?: "monthly" | "yearly";
 }
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId, user }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
 
     const body: CheckoutRequest = await request.json();
     const { planTier, currency, interval = "yearly" } = body;
@@ -45,7 +35,7 @@ export async function POST(request: NextRequest) {
     const { data: existingSub } = await supabase
       .from("user_subscriptions")
       .select("status, plan_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("status", "active")
       .single();
 
@@ -93,7 +83,7 @@ export async function POST(request: NextRequest) {
       .from("payment_orders")
       .insert({
         order_no: orderNo,
-        user_id: user.id,
+        user_id: userId,
         amount: price,
         currency,
         status: "pending",
@@ -102,7 +92,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           plan_tier: planTier,
           interval,
-          email: user.email,
+          email: user?.email,
         },
       })
       .select()
@@ -128,14 +118,8 @@ export async function POST(request: NextRequest) {
         // qrCodeUrl: 'https://...',  // 国内支付二维码
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Checkout] Error:");
-    return NextResponse.json(
-      { error: { code: "CHECKOUT_FAILED", message: "创建订单失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 function getPrice(
   planTier: PlanTier,

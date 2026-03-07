@@ -9,15 +9,11 @@
  * @since 2026-01-24 Phase 3
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 更新规则 Schema
@@ -38,24 +34,12 @@ const updateRuleSchema = z.object({
  * GET /api/classification/v2/rules/[id]
  * 获取单个规则详情
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     // 2. 获取规则 ID
-    const { id } = await context.params;
+    const { id } = await params;
     const ruleId = parseInt(id, 10);
 
     if (isNaN(ruleId)) {
@@ -70,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .from("user_classification_rules")
       .select("*")
       .eq("id", ruleId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (ruleError || !rule) {
@@ -98,49 +82,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
         updatedAt: rule.updated_at,
       },
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Classification v2 rules: GET [id] failed",
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "获取规则失败",
-        message: error instanceof Error ? error.message : "未知错误",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * PUT /api/classification/v2/rules/[id]
  * 更新规则
  */
-export async function PUT(request: NextRequest, context: RouteContext) {
-  const startTime = Date.now();
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
+    const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     // 2. 获取规则 ID
-    const { id } = await context.params;
+    const { id } = await params;
     const ruleId = parseInt(id, 10);
 
     if (isNaN(ruleId)) {
@@ -203,7 +159,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       .from("user_classification_rules")
       .update(updateData)
       .eq("id", ruleId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (updateError) {
       throw new Error(`更新规则失败: ${updateError.message}`);
@@ -213,7 +169,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         ruleId,
         updates: Object.keys(updateData).filter((k) => k !== "updated_at"),
         latencyMs,
@@ -229,52 +185,21 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         updated: Object.keys(updateData).filter((k) => k !== "updated_at"),
       },
     });
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        latencyMs,
-      },
-      "Classification v2 rules: PUT failed",
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "更新规则失败",
-        message: error instanceof Error ? error.message : "未知错误",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/classification/v2/rules/[id]
  * 删除规则
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const startTime = Date.now();
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
+    const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     // 2. 获取规则 ID
-    const { id } = await context.params;
+    const { id } = await params;
     const ruleId = parseInt(id, 10);
 
     if (isNaN(ruleId)) {
@@ -289,7 +214,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .from("user_classification_rules")
       .delete()
       .eq("id", ruleId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (deleteError) {
       throw new Error(`删除规则失败: ${deleteError.message}`);
@@ -299,7 +224,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         ruleId,
         latencyMs,
       },
@@ -314,24 +239,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         deleted: true,
       },
     });
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        latencyMs,
-      },
-      "Classification v2 rules: DELETE failed",
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "删除规则失败",
-        message: error instanceof Error ? error.message : "未知错误",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

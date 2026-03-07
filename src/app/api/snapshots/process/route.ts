@@ -8,8 +8,9 @@
  * - 支持处理单个快照或用户所有待处理快照
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
 import {
@@ -26,20 +27,9 @@ const WORKER_ID = `manual-worker-${Date.now()}`;
  * Body:
  * - snapshotId?: number - 指定快照 ID（可选，不传则处理用户所有待处理快照）
  */
-export async function POST(request: Request) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // 2. 解析请求
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 解析请求
     let body: { snapshotId?: number } = {};
     try {
       body = await request.json();
@@ -49,11 +39,11 @@ export async function POST(request: Request) {
 
     const { snapshotId } = body;
 
-    // 3. 初始化 Admin 客户端
+    // 初始化 Admin 客户端
     initSupabaseAdmin();
 
     logger.info(
-      { userId: user.id, snapshotId },
+      { userId, snapshotId },
       "[ManualProcess] Starting manual snapshot processing",
     );
 
@@ -64,7 +54,7 @@ export async function POST(request: Request) {
       skipped: 0,
     };
 
-    // 4. 查找待处理的快照任务
+    // 查找待处理的快照任务
     // 注意：job_queue 表的字段是 "type"，不是 "job_type"
     // 类型断言: 手动维护类型文件时需要此断言
     type JobQueueRow = {
@@ -78,7 +68,7 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const jobsQuery = (getSupabaseAdmin().from("job_queue") as any)
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("status", "pending")
       .in("type", [
         "create_snapshot_basic",
@@ -120,7 +110,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 5. 如果指定了 snapshotId，过滤出对应的任务
+    // 如果指定了 snapshotId，过滤出对应的任务
     let jobsToProcess = pendingJobs;
     if (snapshotId) {
       jobsToProcess = pendingJobs.filter((job) => {
@@ -138,7 +128,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. 处理每个任务
+    // 处理每个任务
     // 类型断言: 手动维护类型文件时需要此断言
     type ClaimedJobRow = {
       job_id: number;
@@ -251,17 +241,8 @@ export async function POST(request: Request) {
       stats,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "[ManualProcess] Manual processing failed",
-    );
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Processing failed" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // Config
 export const maxDuration = 60; // 1 minute

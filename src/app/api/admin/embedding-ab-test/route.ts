@@ -7,21 +7,20 @@
 
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@/lib/supabase/server";
+import type { NextRequest } from "next/server";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
-  internalError,
+  forbiddenError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
 import { embeddingABTestService } from "@/lib/classification/services/embedding-ab-test.service";
 import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,
   type EmbeddingModelId,
 } from "@/lib/classification/config/embedding-config";
-import type { NextRequest } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 /**
  * GET /api/admin/embedding-ab-test
@@ -33,17 +32,14 @@ import type { NextRequest } from "next/server";
  * - controlModel: EmbeddingModelId (for comparison)
  * - treatmentModel: EmbeddingModelId (for comparison)
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份（这里简化处理，生产环境应该增加管理员权限检查）
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("需要管理员权限");
+    }
+    if (!isAdminUser(user.email)) {
+      return forbiddenError("需要管理员权限");
     }
 
     // 2. 解析请求参数
@@ -141,14 +137,5 @@ export async function GET(request: NextRequest) {
           "无效的 action 参数，支持: config, summary, comparison",
         );
     }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/admin/embedding-ab-test error",
-    );
-    return internalError("获取 A/B 测试数据失败");
-  }
-}
+  },
+);

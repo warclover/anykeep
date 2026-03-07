@@ -9,10 +9,9 @@ import { previewSmartListSchema } from "@/lib/validation/smart-list";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { SmartListFilters } from "@/types/smart-list";
 
@@ -161,18 +160,9 @@ function buildFilterQuery(
  * POST /api/smart-lists/preview
  * 预览筛选条件匹配的书签数量
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析并验证请求体
     const body = await request.json();
@@ -189,7 +179,7 @@ export async function POST(request: NextRequest) {
       .from("bookmarks")
       .select("id", { count: "exact", head: true });
 
-    query = buildFilterQuery(query, filters, user.id);
+    query = buildFilterQuery(query, filters, userId);
 
     // 4. 执行查询
     const { count, error: queryError } = await query;
@@ -198,7 +188,7 @@ export async function POST(request: NextRequest) {
       logger.error(
         {
           error: queryError,
-          userId: user.id,
+          userId,
           filters,
           operation: "preview_smart_list",
         },
@@ -210,15 +200,5 @@ export async function POST(request: NextRequest) {
     return successResponse({
       count: count ?? 0,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "preview_smart_list",
-      },
-      "POST /api/smart-lists/preview error",
-    );
-    return internalError("预览失败");
-  }
-}
+  },
+);

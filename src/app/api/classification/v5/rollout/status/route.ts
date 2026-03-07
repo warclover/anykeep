@@ -9,30 +9,19 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getFeatureFlag } from "@/lib/classification/infrastructure/rollout/feature-flag";
 import { MonitoringService } from "@/lib/classification/infrastructure/rollout/monitoring";
-import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
 
-export async function GET(_request: NextRequest) {
-  try {
-    // 1. 验证用户身份（仅管理员可访问）
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权" }, { status: 401 });
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
-
-    // 检查用户是否为管理员
     if (!isAdminUser(user.email)) {
-      return NextResponse.json(
-        { error: "权限不足 - 需要管理员权限" },
-        { status: 403 },
-      );
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
 
     // 2. 获取 Feature Flag 状态
@@ -40,8 +29,8 @@ export async function GET(_request: NextRequest) {
     const flagStats = featureFlag.getStats();
 
     // 3. 生成监控报告（最近 1 小时）
-    const logger = createLogger("RolloutStatusAPI");
-    const monitoringService = new MonitoringService(logger);
+    const statusLogger = createLogger("RolloutStatusAPI");
+    const monitoringService = new MonitoringService(statusLogger);
 
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - 60 * 60 * 1000);
@@ -56,14 +45,5 @@ export async function GET(_request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    logger.error({ error }, "获取发布状态失败:");
-    return NextResponse.json(
-      {
-        error: "获取发布状态失败",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

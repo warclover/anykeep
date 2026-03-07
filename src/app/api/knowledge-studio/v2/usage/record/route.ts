@@ -4,7 +4,8 @@
  * @description 记录蓝图使用情况，用于个性化推荐
  */
 
-import type { NextRequest } from "next/server";
+import type { NextResponse } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
@@ -28,103 +29,66 @@ const RecordUsageRequestSchema = z.object({
 /**
  * POST /api/knowledge-studio/v2/usage/record
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const requestId = crypto.randomUUID();
+  const supabase = await createClient();
   logger.info({ requestId }, "Usage record request received");
 
-  try {
-    // 1. Auth check
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 1. Parse request body
+  const body = await request.json();
+  const parseResult = RecordUsageRequestSchema.safeParse(body);
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 2. Parse request body
-    const body = await request.json();
-    const parseResult = RecordUsageRequestSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "INVALID_REQUEST",
-            message: "请求参数无效",
-            details: parseResult.error.flatten(),
-          },
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const { blueprintId, success, platformStyle, lengthMode } =
-      parseResult.data;
-
-    // 3. Call RPC function to record usage
-    // Note: RPC function types will be available after migration is applied
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: rpcError } = await (supabase.rpc as any)(
-      "record_blueprint_usage",
-      {
-        p_user_id: user.id,
-        p_blueprint_id: blueprintId,
-        p_success: success,
-        p_platform_style: platformStyle || null,
-        p_length_mode: lengthMode || null,
-      },
-    );
-
-    if (rpcError) {
-      logger.error({ requestId, error: rpcError }, "Failed to record usage");
-      throw rpcError;
-    }
-
-    logger.info(
-      {
-        requestId,
-        userId: user.id,
-        blueprintId,
-        success,
-      },
-      "Usage recorded successfully",
-    );
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "使用记录已保存",
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Usage record request failed",
-    );
-
+  if (!parseResult.success) {
     return new Response(
       JSON.stringify({
         error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
+          code: "INVALID_REQUEST",
+          message: "请求参数无效",
+          details: parseResult.error.flatten(),
         },
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
   }
-}
+
+  const { blueprintId, success, platformStyle, lengthMode } = parseResult.data;
+
+  // 2. Call RPC function to record usage
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: rpcError } = await (supabase.rpc as any)(
+    "record_blueprint_usage",
+    {
+      p_user_id: userId,
+      p_blueprint_id: blueprintId,
+      p_success: success,
+      p_platform_style: platformStyle || null,
+      p_length_mode: lengthMode || null,
+    },
+  );
+
+  if (rpcError) {
+    logger.error({ requestId, error: rpcError }, "Failed to record usage");
+    throw rpcError;
+  }
+
+  logger.info(
+    {
+      requestId,
+      userId,
+      blueprintId,
+      success,
+    },
+    "Usage recorded successfully",
+  );
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      message: "使用记录已保存",
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  ) as unknown as NextResponse;
+});

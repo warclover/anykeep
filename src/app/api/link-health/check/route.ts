@@ -13,14 +13,15 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { CheckRequestSchema } from "@/lib/ai-skills/skills/link-health-check/schema";
 import { linkHealthCheckSkill } from "@/lib/ai-skills/skills/link-health-check";
 import { LINK_HEALTH_CONFIG } from "@/lib/ai-skills/skills/link-health-check/types";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   databaseError,
 } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
@@ -32,33 +33,23 @@ import type { OrchestrationContext } from "@/lib/ai-skills/orchestration/types";
  * POST /api/link-health/check
  * 触发链接健康检测
  */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // 1. 身份验证
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const _startTime = Date.now();
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 速率限制检查（使用 AI 类别的限制）
-    const rateLimitResult = checkRateLimit(user.id, "/api/link-health");
+    // 1. 速率限制检查（使用 AI 类别的限制）
+    const rateLimitResult = checkRateLimit(userId, "/api/link-health");
     if (!rateLimitResult.allowed) {
       logger.warn(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           remaining: rateLimitResult.remaining,
           resetMs: rateLimitResult.resetMs,
         },
         "Link Health Check API: Rate limit exceeded",
       );
-      return new Response(
+      return new NextResponse(
         JSON.stringify({
           success: false,
           error: {
@@ -79,7 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 解析请求参数（支持 query string 和 body 两种方式）
+    // 2. 解析请求参数（支持 query string 和 body 两种方式）
     const searchParams = request.nextUrl.searchParams;
     let body: Record<string, unknown> = {};
 
@@ -122,10 +113,10 @@ export async function POST(request: NextRequest) {
 
     const { scope, folderId, bookmarkIds, includeWayback } = parseResult.data;
 
-    // 4. 确定检测范围
+    // 3. 确定检测范围
     const finalScope = scope || "all";
 
-    // 5. 验证范围参数
+    // 4. 验证范围参数
     if (finalScope === "folder" && !folderId) {
       return badRequestError("检测文件夹时必须提供 folderId");
     }
@@ -137,19 +128,19 @@ export async function POST(request: NextRequest) {
       return badRequestError("检测选中书签时必须提供 bookmarkIds");
     }
 
-    // 6. 检查书签所有权（如果是 selected 范围）
+    // 5. 检查书签所有权（如果是 selected 范围）
     if (finalScope === "selected" && bookmarkIds) {
       const { count, error } = await supabase
         .from("bookmarks")
         .select("id", { count: "exact", head: true })
         .in("id", bookmarkIds)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null);
 
       if (error) {
         logger.error(
           {
-            userId: user.id.slice(0, 8) + "...",
+            userId: userId.slice(0, 8) + "...",
             error: error.message,
           },
           "Link Health Check API: Ownership check failed",
@@ -162,18 +153,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. 检查文件夹所有权（如果是 folder 范围）
+    // 6. 检查文件夹所有权（如果是 folder 范围）
     if (finalScope === "folder" && folderId) {
       const { count, error } = await supabase
         .from("folders")
         .select("id", { count: "exact", head: true })
         .eq("id", folderId)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (error) {
         logger.error(
           {
-            userId: user.id.slice(0, 8) + "...",
+            userId: userId.slice(0, 8) + "...",
             error: error.message,
           },
           "Link Health Check API: Folder ownership check failed",
@@ -188,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         scope: finalScope,
         folderId,
         bookmarkCount: bookmarkIds?.length,
@@ -197,7 +188,7 @@ export async function POST(request: NextRequest) {
       "Link Health Check API: Starting check",
     );
 
-    // 8. 构建执行输入
+    // 7. 构建执行输入
     const input = {
       scope: finalScope,
       folderId,
@@ -207,30 +198,19 @@ export async function POST(request: NextRequest) {
       concurrency: LINK_HEALTH_CONFIG.DEFAULT_CONCURRENCY,
     };
 
-    // 9. 检查是否请求 SSE 流式响应
+    // 8. 检查是否请求 SSE 流式响应
     const acceptHeader = request.headers.get("accept") || "";
     const isStream = acceptHeader.includes("text/event-stream");
 
     if (isStream) {
       // SSE 流式响应
-      return handleStreamingCheck(user.id, input);
+      return handleStreamingCheck(userId, input);
     } else {
       // 同步响应（返回检测 ID，客户端轮询状态）
-      return handleSyncCheck(user.id, input);
+      return handleSyncCheck(userId, input);
     }
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        duration: Date.now() - startTime,
-      },
-      "Link Health Check API: Request failed",
-    );
-
-    return databaseError("链接检测请求失败，请稍后重试");
-  }
-}
+  },
+);
 
 /**
  * 处理 SSE 流式检测
@@ -245,7 +225,7 @@ async function handleStreamingCheck(
     timeout: number;
     concurrency: number;
   },
-): Promise<Response> {
+): Promise<NextResponse> {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -296,7 +276,7 @@ async function handleStreamingCheck(
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -318,7 +298,7 @@ async function handleSyncCheck(
     timeout: number;
     concurrency: number;
   },
-): Promise<Response> {
+): Promise<NextResponse> {
   // 构建编排上下文
   const context: OrchestrationContext = {
     userId,

@@ -5,13 +5,12 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   notFoundError,
   forbiddenError,
   databaseError,
-  internalError,
   badRequestError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
@@ -24,11 +23,8 @@ import { AUTH, FOLDER } from "@/lib/constants/messages";
  * Body:
  * - archived: boolean - 是否停用
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const { id } = await params;
     const folderId = parseInt(id);
 
@@ -36,16 +32,7 @@ export async function PATCH(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析请求体
     const body = await request.json();
@@ -85,7 +72,7 @@ export async function PATCH(
       return notFoundError(FOLDER.NOT_FOUND);
     }
 
-    if (folder.user_id !== user.id) {
+    if (folder.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -116,7 +103,7 @@ export async function PATCH(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         folderId,
         folderName: folder.name,
         archived,
@@ -133,15 +120,5 @@ export async function PATCH(
       is_archived: archived,
       message: archived ? "文件夹已停用" : "文件夹已启用",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "toggle_folder_archive",
-      },
-      "PATCH /api/folders/[id]/archive error",
-    );
-    return internalError("操作失败");
-  }
-}
+  },
+);

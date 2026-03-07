@@ -13,10 +13,10 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   forbiddenError,
   internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import {
   getSummaryService,
@@ -41,22 +41,14 @@ const batchGenerateSchema = z.object({
  * POST /api/summary/batch
  * 批量生成书签摘要
  */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
+    // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析并验证请求体
+    // 解析并验证请求体
     const body = await request.json();
     const validation = batchGenerateSchema.safeParse(body);
 
@@ -66,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const { bookmarkIds, forceProvider, forceRegenerate } = validation.data;
 
-    // 3. 获取所有书签信息
+    // 获取所有书签信息
     // 类型断言: 手动维护类型文件时需要此断言
     type BookmarkBatchRow = {
       id: number;
@@ -77,9 +69,14 @@ export async function POST(request: NextRequest) {
       ai_summary: string | null;
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: bookmarksError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmarks, error: bookmarksError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, user_id, title, url, description, ai_summary")
-      .in("id", bookmarkIds) as { data: BookmarkBatchRow[] | null; error: { message: string } | null };
+      .in("id", bookmarkIds)) as {
+      data: BookmarkBatchRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarksError) {
       logger.error(
@@ -89,9 +86,9 @@ export async function POST(request: NextRequest) {
       return internalError("获取书签信息失败");
     }
 
-    // 4. 验证所有书签属于当前用户
+    // 验证所有书签属于当前用户
     const validBookmarks = (bookmarks || []).filter(
-      (b) => b.user_id === user.id,
+      (b) => b.user_id === userId,
     );
     const invalidIds = bookmarkIds.filter(
       (id) => !validBookmarks.find((b) => b.id === id),
@@ -103,7 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. 过滤需要生成摘要的书签
+    // 过滤需要生成摘要的书签
     const bookmarksToProcess = forceRegenerate
       ? validBookmarks
       : validBookmarks.filter((b) => !b.ai_summary);
@@ -117,26 +114,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 6. 构建摘要输入数组
+    // 构建摘要输入数组
     const inputs: SummaryInput[] = bookmarksToProcess.map((b) => ({
       bookmarkId: b.id,
-      userId: user.id,
+      userId,
       title: b.title,
       url: b.url || undefined,
       description: b.description || undefined,
     }));
 
-    // 7. 构建生成选项
+    // 构建生成选项
     const options: GenerateOptions = {
       forceProvider: forceProvider as ProviderName | undefined,
       forceRegenerate,
     };
 
-    // 8. 批量生成摘要
+    // 批量生成摘要
     const summaryService = getSummaryService();
     const results = await summaryService.generateBatch(inputs, options);
 
-    // 9. 处理结果并更新数据库
+    // 处理结果并更新数据库
     const successResults: Array<{
       bookmarkId: number;
       summary: string;
@@ -164,13 +161,13 @@ export async function POST(request: NextRequest) {
 
       // 更新数据库
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase.from("bookmarks") as any)
+      const { error: updateError } = (await (supabase.from("bookmarks") as any)
         .update({
           ai_summary: result.summary,
           ai_tags: result.tags,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", bookmarkId) as { error: { message: string } | null };
+        .eq("id", bookmarkId)) as { error: { message: string } | null };
 
       // V4.2.4: 修复数据库更新错误被忽略的问题
       // 在结果中包含保存状态
@@ -199,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         requested: bookmarkIds.length,
         processed: bookmarksToProcess.length,
         succeeded: successResults.length,
@@ -210,7 +207,7 @@ export async function POST(request: NextRequest) {
       "Batch summary generation completed",
     );
 
-    // 10. 返回结果
+    // 返回结果
     return successResponse({
       processed: bookmarksToProcess.length,
       succeeded: successResults.length,
@@ -220,14 +217,5 @@ export async function POST(request: NextRequest) {
       results: successResults,
       errors: errorResults.length > 0 ? errorResults : undefined,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/summary/batch error",
-    );
-    return internalError("批量生成摘要失败");
-  }
-}
+  },
+);

@@ -6,43 +6,31 @@
  * PUT /api/confirmations/[id] - 响应确认消息
  * DELETE /api/confirmations/[id] - 删除确认消息
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-11
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
-import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   badRequestError,
   notFoundError,
-  unauthorizedError,
   forbiddenError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { confirmationService } from "@/lib/confirmation";
 import { confirmationRepository } from "@/lib/confirmation/confirmation.repository";
-import type { ClassificationChoice, FolderOperationChoice } from "@/types/confirmation";
-import type { NextRequest } from "next/server";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import type {
+  ClassificationChoice,
+  FolderOperationChoice,
+} from "@/types/confirmation";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * GET /api/confirmations/[id]
  * 获取单个确认消息
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
 
@@ -56,32 +44,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return notFoundError("确认消息不存在");
     }
 
-    if (confirmation.user_id !== user.id) {
+    if (confirmation.user_id !== userId) {
       return forbiddenError("无权访问此确认消息");
     }
 
     return successResponse({ confirmation });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`获取确认消息失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * PUT /api/confirmations/[id]
  * 响应确认消息
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
 
@@ -96,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return notFoundError("确认消息不存在");
     }
 
-    if (confirmation.user_id !== user.id) {
+    if (confirmation.user_id !== userId) {
       return forbiddenError("无权操作此确认消息");
     }
 
@@ -114,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       result = await confirmationService.respondToClassification(
         confirmationId,
-        user.id,
+        userId,
         choice,
       );
     } else {
@@ -127,7 +103,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       result = await confirmationService.respondToFolderOperation(
         confirmationId,
-        user.id,
+        userId,
         choice,
       );
     }
@@ -140,27 +116,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       confirmation: result.confirmation,
       learningApplied: result.learningApplied,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`响应确认消息失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/confirmations/[id]
  * 删除确认消息
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
 
@@ -174,7 +138,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return notFoundError("确认消息不存在");
     }
 
-    if (confirmation.user_id !== user.id) {
+    if (confirmation.user_id !== userId) {
       return forbiddenError("无权删除此确认消息");
     }
 
@@ -184,8 +148,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       deleted: true,
       id: confirmationId,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`删除确认消息失败: ${message}`);
-  }
-}
+  },
+);

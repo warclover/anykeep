@@ -6,31 +6,18 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { subscriptionService } from "@/lib/payment/services/subscription.service";
 import { entitlementService } from "@/lib/payment/services/entitlement.service";
-import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取当前用户订阅状态
  */
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const [subscription, entitlement] = await Promise.all([
-      subscriptionService.getSubscription(user.id),
-      entitlementService.getEntitlement(user.id),
+      subscriptionService.getSubscription(userId),
+      entitlementService.getEntitlement(userId),
     ]);
 
     return NextResponse.json({
@@ -60,39 +47,18 @@ export async function GET() {
         },
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Subscription GET] Error");
-    return NextResponse.json(
-      { error: { code: "FETCH_FAILED", message: "获取订阅信息失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE - 取消订阅（期末生效）
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
+export const DELETE = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const body = await request.json().catch(() => ({}));
     const reason = body.reason || "user_requested";
 
-    const result = await subscriptionService.cancelSubscription(
-      user.id,
-      reason,
-    );
+    const result = await subscriptionService.cancelSubscription(userId, reason);
 
     if (!result.success) {
       return NextResponse.json(
@@ -109,33 +75,15 @@ export async function DELETE(request: NextRequest) {
         message: "订阅已取消，将在当前计费周期结束后生效",
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Subscription DELETE] Error");
-    return NextResponse.json(
-      { error: { code: "CANCEL_FAILED", message: "取消订阅失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * PATCH - 恢复已取消的订阅
  */
-export async function PATCH() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
-    const success = await subscriptionService.resumeSubscription(user.id);
+export const PATCH = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
+    const success = await subscriptionService.resumeSubscription(userId);
 
     if (!success) {
       return NextResponse.json(
@@ -150,11 +98,5 @@ export async function PATCH() {
         message: "订阅已恢复",
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Subscription PATCH] Error");
-    return NextResponse.json(
-      { error: { code: "RESUME_FAILED", message: "恢复订阅失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

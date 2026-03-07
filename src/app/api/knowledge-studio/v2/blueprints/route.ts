@@ -2,17 +2,12 @@
  * Knowledge Studio v2 - Blueprint List API
  * @route GET /api/knowledge-studio/v2/blueprints
  * @description Returns all blueprints with user access permissions
- *
- * 性能优化 V1.1.0:
- * - 使用本地 JWT 验证替代 getUser() 网络请求（~1500ms → ~5ms）
- * - 合并权限查询，减少数据库往返
  */
 
-import type { NextRequest } from "next/server";
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createLogger } from "@/lib/logger";
-import { verifyJwtLocally, extractAccessToken } from "@/lib/auth/jwt-verifier";
 import { getBlueprintRegistry } from "@/lib/knowledge-studio/blueprint/blueprint-registry";
 import type {
   BlueprintTier,
@@ -52,135 +47,62 @@ interface BlueprintListResponse {
 /**
  * GET /api/knowledge-studio/v2/blueprints
  * Returns all blueprints with user access permissions
- *
- * V1.1.0: 使用本地 JWT 验证优化性能
  */
-export async function GET(_request: NextRequest) {
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const requestId = crypto.randomUUID();
-  const handlerStart = performance.now();
   logger.info({ requestId }, "Blueprint list request received");
 
-  try {
-    // 1. 快速获取用户 ID（优先本地 JWT 验证，~5ms vs ~1500ms）
-    const cookieStore = await cookies();
-    const accessToken = extractAccessToken(cookieStore);
+  // 1. 获取用户会员类型
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("membership_type")
+    .eq("id", userId)
+    .single<Database["public"]["Tables"]["profiles"]["Row"]>();
 
-    let userId: string | null = null;
+  const membershipType = profile?.membership_type?.toLowerCase() || "free";
+  const userTier: BlueprintTier =
+    membershipType === "enterprise"
+      ? "enterprise"
+      : membershipType === "pro"
+        ? "pro"
+        : "free";
 
-    if (accessToken) {
-      const jwtResult = await verifyJwtLocally(accessToken);
-      if (jwtResult.valid && jwtResult.userId) {
-        userId = jwtResult.userId;
-      }
-    }
+  // 3. Get all blueprints with access info
+  const registry = getBlueprintRegistry();
+  const blueprintsWithAccess = registry.getAllWithAccessInfo(userTier);
 
-    // 回退到 Supabase 网络验证（慢速路径）
-    if (!userId) {
-      const supabase = await createClient();
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+  // 4. Map to response format
+  const blueprints: BlueprintListItem[] = blueprintsWithAccess.map(
+    ({ blueprint, accessInfo }) => {
+      const metadata = blueprint.getBlueprintMetadata();
+      return {
+        blueprintId: metadata.blueprintId,
+        displayName: metadata.displayName,
+        description: metadata.description,
+        icon: metadata.icon,
+        tier: metadata.tier,
+        category: metadata.category,
+        isNew: metadata.isNew,
+        tags: metadata.tags,
+        canAccess: accessInfo.canAccess,
+        upgradeMessage: accessInfo.upgradeMessage,
+        creditsCost: metadata.creditsCost,
+        briefingEnabled: metadata.briefingEnabled,
+        supportsOutline: metadata.supportsOutline,
+      };
+    },
+  );
 
-      if (authError || !user) {
-        return new Response(
-          JSON.stringify({
-            error: { code: "UNAUTHORIZED", message: "请先登录" },
-          }),
-          { status: 401, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      userId = user.id;
-    }
-    const authMs = Math.round(performance.now() - handlerStart);
-    if (authMs > 500) {
-      logger.warn({ requestId, authMs }, "Slow blueprints auth");
-    }
+  const response: BlueprintListResponse = {
+    blueprints,
+    userTier,
+  };
 
-    // 2. 获取用户会员类型
-    const supabase = await createClient();
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_type")
-      .eq("id", userId)
-      .single<Database["public"]["Tables"]["profiles"]["Row"]>();
+  logger.info(
+    { requestId, count: blueprints.length, userTier },
+    "Blueprint list returned",
+  );
 
-    const membershipType = profile?.membership_type?.toLowerCase() || "free";
-    const userTier: BlueprintTier =
-      membershipType === "enterprise"
-        ? "enterprise"
-        : membershipType === "pro"
-          ? "pro"
-          : "free";
-
-    // 3. Get all blueprints with access info
-    const registry = getBlueprintRegistry();
-    const blueprintsWithAccess = registry.getAllWithAccessInfo(userTier);
-
-    // 4. Map to response format
-    const blueprints: BlueprintListItem[] = blueprintsWithAccess.map(
-      ({ blueprint, accessInfo }) => {
-        const metadata = blueprint.getBlueprintMetadata();
-        return {
-          blueprintId: metadata.blueprintId,
-          displayName: metadata.displayName,
-          description: metadata.description,
-          icon: metadata.icon,
-          tier: metadata.tier,
-          category: metadata.category,
-          isNew: metadata.isNew,
-          tags: metadata.tags,
-          canAccess: accessInfo.canAccess,
-          upgradeMessage: accessInfo.upgradeMessage,
-          creditsCost: metadata.creditsCost,
-          briefingEnabled: metadata.briefingEnabled,
-          supportsOutline: metadata.supportsOutline,
-        };
-      },
-    );
-
-    const response: BlueprintListResponse = {
-      blueprints,
-      userTier,
-    };
-
-    const handlerMs = Math.round(performance.now() - handlerStart);
-    if (handlerMs > 1000) {
-      logger.warn(
-        {
-          requestId,
-          route: "GET /api/knowledge-studio/v2/blueprints",
-          handlerMs,
-        },
-        "Slow blueprints handler",
-      );
-    }
-    logger.info(
-      { requestId, count: blueprints.length, userTier },
-      "Blueprint list returned",
-    );
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Blueprint list request failed",
-    );
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
-        },
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
-}
+  return NextResponse.json(response);
+});

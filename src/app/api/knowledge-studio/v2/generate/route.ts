@@ -4,7 +4,6 @@
  * @description SSE stream for content generation with outline-first mode support
  */
 
-import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { z } from "zod";
@@ -22,6 +21,9 @@ import {
   SSE_CHUNK_DELAY_MS,
 } from "@/lib/knowledge-studio/v2/constants";
 import { createSSESender } from "@/lib/utils/sse-helper";
+
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import type { NextResponse } from "next/server";
 
 const logger = createLogger("api:knowledge-studio:v2:generate");
 
@@ -122,482 +124,446 @@ interface GenerateV2SSEChunk {
  * POST /api/knowledge-studio/v2/generate
  * SSE stream for content generation with outline-first mode
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const requestId = crypto.randomUUID();
   logger.info({ requestId }, "Generate v2 request received");
 
-  try {
-    // 1. Auth check
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  const supabase = await createClient();
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
+  // 1. Parse request body
+  const body = await request.json();
+  const parseResult = GenerateV2RequestSchema.safeParse(body);
+
+  if (!parseResult.success) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "请求参数无效",
+          details: parseResult.error.flatten(),
+        },
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  const {
+    blueprintId,
+    materials,
+    briefingContext,
+    outline,
+    targetLength,
+    platformStyle,
+    customPrompt,
+  } = parseResult.data;
+
+  // 3. Get blueprint from registry
+  const registry = getBlueprintRegistry();
+  const blueprint = registry.getById(blueprintId);
+
+  if (!blueprint) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "BLUEPRINT_NOT_FOUND",
+          message: `模板 "${blueprintId}" 不存在`,
+        },
+      }),
+      { status: 404, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  // 4. Check access permission
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("membership_type")
+    .eq("id", userId)
+    .single<Database["public"]["Tables"]["profiles"]["Row"]>();
+
+  const membershipType = profile?.membership_type?.toLowerCase() || "free";
+  const userTier: BlueprintTier =
+    membershipType === "enterprise"
+      ? "enterprise"
+      : membershipType === "pro"
+        ? "pro"
+        : "free";
+
+  if (!registry.canAccess(blueprintId, userTier)) {
+    const accessInfo = registry.getAccessInfo(blueprintId, userTier);
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "ACCESS_DENIED",
+          message: accessInfo?.upgradeMessage || "您没有权限使用此模板",
+        },
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  // 5. Check quota
+  const metadata = blueprint.getBlueprintMetadata();
+  const quotaCheck = await quotaManager.checkQuota(
+    userId,
+    metadata.creditsCost,
+  );
+
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "QUOTA_EXCEEDED",
+          message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
+        },
+      }),
+      { status: 402, headers: { "Content-Type": "application/json" } },
+    ) as unknown as NextResponse;
+  }
+
+  // 6. Create SSE response stream
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const sendEvent = createSSESender<GenerateV2SSEChunk>(
+        controller,
+        encoder,
       );
-    }
 
-    // 2. Parse request body
-    const body = await request.json();
-    const parseResult = GenerateV2RequestSchema.safeParse(body);
+      // Heartbeat to prevent connection timeout during long generation
+      let heartbeatPercent = 10;
+      let lastProgressTime = Date.now();
+      const heartbeatInterval = setInterval(() => {
+        // Only send heartbeat if no progress was sent in the last 5 seconds
+        if (Date.now() - lastProgressTime > 5000) {
+          heartbeatPercent = Math.min(heartbeatPercent + 3, 85);
+          sendEvent({
+            type: "progress",
+            data: {
+              step: "generating",
+              percent: heartbeatPercent,
+              message: "AI 正在生成中...",
+            },
+            timestamp: new Date().toISOString(),
+            requestId,
+          });
+        }
+      }, 5000); // Send heartbeat every 5 seconds if no other progress
 
-    if (!parseResult.success) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "INVALID_REQUEST",
-            message: "请求参数无效",
-            details: parseResult.error.flatten(),
-          },
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
+      try {
+        let savedReportId: string | undefined;
 
-    const {
-      blueprintId,
-      materials,
-      briefingContext,
-      outline,
-      targetLength,
-      platformStyle,
-      customPrompt,
-    } = parseResult.data;
+        // Execute with quota management
+        const quotaResult = await quotaManager.executeWithQuota(
+          userId,
+          "blueprint_generation",
+          async () => {
+            // Prepare context with input in params
+            const executionContext = {
+              requestId,
+              userId: userId,
+              stage: "outline" as const,
+              params: {
+                materials: materials as MaterialInput[],
+                briefingContext: briefingContext as BriefingContext | undefined,
+                targetLength,
+                platformStyle, // Phase 3.1: 平台风格
+                customPrompt,
+                requestMetadata: {
+                  requestId,
+                  userId: userId,
+                },
+              },
+              // If outline is provided, inject it into context
+              outline: outline as BlueprintOutline | undefined,
+            };
 
-    // 3. Get blueprint from registry
-    const registry = getBlueprintRegistry();
-    const blueprint = registry.getById(blueprintId);
-
-    if (!blueprint) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "BLUEPRINT_NOT_FOUND",
-            message: `模板 "${blueprintId}" 不存在`,
-          },
-        }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 4. Check access permission
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("membership_type")
-      .eq("id", user.id)
-      .single<Database["public"]["Tables"]["profiles"]["Row"]>();
-
-    const membershipType = profile?.membership_type?.toLowerCase() || "free";
-    const userTier: BlueprintTier =
-      membershipType === "enterprise"
-        ? "enterprise"
-        : membershipType === "pro"
-          ? "pro"
-          : "free";
-
-    if (!registry.canAccess(blueprintId, userTier)) {
-      const accessInfo = registry.getAccessInfo(blueprintId, userTier);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "ACCESS_DENIED",
-            message: accessInfo?.upgradeMessage || "您没有权限使用此模板",
-          },
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 5. Check quota
-    const metadata = blueprint.getBlueprintMetadata();
-    const quotaCheck = await quotaManager.checkQuota(
-      user.id,
-      metadata.creditsCost,
-    );
-
-    if (!quotaCheck.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: "QUOTA_EXCEEDED",
-            message: quotaCheck.reason || "配额不足，请升级会员或等待配额重置",
-          },
-        }),
-        { status: 402, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // 6. Create SSE response stream
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = createSSESender<GenerateV2SSEChunk>(
-          controller,
-          encoder,
-        );
-
-        // Heartbeat to prevent connection timeout during long generation
-        let heartbeatPercent = 10;
-        let lastProgressTime = Date.now();
-        const heartbeatInterval = setInterval(() => {
-          // Only send heartbeat if no progress was sent in the last 5 seconds
-          if (Date.now() - lastProgressTime > 5000) {
-            heartbeatPercent = Math.min(heartbeatPercent + 3, 85);
+            // Send initial progress
             sendEvent({
               type: "progress",
               data: {
-                step: "generating",
-                percent: heartbeatPercent,
-                message: "AI 正在生成中...",
+                step: "preparing",
+                percent: 5,
+                message: "正在准备生成...",
               },
               timestamp: new Date().toISOString(),
               requestId,
             });
-          }
-        }, 5000); // Send heartbeat every 5 seconds if no other progress
+            lastProgressTime = Date.now();
 
-        try {
-          let savedReportId: string | undefined;
-
-          // Execute with quota management
-          const quotaResult = await quotaManager.executeWithQuota(
-            user.id,
-            "blueprint_generation",
-            async () => {
-              // Prepare context with input in params
-              const executionContext = {
+            // Execute blueprint stream (takes only context, input is in context.params)
+            logger.info(
+              {
                 requestId,
-                userId: user.id,
-                stage: "outline" as const,
-                params: {
-                  materials: materials as MaterialInput[],
-                  briefingContext: briefingContext as
-                    | BriefingContext
-                    | undefined,
-                  targetLength,
-                  platformStyle, // Phase 3.1: 平台风格
-                  customPrompt,
-                  requestMetadata: {
+                blueprintId,
+                hasOutline: !!outline,
+                materialsCount: materials.length,
+              },
+              "Starting blueprint executeStream (content phase will call AI model)",
+            );
+            const resultStream = blueprint.executeStream(executionContext);
+            let finalOutput = null;
+            let contentBuffer = "";
+
+            for await (const chunk of resultStream) {
+              lastProgressTime = Date.now(); // Update last progress time on any chunk
+              switch (chunk.type) {
+                case "progress":
+                  heartbeatPercent = Math.max(
+                    heartbeatPercent,
+                    chunk.data.percent || 0,
+                  );
+                  sendEvent({
+                    type: "progress",
+                    data: {
+                      step: chunk.data.step || "generating",
+                      percent: chunk.data.percent || 0,
+                      message: chunk.data.message,
+                    },
+                    timestamp: new Date().toISOString(),
                     requestId,
-                    userId: user.id,
-                  },
-                },
-                // If outline is provided, inject it into context
-                outline: outline as BlueprintOutline | undefined,
-              };
+                  });
+                  break;
 
-              // Send initial progress
-              sendEvent({
-                type: "progress",
-                data: {
-                  step: "preparing",
-                  percent: 5,
-                  message: "正在准备生成...",
-                },
-                timestamp: new Date().toISOString(),
-                requestId,
-              });
-              lastProgressTime = Date.now();
+                case "text":
+                  contentBuffer += chunk.data.text || "";
+                  sendEvent({
+                    type: "content",
+                    data: { text: chunk.data.text },
+                    timestamp: new Date().toISOString(),
+                    requestId,
+                  });
+                  break;
 
-              // Execute blueprint stream (takes only context, input is in context.params)
-              logger.info(
-                {
-                  requestId,
-                  blueprintId,
-                  hasOutline: !!outline,
-                  materialsCount: materials.length,
-                },
-                "Starting blueprint executeStream (content phase will call AI model)",
-              );
-              const resultStream = blueprint.executeStream(executionContext);
-              let finalOutput = null;
-              let contentBuffer = "";
+                case "deliverable":
+                  finalOutput = chunk.data.content;
+                  sendEvent({
+                    type: "structured_output",
+                    data: { structuredOutput: chunk.data.content },
+                    timestamp: new Date().toISOString(),
+                    requestId,
+                  });
+                  break;
 
-              for await (const chunk of resultStream) {
-                lastProgressTime = Date.now(); // Update last progress time on any chunk
-                switch (chunk.type) {
-                  case "progress":
-                    heartbeatPercent = Math.max(
-                      heartbeatPercent,
-                      chunk.data.percent || 0,
-                    );
-                    sendEvent({
-                      type: "progress",
-                      data: {
-                        step: chunk.data.step || "generating",
-                        percent: chunk.data.percent || 0,
-                        message: chunk.data.message,
+                case "error":
+                  // 蓝图/内容生成器返回错误（如无可用 AI、配置错误）→ 转发并中止，避免静默返回 null
+                  const errMsg =
+                    (chunk.data as { message?: string })?.message ||
+                    "生成过程出错";
+                  logger.warn(
+                    { requestId, errMsg },
+                    "Blueprint yielded error chunk",
+                  );
+                  sendEvent({
+                    type: "error",
+                    data: {
+                      error: {
+                        code: "GENERATION_FAILED",
+                        message: errMsg,
+                        recoverable: true,
                       },
-                      timestamp: new Date().toISOString(),
-                      requestId,
-                    });
-                    break;
+                    },
+                    timestamp: new Date().toISOString(),
+                    requestId,
+                  });
+                  throw new Error(errMsg);
 
-                  case "text":
-                    contentBuffer += chunk.data.text || "";
-                    sendEvent({
-                      type: "content",
-                      data: { text: chunk.data.text },
-                      timestamp: new Date().toISOString(),
-                      requestId,
-                    });
-                    break;
-
-                  case "deliverable":
-                    finalOutput = chunk.data.content;
-                    sendEvent({
-                      type: "structured_output",
-                      data: { structuredOutput: chunk.data.content },
-                      timestamp: new Date().toISOString(),
-                      requestId,
-                    });
-                    break;
-
-                  case "error":
-                    // 蓝图/内容生成器返回错误（如无可用 AI、配置错误）→ 转发并中止，避免静默返回 null
-                    const errMsg =
-                      (chunk.data as { message?: string })?.message ||
-                      "生成过程出错";
+                case "done":
+                  // 蓝图显式标记失败（如缺少大纲、内部异常）→ 转发并中止
+                  const doneData = chunk.data as {
+                    success?: boolean;
+                    summary?: string;
+                  };
+                  if (doneData.success === false) {
+                    const summary = doneData.summary || "生成失败";
                     logger.warn(
-                      { requestId, errMsg },
-                      "Blueprint yielded error chunk",
+                      { requestId, summary },
+                      "Blueprint reported done(success=false)",
                     );
                     sendEvent({
                       type: "error",
                       data: {
                         error: {
                           code: "GENERATION_FAILED",
-                          message: errMsg,
+                          message: summary,
                           recoverable: true,
                         },
                       },
                       timestamp: new Date().toISOString(),
                       requestId,
                     });
-                    throw new Error(errMsg);
-
-                  case "done":
-                    // 蓝图显式标记失败（如缺少大纲、内部异常）→ 转发并中止
-                    const doneData = chunk.data as {
-                      success?: boolean;
-                      summary?: string;
-                    };
-                    if (doneData.success === false) {
-                      const summary = doneData.summary || "生成失败";
-                      logger.warn(
-                        { requestId, summary },
-                        "Blueprint reported done(success=false)",
-                      );
-                      sendEvent({
-                        type: "error",
-                        data: {
-                          error: {
-                            code: "GENERATION_FAILED",
-                            message: summary,
-                            recoverable: true,
-                          },
-                        },
-                        timestamp: new Date().toISOString(),
-                        requestId,
-                      });
-                      throw new Error(summary);
-                    }
-                    break;
-                }
-                // Backpressure control: add small delay between chunks
-                await new Promise((resolve) =>
-                  setTimeout(resolve, SSE_CHUNK_DELAY_MS),
-                );
-              }
-
-              // 避免保存空内容或字面量 "null"：无流式且无结构化输出时直接报错
-              const contentToSave =
-                contentBuffer ||
-                (finalOutput != null
-                  ? typeof finalOutput === "string"
-                    ? finalOutput
-                    : JSON.stringify(finalOutput, null, 2)
-                  : "");
-              const isInvalidContent =
-                !contentToSave ||
-                contentToSave === "null" ||
-                contentToSave.trim() === "";
-              if (isInvalidContent) {
-                throw new Error("生成未产生内容，请检查素材、大纲与网络后重试");
-              }
-
-              return {
-                success: true,
-                content: contentToSave,
-                structuredOutput: finalOutput,
-              };
-            },
-            {
-              onSuccess: async (result, _reqId) => {
-                const content = result.success && result.content;
-                const skipSave =
-                  !content || content === "null" || content.trim() === "";
-                if (result.success && content && !skipSave) {
-                  // Save report to database
-                  type SynthesisReportInsert =
-                    Database["public"]["Tables"]["synthesis_reports"]["Insert"];
-
-                  const insertData: SynthesisReportInsert = {
-                    user_id: user.id,
-                    // Knowledge Studio v2 报告使用 "selection" 作为 source_type
-                    source_type: "selection",
-                    blueprint_type: blueprintId,
-                    title: `${metadata.displayName} 草稿`,
-                    content: result.content,
-                    // Knowledge Studio v2 报告生成完成后直接设置为 completed
-                    // 避免 /synthesis/[id] 页面误判为 pending 而触发重新生成
-                    status: "completed",
-                    generation_metadata: {
-                      blueprint_version: "v2",
-                      blueprint_id: blueprintId,
-                      source_bookmark_ids: materials.map((m) => m.bookmarkId),
-                      has_briefing: !!briefingContext,
-                      has_outline: !!outline,
-                      target_length: targetLength,
-                      platform_style: platformStyle ?? "general",
-                    },
-                  };
-
-                  const { data: report, error: insertError } = await supabase
-                    .from("synthesis_reports")
-                    .insert(insertData)
-                    .select("id")
-                    .single();
-
-                  if (insertError) {
-                    logger.error(
-                      { requestId, error: insertError },
-                      "Failed to save report",
-                    );
-                    throw insertError;
+                    throw new Error(summary);
                   }
+                  break;
+              }
+              // Backpressure control: add small delay between chunks
+              await new Promise((resolve) =>
+                setTimeout(resolve, SSE_CHUNK_DELAY_MS),
+              );
+            }
 
-                  savedReportId = report?.id;
-                  logger.info(
-                    { requestId, reportId: savedReportId },
-                    "Report saved successfully",
+            // 避免保存空内容或字面量 "null"：无流式且无结构化输出时直接报错
+            const contentToSave =
+              contentBuffer ||
+              (finalOutput != null
+                ? typeof finalOutput === "string"
+                  ? finalOutput
+                  : JSON.stringify(finalOutput, null, 2)
+                : "");
+            const isInvalidContent =
+              !contentToSave ||
+              contentToSave === "null" ||
+              contentToSave.trim() === "";
+            if (isInvalidContent) {
+              throw new Error("生成未产生内容，请检查素材、大纲与网络后重试");
+            }
+
+            return {
+              success: true,
+              content: contentToSave,
+              structuredOutput: finalOutput,
+            };
+          },
+          {
+            onSuccess: async (result, _reqId) => {
+              const content = result.success && result.content;
+              const skipSave =
+                !content || content === "null" || content.trim() === "";
+              if (result.success && content && !skipSave) {
+                // Save report to database
+                type SynthesisReportInsert =
+                  Database["public"]["Tables"]["synthesis_reports"]["Insert"];
+
+                const insertData: SynthesisReportInsert = {
+                  user_id: userId,
+                  // Knowledge Studio v2 报告使用 "selection" 作为 source_type
+                  source_type: "selection",
+                  blueprint_type: blueprintId,
+                  title: `${metadata.displayName} 草稿`,
+                  content: result.content,
+                  // Knowledge Studio v2 报告生成完成后直接设置为 completed
+                  // 避免 /synthesis/[id] 页面误判为 pending 而触发重新生成
+                  status: "completed",
+                  generation_metadata: {
+                    blueprint_version: "v2",
+                    blueprint_id: blueprintId,
+                    source_bookmark_ids: materials.map((m) => m.bookmarkId),
+                    has_briefing: !!briefingContext,
+                    has_outline: !!outline,
+                    target_length: targetLength,
+                    platform_style: platformStyle ?? "general",
+                  },
+                };
+
+                const { data: report, error: insertError } = await supabase
+                  .from("synthesis_reports")
+                  .insert(insertData)
+                  .select("id")
+                  .single();
+
+                if (insertError) {
+                  logger.error(
+                    { requestId, error: insertError },
+                    "Failed to save report",
                   );
-                  return report?.id;
+                  throw insertError;
                 }
-                return undefined;
-              },
-              cost: metadata.creditsCost,
+
+                savedReportId = report?.id;
+                logger.info(
+                  { requestId, reportId: savedReportId },
+                  "Report saved successfully",
+                );
+                return report?.id;
+              }
+              return undefined;
             },
-          );
+            cost: metadata.creditsCost,
+          },
+        );
 
-          if (quotaResult.success) {
-            // Send done event（附带总字数，避免流式未下发时客户端显示 0 字）
-            const totalContentLength =
-              (quotaResult.data as { content?: string } | undefined)?.content
-                ?.length ?? 0;
-            sendEvent({
-              type: "done",
-              data: {
-                reportId: savedReportId,
-                message: "生成完成",
-                totalContentLength,
-              },
-              timestamp: new Date().toISOString(),
-              requestId,
-            });
-
-            logger.info(
-              { requestId, blueprintId, reportId: savedReportId },
-              "Generation completed",
-            );
-          } else {
-            sendEvent({
-              type: "error",
-              data: {
-                error: {
-                  code: quotaResult.error?.code || "GENERATION_FAILED",
-                  message: quotaResult.error?.message || "生成失败",
-                  recoverable: quotaResult.error?.recoverable ?? false,
-                },
-              },
-              timestamp: new Date().toISOString(),
-              requestId,
-            });
-          }
-        } catch (error) {
-          // NOTE: This catch block handles edge cases where quotaManager.executeWithQuota
-          // itself throws an unhandled error. The quota should already be refunded by
-          // executeWithQuota's internal error handling, but we log a warning just in case.
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-
-          logger.error(
-            {
-              requestId,
-              error: errorMessage,
-              errorName: error instanceof Error ? error.name : "Unknown",
-              warning:
-                "Potential quota leak - verify quota status for this requestId",
+        if (quotaResult.success) {
+          // Send done event（附带总字数，避免流式未下发时客户端显示 0 字）
+          const totalContentLength =
+            (quotaResult.data as { content?: string } | undefined)?.content
+              ?.length ?? 0;
+          sendEvent({
+            type: "done",
+            data: {
+              reportId: savedReportId,
+              message: "生成完成",
+              totalContentLength,
             },
-            "Generation stream error (outer catch)",
+            timestamp: new Date().toISOString(),
+            requestId,
+          });
+
+          logger.info(
+            { requestId, blueprintId, reportId: savedReportId },
+            "Generation completed",
           );
-
-          // 检测是否为超时错误
-          const isTimeout =
-            errorMessage.includes("超时") ||
-            errorMessage.includes("timeout") ||
-            errorMessage.includes("aborted");
-
+        } else {
           sendEvent({
             type: "error",
             data: {
               error: {
-                code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
-                message: errorMessage || "生成过程中发生错误",
-                recoverable: true,
+                code: quotaResult.error?.code || "GENERATION_FAILED",
+                message: quotaResult.error?.message || "生成失败",
+                recoverable: quotaResult.error?.recoverable ?? false,
               },
             },
             timestamp: new Date().toISOString(),
             requestId,
           });
-        } finally {
-          clearInterval(heartbeatInterval);
-          controller.close();
         }
-      },
-    });
+      } catch (error) {
+        // NOTE: This catch block handles edge cases where quotaManager.executeWithQuota
+        // itself throws an unhandled error. The quota should already be refunded by
+        // executeWithQuota's internal error handling, but we log a warning just in case.
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Request-Id": requestId,
-      },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Generate v2 request failed",
-    );
+        logger.error(
+          {
+            requestId,
+            error: errorMessage,
+            errorName: error instanceof Error ? error.name : "Unknown",
+            warning:
+              "Potential quota leak - verify quota status for this requestId",
+          },
+          "Generation stream error (outer catch)",
+        );
 
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
-        },
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
-}
+        // 检测是否为超时错误
+        const isTimeout =
+          errorMessage.includes("超时") ||
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("aborted");
+
+        sendEvent({
+          type: "error",
+          data: {
+            error: {
+              code: isTimeout ? "TIMEOUT_ERROR" : "STREAM_ERROR",
+              message: errorMessage || "生成过程中发生错误",
+              recoverable: true,
+            },
+          },
+          timestamp: new Date().toISOString(),
+          requestId,
+        });
+      } finally {
+        clearInterval(heartbeatInterval);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Request-Id": requestId,
+    },
+  }) as unknown as NextResponse;
+});

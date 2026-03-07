@@ -10,12 +10,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-} from "@/lib/utils/api-response";
-import type { NextRequest } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, internalError } from "@/lib/utils/api-response";
 
 // =============================================================================
 // Types
@@ -83,26 +79,18 @@ function extractLastMessage(state: SessionMemoryRow["state"]): string {
  * GET /api/conversations
  * Get conversation list for current user
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const supabase = await createClient();
 
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
-
-    // Query conversations from ai_session_memory
-    const { data, error } = await supabase
-      .from("ai_session_memory")
-      .select(
-        `
+  // Query conversations from ai_session_memory
+  const { data, error } = await supabase
+    .from("ai_session_memory")
+    .select(
+      `
         conversation_id,
         state,
         message_count,
@@ -110,45 +98,41 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       `,
-      )
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    )
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (error) {
-      return internalError(`Failed to fetch conversations: ${error.message}`);
-    }
-
-    // Transform to frontend-friendly format
-    const conversations: ConversationListItem[] = (
-      data as SessionMemoryRow[]
-    ).map((row) => ({
-      id: row.conversation_id,
-      title: extractTitle(row.state),
-      lastMessage: extractLastMessage(row.state),
-      messageCount: row.message_count,
-      lastIntent: row.last_intent,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-
-    // Get total count
-    const { count } = await supabase
-      .from("ai_session_memory")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id);
-
-    return successResponse({
-      conversations,
-      total: count || 0,
-      limit,
-      offset,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`Failed to fetch conversations: ${message}`);
+  if (error) {
+    return internalError(`Failed to fetch conversations: ${error.message}`);
   }
-}
+
+  // Transform to frontend-friendly format
+  const conversations: ConversationListItem[] = (
+    data as SessionMemoryRow[]
+  ).map((row) => ({
+    id: row.conversation_id,
+    title: extractTitle(row.state),
+    lastMessage: extractLastMessage(row.state),
+    messageCount: row.message_count,
+    lastIntent: row.last_intent,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+
+  // Get total count
+  const { count } = await supabase
+    .from("ai_session_memory")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  return successResponse({
+    conversations,
+    total: count || 0,
+    limit,
+    offset,
+  });
+});
 
 // =============================================================================
 // POST /api/conversations
@@ -158,35 +142,23 @@ export async function GET(request: NextRequest) {
  * POST /api/conversations
  * Create a new conversation
  */
-export async function POST() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const POST = withAuthMiddleware(async (_request, { userId }) => {
+  const supabase = await createClient();
 
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
+  // Generate new conversation ID
+  const conversationId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Generate new conversation ID
-    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  // Insert new conversation record
+  const { error } = await supabase.from("ai_session_memory").insert({
+    user_id: userId,
+    conversation_id: conversationId,
+    state: { messages: [] },
+    message_count: 0,
+  });
 
-    // Insert new conversation record
-    const { error } = await supabase.from("ai_session_memory").insert({
-      user_id: user.id,
-      conversation_id: conversationId,
-      state: { messages: [] },
-      message_count: 0,
-    });
-
-    if (error) {
-      return internalError(`Failed to create conversation: ${error.message}`);
-    }
-
-    return successResponse({ conversationId });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`Failed to create conversation: ${message}`);
+  if (error) {
+    return internalError(`Failed to create conversation: ${error.message}`);
   }
-}
+
+  return successResponse({ conversationId });
+});

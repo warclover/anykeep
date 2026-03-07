@@ -7,12 +7,9 @@
  * @since 2026-02-27
  */
 
-import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-} from "@/lib/utils/api-response";
+import type { NextRequest } from "next/server";
+import { successResponse } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { negativeSampleService } from "@/lib/classification/learning/negative-sample.service";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { feedbackLoopService } from "@/lib/classification/learning/feedback-loop";
@@ -20,17 +17,8 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const logCatch =
       <T>(label: string, fallback: T) =>
       (err: unknown) => {
@@ -49,9 +37,9 @@ export async function GET() {
       healthReport,
     ] = await Promise.all([
       negativeSampleService
-        .getUserExclusions(user.id, { limit: 200 })
+        .getUserExclusions(userId, { limit: 200 })
         .catch(logCatch("getUserExclusions", [])),
-      negativeSampleService.getUserStats(user.id).catch(
+      negativeSampleService.getUserStats(userId).catch(
         logCatch("getUserStats", {
           total: 0,
           byType: {} as Record<string, number>,
@@ -59,9 +47,9 @@ export async function GET() {
         }),
       ),
       preferenceLearner
-        .getUserPreferences(user.id)
+        .getUserPreferences(userId)
         .catch(logCatch("getUserPreferences", null)),
-      preferenceLearner.getLearningStats(user.id).catch(
+      preferenceLearner.getLearningStats(userId).catch(
         logCatch("getLearningStats", {
           totalEvents: 0,
           confirmations: 0,
@@ -72,7 +60,7 @@ export async function GET() {
         }),
       ),
       feedbackLoopService
-        .generateHealthReport(user.id)
+        .generateHealthReport(userId)
         .catch(logCatch("generateHealthReport", null)),
     ]);
 
@@ -84,9 +72,5 @@ export async function GET() {
       healthReport,
       generatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error({ error }, "[LearningInsights] Failed to load data");
-    return internalError(`加载学习洞察数据失败: ${message}`);
-  }
-}
+  },
+);

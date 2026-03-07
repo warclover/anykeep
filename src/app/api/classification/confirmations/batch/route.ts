@@ -9,14 +9,9 @@
  * @updated 2025-12-14 - 修复数据库架构匹配问题
  */
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import {
-  successResponse,
-  unauthorizedError,
-  badRequestError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { successResponse, badRequestError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import type { NextRequest } from "next/server";
@@ -54,15 +49,8 @@ interface BatchResult {
 /**
  * POST /api/classification/confirmations/batch
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 使用缓存认证，避免重复验证
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -89,7 +77,7 @@ export async function POST(request: NextRequest) {
       (supabase as any)
         .from(PENDING_CONFIRMATIONS_TABLE)
         .select("id, bookmark_id, suggestion")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("status", "pending")
         .in("id", confirmationIds);
 
@@ -162,7 +150,7 @@ export async function POST(request: NextRequest) {
                   updated_at: now,
                 })
                 .eq("id", confirmation.bookmark_id)
-                .eq("user_id", user.id);
+                .eq("user_id", userId);
             }
 
             // 更新确认状态
@@ -179,7 +167,7 @@ export async function POST(request: NextRequest) {
             // 记录学习事件
             if (suggestedFolderId) {
               await preferenceLearner.recordEvent({
-                userId: user.id,
+                userId,
                 eventType: "classification_confirmed",
                 bookmarkId: confirmation.bookmark_id,
                 newFolderId: suggestedFolderId,
@@ -206,7 +194,7 @@ export async function POST(request: NextRequest) {
             // 记录学习事件
             if (suggestedFolderId) {
               await preferenceLearner.recordEvent({
-                userId: user.id,
+                userId,
                 eventType: "classification_rejected",
                 bookmarkId: confirmation.bookmark_id,
                 originalFolderId: suggestedFolderId,
@@ -236,7 +224,7 @@ export async function POST(request: NextRequest) {
                 updated_at: now,
               })
               .eq("id", confirmation.bookmark_id)
-              .eq("user_id", user.id);
+              .eq("user_id", userId);
 
             // 更新确认状态
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,7 +244,7 @@ export async function POST(request: NextRequest) {
 
             // 记录学习事件
             await preferenceLearner.recordEvent({
-              userId: user.id,
+              userId,
               eventType: "classification_modified",
               bookmarkId: confirmation.bookmark_id,
               originalFolderId: suggestedFolderId || undefined,
@@ -292,7 +280,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         action: "batch_confirmation",
         total: body.actions.length,
         success: successCount,
@@ -309,12 +297,5 @@ export async function POST(request: NextRequest) {
         failure: failureCount,
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "POST /api/classification/confirmations/batch error",
-    );
-    return internalError("批量处理失败");
-  }
-}
+  },
+);

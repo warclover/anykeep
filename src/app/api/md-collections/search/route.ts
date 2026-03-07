@@ -5,18 +5,16 @@
  * GET /api/md-collections/search - 搜索 MD 收藏（支持关键词、语义、混合搜索）
  */
 
-import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  unauthorizedError,
   forbiddenError,
   badRequestError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { generateEmbedding } from "@/lib/utils/embedding-generator";
 import { logger } from "@/lib/logger";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 /**
  * 搜索模式
  */
@@ -144,190 +142,163 @@ async function searchMdKeyword(
  * - limit: 结果数量限制，默认 20，最大 100
  * - threshold: 语义搜索相似度阈值 (0-1)，默认 0.5
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const supabase = await createClient();
+  // 1. 检查 PRO 权限
+  // 类型断言: 手动维护类型文件时需要此断言
+  type ProfileRow = { membership_type: string | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = (await (supabase.from("profiles") as any)
+    .select("membership_type")
+    .eq("id", userId)
+    .single()) as { data: ProfileRow | null };
 
-    if (authError || !user) {
-      return unauthorizedError();
-    }
+  if (profile?.membership_type !== "PRO") {
+    return forbiddenError("MD 收藏搜索功能仅限 Pro 用户使用");
+  }
 
-    // 2. 检查 PRO 权限
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileRow = { membership_type: string | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from("profiles") as any)
-      .select("membership_type")
-      .eq("id", user.id)
-      .single() as { data: ProfileRow | null };
+  // 3. 解析查询参数
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get("q");
+  const mode = (searchParams.get("mode") || "hybrid") as SearchMode;
+  const limitParam = searchParams.get("limit");
+  const thresholdParam = searchParams.get("threshold");
 
-    if (profile?.membership_type !== "PRO") {
-      return forbiddenError("MD 收藏搜索功能仅限 Pro 用户使用");
-    }
+  // 验证必填参数
+  if (!query || query.trim().length < 2) {
+    return badRequestError("搜索关键词至少需要 2 个字符");
+  }
 
-    // 3. 解析查询参数
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get("q");
-    const mode = (searchParams.get("mode") || "hybrid") as SearchMode;
-    const limitParam = searchParams.get("limit");
-    const thresholdParam = searchParams.get("threshold");
+  // 解析可选参数
+  const limit = Math.min(
+    Math.max(parseInt(limitParam || "20", 10) || 20, 1),
+    100,
+  );
+  const threshold = Math.min(
+    Math.max(parseFloat(thresholdParam || "0.5") || 0.5, 0),
+    1,
+  );
 
-    // 验证必填参数
-    if (!query || query.trim().length < 2) {
-      return badRequestError("搜索关键词至少需要 2 个字符");
-    }
-
-    // 解析可选参数
-    const limit = Math.min(
-      Math.max(parseInt(limitParam || "20", 10) || 20, 1),
-      100,
-    );
-    const threshold = Math.min(
-      Math.max(parseFloat(thresholdParam || "0.5") || 0.5, 0),
-      1,
-    );
-
-    logger.info(
-      {
-        userId: user.id,
-        query: query.substring(0, 50),
-        mode,
-        limit,
-        threshold,
-        action: "md_search_request",
-      },
-      "MD Search: Request received",
-    );
-
-    // 4. 执行搜索
-    let results: MdSearchResult[] = [];
-    let searchType = mode;
-    let error: Error | null = null;
-
-    switch (mode) {
-      case "keyword": {
-        const keywordResult = await searchMdKeyword(
-          supabase,
-          user.id,
-          query,
-          limit,
-        );
-        results = keywordResult.data || [];
-        error = keywordResult.error;
-        break;
-      }
-
-      case "semantic": {
-        const semanticResult = await searchMdSemantic(
-          supabase,
-          user.id,
-          query,
-          {
-            threshold,
-            limit,
-          },
-        );
-        results = semanticResult.data || [];
-        error = semanticResult.error;
-        break;
-      }
-
-      case "hybrid":
-      default: {
-        // 并行执行两种搜索
-        const [semanticResult, keywordResult] = await Promise.allSettled([
-          searchMdSemantic(supabase, user.id, query, { threshold, limit }),
-          searchMdKeyword(supabase, user.id, query, limit),
-        ]);
-
-        const semanticResults =
-          semanticResult.status === "fulfilled" && semanticResult.value.data
-            ? semanticResult.value.data
-            : [];
-        const keywordResults =
-          keywordResult.status === "fulfilled" && keywordResult.value.data
-            ? keywordResult.value.data
-            : [];
-
-        // 合并去重
-        const seenIds = new Set<number>();
-        const mergedResults: MdSearchResult[] = [];
-
-        // 语义结果优先
-        for (const result of semanticResults) {
-          if (!seenIds.has(result.id)) {
-            seenIds.add(result.id);
-            mergedResults.push(result);
-          }
-        }
-
-        // 补充关键词结果
-        for (const result of keywordResults) {
-          if (!seenIds.has(result.id) && mergedResults.length < limit) {
-            seenIds.add(result.id);
-            mergedResults.push({ ...result, similarity: 0 });
-          }
-        }
-
-        results = mergedResults.slice(0, limit);
-
-        // 确定搜索类型
-        if (semanticResults.length === 0 && keywordResults.length > 0) {
-          searchType = "keyword";
-        } else if (semanticResults.length > 0 && keywordResults.length === 0) {
-          searchType = "semantic";
-        }
-        break;
-      }
-    }
-
-    if (error) {
-      logger.error(
-        {
-          error: error.message,
-          query: query.substring(0, 50),
-          mode,
-          action: "md_search_error",
-        },
-        "MD Search: Error occurred",
-      );
-      results = [];
-    }
-
-    logger.info(
-      {
-        userId: user.id,
-        query: query.substring(0, 50),
-        mode,
-        searchType,
-        resultCount: results.length,
-        action: "md_search_complete",
-      },
-      "MD Search: Complete",
-    );
-
-    // 5. 返回结果
-    return successResponse({
-      query,
+  logger.info(
+    {
+      userId: userId,
+      query: query.substring(0, 50),
       mode,
-      searchType,
-      results,
-      count: results.length,
-    });
-  } catch (error) {
+      limit,
+      threshold,
+      action: "md_search_request",
+    },
+    "MD Search: Request received",
+  );
+
+  // 4. 执行搜索
+  let results: MdSearchResult[] = [];
+  let searchType = mode;
+  let error: Error | null = null;
+
+  switch (mode) {
+    case "keyword": {
+      const keywordResult = await searchMdKeyword(
+        supabase,
+        userId,
+        query,
+        limit,
+      );
+      results = keywordResult.data || [];
+      error = keywordResult.error;
+      break;
+    }
+
+    case "semantic": {
+      const semanticResult = await searchMdSemantic(supabase, userId, query, {
+        threshold,
+        limit,
+      });
+      results = semanticResult.data || [];
+      error = semanticResult.error;
+      break;
+    }
+
+    case "hybrid":
+    default: {
+      // 并行执行两种搜索
+      const [semanticResult, keywordResult] = await Promise.allSettled([
+        searchMdSemantic(supabase, userId, query, { threshold, limit }),
+        searchMdKeyword(supabase, userId, query, limit),
+      ]);
+
+      const semanticResults =
+        semanticResult.status === "fulfilled" && semanticResult.value.data
+          ? semanticResult.value.data
+          : [];
+      const keywordResults =
+        keywordResult.status === "fulfilled" && keywordResult.value.data
+          ? keywordResult.value.data
+          : [];
+
+      // 合并去重
+      const seenIds = new Set<number>();
+      const mergedResults: MdSearchResult[] = [];
+
+      // 语义结果优先
+      for (const result of semanticResults) {
+        if (!seenIds.has(result.id)) {
+          seenIds.add(result.id);
+          mergedResults.push(result);
+        }
+      }
+
+      // 补充关键词结果
+      for (const result of keywordResults) {
+        if (!seenIds.has(result.id) && mergedResults.length < limit) {
+          seenIds.add(result.id);
+          mergedResults.push({ ...result, similarity: 0 });
+        }
+      }
+
+      results = mergedResults.slice(0, limit);
+
+      // 确定搜索类型
+      if (semanticResults.length === 0 && keywordResults.length > 0) {
+        searchType = "keyword";
+      } else if (semanticResults.length > 0 && keywordResults.length === 0) {
+        searchType = "semantic";
+      }
+      break;
+    }
+  }
+
+  if (error) {
     logger.error(
       {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "md_search",
+        error: error.message,
+        query: query.substring(0, 50),
+        mode,
+        action: "md_search_error",
       },
-      "GET /api/md-collections/search error",
+      "MD Search: Error occurred",
     );
-    return internalError("搜索失败，请稍后重试");
+    results = [];
   }
-}
+
+  logger.info(
+    {
+      userId: userId,
+      query: query.substring(0, 50),
+      mode,
+      searchType,
+      resultCount: results.length,
+      action: "md_search_complete",
+    },
+    "MD Search: Complete",
+  );
+
+  // 5. 返回结果
+  return successResponse({
+    query,
+    mode,
+    searchType,
+    results,
+    count: results.length,
+  });
+});

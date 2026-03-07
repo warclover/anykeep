@@ -6,13 +6,8 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-  badRequestError,
-} from "@/lib/utils/api-response";
+import { successResponse, databaseError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { NotificationPreferences } from "@/lib/messages/types";
 
@@ -32,15 +27,8 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
  * GET /api/settings/notifications
  * 获取当前用户的通知偏好设置
  */
-export async function GET() {
-  try {
-    // 验证用户身份（使用缓存认证，性能优化）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -57,15 +45,20 @@ export async function GET() {
       dnd_end_time: string | null;
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: preferences, error: queryError } = await (supabase.from("notification_preferences") as any)
+    const { data: preferences, error: queryError } = (await (
+      supabase.from("notification_preferences") as any
+    )
       .select("*")
-      .eq("user_id", user.id)
-      .single() as { data: NotificationPrefRow | null; error: { code?: string; message: string } | null };
+      .eq("user_id", userId)
+      .single()) as {
+      data: NotificationPrefRow | null;
+      error: { code?: string; message: string } | null;
+    };
 
     if (queryError && queryError.code !== "PGRST116") {
       // PGRST116 = no rows returned
       logger.error(
-        { error: queryError, userId: user.id },
+        { error: queryError, userId },
         "Failed to fetch notification preferences",
       );
       return databaseError("获取通知偏好失败", queryError);
@@ -94,28 +87,15 @@ export async function GET() {
     };
 
     return successResponse(result);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "GET /api/settings/notifications error",
-    );
-    return badRequestError("获取通知偏好失败");
-  }
-}
+  },
+);
 
 /**
  * PATCH /api/settings/notifications
  * 更新当前用户的通知偏好设置
  */
-export async function PATCH(request: NextRequest) {
-  try {
-    // 验证用户身份（使用缓存认证，避免重复验证）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
+export const PATCH = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
 
@@ -171,10 +151,12 @@ export async function PATCH(request: NextRequest) {
       dnd_end_time: string | null;
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updated, error: upsertError } = await (supabase.from("notification_preferences") as any)
+    const { data: updated, error: upsertError } = (await (
+      supabase.from("notification_preferences") as any
+    )
       .upsert(
         {
-          user_id: user.id,
+          user_id: userId,
           ...updateData,
         },
         {
@@ -182,11 +164,14 @@ export async function PATCH(request: NextRequest) {
         },
       )
       .select()
-      .single() as { data: NotificationPrefUpdateRow | null; error: { message: string } | null };
+      .single()) as {
+      data: NotificationPrefUpdateRow | null;
+      error: { message: string } | null;
+    };
 
     if (upsertError) {
       logger.error(
-        { error: upsertError, userId: user.id },
+        { error: upsertError, userId },
         "Failed to update notification preferences",
       );
       return databaseError("更新通知偏好失败", upsertError);
@@ -197,7 +182,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     logger.info(
-      { userId: user.id, changes: Object.keys(updateData) },
+      { userId, changes: Object.keys(updateData) },
       "Notification preferences updated",
     );
 
@@ -217,11 +202,5 @@ export async function PATCH(request: NextRequest) {
     };
 
     return successResponse(result);
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "PATCH /api/settings/notifications error",
-    );
-    return badRequestError("更新通知偏好失败");
-  }
-}
+  },
+);

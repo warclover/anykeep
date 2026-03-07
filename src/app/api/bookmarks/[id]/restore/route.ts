@@ -1,24 +1,20 @@
-import type { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import {
   successResponse,
   notFoundError,
-  unauthorizedError,
   forbiddenError,
   databaseError,
 } from "@/lib/utils/api-response";
 import { AUTH, BOOKMARK } from "@/lib/constants/error-messages";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * POST /api/bookmarks/[id]/restore
  * 从垃圾箱恢复收藏
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
 
@@ -34,27 +30,8 @@ export async function POST(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    logger.debug(
-      {
-        userId: user?.id,
-        authError: authError?.message,
-        action: "auth_check",
-      },
-      "POST: User authentication",
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
     // 2. 检查收藏是否存在于垃圾箱中
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
@@ -91,7 +68,7 @@ export async function POST(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    if (existingBookmark.user_id !== user.id) {
+    if (existingBookmark.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -142,15 +119,5 @@ export async function POST(
       data: restoredBookmark,
       message: "已从垃圾箱恢复",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "restore_bookmark",
-      },
-      "POST /api/bookmarks/[id]/restore error",
-    );
-    return databaseError("恢复收藏失败", error);
-  }
-}
+  },
+);

@@ -9,6 +9,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { z } from "zod";
 import {
   getDistributionTargetsTable,
@@ -32,33 +33,18 @@ const updateTargetSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET - 获取单个分发目标
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const { data: target, error } = (await getDistributionTargetsTable(supabase)
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single()) as { data: DistributionTargetRow | null; error: Error | null };
 
     if (error || !target) {
@@ -89,33 +75,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
         updatedAt: target.updated_at,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "Get distribution target error:");
-    return NextResponse.json(
-      { success: false, error: "获取分发目标失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * PATCH - 更新分发目标
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const validation = updateTargetSchema.safeParse(body);
@@ -148,7 +117,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { data: target, error } = (await getDistributionTargetsTable(supabase)
       .update(updateData)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single()) as { data: DistributionTargetRow | null; error: Error | null };
 
@@ -187,38 +156,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         updatedAt: target.updated_at,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "Update distribution target error:");
-    return NextResponse.json(
-      { success: false, error: "更新分发目标失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * DELETE - 删除分发目标
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const { error } = (await getDistributionTargetsTable(supabase)
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id)) as { error: Error | null };
+      .eq("user_id", userId)) as { error: Error | null };
 
     if (error) {
       logger.error({ error }, "Delete distribution target error:");
@@ -229,11 +181,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error({ error }, "Delete distribution target error:");
-    return NextResponse.json(
-      { success: false, error: "删除分发目标失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

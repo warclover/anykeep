@@ -11,6 +11,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
@@ -53,25 +54,15 @@ interface FolderLockStatus {
  * }
  * ```
  */
-export async function POST(request: NextRequest) {
-  const monitor = new PerformanceMonitor("BatchLockStatus");
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const monitor = new PerformanceMonitor("BatchLockStatus");
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await monitor.measure("Auth", () => createClient());
-    const {
-      data: { user },
-      error: authError,
-    } = await monitor.measure("GetUser", () => supabase.auth.getUser());
+    const supabase = await monitor.measure("CreateClient", () =>
+      createClient(),
+    );
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权访问" },
-        { status: 401 },
-      );
-    }
-
-    monitor.mark("AuthComplete", { userId: user.id });
+    monitor.mark("AuthComplete", { userId });
 
     // 2. 解析并验证请求体
     const body = await request.json();
@@ -98,11 +89,11 @@ export async function POST(request: NextRequest) {
       is_ai_renamable: boolean | null;
     };
     const queryStart = performance.now();
-    const { data: profiles, error: queryError } = await supabase
+    const { data: profiles, error: queryError } = (await supabase
       .from("folder_profiles")
       .select("folder_id, is_system_locked, is_ai_renamable")
-      .eq("user_id", user.id)
-      .in("folder_id", folderIds) as unknown as {
+      .eq("user_id", userId)
+      .in("folder_id", folderIds)) as unknown as {
       data: ProfileRow[] | null;
       error: { message: string } | null;
     };
@@ -154,7 +145,7 @@ export async function POST(request: NextRequest) {
     const perfReport = monitor.getReport();
     logger.info(
       {
-        userId: user.id,
+        userId,
         requestedCount: folderIds.length,
         foundCount: profiles?.length || 0,
         performance: {
@@ -176,22 +167,5 @@ export async function POST(request: NextRequest) {
         _performance: monitor.toJSON(),
       }),
     });
-  } catch (error) {
-    const perfReport = monitor.getReport();
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        performance: {
-          totalMs: Math.round(perfReport.totalDuration),
-          failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
-        },
-      },
-      "POST /api/folders/batch-lock-status error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

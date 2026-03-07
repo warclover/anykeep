@@ -7,6 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { DistributionRegistry, DistributionService } from "@/lib/distribution";
 import {
   ObsidianAdapter,
@@ -20,22 +21,10 @@ import {
   type DistributionTargetRow,
 } from "@/lib/distribution/db-types";
 import type { IDistributionAdapter } from "@/lib/distribution/interfaces";
-import { logger } from "@/lib/logger";
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const { targetId } = body;
@@ -52,7 +41,7 @@ export async function POST(request: NextRequest) {
       (await getDistributionTargetsTable(supabase)
         .select("*")
         .eq("id", targetId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single()) as {
         data: DistributionTargetRow | null;
         error: Error | null;
@@ -93,7 +82,7 @@ export async function POST(request: NextRequest) {
     // 获取待同步的书签
     const bookmarks = await service.getUnsyncedBookmarks(
       targetId,
-      user.id,
+      userId,
       target.last_sync_at ? new Date(target.last_sync_at) : undefined,
     );
 
@@ -135,15 +124,5 @@ export async function POST(request: NextRequest) {
       failedCount: result.failedCount,
       errors: result.errors,
     });
-  } catch (error) {
-    logger.error({ error }, "Sync error:");
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "同步失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

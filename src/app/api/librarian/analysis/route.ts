@@ -5,13 +5,10 @@
  * POST /api/librarian/analysis - 执行新的分析
  */
 
+import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-  notFoundError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, notFoundError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { createAILibrarianService } from "@/lib/classification/services/advanced";
 
@@ -23,69 +20,42 @@ import { createAILibrarianService } from "@/lib/classification/services/advanced
  * GET /api/librarian/analysis
  * 获取最近的分析结果
  */
-export async function GET() {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 获取最近的分析结果
+    // 获取最近的分析结果
     const librarian = createAILibrarianService(supabase);
-    const analysis = await librarian.getRecentAnalysis(user.id);
+    const analysis = await librarian.getRecentAnalysis(userId);
 
     if (!analysis) {
       return notFoundError("暂无分析记录");
     }
 
     logger.debug(
-      { userId: user.id, healthScore: analysis.healthScore },
+      { userId, healthScore: analysis.healthScore },
       "Librarian analysis retrieved",
     );
 
     return successResponse(analysis);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/librarian/analysis error",
-    );
-    return internalError("获取分析结果失败");
-  }
-}
+  },
+);
 
 /**
  * POST /api/librarian/analysis
  * 执行新的分析
  */
-export async function POST() {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 执行分析
+    // 执行分析
     const librarian = createAILibrarianService(supabase);
-    const analysis = await librarian.analyze(user.id);
+    const analysis = await librarian.analyze(userId);
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         healthScore: analysis.healthScore,
         totalSuggestions: analysis.totalSuggestions,
       },
@@ -93,14 +63,5 @@ export async function POST() {
     );
 
     return successResponse(analysis);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/librarian/analysis error",
-    );
-    return internalError("分析失败");
-  }
-}
+  },
+);

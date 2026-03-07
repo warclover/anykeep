@@ -12,13 +12,14 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { BatchFixRequestSchema } from "@/lib/ai-skills/skills/link-health-check/schema";
 import type { FixActionResult } from "@/lib/ai-skills/skills/link-health-check/types";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   databaseError,
 } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
@@ -28,33 +29,23 @@ import { logger } from "@/lib/logger";
  * POST /api/link-health/fix
  * 批量修复问题链接
  */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // 1. 身份验证
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const startTime = Date.now();
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 速率限制检查（批量操作，使用 batch 类别）
-    const rateLimitResult = checkRateLimit(user.id, "/api/batch");
+    // 1. 速率限制检查（批量操作，使用 batch 类别）
+    const rateLimitResult = checkRateLimit(userId, "/api/batch");
     if (!rateLimitResult.allowed) {
       logger.warn(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           remaining: rateLimitResult.remaining,
           resetMs: rateLimitResult.resetMs,
         },
         "Link Health Fix API: Rate limit exceeded",
       );
-      return new Response(
+      return new NextResponse(
         JSON.stringify({
           success: false,
           error: {
@@ -73,7 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 解析请求体
+    // 2. 解析请求体
     const body = await request.json();
     const parseResult = BatchFixRequestSchema.safeParse(body);
 
@@ -83,18 +74,18 @@ export async function POST(request: NextRequest) {
 
     const { actions } = parseResult.data;
 
-    // 4. 验证书签所有权
+    // 3. 验证书签所有权
     const bookmarkIds = actions.map((a) => a.bookmarkId);
     const { count, error: ownershipError } = await supabase
       .from("bookmarks")
       .select("id", { count: "exact", head: true })
       .in("id", bookmarkIds)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (ownershipError) {
       logger.error(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           error: ownershipError.message,
         },
         "Link Health Fix API: Ownership check failed",
@@ -108,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         actionCount: actions.length,
         actions: actions.map((a) => ({
           id: a.bookmarkId,
@@ -118,12 +109,12 @@ export async function POST(request: NextRequest) {
       "Link Health Fix API: Processing fix actions",
     );
 
-    // 5. 执行修复操作
+    // 4. 执行修复操作
     const results: FixActionResult[] = [];
 
     for (const action of actions) {
       try {
-        const result = await executeFixAction(supabase, user.id, action);
+        const result = await executeFixAction(supabase, userId, action);
         results.push(result);
       } catch (error) {
         results.push({
@@ -134,13 +125,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. 统计结果
+    // 5. 统计结果
     const successCount = results.filter((r) => r.success).length;
     const failedCount = results.length - successCount;
 
     logger.info(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         total: results.length,
         successCount,
         failedCount,
@@ -157,18 +148,8 @@ export async function POST(request: NextRequest) {
           ? `已成功处理 ${successCount} 个书签`
           : `成功 ${successCount} 个，失败 ${failedCount} 个`,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        duration: Date.now() - startTime,
-      },
-      "Link Health Fix API: Request failed",
-    );
-
-    return databaseError("修复操作失败，请稍后重试");
-  }
-}
+  },
+);
 
 /**
  * 执行单个修复操作

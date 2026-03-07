@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { BrokenLinkIssue } from "@/lib/ai-skills/skills/health-check/types";
 
@@ -15,21 +16,9 @@ import type { BrokenLinkIssue } from "@/lib/ai-skills/skills/health-check/types"
 // GET - 获取失效链接列表
 // ============================================
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -40,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await supabase
       .from("health_check_cache")
       .select("*, bookmarks!inner(title, url)", { count: "exact" })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("check_type", "broken_link")
       .eq("status", "issue")
       .order("detected_at", { ascending: false })
@@ -48,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error(
-        { error: error.message, userId: user.id },
+        { error: error.message, userId },
         "BrokenLinks API: Failed to fetch",
       );
       return NextResponse.json(
@@ -85,37 +74,16 @@ export async function GET(request: NextRequest) {
         pageSize,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "BrokenLinks API: Unexpected error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================
 // POST - 批量操作失效链接
 // ============================================
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json();
     const { action, issueIds } = body;
@@ -136,7 +104,7 @@ export async function POST(request: NextRequest) {
           .from("health_check_cache")
           .select("bookmark_id")
           .in("id", issueIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         const bookmarkIds = (issues?.map((i) => i.bookmark_id) || []).filter(
           (id): id is number => id !== null,
@@ -156,7 +124,7 @@ export async function POST(request: NextRequest) {
             trashed_at: new Date().toISOString(),
           })
           .in("id", bookmarkIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         if (deleteError) {
           result.errors.push(deleteError.message);
@@ -184,7 +152,7 @@ export async function POST(request: NextRequest) {
             ignored_at: new Date().toISOString(),
           })
           .in("id", issueIds)
-          .eq("user_id", user.id);
+          .eq("user_id", userId);
 
         if (ignoreError) {
           result.errors.push(ignoreError.message);
@@ -205,14 +173,5 @@ export async function POST(request: NextRequest) {
       success: result.errors.length === 0,
       data: result,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "BrokenLinks API: Unexpected error in POST",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -2,7 +2,6 @@
  * Summary Statistics API
  *
  * GET /api/summary/stats - 获取摘要质量统计
- * GET /api/summary/stats/providers - 获取 Provider 使用统计
  *
  * @version 1.0.0
  * @since 2025-12-12
@@ -14,10 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
-  internalError,
 } from "@/lib/utils/api-response";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { getQualityTrackerService } from "@/lib/summary";
 
 /**
@@ -76,20 +73,12 @@ function getTimeRange(
  * GET /api/summary/stats
  * 获取摘要质量统计
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析查询参数
+    // 解析查询参数
     const { searchParams } = new URL(request.url);
     const validation = timeRangeSchema.safeParse({
       start: searchParams.get("start") || undefined,
@@ -103,11 +92,11 @@ export async function GET(request: NextRequest) {
 
     const timeRange = getTimeRange(validation.data);
 
-    // 3. 获取统计数据
+    // 获取统计数据
     const qualityTracker = getQualityTrackerService(supabase);
-    const stats = await qualityTracker.getStats(user.id, timeRange);
+    const stats = await qualityTracker.getStats(userId, timeRange);
 
-    // 4. 计算额外指标
+    // 计算额外指标
     const successRate =
       stats.totalCount > 0
         ? ((stats.successCount / stats.totalCount) * 100).toFixed(1)
@@ -118,7 +107,7 @@ export async function GET(request: NextRequest) {
         ? (stats.averageLatencyMs / 1000).toFixed(2)
         : "0";
 
-    // 5. 返回结果
+    // 返回结果
     return successResponse({
       // 基础统计
       totalCount: stats.totalCount,
@@ -147,14 +136,5 @@ export async function GET(request: NextRequest) {
           }
         : "all",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/summary/stats error",
-    );
-    return internalError("获取统计数据失败");
-  }
-}
+  },
+);

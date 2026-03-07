@@ -14,10 +14,10 @@ import {
   RollbackReason,
 } from "@/lib/classification/infrastructure/rollout/rollback";
 import { MonitoringService } from "@/lib/classification/infrastructure/rollout/monitoring";
-import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
 
 /**
  * 请求验证 Schema
@@ -26,25 +26,14 @@ const RollbackRequestSchema = z.object({
   reason: z.string().optional(),
 });
 
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份（仅管理员可访问）
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权" }, { status: 401 });
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId, user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
-
-    // 检查用户是否为管理员
     if (!isAdminUser(user.email)) {
-      return NextResponse.json(
-        { error: "权限不足 - 需要管理员权限" },
-        { status: 403 },
-      );
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
 
     // 2. 解析请求体
@@ -64,24 +53,24 @@ export async function POST(request: NextRequest) {
     const { reason } = validation.data;
 
     // 3. 初始化服务
-    const logger = createLogger("RollbackAPI");
+    const rollbackLogger = createLogger("RollbackAPI");
     const featureFlag = getFeatureFlag();
-    const monitoringService = new MonitoringService(logger);
+    const monitoringService = new MonitoringService(rollbackLogger);
     const rollbackService = new RollbackService(
-      logger,
+      rollbackLogger,
       featureFlag,
       monitoringService,
     );
 
     // 4. 执行手动回滚
     console.info("执行手动回滚", {
-      userId: user.id,
+      userId,
       reason: reason || "手动触发",
     });
 
     const rollbackRecord = await rollbackService.executeRollback(
       RollbackReason.MANUAL,
-      user.id,
+      userId,
     );
 
     // 5. 返回结果
@@ -92,14 +81,5 @@ export async function POST(request: NextRequest) {
         currentConfig: featureFlag.getConfig(),
       },
     });
-  } catch (error) {
-    logger.error({ error }, "手动回滚失败:");
-    return NextResponse.json(
-      {
-        error: "手动回滚失败",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

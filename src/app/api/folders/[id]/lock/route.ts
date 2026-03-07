@@ -8,18 +8,15 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * PATCH /api/folders/[id]/lock
  * Toggle AI lock status for a folder
  */
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
     const { id } = await params;
     const folderId = parseInt(id, 10);
@@ -28,19 +25,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { success: false, error: "无效的文件夹 ID" },
         { status: 400 },
-      );
-    }
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权访问" },
-        { status: 401 },
       );
     }
 
@@ -76,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .from("folders")
       .select("id, name, is_system, user_id")
       .eq("id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single()) as unknown as {
       data: FolderType | null;
       error: { message: string } | null;
@@ -108,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     ).upsert(
       {
         folder_id: folderId,
-        user_id: user.id,
+        user_id: userId,
         is_system_locked: locked,
         // 如果锁定，同时禁止 AI 重命名
         is_ai_renamable: !locked,
@@ -129,10 +113,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    logger.info(
-      { folderId, locked, userId: user.id },
-      "Folder AI lock status updated",
-    );
+    logger.info({ folderId, locked, userId }, "Folder AI lock status updated");
 
     return NextResponse.json({
       success: true,
@@ -144,24 +125,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           : `已解锁「${folder.name}」，AI 可以继续管理此文件夹`,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "PATCH /api/folders/[id]/lock error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * GET /api/folders/[id]/lock
  * Get AI lock status for a folder
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
     const { id } = await params;
     const folderId = parseInt(id, 10);
@@ -173,26 +145,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权访问" },
-        { status: 401 },
-      );
-    }
-
     // 获取锁定状态
     // Note: folder_profiles 是 V4.2 新增表
     const { data: profile } = await supabase
       .from("folder_profiles")
       .select("is_system_locked, is_ai_renamable")
       .eq("folder_id", folderId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     const profileData = profile as {
@@ -208,14 +167,5 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         isAiRenamable: profileData?.is_ai_renamable ?? true,
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "GET /api/folders/[id]/lock error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

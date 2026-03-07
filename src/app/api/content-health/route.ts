@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { HealthOverview } from "@/lib/ai-skills/skills/health-check/types";
 
@@ -15,30 +16,18 @@ import type { HealthOverview } from "@/lib/ai-skills/skills/health-check/types";
 // GET - 获取健康概览
 // ============================================
 
-export async function GET() {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     // 使用 RPC 函数获取健康概览
     const { data, error } = await supabase.rpc("get_health_overview", {
-      p_user_id: user.id,
+      p_user_id: userId,
     });
 
     if (error) {
       logger.error(
-        { error: error.message, userId: user.id },
+        { error: error.message, userId },
         "ContentHealth API: Failed to get overview",
       );
       return NextResponse.json(
@@ -74,37 +63,16 @@ export async function GET() {
       success: true,
       data: overview,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "ContentHealth API: Unexpected error",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 // ============================================
 // POST - 触发健康检测
 // ============================================
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
 
     const body = await request.json().catch(() => ({}));
     const {
@@ -117,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { data: run, error: runError } = await supabase
       .from("health_check_runs")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         check_types: checkTypes,
         scope,
         folder_id: folderId,
@@ -129,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     if (runError) {
       logger.error(
-        { error: runError.message, userId: user.id },
+        { error: runError.message, userId },
         "ContentHealth API: Failed to create run",
       );
       return NextResponse.json(
@@ -147,14 +115,5 @@ export async function POST(request: NextRequest) {
         message: "健康检测已启动",
       },
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "ContentHealth API: Unexpected error in POST",
-    );
-    return NextResponse.json(
-      { success: false, error: "服务器错误" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

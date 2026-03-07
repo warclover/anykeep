@@ -41,7 +41,6 @@ export {
 // ============================================================================
 export {
   withAuth,
-  withAuthHandler,
   getUserId,
   unauthorizedResponse,
   type AuthResult,

@@ -9,19 +9,18 @@
  * @since 2025-12-31
  */
 
-import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/supabase";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
   notFoundError,
   internalError,
   handleValidationError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // =============================================================================
 // 类型定义
@@ -110,61 +109,41 @@ function extractRulesFromPreferences(
  * GET /api/agent/rules
  * 获取用户的自定义规则列表
  */
-export async function GET(_request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  // 1. 获取用户偏好设置
+  const supabase = await createClient();
+  // 类型断言: 手动维护类型文件时需要此断言
+  const { data: profile, error: profileError } = (await supabase
+    .from("profiles")
+    .select("ai_preferences")
+    .eq("id", userId)
+    .single()) as unknown as {
+    data: { ai_preferences: unknown } | null;
+    error: { message: string } | null;
+  };
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 获取用户偏好设置
-    // 类型断言: 手动维护类型文件时需要此断言
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("ai_preferences")
-      .eq("id", user.id)
-      .single() as unknown as { data: { ai_preferences: unknown } | null; error: { message: string } | null };
-
-    if (profileError) {
-      logger.error(
-        { userId: user.id, error: profileError.message },
-        "Failed to fetch profile",
-      );
-      return internalError("获取用户设置失败");
-    }
-
-    // 3. 提取规则列表
-    const rules = extractRulesFromPreferences(
-      profile?.ai_preferences as Record<string, unknown> | null,
-    );
-
-    const response: RulesListResponse = {
-      rules,
-      total: rules.length,
-    };
-
-    logger.debug(
-      { userId: user.id, ruleCount: rules.length },
-      "GET /api/agent/rules",
-    );
-
-    return successResponse(response);
-  } catch (error) {
+  if (profileError) {
     logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "GET /api/agent/rules error",
+      { userId, error: profileError.message },
+      "Failed to fetch profile",
     );
-    return internalError("获取规则失败");
+    return internalError("获取用户设置失败");
   }
-}
+
+  // 2. 提取规则列表
+  const rules = extractRulesFromPreferences(
+    profile?.ai_preferences as Record<string, unknown> | null,
+  );
+
+  const response: RulesListResponse = {
+    rules,
+    total: rules.length,
+  };
+
+  logger.debug({ userId, ruleCount: rules.length }, "GET /api/agent/rules");
+
+  return successResponse(response);
+});
 
 // =============================================================================
 // POST Handler - 添加规则
@@ -174,82 +153,62 @@ export async function GET(_request: NextRequest) {
  * POST /api/agent/rules
  * 添加自定义规则
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
+  // 1. 解析请求体
+  let body: unknown;
   try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    body = await request.json();
+  } catch {
+    return badRequestError("请求体格式错误");
+  }
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
+  // 2. 验证请求体
+  const parseResult = AddRuleSchema.safeParse(body);
 
-    // 2. 解析请求体
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return badRequestError("请求体格式错误");
-    }
+  if (!parseResult.success) {
+    return handleValidationError(parseResult.error);
+  }
 
-    // 3. 验证请求体
-    const parseResult = AddRuleSchema.safeParse(body);
+  const { condition, action, source } = parseResult.data;
 
-    if (!parseResult.success) {
-      return handleValidationError(parseResult.error);
-    }
+  // 3. 创建新规则
+  const newRule: CustomRule = {
+    id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    condition,
+    action,
+    source,
+    createdAt: new Date().toISOString(),
+    applyCount: 0,
+  };
 
-    const { condition, action, source } = parseResult.data;
-
-    // 4. 创建新规则
-    const newRule: CustomRule = {
-      id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      condition,
-      action,
-      source,
-      createdAt: new Date().toISOString(),
-      applyCount: 0,
-    };
-
-    // 5. 调用 RPC 函数添加规则
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: rpcError } = await (supabase.rpc as any)("add_ai_custom_rule", {
-      p_user_id: user.id,
+  // 4. 调用 RPC 函数添加规则
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: rpcError } = (await (supabase.rpc as any)(
+    "add_ai_custom_rule",
+    {
+      p_user_id: userId,
       p_rule: newRule as unknown as Json,
-    }) as { error: { message: string } | null };
+    },
+  )) as { error: { message: string } | null };
 
-    if (rpcError) {
-      logger.error(
-        { userId: user.id, error: rpcError.message },
-        "Failed to add rule",
-      );
-      return internalError("添加规则失败");
-    }
-
-    const response: AddRuleResponse = {
-      success: true,
-      rule: newRule,
-    };
-
-    logger.info(
-      { userId: user.id, ruleId: newRule.id, condition, action },
-      "POST /api/agent/rules - Rule added",
-    );
-
-    return successResponse(response);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "POST /api/agent/rules error",
-    );
+  if (rpcError) {
+    logger.error({ userId, error: rpcError.message }, "Failed to add rule");
     return internalError("添加规则失败");
   }
-}
+
+  const response: AddRuleResponse = {
+    success: true,
+    rule: newRule,
+  };
+
+  logger.info(
+    { userId, ruleId: newRule.id, condition, action },
+    "POST /api/agent/rules - Rule added",
+  );
+
+  return successResponse(response);
+});
 
 // =============================================================================
 // DELETE Handler - 删除规则
@@ -259,90 +218,73 @@ export async function POST(request: NextRequest) {
  * DELETE /api/agent/rules
  * 删除自定义规则（通过 query param: ruleId）
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const DELETE = withAuthMiddleware(async (request, { userId }) => {
+  // 1. 解析查询参数
+  const { searchParams } = new URL(request.url);
+  const parseResult = DeleteRuleSchema.safeParse({
+    ruleId: searchParams.get("ruleId"),
+  });
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
+  if (!parseResult.success) {
+    return handleValidationError(parseResult.error);
+  }
 
-    // 2. 解析查询参数
-    const { searchParams } = new URL(request.url);
-    const parseResult = DeleteRuleSchema.safeParse({
-      ruleId: searchParams.get("ruleId"),
-    });
+  const { ruleId } = parseResult.data;
 
-    if (!parseResult.success) {
-      return handleValidationError(parseResult.error);
-    }
+  // 2. 先检查规则是否存在
+  const supabase = await createClient();
+  // 类型断言: 手动维护类型文件时需要此断言
+  const { data: profile, error: profileError } = (await supabase
+    .from("profiles")
+    .select("ai_preferences")
+    .eq("id", userId)
+    .single()) as unknown as {
+    data: { ai_preferences: unknown } | null;
+    error: { message: string } | null;
+  };
 
-    const { ruleId } = parseResult.data;
-
-    // 3. 先检查规则是否存在
-    // 类型断言: 手动维护类型文件时需要此断言
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("ai_preferences")
-      .eq("id", user.id)
-      .single() as unknown as { data: { ai_preferences: unknown } | null; error: { message: string } | null };
-
-    if (profileError) {
-      logger.error(
-        { userId: user.id, error: profileError.message },
-        "Failed to fetch profile",
-      );
-      return internalError("获取用户设置失败");
-    }
-
-    const rules = extractRulesFromPreferences(
-      profile?.ai_preferences as Record<string, unknown> | null,
-    );
-
-    const ruleExists = rules.some((r) => r.id === ruleId);
-
-    if (!ruleExists) {
-      return notFoundError("规则不存在");
-    }
-
-    // 4. 调用 RPC 函数删除规则
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: rpcError } = await (supabase.rpc as any)("remove_ai_custom_rule", {
-      p_user_id: user.id,
-      p_rule_id: ruleId,
-    }) as { error: { message: string } | null };
-
-    if (rpcError) {
-      logger.error(
-        { userId: user.id, ruleId, error: rpcError.message },
-        "Failed to remove rule",
-      );
-      return internalError("删除规则失败");
-    }
-
-    const response: DeleteRuleResponse = {
-      success: true,
-      message: "规则已删除",
-    };
-
-    logger.info(
-      { userId: user.id, ruleId },
-      "DELETE /api/agent/rules - Rule removed",
-    );
-
-    return successResponse(response);
-  } catch (error) {
+  if (profileError) {
     logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "DELETE /api/agent/rules error",
+      { userId, error: profileError.message },
+      "Failed to fetch profile",
+    );
+    return internalError("获取用户设置失败");
+  }
+
+  const rules = extractRulesFromPreferences(
+    profile?.ai_preferences as Record<string, unknown> | null,
+  );
+
+  const ruleExists = rules.some((r) => r.id === ruleId);
+
+  if (!ruleExists) {
+    return notFoundError("规则不存在");
+  }
+
+  // 3. 调用 RPC 函数删除规则
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: rpcError } = (await (supabase.rpc as any)(
+    "remove_ai_custom_rule",
+    {
+      p_user_id: userId,
+      p_rule_id: ruleId,
+    },
+  )) as { error: { message: string } | null };
+
+  if (rpcError) {
+    logger.error(
+      { userId, ruleId, error: rpcError.message },
+      "Failed to remove rule",
     );
     return internalError("删除规则失败");
   }
-}
+
+  const response: DeleteRuleResponse = {
+    success: true,
+    message: "规则已删除",
+  };
+
+  logger.info({ userId, ruleId }, "DELETE /api/agent/rules - Rule removed");
+
+  return successResponse(response);
+});

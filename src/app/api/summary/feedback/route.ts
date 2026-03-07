@@ -14,10 +14,10 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   forbiddenError,
   internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { getQualityTrackerService } from "@/lib/summary";
 
@@ -44,20 +44,12 @@ const getFeedbackSchema = z.object({
  * POST /api/summary/feedback
  * 提交摘要反馈
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析并验证请求体
+    // 解析并验证请求体
     const body = await request.json();
     const validation = submitFeedbackSchema.safeParse(body);
 
@@ -67,30 +59,35 @@ export async function POST(request: NextRequest) {
 
     const { bookmarkId, rating, feedback } = validation.data;
 
-    // 3. 验证书签归属
+    // 验证书签归属
     // 类型断言: 手动维护类型文件时需要此断言
     type BookmarkOwnerRow = { id: number; user_id: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmark, error: bookmarkError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, user_id")
       .eq("id", bookmarkId)
-      .single() as { data: BookmarkOwnerRow | null; error: { message: string } | null };
+      .single()) as {
+      data: BookmarkOwnerRow | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       return internalError("书签不存在");
     }
 
-    if (bookmark.user_id !== user.id) {
+    if (bookmark.user_id !== userId) {
       return forbiddenError("无权操作此书签");
     }
 
-    // 4. 记录反馈
+    // 记录反馈
     const qualityTracker = getQualityTrackerService(supabase);
-    await qualityTracker.recordFeedback(bookmarkId, user.id, rating, feedback);
+    await qualityTracker.recordFeedback(bookmarkId, userId, rating, feedback);
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         bookmarkId,
         rating,
         hasFeedback: !!feedback,
@@ -98,41 +95,24 @@ export async function POST(request: NextRequest) {
       "Summary feedback submitted",
     );
 
-    // 5. 返回成功
+    // 返回成功
     return successResponse({
       success: true,
       message: "感谢您的反馈！",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "POST /api/summary/feedback error",
-    );
-    return internalError("提交反馈失败");
-  }
-}
+  },
+);
 
 /**
  * GET /api/summary/feedback
  * 获取用户反馈列表
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 创建 Supabase 客户端用于数据库操作
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析查询参数
+    // 解析查询参数
     const { searchParams } = new URL(request.url);
     const validation = getFeedbackSchema.safeParse({
       limit: searchParams.get("limit"),
@@ -144,23 +124,14 @@ export async function GET(request: NextRequest) {
 
     const { limit } = validation.data;
 
-    // 3. 获取反馈列表
+    // 获取反馈列表
     const qualityTracker = getQualityTrackerService(supabase);
-    const feedbacks = await qualityTracker.getUserFeedbacks(user.id, limit);
+    const feedbacks = await qualityTracker.getUserFeedbacks(userId, limit);
 
-    // 4. 返回结果
+    // 返回结果
     return successResponse({
       feedbacks,
       count: feedbacks.length,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "GET /api/summary/feedback error",
-    );
-    return internalError("获取反馈列表失败");
-  }
-}
+  },
+);

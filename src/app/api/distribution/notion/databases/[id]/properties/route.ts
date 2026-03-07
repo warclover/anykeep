@@ -8,45 +8,34 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decryptToken } from "@/lib/distribution/utils/token-crypto";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 const NOTION_API_URL = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: databaseId } = await params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const { id: databaseId } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+    const supabase = await createClient();
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+    // 获取加密的 Token
+    // 类型断言: 手动维护类型文件时需要此断言
+    type TokenRecordType = { access_token: string };
+    const { data: tokenRecord, error: tokenError } = (await supabase
+      .from("distribution_oauth_tokens")
+      .select("access_token")
+      .eq("user_id", userId)
+      .eq("provider", "notion")
+      .single()) as unknown as {
+      data: TokenRecordType | null;
+      error: { message: string } | null;
+    };
 
-  // 获取加密的 Token
-  // 类型断言: 手动维护类型文件时需要此断言
-  type TokenRecordType = { access_token: string };
-  const { data: tokenRecord, error: tokenError } = (await supabase
-    .from("distribution_oauth_tokens")
-    .select("access_token")
-    .eq("user_id", user.id)
-    .eq("provider", "notion")
-    .single()) as unknown as {
-    data: TokenRecordType | null;
-    error: { message: string } | null;
-  };
+    if (tokenError || !tokenRecord) {
+      return NextResponse.json({ error: "Notion 未授权" }, { status: 401 });
+    }
 
-  if (tokenError || !tokenRecord) {
-    return NextResponse.json({ error: "Notion 未授权" }, { status: 401 });
-  }
-
-  try {
     // 解密 Token
     const accessToken = await decryptToken(tokenRecord.access_token);
 
@@ -88,11 +77,5 @@ export async function GET(
     };
 
     return NextResponse.json({ database: info, properties });
-  } catch (error) {
-    logger.error({ error }, "Failed to fetch database properties:");
-    return NextResponse.json(
-      { error: "获取 Database 属性失败" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -6,33 +6,19 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { snapshotService } from "@/lib/snapshot";
 import type {
   CreateSnapshotRequest,
   CreateSnapshotResponse,
 } from "@/lib/snapshot";
-import { logger } from "@/lib/logger";
 
 /**
  * GET /api/snapshots?bookmarkId=xxx
  * 获取指定书签的活跃快照
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 使用缓存认证，避免重复验证
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        },
-        { status: 401 },
-      );
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const bookmarkIdStr = searchParams.get("bookmarkId");
 
@@ -59,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     // 获取该书签的活跃快照
     const snapshot = await snapshotService.getActiveSnapshot(
-      user.id,
+      userId,
       bookmarkId,
     );
 
@@ -79,34 +65,12 @@ export async function GET(request: NextRequest) {
         readableWordCount: snapshot.readable_word_count,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[GET /api/snapshots] Error");
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "INTERNAL_ERROR", message: "获取快照失败" },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户认证（使用缓存认证，避免重复验证）
-    const { user, error: authError } = await getCachedUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析请求体
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 解析请求体
     const body: CreateSnapshotRequest = await request.json();
     const { bookmarkId, snapshotType, priority, source, triggerTag } = body;
 
@@ -120,8 +84,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 调用服务创建快照 (P2-010: 支持 source/triggerTag)
-    const result = await snapshotService.createSnapshot(user.id, bookmarkId, {
+    // 调用服务创建快照 (P2-010: 支持 source/triggerTag)
+    const result = await snapshotService.createSnapshot(userId, bookmarkId, {
       snapshotType,
       priority,
       source: source || "manual",
@@ -134,60 +98,5 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 201 });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error({ error }, "[POST /api/snapshots] Error");
-
-    // 解析错误类型
-    if (message.includes("BOOKMARK_NOT_FOUND")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "BOOKMARK_NOT_FOUND", message: "书签不存在" },
-        },
-        { status: 404 },
-      );
-    }
-
-    if (message.includes("ALREADY_EXISTS")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "ALREADY_EXISTS", message: "该书签已有快照" },
-        },
-        { status: 409 },
-      );
-    }
-
-    if (message.includes("QUOTA_EXCEEDED")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "QUOTA_EXCEEDED", message: "快照配额已满" },
-        },
-        { status: 403 },
-      );
-    }
-
-    if (message.includes("INVALID_TYPE")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_TYPE",
-            message: message.split(": ")[1] || "快照类型不支持",
-          },
-        },
-        { status: 403 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "INTERNAL_ERROR", message: "创建快照失败" },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

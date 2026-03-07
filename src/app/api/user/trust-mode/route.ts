@@ -12,73 +12,35 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { isValidTrustMode, TRUST_MODE_INFO } from "@/types/trust-mode";
 import type { TrustMode } from "@/types/trust-mode";
-import { logger } from "@/lib/logger";
 
 // ============================================================================
 // GET - 获取托管模式
 // ============================================================================
 
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  const effectiveConfig = await trustModeService.getEffectiveConfig(userId);
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
-
-    const effectiveConfig = await trustModeService.getEffectiveConfig(user.id);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        mode: effectiveConfig.mode,
-        modeInfo: TRUST_MODE_INFO[effectiveConfig.mode],
-        config: effectiveConfig.config,
-        stats: effectiveConfig.stats,
-      },
-    });
-  } catch (error) {
-    logger.error({ error }, "Failed to get trust mode");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "获取托管模式失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  return NextResponse.json({
+    success: true,
+    data: {
+      mode: effectiveConfig.mode,
+      modeInfo: TRUST_MODE_INFO[effectiveConfig.mode],
+      config: effectiveConfig.config,
+      stats: effectiveConfig.stats,
+    },
+  });
+});
 
 // ============================================================================
 // PUT - 更新托管模式
 // ============================================================================
 
-export async function PUT(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
-
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const body = await request.json();
     const { mode, reason } = body as { mode?: TrustMode; reason?: string };
 
@@ -96,7 +58,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedRecord = await trustModeService.updateTrustMode(
-      user.id,
+      userId,
       mode,
       reason,
     );
@@ -110,16 +72,5 @@ export async function PUT(request: NextRequest) {
       },
       message: `已切换到「${TRUST_MODE_INFO[mode].label}」模式`,
     });
-  } catch (error) {
-    logger.error({ error }, "Failed to update trust mode");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "更新托管模式失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

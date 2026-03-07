@@ -5,26 +5,19 @@
  * 返回用户的统一配额状态
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { UnifiedQuotaService } from "@/lib/classification/strategies/modern/crystal/quota";
-import { logger } from "@/lib/logger";
 
-export async function GET() {
-  try {
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // 使用 UnifiedQuotaService 实例方法
     const quotaService = new UnifiedQuotaService(supabase);
-    const quota = await quotaService.checkQuota(user.id);
+    const quota = await quotaService.checkQuota(userId);
 
     return NextResponse.json({
       allowed: quota.allowed,
@@ -44,12 +37,5 @@ export async function GET() {
         reason: quota.health.reason,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "V5.5: Quota API error");
-
-    return NextResponse.json(
-      { error: "Failed to fetch quota" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

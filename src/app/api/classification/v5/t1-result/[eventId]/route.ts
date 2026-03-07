@@ -4,44 +4,31 @@
  * GET /api/classification/v5/t1-result/[eventId]
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { T1QueueService } from "@/lib/classification/strategies/modern/t1-queue";
 import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * GET /api/classification/v5/t1-result/:eventId
  * 查询T1任务结果
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { eventId: string } },
-) {
-  const logger = createLogger("T1ResultAPI");
+export const GET = withAuthMiddleware<{ eventId: string }>(
+  async (_request, { userId, params }) => {
+    const logger = createLogger("T1ResultAPI");
 
-  try {
-    // 1. 验证用户身份
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn("未授权访问", { error: authError?.message });
-      return NextResponse.json({ error: "未授权" }, { status: 401 });
-    }
 
     // 2. 获取eventId
-    const { eventId } = params;
+    const { eventId } = await params;
 
     if (!eventId) {
       logger.warn("缺少eventId");
       return NextResponse.json({ error: "缺少eventId" }, { status: 400 });
     }
 
-    logger.info("查询T1结果", { userId: user.id, eventId });
+    logger.info("查询T1结果", { userId, eventId });
 
     // 3. 查询T1任务
     const queueService = new T1QueueService(supabase, logger);
@@ -53,11 +40,11 @@ export async function GET(
     }
 
     // 4. 验证任务所有权
-    if (task.userId !== user.id) {
+    if (task.userId !== userId) {
       logger.warn("无权访问T1任务", {
         eventId,
         taskUserId: task.userId,
-        requestUserId: user.id,
+        requestUserId: userId,
       });
       return NextResponse.json({ error: "无权访问" }, { status: 403 });
     }
@@ -85,18 +72,5 @@ export async function GET(
         executionTimeMs: task.executionTimeMs,
       },
     });
-  } catch (error) {
-    logger.error(
-      "查询T1结果失败",
-      error instanceof Error ? error : new Error(String(error)),
-    );
-
-    return NextResponse.json(
-      {
-        error: "查询失败",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

@@ -9,28 +9,18 @@ import { reorderSmartListsSchema } from "@/lib/validation/smart-list";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 /**
  * POST /api/smart-lists/reorder
  * 批量更新智能列表排序顺序
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析并验证请求体
     const body = await request.json();
@@ -47,11 +37,16 @@ export async function POST(request: NextRequest) {
     // 注意: ids 来自验证层，可能为 string[] 或 number[]，需统一处理
     type SmartListIdRow = { id: string };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingLists, error: checkError } = await (supabase.from("smart_lists") as any)
+    const { data: existingLists, error: checkError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .in("id", ids)
-      .is("deleted_at", null) as { data: SmartListIdRow[] | null; error: { message: string } | null };
+      .is("deleted_at", null)) as {
+      data: SmartListIdRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (checkError) {
       return databaseError("验证智能列表失败", checkError);
@@ -74,10 +69,10 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < ids.length; i++) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from("smart_lists") as any)
+      const { error } = (await (supabase.from("smart_lists") as any)
         .update({ sort_order: i })
         .eq("id", ids[i])
-        .eq("user_id", user.id) as { error: { message: string } | null };
+        .eq("user_id", userId)) as { error: { message: string } | null };
 
       if (error) {
         updateError = error;
@@ -89,7 +84,7 @@ export async function POST(request: NextRequest) {
       logger.error(
         {
           error: updateError,
-          userId: user.id,
+          userId,
           ids,
           operation: "reorder_smart_lists",
         },
@@ -100,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         count: ids.length,
         action: "smart_lists_reordered",
       },
@@ -108,15 +103,5 @@ export async function POST(request: NextRequest) {
     );
 
     return successResponse({ success: true });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "reorder_smart_lists",
-      },
-      "POST /api/smart-lists/reorder error",
-    );
-    return internalError("更新排序失败");
-  }
-}
+  },
+);

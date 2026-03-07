@@ -12,18 +12,15 @@
  * GET /api/classification/analytics?type=history - 建议历史（原 /history）
  * GET /api/classification/analytics?type=abtest - A/B 测试（原 /ab-test）
  *
- * @version 2.0.0 (Phase 1 合并)
+ * @version 2.1.0 (Phase 1 合并)
  * @since 2025-12-24
+ * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
 import { profileUpdater } from "@/lib/classification/learning/profile-updater";
@@ -34,9 +31,9 @@ import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,
 } from "@/lib/classification/config/embedding-config";
-import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // ============================================================================
 // 类型定义
@@ -123,52 +120,33 @@ const SOURCE_PROFILES_TABLE = "source_profiles" as const;
 /**
  * GET /api/classification/analytics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  // 解析查询参数
+  const { searchParams } = new URL(request.url);
+  const type = (searchParams.get("type") as AnalyticsType) || "overview";
 
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
-    // 解析查询参数
-    const { searchParams } = new URL(request.url);
-    const type = (searchParams.get("type") as AnalyticsType) || "overview";
-
-    // 路由到对应的分析函数
-    switch (type) {
-      case "overview":
-        return handleOverview(user.id, searchParams);
-      case "preferences":
-        return handlePreferences(user.id);
-      case "sources":
-        return handleSources(user.id);
-      case "health":
-        return handleHealth(user.id);
-      case "trends":
-        return handleTrends(user.id, searchParams);
-      case "statistics":
-        return handleStatistics(user.id, searchParams);
-      case "history":
-        return handleHistory(user.id, searchParams);
-      case "abtest":
-        return handleABTest(user.id, searchParams);
-      default:
-        return handleOverview(user.id, searchParams);
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "GET /api/classification/analytics error",
-    );
-    return internalError("获取分类分析数据失败");
+  // 路由到对应的分析函数
+  switch (type) {
+    case "overview":
+      return handleOverview(userId, searchParams);
+    case "preferences":
+      return handlePreferences(userId);
+    case "sources":
+      return handleSources(userId);
+    case "health":
+      return handleHealth(userId);
+    case "trends":
+      return handleTrends(userId, searchParams);
+    case "statistics":
+      return handleStatistics(userId, searchParams);
+    case "history":
+      return handleHistory(userId, searchParams);
+    case "abtest":
+      return handleABTest(userId, searchParams);
+    default:
+      return handleOverview(userId, searchParams);
   }
-}
+});
 
 // ============================================================================
 // 分析处理函数

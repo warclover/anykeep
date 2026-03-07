@@ -10,10 +10,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { TRUST_MODE_INFO } from "@/types/trust-mode";
-import { logger } from "@/lib/logger";
 
 // ============================================================================
 // 类型定义
@@ -62,73 +61,48 @@ interface TrustModeStats {
 // GET - 获取托管模式详细统计
 // ============================================================================
 
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (_request, { userId }) => {
+  const effectiveConfig = await trustModeService.getEffectiveConfig(userId);
+  const { mode, stats } = effectiveConfig;
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "未登录" } },
-        { status: 401 },
-      );
-    }
+  // 计算效率指标
+  const totalDecisions = stats.autoDecisions + stats.userCorrections;
+  const accuracyRate = totalDecisions > 0 ? 1 - stats.correctionRate : 1;
 
-    const effectiveConfig = await trustModeService.getEffectiveConfig(user.id);
-    const { mode, stats } = effectiveConfig;
+  // 估算节省的操作次数（仅自动决策中未被纠正的）
+  const effectiveAutoDecisions = Math.max(
+    0,
+    stats.autoDecisions - stats.userCorrections,
+  );
+  // 每次手动分类估计需要 30 秒
+  const savedTimeMinutes = (effectiveAutoDecisions * 30) / 60;
 
-    // 计算效率指标
-    const totalDecisions = stats.autoDecisions + stats.userCorrections;
-    const accuracyRate = totalDecisions > 0 ? 1 - stats.correctionRate : 1;
+  // 自动化率
+  const automationRate =
+    totalDecisions > 0 ? stats.autoDecisions / totalDecisions : 0;
 
-    // 估算节省的操作次数（仅自动决策中未被纠正的）
-    const effectiveAutoDecisions = Math.max(
-      0,
-      stats.autoDecisions - stats.userCorrections,
-    );
-    // 每次手动分类估计需要 30 秒
-    const savedTimeMinutes = (effectiveAutoDecisions * 30) / 60;
+  const statsResponse: TrustModeStats = {
+    mode,
+    modeInfo: {
+      label: TRUST_MODE_INFO[mode].label,
+      description: TRUST_MODE_INFO[mode].description,
+    },
+    core: {
+      autoDecisions: stats.autoDecisions,
+      userCorrections: stats.userCorrections,
+      pendingConfirmations: stats.pendingConfirmations,
+      correctionRate: Math.round(stats.correctionRate * 100) / 100,
+      accuracyRate: Math.round(accuracyRate * 100) / 100,
+    },
+    efficiency: {
+      savedOperations: effectiveAutoDecisions,
+      savedTimeMinutes: Math.round(savedTimeMinutes * 10) / 10,
+      automationRate: Math.round(automationRate * 100) / 100,
+    },
+  };
 
-    // 自动化率
-    const automationRate =
-      totalDecisions > 0 ? stats.autoDecisions / totalDecisions : 0;
-
-    const statsResponse: TrustModeStats = {
-      mode,
-      modeInfo: {
-        label: TRUST_MODE_INFO[mode].label,
-        description: TRUST_MODE_INFO[mode].description,
-      },
-      core: {
-        autoDecisions: stats.autoDecisions,
-        userCorrections: stats.userCorrections,
-        pendingConfirmations: stats.pendingConfirmations,
-        correctionRate: Math.round(stats.correctionRate * 100) / 100,
-        accuracyRate: Math.round(accuracyRate * 100) / 100,
-      },
-      efficiency: {
-        savedOperations: effectiveAutoDecisions,
-        savedTimeMinutes: Math.round(savedTimeMinutes * 10) / 10,
-        automationRate: Math.round(automationRate * 100) / 100,
-      },
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: statsResponse,
-    });
-  } catch (error) {
-    logger.error({ error }, "Failed to get trust mode stats");
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : "获取统计数据失败",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  return NextResponse.json({
+    success: true,
+    data: statsResponse,
+  });
+});

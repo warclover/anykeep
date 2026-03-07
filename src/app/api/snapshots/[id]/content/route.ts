@@ -4,34 +4,13 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { snapshotService } from "@/lib/snapshot";
 import type { SnapshotContentResponse } from "@/lib/snapshot";
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    // 1. 验证用户认证
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析快照 ID
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    // 解析快照 ID
     const { id } = await params;
     const snapshotId = parseInt(id, 10);
 
@@ -45,9 +24,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 3. 获取快照内容
+    // 获取快照内容
     const content = await snapshotService.getSnapshotContent(
-      user.id,
+      userId,
       snapshotId,
     );
 
@@ -67,25 +46,5 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    if (message.includes("NOT_COMPLETED")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "NOT_COMPLETED", message: "快照尚未完成" },
-        },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "INTERNAL_ERROR", message: "获取内容失败" },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

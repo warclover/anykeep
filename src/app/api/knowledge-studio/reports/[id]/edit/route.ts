@@ -4,7 +4,8 @@
  * @description SSE 流式聊天编辑
  */
 
-import type { NextRequest } from "next/server";
+import type { NextResponse } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { createSSESender } from "@/lib/utils/sse-helper";
@@ -14,10 +15,6 @@ import type { EditMode, StreamChunk, ToneType } from "@/lib/knowledge-studio";
 import type { Database } from "@/types/supabase";
 
 const logger = createLogger("api:knowledge-studio:reports:[id]:edit");
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * 编辑请求 Schema
@@ -45,36 +42,20 @@ const EditRequestSchema = z.object({
  * POST /api/knowledge-studio/reports/[id]/edit
  * SSE 流式聊天编辑
  */
-export async function POST(request: NextRequest, context: RouteContext) {
-  const requestId = crypto.randomUUID();
-  const { id: reportId } = await context.params;
-
-  logger.info({ requestId, reportId }, "Edit request received");
-
-  try {
-    // 1. 认证检查
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
+    const requestId = crypto.randomUUID();
+    const { id: reportId } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({
-          error: { code: "UNAUTHORIZED", message: "请先登录" },
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
-    }
+    logger.info({ requestId, reportId }, "Edit request received");
 
-    // 2. Pro 功能检查（Chat-to-Edit 为 Pro 功能）
-    // 类型安全的查询
+    // 1. Pro 功能检查（Chat-to-Edit 为 Pro 功能）
     type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
     const { data: profile } = await supabase
       .from("profiles")
       .select("membership_type")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single<Pick<ProfileRow, "membership_type">>();
 
     const isPro =
@@ -89,10 +70,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           },
         }),
         { status: 403, headers: { "Content-Type": "application/json" } },
-      );
+      ) as unknown as NextResponse;
     }
 
-    // 3. 解析请求体
+    // 2. 解析请求体
     const body = await request.json();
     const parseResult = EditRequestSchema.safeParse(body);
 
@@ -106,7 +87,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           },
         }),
         { status: 400, headers: { "Content-Type": "application/json" } },
-      );
+      ) as unknown as NextResponse;
     }
 
     const {
@@ -117,59 +98,63 @@ export async function POST(request: NextRequest, context: RouteContext) {
       conversationHistory,
     } = parseResult.data;
 
-    // 4. 获取报告内容
+    // 3. 获取报告内容
     type SynthesisReportRow =
       Database["public"]["Tables"]["synthesis_reports"]["Row"];
     const { data: report, error: reportError } = await supabase
       .from("synthesis_reports")
       .select("id, content, blueprint_type")
       .eq("id", reportId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single<Pick<SynthesisReportRow, "id" | "content" | "blueprint_type">>();
 
     if (reportError || !report) {
       return new Response(
-        JSON.stringify({ error: { code: "NOT_FOUND", message: "报告不存在" } }),
+        JSON.stringify({
+          error: { code: "NOT_FOUND", message: "报告不存在" },
+        }),
         { status: 404, headers: { "Content-Type": "application/json" } },
-      );
+      ) as unknown as NextResponse;
     }
 
-    // 检查 content 是否存在
     if (!report.content) {
       return new Response(
         JSON.stringify({
           error: { code: "NO_CONTENT", message: "报告内容为空" },
         }),
         { status: 400, headers: { "Content-Type": "application/json" } },
-      );
+      ) as unknown as NextResponse;
     }
 
-    // 5. 解析段落
+    // 4. 解析段落
     const paragraphs = report.content
       .split("\n\n")
       .filter((p: string) => p.trim());
     if (paragraphIndex >= paragraphs.length) {
       return new Response(
         JSON.stringify({
-          error: { code: "INVALID_PARAGRAPH", message: "段落索引超出范围" },
+          error: {
+            code: "INVALID_PARAGRAPH",
+            message: "段落索引超出范围",
+          },
         }),
         { status: 400, headers: { "Content-Type": "application/json" } },
-      );
+      ) as unknown as NextResponse;
     }
 
-    // 6. 创建 SSE 响应流
+    // 5. 创建 SSE 响应流
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         const sendEvent = createSSESender<StreamChunk>(controller, encoder);
 
         try {
-          // 6.1 配额检查和扣除
+          // 5.1 配额检查和扣除
           const quotaResult = await quotaManager.executeWithQuota(
-            user.id,
+            userId,
             "chat_edit",
             async () => {
-              // 6.2 构建编辑上下文
+              // 5.2 构建编辑上下文
               const editContext = chatEditEngine.buildContext(
                 paragraphs,
                 paragraphIndex,
@@ -179,11 +164,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 })),
               );
 
-              // 填充报告上下文
               editContext.reportContext.blueprintType =
                 report.blueprint_type ?? "";
 
-              // 发送开始事件
               sendEvent({
                 type: "progress",
                 data: {
@@ -195,7 +178,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 requestId,
               });
 
-              // 6.3 执行编辑
+              // 5.3 执行编辑
               const result = await chatEditEngine.edit({
                 reportId,
                 paragraphIndex,
@@ -215,7 +198,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
             const editResult = quotaResult.data;
 
             if (editResult.success && editResult.newContent) {
-              // 发送编辑结果
               sendEvent({
                 type: "text",
                 data: {
@@ -226,7 +208,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 requestId,
               });
 
-              // 发送完成事件
               sendEvent({
                 type: "done",
                 data: {
@@ -300,25 +281,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         Connection: "keep-alive",
         "X-Request-Id": requestId,
       },
-    });
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        reportId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Edit request failed",
-    );
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器内部错误",
-        },
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
-}
+    }) as unknown as NextResponse;
+  },
+);

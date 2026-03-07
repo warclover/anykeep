@@ -17,11 +17,9 @@
  * - 减少网络往返延迟
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { withAuth, unauthorizedResponse } from "@/lib/api/auth-middleware";
-import { internalError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type {
   Folder,
@@ -258,21 +256,11 @@ async function getFolders(
  * GET /api/init
  * 聚合获取首页所有初始数据
  */
-export async function GET(request: NextRequest) {
-  const startTime = performance.now();
-
-  try {
-    // 1. 统一认证（只认证一次！）
-    const {
-      userId,
-      error: authError,
-      method,
-      duration: authDuration,
-    } = await withAuth(request);
-
-    if (authError || !userId) {
-      return unauthorizedResponse();
-    }
+export const GET = withAuthMiddleware(
+  async (request, { userId, authResult }) => {
+    const startTime = performance.now();
+    const method = authResult.method;
+    const authDuration = authResult.duration ?? 0;
 
     logger.info(
       {
@@ -282,16 +270,16 @@ export async function GET(request: NextRequest) {
       "[Init] Auth completed",
     );
 
-    // 2. 创建 Supabase 客户端
+    // 创建 Supabase 客户端
     const supabase = await createClient();
 
-    // 3. 解析查询参数
+    // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
     const platform = searchParams.get("platform") || "";
     const sort = searchParams.get("sort") || "created_desc";
     const folder = searchParams.get("folder") || "";
 
-    // 4. 并行获取所有数据（含 customUsageTags，省去独立 /api/settings/usage-tags 请求）
+    // 并行获取所有数据（含 customUsageTags，省去独立 /api/settings/usage-tags 请求）
     const dataStart = performance.now();
 
     const [bookmarks, smartLists, unreadCount, folders, customUsageTags] =
@@ -326,12 +314,11 @@ export async function GET(request: NextRequest) {
     const dataDuration = performance.now() - dataStart;
     const totalDuration = performance.now() - startTime;
 
-    // 5. 生成数据版本号
+    // 生成数据版本号
     // V4.2.1: 用于客户端缓存失效验证
-    // 版本号基于时间戳，确保每次请求返回唯一版本
     const dataVersion = Date.now().toString();
 
-    // 6. 记录性能日志
+    // 记录性能日志
     logger.info(
       {
         userId,
@@ -347,7 +334,7 @@ export async function GET(request: NextRequest) {
       "[Init] Data aggregation completed",
     );
 
-    // 7. 返回聚合数据（带缓存头和数据版本）
+    // 返回聚合数据（带缓存头和数据版本）
     return NextResponse.json(
       {
         success: true,
@@ -363,7 +350,7 @@ export async function GET(request: NextRequest) {
           authDuration: Math.round(authDuration),
           dataDuration: Math.round(dataDuration),
           totalDuration: Math.round(totalDuration),
-          dataVersion, // V4.2.1: 数据版本号
+          dataVersion,
         },
       },
       {
@@ -373,18 +360,5 @@ export async function GET(request: NextRequest) {
         },
       },
     );
-  } catch (error) {
-    const totalDuration = performance.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        duration: Math.round(totalDuration),
-      },
-      "[Init] Aggregation failed",
-    );
-
-    return internalError("获取初始数据失败");
-  }
-}
+  },
+);

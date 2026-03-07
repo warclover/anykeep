@@ -10,10 +10,10 @@
  * @since 2025-12-11
  */
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
-  unauthorizedError,
   notFoundError,
   badRequestError,
   internalError,
@@ -33,20 +33,9 @@ const PENDING_CONFIRMATIONS_TABLE = "pending_confirmations" as const;
  * GET /api/classification/confirmations/[id]
  * 获取单个确认项详情
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
@@ -61,7 +50,7 @@ export async function GET(
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*")
       .eq("id", confirmationId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (error) {
@@ -89,15 +78,8 @@ export async function GET(
       createdAt: data.created_at,
       resolvedAt: data.resolved_at,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "GET /api/classification/confirmations/[id] error",
-    );
-    return internalError("获取确认项失败");
-  }
-}
+  },
+);
 
 // ============================================================================
 // PUT - 确认/拒绝
@@ -117,20 +99,9 @@ interface UpdateConfirmationBody {
  * PUT /api/classification/confirmations/[id]
  * 确认或拒绝建议
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
@@ -152,7 +123,7 @@ export async function PUT(
       .from(PENDING_CONFIRMATIONS_TABLE)
       .select("*")
       .eq("id", confirmationId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (fetchError) {
@@ -223,7 +194,7 @@ export async function PUT(
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.bookmark_id)
-          .eq("user_id", user.id)) as { error: { message: string } | null };
+          .eq("user_id", userId)) as { error: { message: string } | null };
 
         if (moveError) {
           logger.warn(
@@ -236,7 +207,7 @@ export async function PUT(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         confirmationId,
         action: body.action,
         status: newStatus,
@@ -254,15 +225,8 @@ export async function PUT(
             ? "已拒绝分类建议"
             : "已跳过",
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "PUT /api/classification/confirmations/[id] error",
-    );
-    return internalError("处理确认项失败");
-  }
-}
+  },
+);
 
 // ============================================================================
 // DELETE - 删除确认项
@@ -272,20 +236,9 @@ export async function PUT(
  * DELETE /api/classification/confirmations/[id]
  * 删除确认项
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     const { id } = await params;
     const confirmationId = parseInt(id, 10);
@@ -300,7 +253,7 @@ export async function DELETE(
       .from(PENDING_CONFIRMATIONS_TABLE)
       .delete()
       .eq("id", confirmationId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     if (error) {
       logger.error(
@@ -312,7 +265,7 @@ export async function DELETE(
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         confirmationId,
         action: "confirmation_deleted",
       },
@@ -322,12 +275,5 @@ export async function DELETE(
     return successResponse({
       message: "确认项已删除",
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(
-      { error: errorMessage },
-      "DELETE /api/classification/confirmations/[id] error",
-    );
-    return internalError("删除确认项失败");
-  }
-}
+  },
+);

@@ -4,29 +4,17 @@
  * GET /api/payment/trial - 查询试用状态
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { trialService } from "@/lib/payment/services/trial.service";
-import { logger } from "@/lib/logger";
 
 /**
  * POST - 开启 7 天免费试用
  */
-export async function POST() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
-    const result = await trialService.startTrial(user.id);
+export const POST = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
+    const result = await trialService.startTrial(userId);
 
     if (!result.success) {
       const message =
@@ -47,36 +35,18 @@ export async function POST() {
         message: "已开启 7 天 Pro 试用！",
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Trial POST] Error");
-    return NextResponse.json(
-      { error: { code: "TRIAL_FAILED", message: "开启试用失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * GET - 查询试用状态
  */
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const [isInTrial, daysRemaining, canStart] = await Promise.all([
-      trialService.isInTrial(user.id),
-      trialService.getTrialDaysRemaining(user.id),
-      trialService.canStartTrial(user.id),
+      trialService.isInTrial(userId),
+      trialService.getTrialDaysRemaining(userId),
+      trialService.canStartTrial(userId),
     ]);
 
     return NextResponse.json({
@@ -87,11 +57,5 @@ export async function GET() {
         canStartTrial: canStart,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Trial GET] Error");
-    return NextResponse.json(
-      { error: { code: "FETCH_FAILED", message: "获取试用状态失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

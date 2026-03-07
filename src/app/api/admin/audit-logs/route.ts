@@ -12,6 +12,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 const LOG_TAG = "[AuditLogs API]";
 
@@ -52,20 +55,17 @@ interface AuditStatistics {
  * - stats: 是否返回统计信息 (可选, 'true')
  * - days: 统计天数 (默认 30)
  */
-export async function GET(req: NextRequest) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
+export const GET = withAuthMiddleware(
+  async (req: NextRequest, { userId, user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("需要管理员权限");
+    }
+    if (!isAdminUser(user.email)) {
+      return forbiddenError("需要管理员权限");
     }
 
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(req.url);
     const isStats = searchParams.get("stats") === "true";
     const recordId = searchParams.get("recordId");
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await (supabase.rpc as CallableFunction)(
         "get_audit_statistics",
         {
-          p_user_id: user.id,
+          p_user_id: userId,
           p_days: days,
         },
       );
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await (supabase.rpc as CallableFunction)(
       "get_user_audit_history",
       {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_limit: Math.min(limit, 1000), // 最大 1000 条
         p_offset: offset,
         p_table_name: tableName || null,
@@ -172,34 +172,25 @@ export async function GET(req: NextRequest) {
         },
       },
     });
-  } catch (error) {
-    logger.error({ error, tag: LOG_TAG }, "Unexpected error in audit logs API");
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * POST /api/admin/audit-logs/cleanup
  *
  * 清理过期审计日志（管理员功能）
  */
-export async function POST(req: NextRequest) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
+export const POST = withAuthMiddleware(
+  async (req: NextRequest, { userId, user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("需要管理员权限");
+    }
+    if (!isAdminUser(user.email)) {
+      return forbiddenError("需要管理员权限");
     }
 
+    const supabase = await createServerSupabaseClient();
     const body = await req.json();
     const { action, retentionDays = 90 } = body;
 
@@ -212,10 +203,7 @@ export async function POST(req: NextRequest) {
 
     // 注意：清理功能可能需要管理员权限检查
     // 这里暂时只允许清理用户自己的日志
-    logger.info(
-      { userId: user.id, retentionDays, tag: LOG_TAG },
-      "Cleanup requested",
-    );
+    logger.info({ userId, retentionDays, tag: LOG_TAG }, "Cleanup requested");
 
     const { data, error } = await (supabase.rpc as CallableFunction)(
       "cleanup_old_audit_logs",
@@ -239,11 +227,5 @@ export async function POST(req: NextRequest) {
         retentionDays,
       },
     });
-  } catch (error) {
-    logger.error({ error, tag: LOG_TAG }, "Unexpected error in cleanup");
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

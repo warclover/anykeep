@@ -18,10 +18,10 @@ import {
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   quotaExceededError,
   databaseError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
 import { isUrlMonitorable } from "@/lib/monitor/page-fetcher";
@@ -30,20 +30,9 @@ import { isUrlMonitorable } from "@/lib/monitor/page-fetcher";
  * GET /api/monitors
  * 获取用户的监控列表和统计信息
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 身份验证
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析查询参数
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 1. 解析查询参数
     const { searchParams } = new URL(request.url);
     const queryResult = listMonitorsQuerySchema.safeParse({
       status: searchParams.get("status") || "all",
@@ -57,46 +46,47 @@ export async function GET(request: NextRequest) {
 
     const { status, limit, offset } = queryResult.data;
 
-    // 3. 获取用户会员信息
+    // 2. 获取用户会员信息
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRow = { membership_type: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = (await (supabase.from("profiles") as any)
       .select("membership_type")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single()) as { data: ProfileRow | null };
 
     const membershipType =
       (profile?.membership_type as "FREE" | "PRO") || "FREE";
     const quotaConfig = MONITOR_QUOTA[membershipType];
 
-    // 4. 构建查询
+    // 3. 构建查询
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("page_monitors")
       .select(
         `
+      id,
+      bookmark_id,
+      check_interval,
+      custom_interval_hours,
+      status,
+      change_count,
+      last_checked_at,
+      next_check_at,
+      consecutive_failures,
+      last_error_message,
+      notification_enabled,
+      created_at,
+      updated_at,
+      bookmarks!inner (
         id,
-        bookmark_id,
-        check_interval,
-        custom_interval_hours,
-        status,
-        change_count,
-        last_checked_at,
-        next_check_at,
-        consecutive_failures,
-        last_error_message,
-        notification_enabled,
-        created_at,
-        updated_at,
-        bookmarks!inner (
-          id,
-          title,
-          url
-        )
-      `,
+        title,
+        url
       )
-      .eq("user_id", user.id)
+    `,
+      )
+      .eq("user_id", userId)
       .neq("status", "deleted");
 
     // 按状态筛选
@@ -114,18 +104,18 @@ export async function GET(request: NextRequest) {
     if (queryError) {
       logger.error({
         operation: "list_monitors",
-        userId: user.id,
+        userId,
         error: queryError.message,
       });
       return databaseError("获取监控列表失败");
     }
 
-    // 5. 获取统计信息
+    // 4. 获取统计信息
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: statsData } = await (supabase as any)
       .from("page_monitors")
       .select("status")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted");
 
     const stats: MonitorStatsResponse = {
@@ -143,7 +133,7 @@ export async function GET(request: NextRequest) {
       quotaMax: quotaConfig.maxCount,
     };
 
-    // 6. 转换响应格式
+    // 5. 转换响应格式
     const formattedMonitors: MonitorResponse[] = (monitors || []).map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase JOIN 类型复杂
       (m: any) => ({
@@ -174,33 +164,16 @@ export async function GET(request: NextRequest) {
         total: stats.total,
       },
     });
-  } catch (error) {
-    logger.error({
-      operation: "list_monitors",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("获取监控列表失败");
-  }
-}
+  },
+);
 
 /**
  * POST /api/monitors
  * 创建新监控
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 身份验证
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 请求验证
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    // 1. 请求验证
     const body = await request.json();
     const parseResult = createMonitorSchema.safeParse(body);
 
@@ -215,13 +188,14 @@ export async function POST(request: NextRequest) {
       notificationEnabled,
     } = parseResult.data;
 
-    // 3. 获取用户会员信息和配额检查
+    // 2. 获取用户会员信息和配额检查
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileRowPost = { membership_type: string | null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = (await (supabase.from("profiles") as any)
       .select("membership_type")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single()) as { data: ProfileRowPost | null };
 
     const membershipType =
@@ -241,7 +215,7 @@ export async function POST(request: NextRequest) {
     const { count: currentCount } = await (supabase as any)
       .from("page_monitors")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted");
 
     if ((currentCount || 0) >= quotaConfig.maxCount) {
@@ -250,12 +224,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 验证书签所有权
+    // 3. 验证书签所有权
     const { data: bookmark, error: bookmarkError } = await supabase
       .from("bookmarks")
       .select("id, url, title")
       .eq("id", bookmarkId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single()
       .then<{
@@ -270,18 +244,18 @@ export async function POST(request: NextRequest) {
       return badRequestError("书签不存在或无权操作");
     }
 
-    // 5. 检查 URL 是否可监控
+    // 4. 检查 URL 是否可监控
     const urlCheck = isUrlMonitorable(bookmark.url);
     if (!urlCheck.canMonitor) {
       return badRequestError(urlCheck.reason || "该链接不支持监控");
     }
 
-    // 6. 使用原子 RPC 函数创建监控（解决 TOCTOU 漏洞）
+    // 5. 使用原子 RPC 函数创建监控（解决 TOCTOU 漏洞）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: result, error: rpcError } = await (supabase as any).rpc(
       "create_monitor_atomic",
       {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_bookmark_id: bookmarkId,
         p_check_interval: checkInterval,
         p_custom_interval_hours:
@@ -294,7 +268,7 @@ export async function POST(request: NextRequest) {
     if (rpcError) {
       logger.error({
         operation: "create_monitor",
-        userId: user.id,
+        userId,
         bookmarkId,
         error: rpcError.message,
       });
@@ -324,7 +298,7 @@ export async function POST(request: NextRequest) {
 
     logger.info({
       operation: "create_monitor",
-      userId: user.id,
+      userId,
       monitorId: rpcResult.monitor_id,
       bookmarkId,
       checkInterval,
@@ -338,11 +312,5 @@ export async function POST(request: NextRequest) {
       },
       201,
     );
-  } catch (error) {
-    logger.error({
-      operation: "create_monitor",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("创建监控失败");
-  }
-}
+  },
+);

@@ -11,48 +11,34 @@ import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   notFoundError,
   databaseError,
 } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import { CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/monitors/[id]/resume
  * 恢复监控
  */
-export async function POST(request: NextRequest, context: RouteContext) {
-  try {
-    const { id } = await context.params;
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const { id } = await params;
     const monitorId = parseInt(id, 10);
 
     if (isNaN(monitorId) || monitorId <= 0) {
       return badRequestError("无效的监控 ID");
     }
 
-    // 1. 身份验证
+    // 1. 验证监控所有权和当前状态
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 验证监控所有权和当前状态
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing, error: existError } = await (supabase as any)
       .from("page_monitors")
       .select("id, status, check_interval, custom_interval_hours")
       .eq("id", monitorId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .neq("status", "deleted")
       .single();
 
@@ -64,7 +50,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return badRequestError("监控已处于活动状态");
     }
 
-    // 3. 计算下次检查时间
+    // 2. 计算下次检查时间
     const intervalHours =
       existing.custom_interval_hours ||
       CHECK_INTERVAL_HOURS[
@@ -73,7 +59,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       24;
     const nextCheckAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
 
-    // 4. 执行恢复
+    // 3. 执行恢复
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
       .from("page_monitors")
@@ -89,7 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (updateError) {
       logger.error({
         operation: "resume_monitor",
-        userId: user.id,
+        userId,
         monitorId,
         error: updateError.message,
       });
@@ -98,7 +84,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     logger.info({
       operation: "resume_monitor",
-      userId: user.id,
+      userId,
       monitorId,
       previousStatus: existing.status,
     });
@@ -109,11 +95,5 @@ export async function POST(request: NextRequest, context: RouteContext) {
       nextCheckAt: nextCheckAt.toISOString(),
       message: "监控已恢复",
     });
-  } catch (error) {
-    logger.error({
-      operation: "resume_monitor",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return databaseError("恢复监控失败");
-  }
-}
+  },
+);

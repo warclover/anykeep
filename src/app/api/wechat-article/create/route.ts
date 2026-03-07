@@ -7,15 +7,9 @@
 import type { NextRequest } from "next/server";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import {
-  createServerSupabaseClient,
-  createServiceClient,
-} from "@/lib/supabase/server";
-import {
-  successResponse,
-  errorResponse,
-  unauthorizedError,
-} from "@/lib/utils/api-response";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   safeParseBody,
   createArticleSchema,
@@ -42,16 +36,9 @@ const DEFAULT_HEADERS = {
  * POST /api/wechat-article/create
  * 为微信公众号文章创建快照记录并抓取内容
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError();
-    }
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
     // 使用 Zod 验证请求体
     const bodyResult = await safeParseBody(request, createArticleSchema);
@@ -63,13 +50,22 @@ export async function POST(request: NextRequest) {
 
     // 验证书签所有权和平台
     // 类型断言: 手动维护类型文件时需要此断言
-    type BookmarkWechatRow = { id: number; url: string; platform: string | null };
+    type BookmarkWechatRow = {
+      id: number;
+      url: string;
+      platform: string | null;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = await (supabase.from("bookmarks") as any)
+    const { data: bookmark, error: bookmarkError } = (await (
+      supabase.from("bookmarks") as any
+    )
       .select("id, url, platform")
       .eq("id", bookmarkId)
-      .eq("user_id", user.id)
-      .single() as { data: BookmarkWechatRow | null; error: { message: string } | null };
+      .eq("user_id", userId)
+      .single()) as {
+      data: BookmarkWechatRow | null;
+      error: { message: string } | null;
+    };
 
     if (bookmarkError || !bookmark) {
       return errorResponse("NOT_FOUND", "书签不存在或无权访问", 404);
@@ -85,13 +81,19 @@ export async function POST(request: NextRequest) {
 
     // 检查是否已有快照
     // 类型断言: 手动维护类型文件时需要此断言
-    type SnapshotExistingRow = { id: number; status: string; readable_content: string | null };
+    type SnapshotExistingRow = {
+      id: number;
+      status: string;
+      readable_content: string | null;
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingSnapshot } = await (supabase.from("bookmark_snapshots") as any)
+    const { data: existingSnapshot } = (await (
+      supabase.from("bookmark_snapshots") as any
+    )
       .select("id, status, readable_content")
       .eq("bookmark_id", bookmarkId)
-      .eq("user_id", user.id)
-      .maybeSingle() as { data: SnapshotExistingRow | null };
+      .eq("user_id", userId)
+      .maybeSingle()) as { data: SnapshotExistingRow | null };
 
     // 如果已有已完成的快照，直接返回
     if (existingSnapshot && existingSnapshot.status === "completed") {
@@ -117,16 +119,21 @@ export async function POST(request: NextRequest) {
       // 类型断言: 手动维护类型文件时需要此断言
       type NewSnapshotRow = { id: number };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newSnapshot, error: createError } = await (serviceClient.from("bookmark_snapshots") as any)
+      const { data: newSnapshot, error: createError } = (await (
+        serviceClient.from("bookmark_snapshots") as any
+      )
         .insert({
           bookmark_id: bookmarkId,
-          user_id: user.id,
+          user_id: userId,
           original_url: bookmark.url,
           snapshot_type: "standard",
           status: "processing",
         })
         .select("id")
-        .single() as { data: NewSnapshotRow | null; error: { message: string } | null };
+        .single()) as {
+        data: NewSnapshotRow | null;
+        error: { message: string } | null;
+      };
 
       if (createError || !newSnapshot) {
         logger.error({ error: createError }, "[API] Failed to create snapshot");
@@ -154,7 +161,9 @@ export async function POST(request: NextRequest) {
 
       // 更新快照记录
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (serviceClient.from("bookmark_snapshots") as any)
+      const { error: updateError } = await (
+        serviceClient.from("bookmark_snapshots") as any
+      )
         .update({
           status: "completed",
           readable_title: readability.title || null,
@@ -200,15 +209,8 @@ export async function POST(request: NextRequest) {
       logger.error({ error: fetchError }, "[API] Content fetch failed");
       return errorResponse("FETCH_FAILED", errorMessage, 500);
     }
-  } catch (error) {
-    logger.error({ error }, "[API] POST /api/wechat-article/create error");
-    return errorResponse(
-      "INTERNAL_ERROR",
-      error instanceof Error ? error.message : "创建失败",
-      500,
-    );
-  }
-}
+  },
+);
 
 /**
  * 获取网页内容

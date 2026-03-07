@@ -10,12 +10,11 @@
  * @since 2026-01-24 Phase 3
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import { getClassificationFacade } from "@/lib/classification/facade";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * 单个书签验证 Schema
@@ -43,134 +42,98 @@ const batchSchema = z.object({
  * POST /api/classification/v2/batch
  * 批量分类入口
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
-  try {
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+  // 2. 解析并验证请求体
+  const body = await request.json();
+  const validation = batchSchema.safeParse(body);
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
-    }
-
-    // 2. 解析并验证请求体
-    const body = await request.json();
-    const validation = batchSchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "请求参数无效",
-          details: validation.error.flatten().fieldErrors,
-        },
-        { status: 400 },
-      );
-    }
-
-    const { bookmarks } = validation.data;
-
-    logger.info(
-      {
-        userId: user.id,
-        count: bookmarks.length,
-      },
-      "Classification v2 batch: Starting",
-    );
-
-    // 3. 构建分类请求列表
-    const classificationRequests = bookmarks.map((bookmark) => ({
-      userId: user.id,
-      bookmarkId: bookmark.bookmarkId,
-      title: bookmark.title,
-      url: bookmark.url ?? "",
-      description: bookmark.description,
-      summary: bookmark.summary,
-      tags: bookmark.tags,
-    }));
-
-    // 4. 获取分类门面并执行批量分类
-    const facade = getClassificationFacade();
-    const results = await facade.classifyBatch(classificationRequests);
-
-    const latencyMs = Date.now() - startTime;
-
-    // 5. 构建结果映射（保持请求顺序）
-    const resultMap = new Map(
-      results.map((result, index) => [
-        classificationRequests[index].bookmarkId,
-        result,
-      ]),
-    );
-
-    const orderedResults = bookmarks.map((bookmark) => {
-      const result = resultMap.get(bookmark.bookmarkId);
-      return {
-        bookmarkId: bookmark.bookmarkId,
-        folderId: result?.folderId ?? null,
-        folderName: result?.folderName ?? null,
-        confidence: result?.confidence ?? 0,
-        action: result?.action ?? "inbox",
-        reason: result?.reason,
-      };
-    });
-
-    // 6. 统计信息
-    const summary = {
-      total: orderedResults.length,
-      classified: orderedResults.filter((r) => r.action === "classify").length,
-      suggested: orderedResults.filter((r) => r.action === "suggest").length,
-      inbox: orderedResults.filter((r) => r.action === "inbox").length,
-      avgConfidence:
-        orderedResults.reduce((sum, r) => sum + r.confidence, 0) /
-        orderedResults.length,
-      latencyMs,
-      avgLatencyMs: Math.round(latencyMs / orderedResults.length),
-    };
-
-    logger.info(
-      {
-        userId: user.id,
-        ...summary,
-      },
-      "Classification v2 batch: Completed",
-    );
-
-    // 7. 返回统一格式的结果
-    return NextResponse.json({
-      success: true,
-      data: {
-        results: orderedResults,
-        summary,
-      },
-    });
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
-
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        latencyMs,
-      },
-      "Classification v2 batch: Failed",
-    );
-
+  if (!validation.success) {
     return NextResponse.json(
       {
         success: false,
-        error: "批量分类失败",
-        message: error instanceof Error ? error.message : "未知错误",
+        error: "请求参数无效",
+        details: validation.error.flatten().fieldErrors,
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
-}
+
+  const { bookmarks } = validation.data;
+
+  logger.info(
+    {
+      userId,
+      count: bookmarks.length,
+    },
+    "Classification v2 batch: Starting",
+  );
+
+  // 3. 构建分类请求列表
+  const classificationRequests = bookmarks.map((bookmark) => ({
+    userId,
+    bookmarkId: bookmark.bookmarkId,
+    title: bookmark.title,
+    url: bookmark.url ?? "",
+    description: bookmark.description,
+    summary: bookmark.summary,
+    tags: bookmark.tags,
+  }));
+
+  // 4. 获取分类门面并执行批量分类
+  const facade = getClassificationFacade();
+  const results = await facade.classifyBatch(classificationRequests);
+
+  const latencyMs = Date.now() - startTime;
+
+  // 5. 构建结果映射（保持请求顺序）
+  const resultMap = new Map(
+    results.map((result, index) => [
+      classificationRequests[index].bookmarkId,
+      result,
+    ]),
+  );
+
+  const orderedResults = bookmarks.map((bookmark) => {
+    const result = resultMap.get(bookmark.bookmarkId);
+    return {
+      bookmarkId: bookmark.bookmarkId,
+      folderId: result?.folderId ?? null,
+      folderName: result?.folderName ?? null,
+      confidence: result?.confidence ?? 0,
+      action: result?.action ?? "inbox",
+      reason: result?.reason,
+    };
+  });
+
+  // 6. 统计信息
+  const summary = {
+    total: orderedResults.length,
+    classified: orderedResults.filter((r) => r.action === "classify").length,
+    suggested: orderedResults.filter((r) => r.action === "suggest").length,
+    inbox: orderedResults.filter((r) => r.action === "inbox").length,
+    avgConfidence:
+      orderedResults.reduce((sum, r) => sum + r.confidence, 0) /
+      orderedResults.length,
+    latencyMs,
+    avgLatencyMs: Math.round(latencyMs / orderedResults.length),
+  };
+
+  logger.info(
+    {
+      userId,
+      ...summary,
+    },
+    "Classification v2 batch: Completed",
+  );
+
+  // 7. 返回统一格式的结果
+  return NextResponse.json({
+    success: true,
+    data: {
+      results: orderedResults,
+      summary,
+    },
+  });
+});

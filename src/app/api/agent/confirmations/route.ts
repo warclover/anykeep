@@ -10,47 +10,36 @@
  * @since 2026-01-09
  */
 
-import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import {
   successResponse,
   badRequestError,
-  unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";
 import { confirmationHandler } from "@/lib/ai-agent/core/confirmation-handler";
 import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
  * GET /api/agent/confirmations
  * 获取用户待确认操作列表
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthMiddleware(async (request, { userId }) => {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
     const { searchParams } = new URL(request.url);
     const includeExpired = searchParams.get("includeExpired") === "true";
 
     // 获取用户的待确认操作
     const confirmations = confirmationHandler.getUserPendingConfirmations(
-      user.id,
+      userId,
       includeExpired,
     );
 
     // 获取待确认数量
-    const pendingCount = confirmationHandler.getUserPendingCount(user.id);
+    const pendingCount = confirmationHandler.getUserPendingCount(userId);
 
     logger.debug(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         total: confirmations.length,
         pendingCount,
       },
@@ -77,23 +66,14 @@ export async function GET(request: NextRequest) {
     logger.error({ error: message }, "Agent confirmations: List failed");
     return internalError(`获取待确认操作失败: ${message}`);
   }
-}
+});
 
 /**
  * POST /api/agent/confirmations
  * 批量操作确认
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthMiddleware(async (request, { userId }) => {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
     const body = await request.json();
     const { action, confirmationIds } = body;
 
@@ -112,14 +92,14 @@ export async function POST(request: NextRequest) {
     let result: { success: number; failed: number };
 
     if (action === "confirm") {
-      result = confirmationHandler.batchConfirm(confirmationIds, user.id);
+      result = confirmationHandler.batchConfirm(confirmationIds, userId);
     } else {
-      result = confirmationHandler.batchCancel(confirmationIds, user.id);
+      result = confirmationHandler.batchCancel(confirmationIds, userId);
     }
 
     logger.info(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         action,
         total: confirmationIds.length,
         success: result.success,
@@ -141,4 +121,4 @@ export async function POST(request: NextRequest) {
     );
     return internalError(`批量操作失败: ${message}`);
   }
-}
+});

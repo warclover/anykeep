@@ -13,9 +13,9 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   badRequestError,
   databaseError,
 } from "@/lib/utils/api-response";
@@ -30,20 +30,11 @@ import { logger } from "@/lib/logger";
  * - limit: 每页数量（默认 10，最大 50）
  * - offset: 偏移量（默认 0）
  */
-export async function GET(request: NextRequest) {
-  try {
-    // 1. 身份验证
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
-    // 2. 解析分页参数
+    // 1. 解析分页参数
     const { searchParams } = new URL(request.url);
     const limit = Math.min(
       safeParseInt(searchParams.get("limit"), 10) || 10,
@@ -55,7 +46,7 @@ export async function GET(request: NextRequest) {
       return badRequestError("分页参数无效");
     }
 
-    // 3. 查询历史记录
+    // 2. 查询历史记录
     const {
       data: records,
       error: queryError,
@@ -67,14 +58,14 @@ export async function GET(request: NextRequest) {
         "id, scope, folder_id, total_checked, healthy_count, failed_count, slow_count, redirect_count, status, progress, created_at, completed_at",
         { count: "exact" },
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (queryError) {
       logger.error(
         {
-          userId: user.id.slice(0, 8) + "...",
+          userId: userId.slice(0, 8) + "...",
           error: queryError.message,
         },
         "Link Health History API: Query failed",
@@ -84,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     logger.debug(
       {
-        userId: user.id.slice(0, 8) + "...",
+        userId: userId.slice(0, 8) + "...",
         recordCount: records?.length || 0,
         total: count,
         limit,
@@ -99,14 +90,5 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Link Health History API: Request failed",
-    );
-
-    return databaseError("获取历史记录失败");
-  }
-}
+  },
+);

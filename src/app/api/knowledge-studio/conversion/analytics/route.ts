@@ -4,12 +4,11 @@
  * @description 转化漏斗分析
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import { createConversionAnalytics } from "@/lib/knowledge-studio/conversion/conversion-analytics";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 const logger = createLogger("api:knowledge-studio:conversion:analytics");
 
 /**
@@ -23,88 +22,64 @@ const logger = createLogger("api:knowledge-studio:conversion:analytics");
  * - limit: 数量限制 (for prospects)
  * - withinDays: 过期天数 (for expiring)
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+export const GET = withAuthMiddleware(async (request, { userId }) => {
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get("type") || "funnel";
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
+  const analytics = createConversionAnalytics();
+
+  switch (type) {
+    case "funnel": {
+      // 获取漏斗指标
+      const startDateStr = searchParams.get("startDate");
+      const endDateStr = searchParams.get("endDate");
+
+      const endDate = endDateStr ? new Date(endDateStr) : new Date();
+      const startDate = startDateStr
+        ? new Date(startDateStr)
+        : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 默认30天
+
+      logger.info(
+        { userId: userId, startDate, endDate },
+        "Getting funnel metrics",
       );
+
+      const metrics = await analytics.getFunnelMetrics(startDate, endDate);
+      return NextResponse.json({ data: metrics });
     }
 
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type") || "funnel";
+    case "insight": {
+      // 获取用户洞察
+      logger.info({ userId: userId }, "Getting user insight");
 
-    const analytics = createConversionAnalytics();
-
-    switch (type) {
-      case "funnel": {
-        // 获取漏斗指标
-        const startDateStr = searchParams.get("startDate");
-        const endDateStr = searchParams.get("endDate");
-
-        const endDate = endDateStr ? new Date(endDateStr) : new Date();
-        const startDate = startDateStr
-          ? new Date(startDateStr)
-          : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 默认30天
-
-        logger.info(
-          { userId: user.id, startDate, endDate },
-          "Getting funnel metrics",
-        );
-
-        const metrics = await analytics.getFunnelMetrics(startDate, endDate);
-        return NextResponse.json({ data: metrics });
-      }
-
-      case "insight": {
-        // 获取用户洞察
-        logger.info({ userId: user.id }, "Getting user insight");
-
-        const insight = await analytics.getUserInsight(user.id);
-        return NextResponse.json({ data: insight });
-      }
-
-      case "expiring": {
-        // 获取即将过期的试用
-        const withinDays = parseInt(searchParams.get("withinDays") || "3", 10);
-
-        logger.info({ userId: user.id, withinDays }, "Getting expiring trials");
-
-        const trials = await analytics.getExpiringTrials(withinDays);
-        return NextResponse.json({ data: trials });
-      }
-
-      case "prospects": {
-        // 获取高价值潜在用户
-        const limit = parseInt(searchParams.get("limit") || "10", 10);
-
-        logger.info({ userId: user.id, limit }, "Getting high value prospects");
-
-        const prospects = await analytics.getHighValueProspects(limit);
-        return NextResponse.json({ data: prospects });
-      }
-
-      default:
-        return NextResponse.json(
-          { error: { code: "INVALID_PARAMS", message: "无效的分析类型" } },
-          { status: 400 },
-        );
+      const insight = await analytics.getUserInsight(userId);
+      return NextResponse.json({ data: insight });
     }
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Analytics request failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "获取分析数据失败" } },
-      { status: 500 },
-    );
+
+    case "expiring": {
+      // 获取即将过期的试用
+      const withinDays = parseInt(searchParams.get("withinDays") || "3", 10);
+
+      logger.info({ userId: userId, withinDays }, "Getting expiring trials");
+
+      const trials = await analytics.getExpiringTrials(withinDays);
+      return NextResponse.json({ data: trials });
+    }
+
+    case "prospects": {
+      // 获取高价值潜在用户
+      const limit = parseInt(searchParams.get("limit") || "10", 10);
+
+      logger.info({ userId: userId, limit }, "Getting high value prospects");
+
+      const prospects = await analytics.getHighValueProspects(limit);
+      return NextResponse.json({ data: prospects });
+    }
+
+    default:
+      return NextResponse.json(
+        { error: { code: "INVALID_PARAMS", message: "无效的分析类型" } },
+        { status: 400 },
+      );
   }
-}
+});

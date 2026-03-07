@@ -6,6 +6,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 export const runtime = "edge";
@@ -55,19 +56,9 @@ interface LLMUsageStats {
   trends?: { date: string; calls: number; costCents: number }[];
 }
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-
-    // 验证用户
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "daily";
@@ -92,7 +83,7 @@ export async function GET(request: NextRequest) {
       .select(
         "operation, model, input_tokens, output_tokens, cost_cents, created_at",
       )
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .gte("created_at", startDate.toISOString())
       .order("created_at", { ascending: false })) as unknown as {
       data: UsageRecord[] | null;
@@ -117,10 +108,10 @@ export async function GET(request: NextRequest) {
       // 类型断言: 手动维护类型文件时需要此断言
       type ProfileMembershipRow = { membership_type: string | null };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profileData } = await (supabase.from("profiles") as any)
+      const { data: profileData } = (await (supabase.from("profiles") as any)
         .select("membership_type")
-        .eq("id", user.id)
-        .single() as { data: ProfileMembershipRow | null };
+        .eq("id", userId)
+        .single()) as { data: ProfileMembershipRow | null };
 
       // PRO 用户 500 次，FREE 用户 100 次
       const dailyLimit = profileData?.membership_type === "PRO" ? 500 : 100;
@@ -139,7 +130,7 @@ export async function GET(request: NextRequest) {
       const { data: trendData } = (await supabase
         .from("llm_usage_log" as "profiles")
         .select("created_at, cost_cents")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .gte("created_at", thirtyDaysAgo.toISOString())) as unknown as {
         data: { created_at: string; cost_cents: number }[] | null;
         error: Error | null;
@@ -151,14 +142,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data: stats });
-  } catch (error) {
-    logger.error({ error }, "LLM usage API error");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 function createEmptyStats(period: string, date: string): LLMUsageStats {
   return {

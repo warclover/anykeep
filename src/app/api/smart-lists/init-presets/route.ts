@@ -5,12 +5,8 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { successResponse, databaseError } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 /**
@@ -18,32 +14,25 @@ import { logger } from "@/lib/logger";
  * 为当前用户初始化预设智能列表
  * 如果用户已有预设，则不会重复创建
  */
-export async function POST(_request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 调用存储过程初始化预设
     // 类型断言: 手动维护类型文件时需要此断言
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: insertedCount, error: initError } = await (supabase.rpc as any)(
-      "init_smart_list_presets",
-      { p_user_id: user.id },
-    ) as { data: number | null; error: { message: string } | null };
+    const { data: insertedCount, error: initError } = (await (
+      supabase.rpc as any
+    )("init_smart_list_presets", { p_user_id: userId })) as {
+      data: number | null;
+      error: { message: string } | null;
+    };
 
     if (initError) {
       logger.error(
         {
           error: initError,
-          userId: user.id,
+          userId,
           operation: "init_smart_list_presets",
         },
         "Failed to initialize smart list presets",
@@ -53,12 +42,17 @@ export async function POST(_request: NextRequest) {
 
     // 3. 查询所有预设列表返回给前端
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: presets, error: queryError } = await (supabase.from("smart_lists") as any)
+    const { data: presets, error: queryError } = (await (
+      supabase.from("smart_lists") as any
+    )
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("is_preset", true)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true }) as { data: Record<string, unknown>[] | null; error: { message: string } | null };
+      .order("sort_order", { ascending: true })) as {
+      data: Record<string, unknown>[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       return databaseError("查询预设列表失败", queryError);
@@ -66,7 +60,7 @@ export async function POST(_request: NextRequest) {
 
     logger.info(
       {
-        userId: user.id,
+        userId,
         insertedCount,
         totalPresets: presets?.length ?? 0,
         action: "smart_list_presets_initialized",
@@ -78,15 +72,5 @@ export async function POST(_request: NextRequest) {
       created: insertedCount ?? 0,
       presets: presets ?? [],
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "init_smart_list_presets",
-      },
-      "POST /api/smart-lists/init-presets error",
-    );
-    return internalError("初始化预设失败");
-  }
-}
+  },
+);

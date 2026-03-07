@@ -9,26 +9,17 @@
  * @since 2025-12-11
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { successResponse, badRequestError, internalError, unauthorizedError } from "@/lib/utils/api-response";
-import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 import type { NextRequest } from "next/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, badRequestError } from "@/lib/utils/api-response";
+import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 
 /**
  * GET /api/sources
  * 获取来源画像
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const url = searchParams.get("url");
     const sourceId = searchParams.get("sourceId");
@@ -37,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // 查询特定 URL 的匹配
     if (url) {
-      const match = await sourceProfileService.getQuickMatch(user.id, url);
+      const match = await sourceProfileService.getQuickMatch(userId, url);
       return successResponse({
         type: "match",
         url,
@@ -47,7 +38,10 @@ export async function GET(request: NextRequest) {
 
     // 查询特定来源
     if (sourceId) {
-      const profile = await sourceProfileService.findBySourceId(user.id, sourceId);
+      const profile = await sourceProfileService.findBySourceId(
+        userId,
+        sourceId,
+      );
       if (!profile) {
         return successResponse({
           type: "profile",
@@ -63,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 查询所有来源画像
-    const profiles = await sourceProfileService.findAllByUserId(user.id);
+    const profiles = await sourceProfileService.findAllByUserId(userId);
 
     // 简单分页
     const paginatedProfiles = profiles.slice(offset, offset + limit);
@@ -87,27 +81,15 @@ export async function GET(request: NextRequest) {
             : 0,
       },
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`获取来源画像失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/sources?sourceId=xxx
  * 删除来源画像
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const DELETE = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const { searchParams } = new URL(request.url);
     const sourceId = searchParams.get("sourceId");
 
@@ -115,33 +97,21 @@ export async function DELETE(request: NextRequest) {
       return badRequestError("缺少 sourceId 参数");
     }
 
-    await sourceProfileService.delete(user.id, sourceId);
+    await sourceProfileService.delete(userId, sourceId);
 
     return successResponse({
       deleted: true,
       sourceId,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`删除来源画像失败: ${message}`);
-  }
-}
+  },
+);
 
 /**
  * PATCH /api/sources
  * 更新来源可信度
  */
-export async function PATCH(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const PATCH = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const body = await request.json();
     const { sourceId, trustAdjustment, domains } = body;
 
@@ -151,23 +121,24 @@ export async function PATCH(request: NextRequest) {
 
     // 更新可信度
     if (typeof trustAdjustment === "number") {
-      await sourceProfileService.updateTrustScore(user.id, sourceId, trustAdjustment);
+      await sourceProfileService.updateTrustScore(
+        userId,
+        sourceId,
+        trustAdjustment,
+      );
     }
 
     // 更新领域标签
     if (Array.isArray(domains) && domains.length > 0) {
-      await sourceProfileService.addDomains(user.id, sourceId, domains);
+      await sourceProfileService.addDomains(userId, sourceId, domains);
     }
 
     // 返回更新后的画像
-    const profile = await sourceProfileService.findBySourceId(user.id, sourceId);
+    const profile = await sourceProfileService.findBySourceId(userId, sourceId);
 
     return successResponse({
       updated: true,
       profile,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return internalError(`更新来源画像失败: ${message}`);
-  }
-}
+  },
+);

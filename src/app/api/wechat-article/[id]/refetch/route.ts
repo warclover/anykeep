@@ -5,19 +5,15 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { wechatArticleService } from "@/lib/wechat-article";
-import {
-  successResponse,
-  errorResponse,
-  unauthorizedError,
-} from "@/lib/utils/api-response";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   validateId,
   safeParseBody,
   refetchArticleSchema,
 } from "@/lib/wechat-article/validation";
-import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -33,19 +29,9 @@ export const dynamic = "force-dynamic";
  * - imagesOnly?: boolean - 仅更新图片
  * - styleLevel?: 'text-only' | 'full-snapshot' - 样式保留级别
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError();
-    }
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
 
     const { id } = await params;
     const snapshotId = validateId(id);
@@ -59,7 +45,7 @@ export async function POST(
       .from("bookmark_snapshots")
       .select("id")
       .eq("id", snapshotId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (snapshotError || !snapshot) {
@@ -84,15 +70,5 @@ export async function POST(
     });
 
     return successResponse(result);
-  } catch (error) {
-    logger.error(
-      { error },
-      "[API] POST /api/wechat-article/[id]/refetch error",
-    );
-    return errorResponse(
-      "REFETCH_FAILED",
-      error instanceof Error ? error.message : "重新获取失败",
-      500,
-    );
-  }
-}
+  },
+);

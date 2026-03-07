@@ -6,20 +6,16 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { wechatArticleService } from "@/lib/wechat-article";
-import {
-  successResponse,
-  errorResponse,
-  unauthorizedError,
-} from "@/lib/utils/api-response";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   validateId,
   safeParseBody,
   crawlArticleSchema,
 } from "@/lib/wechat-article/validation";
 import type { Platform } from "@/types/supabase";
-import { logger } from "@/lib/logger";
 
 // Supabase join 查询结果类型
 interface SnapshotWithBookmark {
@@ -82,19 +78,9 @@ function replaceWithPersistedUrls(
  * GET /api/wechat-article/[id]
  * 获取微信文章内容
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError();
-    }
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
 
     const { id } = await params;
     const snapshotId = validateId(id);
@@ -108,7 +94,7 @@ export async function GET(
       .from("bookmark_snapshots")
       .select("id")
       .eq("id", snapshotId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (snapshotError || !snapshot) {
@@ -133,15 +119,8 @@ export async function GET(
     };
 
     return successResponse(processedContent);
-  } catch (error) {
-    logger.error({ error }, "[API] GET /api/wechat-article/[id] error");
-    return errorResponse(
-      "INTERNAL_ERROR",
-      error instanceof Error ? error.message : "获取文章失败",
-      500,
-    );
-  }
-}
+  },
+);
 
 /**
  * POST /api/wechat-article/[id]
@@ -150,19 +129,9 @@ export async function GET(
  * 样式选项升级：支持 styleLevel 参数
  * @body {styleLevel?: 'text-only' | 'full-snapshot'} - 样式保留级别
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return unauthorizedError();
-    }
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
 
     const { id } = await params;
     const snapshotId = validateId(id);
@@ -182,12 +151,12 @@ export async function POST(
       .from("bookmark_snapshots")
       .select(
         `
-        id,
-        bookmarks!inner(platform)
-      `,
+      id,
+      bookmarks!inner(platform)
+    `,
       )
       .eq("id", snapshotId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (snapshotError || !snapshot) {
@@ -213,12 +182,5 @@ export async function POST(
         .length,
       styleLevel: content.styleLevel,
     });
-  } catch (error) {
-    logger.error({ error }, "[API] POST /api/wechat-article/[id] error");
-    return errorResponse(
-      "CRAWL_FAILED",
-      error instanceof Error ? error.message : "抓取失败",
-      500,
-    );
-  }
-}
+  },
+);

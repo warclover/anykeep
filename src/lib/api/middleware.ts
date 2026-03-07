@@ -16,6 +16,7 @@ import { withAuth as getAuth } from "./auth-middleware";
 import { ServiceError, SERVICE_ERROR_HTTP_STATUS } from "@/services/core";
 import { createLogger } from "@/lib/logger";
 import { API_ERROR_CODES } from "@/lib/utils/api-response";
+import { createClient } from "@/lib/supabase/server";
 
 const logger = createLogger("api-middleware");
 
@@ -41,7 +42,34 @@ export interface RouteContext<TParams = Record<string, string>> {
 export type AuthenticatedHandler<TParams = Record<string, string>> = (
   request: NextRequest,
   context: AuthContext & RouteContext<TParams>,
-) => Promise<NextResponse>;
+) => Promise<NextResponse | Response>;
+
+/**
+ * 获取完整 User 对象
+ *
+ * 用于极少数需要完整 Supabase User 的场景（如包含 refresh token 等信息）。
+ * 大多数路由应直接使用 AuthContext 中的 user（已在 JWT 快速路径构造简化 User）。
+ *
+ * @param userId - 当前认证用户 ID
+ * @throws ServiceError 如果无法获取用户
+ *
+ * @example
+ * export const DELETE = withAuthMiddleware(async (request, { userId }) => {
+ *   const fullUser = await ensureFullUser(userId);
+ *   // 使用 fullUser 的完整属性...
+ * });
+ */
+export async function ensureFullUser(_userId: string): Promise<User> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new ServiceError("UNAUTHORIZED", "Cannot retrieve user");
+  }
+  return user;
+}
 
 /**
  * 认证中间件
@@ -61,7 +89,7 @@ export function withAuthMiddleware<TParams = Record<string, string>>(
   return async (
     request: NextRequest,
     context?: RouteContext<TParams>,
-  ): Promise<NextResponse> => {
+  ): Promise<NextResponse | Response> => {
     const startTime = Date.now();
     const method = request.method;
     const url = request.url;

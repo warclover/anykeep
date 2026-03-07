@@ -11,13 +11,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-import {
-  getTTSService,
-  getTTSCacheService,
-  TTSError,
-  TTS_ERROR_CODES,
-} from "@/lib/tts";
+import { getTTSService, getTTSCacheService, TTS_ERROR_CODES } from "@/lib/tts";
 import type {
   TTSAPIResponse,
   TTSContentType,
@@ -154,32 +150,10 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
  *
  * 语音合成 API（带缓存优化）
  */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  const timings: Record<string, number> = {};
-
-  try {
-    // 1. 验证用户身份
-    const authStart = Date.now();
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    timings.auth = Date.now() - authStart;
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: TTS_ERROR_CODES.UNAUTHORIZED,
-            message: "请先登录",
-          },
-        },
-        { status: 401 },
-      );
-    }
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const startTime = Date.now();
+    const timings: Record<string, number> = {};
 
     // 2. 解析和验证请求体
     const parseStart = Date.now();
@@ -233,7 +207,7 @@ export async function POST(request: NextRequest) {
     const cacheStart = Date.now();
     const cacheService = getTTSCacheService();
     const cacheKey: TTSCacheKey = {
-      userId: user.id,
+      userId,
       bookmarkId,
       contentType,
       voice: selectedVoice,
@@ -249,7 +223,7 @@ export async function POST(request: NextRequest) {
       logger.info(
         {
           module: MODULE_NAME,
-          userId: user.id,
+          userId,
           bookmarkId,
           contentType,
           cacheHit: true,
@@ -279,7 +253,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         module: MODULE_NAME,
-        userId: user.id,
+        userId,
         bookmarkId,
         contentType,
         speed: finalSpeed,
@@ -289,12 +263,13 @@ export async function POST(request: NextRequest) {
     );
 
     // 5. 获取书签数据（验证所有权）
+    const supabase = await createClient();
     const dbStart = Date.now();
     const bookmarkResult = await supabase
       .from("bookmarks")
       .select("id, title, ai_summary")
       .eq("id", bookmarkId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single();
 
@@ -310,7 +285,7 @@ export async function POST(request: NextRequest) {
       logger.warn(
         {
           module: MODULE_NAME,
-          userId: user.id,
+          userId,
           bookmarkId,
           error: bookmarkError?.message,
         },
@@ -433,7 +408,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         module: MODULE_NAME,
-        userId: user.id,
+        userId,
         bookmarkId,
         contentType,
         charCount: ttsResult.charCount,
@@ -461,65 +436,8 @@ export async function POST(request: NextRequest) {
       data: response,
       cached: false,
     });
-  } catch (error) {
-    const totalLatency = Date.now() - startTime;
-
-    // 处理 TTS 错误
-    if (error instanceof TTSError) {
-      logger.warn(
-        {
-          module: MODULE_NAME,
-          code: error.code,
-          message: error.message,
-          timings,
-          totalLatencyMs: totalLatency,
-        },
-        "TTS error",
-      );
-
-      const statusMap: Record<string, number> = {
-        [TTS_ERROR_CODES.API_KEY_MISSING]: 503,
-        [TTS_ERROR_CODES.TEXT_EMPTY]: 400,
-        [TTS_ERROR_CODES.TEXT_TOO_LONG]: 400,
-        [TTS_ERROR_CODES.NETWORK_ERROR]: 502,
-      };
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        },
-        { status: statusMap[error.code] || 500 },
-      );
-    }
-
-    // 未知错误
-    logger.error(
-      {
-        module: MODULE_NAME,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        timings,
-        totalLatencyMs: totalLatency,
-      },
-      "TTS unexpected error",
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "语音合成服务异常，请稍后重试",
-        },
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * OPTIONS /api/tts

@@ -7,15 +7,14 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
-  unauthorizedError,
   databaseError,
-  internalError,
   badRequestError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { FOLDER } from "@/lib/constants/messages";
+import {} from "@/lib/constants/messages";
 
 /**
  * 排序更新请求体
@@ -42,18 +41,9 @@ interface BatchReorderResult {
  * PUT /api/folders/reorder
  * 批量更新文件夹排序
  */
-export async function PUT(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const PUT = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析请求体
     const body = (await request.json()) as ReorderRequest;
@@ -69,13 +59,13 @@ export async function PUT(request: NextRequest) {
     // 3. 使用事务函数执行原子批量排序
     // 注意：直接传送数组对象，Supabase 会自动序列化为 JSONB
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)(
+    const { data: rpcResult, error: rpcError } = (await (supabase.rpc as any)(
       "batch_reorder_folders",
       {
-        p_user_id: user.id,
+        p_user_id: userId,
         p_updates: body.updates,
       },
-    ) as { data: unknown; error: { message: string } | null };
+    )) as { data: unknown; error: { message: string } | null };
 
     if (rpcError) {
       logger.error(
@@ -114,7 +104,7 @@ export async function PUT(request: NextRequest) {
     if (isPartialSuccess) {
       logger.warn(
         {
-          userId: user.id,
+          userId,
           requestedCount,
           updatedCount,
           action: "folders_reordered_partial",
@@ -124,7 +114,7 @@ export async function PUT(request: NextRequest) {
     } else {
       logger.info(
         {
-          userId: user.id,
+          userId,
           requestedCount,
           updatedCount,
           action: "folders_reordered",
@@ -140,15 +130,5 @@ export async function PUT(request: NextRequest) {
       // 向前端报告是否有部分失败
       partialSuccess: isPartialSuccess,
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "reorder_folders",
-      },
-      "PUT /api/folders/reorder error",
-    );
-    return internalError(FOLDER.UPDATE_ERROR);
-  }
-}
+  },
+);

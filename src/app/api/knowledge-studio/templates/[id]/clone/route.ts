@@ -4,46 +4,30 @@
  * @description 克隆模板
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
 
+import { withAuthMiddleware } from "@/lib/api/middleware";
 const logger = createLogger("api:knowledge-studio:templates:[id]:clone");
 
 // 类型定义
 type TemplateRow = Database["public"]["Tables"]["ks_custom_templates"]["Row"];
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * POST /api/knowledge-studio/templates/[id]/clone
  * 克隆模板
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  try {
+export const POST = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
     const body = await request.json().catch(() => ({}));
     const { newName } = body;
 
     logger.info(
-      { userId: user.id, templateId: id, newName },
+      { userId: userId, templateId: id, newName },
       "Cloning template",
     );
 
@@ -89,14 +73,5 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const template = clonedTemplate as TemplateRow | null;
 
     return NextResponse.json({ data: template }, { status: 201 });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "Clone template failed",
-    );
-    return NextResponse.json(
-      { error: { code: "INTERNAL_ERROR", message: "克隆模板失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

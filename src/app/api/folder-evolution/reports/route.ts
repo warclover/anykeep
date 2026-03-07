@@ -6,11 +6,10 @@
 
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   internalError,
 } from "@/lib/utils/api-response";
 import { reportService } from "@/lib/classification/services/report.service";
@@ -20,18 +19,8 @@ import { logger } from "@/lib/logger";
  * GET /api/folder-evolution/reports
  * Get user's evolution reports
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // Get optional month filter
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
@@ -39,11 +28,11 @@ export async function GET(request: NextRequest) {
 
     if (month) {
       // Get specific month's report
-      const report = await reportService.getReport(user.id, month);
+      const report = await reportService.getReport(userId, month);
 
       if (report) {
         // Mark as viewed
-        await reportService.markReportViewed(user.id, report.id);
+        await reportService.markReportViewed(userId, report.id);
       }
 
       return successResponse({
@@ -52,20 +41,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all reports
-    const reports = await reportService.getReports(user.id, limit);
+    const reports = await reportService.getReports(userId, limit);
 
     return successResponse({
       reports,
       count: reports.length,
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "GET /api/folder-evolution/reports error",
-    );
-    return internalError("获取报告失败");
-  }
-}
+  },
+);
 
 /**
  * Request body schema for POST
@@ -82,18 +65,8 @@ const generateReportSchema = z.object({
  * POST /api/folder-evolution/reports
  * Generate a new monthly report
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError("请先登录");
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     // Validate request body
     const body = await request.json();
     const validation = generateReportSchema.safeParse(body);
@@ -105,7 +78,7 @@ export async function POST(request: NextRequest) {
     const { month, forceRegenerate } = validation.data;
 
     // Generate report
-    const report = await reportService.generateMonthlyReport(user.id, month, {
+    const report = await reportService.generateMonthlyReport(userId, month, {
       forceRegenerate,
     });
 
@@ -114,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info(
-      { userId: user.id, month: report.reportMonth },
+      { userId, month: report.reportMonth },
       "Evolution report generated",
     );
 
@@ -122,11 +95,5 @@ export async function POST(request: NextRequest) {
       report,
       message: "报告生成成功",
     });
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "POST /api/folder-evolution/reports error",
-    );
-    return internalError("生成报告失败");
-  }
-}
+  },
+);

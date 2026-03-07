@@ -6,18 +6,15 @@
  * DELETE /api/bookmarks/[id] - 删除收藏
  */
 
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { updateBookmarkSchema, patchBookmarkSchema } from "@/lib/validation";
 import {
   successResponse,
   handleValidationError,
-  unauthorizedError,
   notFoundError,
   forbiddenError,
   databaseError,
-  internalError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { BookmarkUpdate } from "@/types/supabase";
@@ -25,6 +22,7 @@ import { BOOKMARK, AUTH } from "@/lib/constants/messages";
 import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
 import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
 import { BOOKMARK_DETAIL_FIELDS } from "@/lib/constants/query-fields";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 // NOTE: 公共类型已提取到 @/types/api-helpers，后续重构时使用
 
 /**
@@ -47,11 +45,8 @@ function generateDataVersion(): string {
  * GET /api/bookmarks/[id]
  * 获取单个收藏详情
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
 
@@ -59,24 +54,14 @@ export async function GET(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
     // 2. 查询收藏详情
+    const supabase = await createClient();
     // V4.2.1: 使用统一字段常量
     const { data: bookmark, error: queryError } = await supabase
       .from("bookmarks")
       .select(BOOKMARK_DETAIL_FIELDS)
       .eq("id", bookmarkId)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single();
 
@@ -97,44 +82,20 @@ export async function GET(
         },
       },
     );
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_bookmark",
-      },
-      "GET /api/bookmarks/[id] error",
-    );
-    return internalError(BOOKMARK.LOAD_ERROR);
-  }
-}
+  },
+);
 
 /**
  * PUT /api/bookmarks/[id]
  * 更新收藏信息
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PUT = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
 
     if (isNaN(bookmarkId)) {
       return notFoundError(BOOKMARK.NOT_FOUND);
-    }
-
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
     }
 
     // 2. 解析并验证请求体
@@ -157,6 +118,7 @@ export async function PUT(
     } = validation.data;
 
     // 3. 检查收藏是否存在且属于当前用户（包含 folder_id + ai_tags 用于 profile 更新和学习）
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
@@ -184,7 +146,7 @@ export async function PUT(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    if (existingBookmark.user_id !== user.id) {
+    if (existingBookmark.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -231,7 +193,7 @@ export async function PUT(
       updateFolderProfilesOnBookmarkChange(
         [originalFolderId],
         folderId,
-        user.id,
+        userId,
       ).catch((err) => {
         logger.warn(
           { error: err },
@@ -241,7 +203,7 @@ export async function PUT(
 
       // 5.6 异步触发 AI 学习（不阻塞响应）
       triggerMoveLearning({
-        userId: user.id,
+        userId,
         bookmarks: [
           {
             id: bookmarkId,
@@ -260,29 +222,16 @@ export async function PUT(
 
     // 6. 返回更新后的收藏
     return successResponse(updatedBookmark);
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "update_bookmark",
-      },
-      "PUT /api/bookmarks/[id] error",
-    );
-    return internalError(BOOKMARK.UPDATE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * PATCH /api/bookmarks/[id]
  * 切换已读状态或星标状态
  * V8.0: 支持星标/Pin置顶功能
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
 
@@ -290,18 +239,8 @@ export async function PATCH(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
     // 2. 解析并验证请求体
+    const supabase = await createClient();
     const body = await request.json();
     const validation = patchBookmarkSchema.safeParse(body);
 
@@ -334,7 +273,7 @@ export async function PATCH(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    if (existingBookmark.user_id !== user.id) {
+    if (existingBookmark.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -390,28 +329,15 @@ export async function PATCH(
       ...(updatedBookmark as Record<string, unknown>),
       dataVersion: generateDataVersion(),
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "patch_bookmark_status",
-      },
-      "PATCH /api/bookmarks/[id] error",
-    );
-    return internalError(BOOKMARK.UPDATE_ERROR);
-  }
-}
+  },
+);
 
 /**
  * DELETE /api/bookmarks/[id]
  * 删除收藏（移入垃圾箱，30天后永久删除）
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request, { userId, params }) => {
     const { id } = await params;
     const bookmarkId = parseInt(id);
     logger.debug(
@@ -426,27 +352,8 @@ export async function DELETE(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    // 1. 验证用户身份
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    logger.debug(
-      {
-        userId: user?.id,
-        authError: authError?.message,
-        action: "auth_check",
-      },
-      "DELETE: User authentication",
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
-
     // 2. 检查收藏是否存在且属于当前用户（包含 folder_id 用于 profile 更新）
+    const supabase = await createClient();
     // 类型断言: 手动维护类型文件时需要此断言
     const { data: existingBookmark, error: checkError } = (await supabase
       .from("bookmarks")
@@ -484,7 +391,7 @@ export async function DELETE(
       return notFoundError(BOOKMARK.NOT_FOUND);
     }
 
-    if (existingBookmark.user_id !== user.id) {
+    if (existingBookmark.user_id !== userId) {
       return forbiddenError(AUTH.FORBIDDEN);
     }
 
@@ -503,7 +410,7 @@ export async function DELETE(
         trashed_at: new Date().toISOString(),
       })
       .eq("id", bookmarkId)
-      .eq("user_id", user.id); // 双重保险：即使用 Service Client 也验证所有权
+      .eq("user_id", userId); // 双重保险：即使用 Service Client 也验证所有权
 
     logger.debug(
       {
@@ -522,7 +429,7 @@ export async function DELETE(
       updateFolderProfilesOnBookmarkChange(
         [existingBookmark.folder_id],
         null, // 移入垃圾箱，无目标文件夹
-        user.id,
+        userId,
       ).catch((err) => {
         logger.warn(
           { error: err },
@@ -550,15 +457,5 @@ export async function DELETE(
       message: "已移入垃圾箱，30天后自动永久删除",
       dataVersion: generateDataVersion(),
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "delete_bookmark",
-      },
-      "DELETE /api/bookmarks/[id] error",
-    );
-    return internalError(BOOKMARK.DELETE_ERROR(1));
-  }
-}
+  },
+);

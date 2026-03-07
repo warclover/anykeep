@@ -15,57 +15,32 @@ import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getConfigCenter } from "@/lib/classification/services/advanced";
-import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 const configActionSchema = z.object({
   action: z.enum(["refresh", "clear_cache"]),
 });
 
 /**
- * 检查用户是否为管理员
- * 通过环境变量 ADMIN_EMAILS 配置，逗号分隔
- */
-function isAdminUser(email: string | undefined): boolean {
-  if (!email) return false;
-  const adminEmails =
-    process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ||
-    [];
-  // 开发环境默认允许所有用户访问（便于调试）
-  if (process.env.NODE_ENV === "development" && adminEmails.length === 0) {
-    return true;
-  }
-  return adminEmails.includes(email.toLowerCase());
-}
-
-/**
  * GET - 获取配置
  */
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { user }) => {
     // 验证管理员权限
+    if (!user?.email) {
+      return forbiddenError("Forbidden - Admin access required");
+    }
     if (!isAdminUser(user.email)) {
-      return NextResponse.json(
-        { error: "Forbidden - Admin access required" },
-        { status: 403 },
-      );
+      return forbiddenError("Forbidden - Admin access required");
     }
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "all";
 
+    const supabase = await createClient();
     const configCenter = getConfigCenter(supabase);
 
     switch (type) {
@@ -137,38 +112,20 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-  } catch (error) {
-    logger.error({ error }, "Classification config API error");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * POST - 管理操作
  */
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-
-    // 验证用户身份
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { user }) => {
     // 验证管理员权限
+    if (!user?.email) {
+      return forbiddenError("Forbidden - Admin access required");
+    }
     if (!isAdminUser(user.email)) {
-      return NextResponse.json(
-        { error: "Forbidden - Admin access required" },
-        { status: 403 },
-      );
+      return forbiddenError("Forbidden - Admin access required");
     }
 
     const body = await request.json();
@@ -186,6 +143,7 @@ export async function POST(request: NextRequest) {
 
     const { action } = parseResult.data;
 
+    const supabase = await createClient();
     const configCenter = getConfigCenter(supabase);
 
     switch (action) {
@@ -212,14 +170,8 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
     }
-  } catch (error) {
-    logger.error({ error }, "Classification config API error");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
-}
+  },
+);
 
 /**
  * 辅助函数：按组分类

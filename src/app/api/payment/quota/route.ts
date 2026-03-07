@@ -3,29 +3,17 @@
  * GET /api/payment/quota - 查询当前配额使用情况
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { quotaService } from "@/lib/payment/services/quota.service";
-import { logger } from "@/lib/logger";
 
 /**
  * GET - 获取当前用户配额使用情况
  */
-export async function GET() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "请先登录" } },
-        { status: 401 },
-      );
-    }
-
-    const quota = await quotaService.getQuotaUsage(user.id);
+export const GET = withAuthMiddleware(
+  async (_request: NextRequest, { userId }) => {
+    const quota = await quotaService.getQuotaUsage(userId);
 
     return NextResponse.json({
       success: true,
@@ -67,11 +55,5 @@ export async function GET() {
         isOverLimit: quota.isOverLimit,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[Quota GET] Error:");
-    return NextResponse.json(
-      { error: { code: "FETCH_FAILED", message: "获取配额信息失败" } },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

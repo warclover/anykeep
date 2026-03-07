@@ -12,9 +12,9 @@ import {
   getFeatureFlag,
   RolloutStage,
 } from "@/lib/classification/infrastructure/rollout/feature-flag";
-import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/auth/admin-check";
-import { logger } from "@/lib/logger";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { forbiddenError } from "@/lib/utils/api-response";
 
 /**
  * 请求验证 Schema
@@ -23,25 +23,14 @@ const UpdateStageSchema = z.object({
   stage: z.nativeEnum(RolloutStage),
 });
 
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份（仅管理员可访问）
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未授权" }, { status: 401 });
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId, user }) => {
+    // 管理员权限检查
+    if (!user?.email) {
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
-
-    // 检查用户是否为管理员
     if (!isAdminUser(user.email)) {
-      return NextResponse.json(
-        { error: "权限不足 - 需要管理员权限" },
-        { status: 403 },
-      );
+      return forbiddenError("权限不足 - 需要管理员权限");
     }
 
     // 2. 解析请求体
@@ -67,7 +56,7 @@ export async function POST(request: NextRequest) {
     featureFlag.setStage(stage);
 
     console.info("更新发布阶段", {
-      userId: user.id,
+      userId,
       oldStage,
       newStage: stage,
     });
@@ -81,14 +70,5 @@ export async function POST(request: NextRequest) {
         config: featureFlag.getConfig(),
       },
     });
-  } catch (error) {
-    logger.error({ error }, "更新发布阶段失败:");
-    return NextResponse.json(
-      {
-        error: "更新发布阶段失败",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

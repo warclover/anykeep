@@ -1,5 +1,8 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 import type { Json } from "@/types/supabase.generated";
 
@@ -13,24 +16,15 @@ const createFeedbackSchema = z.object({
   attachments: z.array(z.string()).optional(),
 });
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
-  // 认证检查
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  try {
     const body = await request.json();
     const validation = createFeedbackSchema.safeParse(body);
 
     if (!validation.success) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
           error: "参数无效",
@@ -47,7 +41,7 @@ export async function POST(request: Request) {
 
     // 准备插入数据，确保 attachments 是数组格式
     const insertData = {
-      user_id: user.id,
+      user_id: userId,
       type: validatedData.type,
       category: validatedData.category || null,
       title: validatedData.title,
@@ -67,60 +61,28 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     logger.info(
-      { feedbackId: feedback.id, type: validatedData.type, userId: user.id },
+      { feedbackId: feedback.id, type: validatedData.type, userId },
       "[UserFeedback] 反馈创建成功",
     );
 
-    return Response.json({ success: true, data: feedback });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorDetails =
-      error && typeof error === "object" && "code" in error
-        ? { code: error.code, message: errorMessage }
-        : { message: errorMessage };
+    return NextResponse.json({ success: true, data: feedback });
+  },
+);
 
-    logger.error(
-      {
-        error: errorDetails,
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "[UserFeedback] 创建失败",
-    );
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const supabase = await createClient();
 
-    return Response.json(
-      {
-        success: false,
-        error: "提交失败，请稍后重试",
-        details:
-          process.env.NODE_ENV === "development" ? errorDetails : undefined,
-      },
-      { status: 500 },
-    );
-  }
-}
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const pageSize = parseInt(searchParams.get("page_size") || "10");
+    const type = searchParams.get("type");
+    const status = searchParams.get("status");
 
-export async function GET(request: Request) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const pageSize = parseInt(searchParams.get("page_size") || "10");
-  const type = searchParams.get("type");
-  const status = searchParams.get("status");
-
-  try {
     let query = supabase
       .from("user_feedbacks")
       .select("*", { count: "exact" })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -130,7 +92,7 @@ export async function GET(request: Request) {
     const { data, count, error } = await query;
     if (error) throw error;
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: {
         feedbacks: data,
@@ -139,14 +101,5 @@ export async function GET(request: Request) {
         page_size: pageSize,
       },
     });
-  } catch (error) {
-    logger.error({ error }, "[UserFeedback] 查询失败");
-    return Response.json(
-      {
-        success: false,
-        error: "查询失败",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

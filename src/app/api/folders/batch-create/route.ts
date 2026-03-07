@@ -5,12 +5,8 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  successResponse,
-  unauthorizedError,
-  databaseError,
-  badRequestError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { successResponse, badRequestError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { FOLDER } from "@/lib/constants/messages";
 
@@ -38,18 +34,9 @@ interface CreateResult {
  * POST /api/folders/batch-create
  * 批量创建文件夹
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 1. 验证用户身份
+export const POST = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
 
     // 2. 解析请求体
     let body: { folders: unknown };
@@ -106,7 +93,7 @@ export async function POST(request: NextRequest) {
         let query = supabase
           .from("folders")
           .select("id")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("name", folder.name)
           .is("deleted_at", null);
 
@@ -144,7 +131,7 @@ export async function POST(request: NextRequest) {
           ) /* eslint-disable-line @typescript-eslint/no-explicit-any */ as any
         )
           .insert({
-            user_id: user.id,
+            user_id: userId,
             name: folder.name,
             parent_id: actualParentId,
           })
@@ -220,13 +207,5 @@ export async function POST(request: NextRequest) {
       message:
         result.failed === 0 ? FOLDER.CREATE_SUCCESS : "部分文件夹创建失败",
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Batch folder create: Unexpected error",
-    );
-    return databaseError(FOLDER.CREATE_ERROR);
-  }
-}
+  },
+);

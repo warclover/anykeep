@@ -12,12 +12,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedUser } from "@/lib/supabase/cached-auth";
-import {
-  unauthorizedError,
-  databaseError,
-  internalError,
-} from "@/lib/utils/api-response";
+import { withAuthMiddleware } from "@/lib/api/middleware";
+import { databaseError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 import type { FolderWithStats, FolderCategory } from "@/types/domain";
@@ -34,35 +30,6 @@ import type { Bookmark } from "@/types/supabase";
 const CACHE_CONTROL_HEADER = "private, max-age=60, stale-while-revalidate=30";
 
 /**
- * 聚合���询返回的文件夹数据类型
- */
-interface _FolderWithStatsRow {
-  id: number;
-  user_id: string;
-  name: string;
-  parent_id: number | null;
-  is_system: boolean;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  is_archived: boolean | null;
-  is_locked: boolean | null;
-  folder_group: string | null;
-  sort_order: number | null;
-  system_type: string | null;
-  source: string | null;
-  // Crystal Growth 字段
-  ai_generation_source: string | null;
-  crystal_birth_time: string | null;
-  is_ai_generated: boolean | null;
-  is_naming_pending: boolean | null;
-  origin_bookmark_ids: number[] | null;
-  // 聚合统计字段
-  bookmark_count: number;
-  today_count: number;
-}
-
-/**
  * GET /api/folders/with-stats
  * 获取文件夹列表及书签统计（优化版：单次查询）
  *
@@ -70,18 +37,9 @@ interface _FolderWithStatsRow {
  * - include_recent: boolean - 是否包含最近书签（默认 true）
  * - recent_limit: number - 最近书签数量（默认 6）
  */
-export async function GET(request: NextRequest) {
-  const monitor = new PerformanceMonitor("FoldersWithStats");
-
-  try {
-    // 1. 验证用户身份
-    const { user, error: authError } = await monitor.measure("CachedAuth", () =>
-      getCachedUser(),
-    );
-
-    if (authError || !user) {
-      return unauthorizedError();
-    }
+export const GET = withAuthMiddleware(
+  async (request: NextRequest, { userId }) => {
+    const monitor = new PerformanceMonitor("FoldersWithStats");
 
     const supabase = await monitor.measure("CreateClient", () =>
       createClient(),
@@ -95,7 +53,7 @@ export async function GET(request: NextRequest) {
       20,
     );
 
-    monitor.mark("AuthComplete", { userId: user.id });
+    monitor.mark("AuthComplete", { userId });
 
     // 2. 使用 RPC 或原生 SQL 进行聚合查询
     // 由于 Supabase JS SDK 不直接支持复杂聚合，使用分步但并行的方式
@@ -112,7 +70,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from("folders")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .is("deleted_at", null)
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: true }),
@@ -121,7 +79,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from("bookmarks")
           .select("folder_id, created_at")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .is("deleted_at", null)
           .not("folder_id", "is", null),
 
@@ -130,14 +88,14 @@ export async function GET(request: NextRequest) {
           ? supabase
               .from("bookmarks")
               .select("*, folders!bookmarks_folder_id_fkey(name)")
-              .eq("user_id", user.id)
+              .eq("user_id", userId)
               .is("deleted_at", null)
               .order("created_at", { ascending: false })
               .limit(recentLimit)
           : Promise.resolve({ data: [], error: null }),
 
         // 查询 4：获取栏目列表（如果没有则自动创建默认栏目）
-        ensureDefaultCategories(supabase, user.id),
+        ensureDefaultCategories(supabase, userId),
       ]);
 
     monitor.mark("ParallelQueries", {
@@ -247,7 +205,7 @@ export async function GET(request: NextRequest) {
     const perfReport = monitor.getReport();
     logger.info(
       {
-        userId: user.id,
+        userId,
         folderCount: folders.length,
         bookmarkCount: statsResult.data?.length || 0,
         performance: {
@@ -278,20 +236,5 @@ export async function GET(request: NextRequest) {
         },
       },
     );
-  } catch (error) {
-    const perfReport = monitor.getReport();
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: "get_folders_with_stats",
-        performance: {
-          totalMs: Math.round(perfReport.totalDuration),
-          failedAt: perfReport.entries[perfReport.entries.length - 1]?.name,
-        },
-      },
-      "GET /api/folders/with-stats error",
-    );
-    return internalError("加载文件夹统计失败");
-  }
-}
+  },
+);

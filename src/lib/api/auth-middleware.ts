@@ -74,10 +74,19 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
     const localResult = await verifyJwtLocally(token);
 
     if (localResult.valid && !localResult.nearExpiry) {
-      // 快速路径：本地验证成功且 Token 未即���过期
+      // 快速路径：本地验证成功且 Token 未即将过期
       const duration = performance.now() - startTime;
+      // 构造简化 User 对象（与 getCachedUser 对齐，提供 email 等字段）
+      const localUser: User = {
+        id: localResult.userId!,
+        email: localResult.payload?.email,
+        app_metadata: localResult.payload?.app_metadata || {},
+        user_metadata: localResult.payload?.user_metadata || {},
+        aud: "authenticated",
+        created_at: "",
+      } as User;
       return {
-        user: null, // 本地验证不返回完整 user 对象
+        user: localUser,
         userId: localResult.userId,
         error: null,
         method: "token",
@@ -152,8 +161,17 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
       if (localResult.valid && !localResult.nearExpiry) {
         // 快速路径：本地验证成功且 Token 未即将过期
         const duration = performance.now() - startTime;
+        // 构造简化 User 对象（与 getCachedUser 对齐，提供 email 等字段）
+        const localUser: User = {
+          id: localResult.userId!,
+          email: localResult.payload?.email,
+          app_metadata: localResult.payload?.app_metadata || {},
+          user_metadata: localResult.payload?.user_metadata || {},
+          aud: "authenticated",
+          created_at: "",
+        } as User;
         return {
-          user: null,
+          user: localUser,
           userId: localResult.userId,
           error: null,
           method: "cookie",
@@ -233,32 +251,6 @@ export async function getUserId(request: NextRequest): Promise<string | null> {
   const { userId, error } = await withAuth(request);
   if (error) return null;
   return userId;
-}
-
-/**
- * 认证装饰器（用于包装 API 处理函数）
- *
- * @example
- * export const GET = withAuthHandler(async (request, { user, userId }) => {
- *   const bookmarks = await getBookmarks(userId);
- *   return NextResponse.json({ data: bookmarks });
- * });
- */
-export function withAuthHandler<T extends NextResponse>(
-  handler: (
-    request: NextRequest,
-    auth: { user: User | null; userId: string },
-  ) => Promise<T>,
-) {
-  return async (request: NextRequest): Promise<T | NextResponse> => {
-    const { user, userId, error } = await withAuth(request);
-
-    if (error || !userId) {
-      return unauthorizedResponse() as T;
-    }
-
-    return handler(request, { user, userId });
-  };
 }
 
 export default withAuth;

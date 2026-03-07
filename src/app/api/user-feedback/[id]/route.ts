@@ -1,5 +1,8 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
 
 const updateFeedbackSchema = z.object({
@@ -11,73 +14,45 @@ const updateFeedbackSchema = z.object({
   additional_comment: z.string().optional(),
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const supabase = await createClient();
-  const { id } = params;
+export const GET = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
+    const { id } = await params;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  try {
     const { data, error } = await supabase
       .from("user_feedbacks")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id) // 确保只能查看自己的
+      .eq("user_id", userId) // 确保只能查看自己的
       .single();
 
     if (error) throw error;
     if (!data) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: "反馈不存在" },
         { status: 404 },
       );
     }
 
-    return Response.json({ success: true, data });
-  } catch (error) {
-    logger.error({ error, id }, "[UserFeedback] 获取详情失败");
-    return Response.json(
-      { success: false, error: "获取详情失败" },
-      { status: 500 },
-    );
-  }
-}
+    return NextResponse.json({ success: true, data });
+  },
+);
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const supabase = await createClient();
-  const { id } = params;
+export const PATCH = withAuthMiddleware<{ id: string }>(
+  async (request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
+    const { id } = await params;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  try {
     // 先检查状态
     const { data: existing, error: fetchError } = await supabase
       .from("user_feedbacks")
       .select("status, context")
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (fetchError || !existing) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: "反馈不存在" },
         { status: 404 },
       );
@@ -89,7 +64,7 @@ export async function PATCH(
     const validation = updateFeedbackSchema.safeParse(body);
 
     if (!validation.success) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: "参数无效" },
         { status: 400 },
       );
@@ -102,7 +77,7 @@ export async function PATCH(
       existing.status !== "pending" &&
       (updateData.title || updateData.description)
     ) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: "当前状态无法修改反馈内容" },
         { status: 403 },
       );
@@ -142,63 +117,33 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .select()
       .single();
 
     if (error) throw error;
 
-    logger.info({ id, userId: user.id }, "[UserFeedback] 反馈更新成功");
-    return Response.json({ success: true, data });
-  } catch (error) {
-    logger.error({ error, id }, "[UserFeedback] 更新失败");
-    return Response.json(
-      { success: false, error: "更新失败" },
-      { status: 500 },
-    );
-  }
-}
+    logger.info({ id, userId }, "[UserFeedback] 反馈更新成功");
+    return NextResponse.json({ success: true, data });
+  },
+);
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } },
-) {
-  const supabase = await createClient();
-  const { id } = params;
+export const DELETE = withAuthMiddleware<{ id: string }>(
+  async (_request: NextRequest, { userId, params }) => {
+    const supabase = await createClient();
+    const { id } = await params;
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return Response.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  try {
     // RLS 策略已限制只能删除 pending 状态，这里直接执行
     const { error } = await supabase
       .from("user_feedbacks")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("status", "pending"); // 双重保险
 
     if (error) throw error;
 
-    // count 为 null 或 0 表示未删除（可能不存在或状态不对）
-    // Supabase delete 默认不返回 count，除非指定 count: 'exact' 等，或者 select
-    // 但 delete + eq status 应该足够安全。如果没删掉，可能是状态不对。
-
-    // 为了更精确的错误提示，可以先查再删，或者直接捕获。
-    // 这里简单返回成功，前端会刷新列表。
-
-    logger.info({ id, userId: user.id }, "[UserFeedback] 反馈删除成功");
-    return Response.json({ success: true });
-  } catch (error) {
-    logger.error({ error, id }, "[UserFeedback] 删除失败");
-    return Response.json(
-      { success: false, error: "删除失败" },
-      { status: 500 },
-    );
-  }
-}
+    logger.info({ id, userId }, "[UserFeedback] 反馈删除成功");
+    return NextResponse.json({ success: true });
+  },
+);
