@@ -95,10 +95,8 @@ export const POST = withAuthMiddleware<{ id: string }>(
 
     // 创建标注
     const row = toHighlightRow(body, reportId, userId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = (await (
-      supabase.from("synthesis_highlights") as any
-    )
+    const { data, error } = (await supabase
+      .from("synthesis_highlights")
       .insert(row)
       .select()
       .single()) as {

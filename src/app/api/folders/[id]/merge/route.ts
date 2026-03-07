@@ -129,14 +129,14 @@ export const POST = withAuthMiddleware<{ id: string }>(
     // 安全说明：已验证用户身份、源/目标文件夹所有权
     const serviceClient = await createServiceClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rpcResult, error: rpcError } = (await (
-      serviceClient.rpc as any
-    )("merge_folders_atomic", {
-      p_source_folder_id: sourceFolderId,
-      p_target_folder_id: targetFolderId,
-      p_user_id: userId,
-    })) as { data: unknown; error: { message: string } | null };
+    const { data: rpcResult, error: rpcError } = await serviceClient.rpc(
+      "merge_folders_atomic",
+      {
+        p_source_folder_id: sourceFolderId,
+        p_target_folder_id: targetFolderId,
+        p_user_id: userId,
+      },
+    );
 
     if (rpcError) {
       logger.error(

@@ -75,10 +75,8 @@ export const PATCH = withAuthMiddleware<{ id: string; highlightId: string }>(
     }
 
     // 更新标注
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = (await (
-      supabase.from("synthesis_highlights") as any
-    )
+    const { data, error } = (await supabase
+      .from("synthesis_highlights")
       .update(updateData)
       .eq("id", highlightId)
       .eq("user_id", userId)

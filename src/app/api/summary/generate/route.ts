@@ -71,10 +71,8 @@ export const POST = withAuthMiddleware(
       description: string | null;
       ai_summary: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmark, error: bookmarkError } = (await supabase
+      .from("bookmarks")
       .select("id, user_id, title, url, description, ai_summary")
       .eq("id", bookmarkId)
       .single()) as {
@@ -121,8 +119,8 @@ export const POST = withAuthMiddleware(
     const result = await summaryService.generate(summaryInput, options);
 
     // 更新书签摘要
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = (await (supabase.from("bookmarks") as any)
+    const { error: updateError } = (await supabase
+      .from("bookmarks")
       .update({
         ai_summary: result.summary,
         ai_tags: result.tags,

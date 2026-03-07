@@ -109,10 +109,8 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
 
       // 2. 检查 MD 收藏是否存在且属于当前用户
       type CollectionCheckRow = { id: number; user_id: string };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingCollection, error: checkError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { data: existingCollection, error: checkError } = (await supabase
+        .from("md_collections")
         .select("id, user_id")
         .eq("id", collectionId)
         .is("deleted_at", null)
@@ -133,8 +131,7 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
       }
 
       // 3. 构建更新数据
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, unknown> = {};
 
       if (title !== undefined) {
         updateData.title = title;
@@ -180,10 +177,8 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
       }
 
       // 4. 更新记录
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updatedCollection, error: updateError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { data: updatedCollection, error: updateError } = (await supabase
+        .from("md_collections")
         .update(updateData)
         .eq("id", collectionId)
         .select("*, folders(name)")
@@ -239,10 +234,8 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
 
       // 1. 检查 MD 收藏是否存在且属于当前用户
       type CollectionDeleteRow = { id: number; user_id: string; title: string };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingCollection, error: checkError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { data: existingCollection, error: checkError } = (await supabase
+        .from("md_collections")
         .select("id, user_id, title")
         .eq("id", collectionId)
         .is("deleted_at", null)
@@ -263,10 +256,8 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
       }
 
       // 2. 软删除记录
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: deleteError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { error: deleteError } = (await supabase
+        .from("md_collections")
         .update({
           deleted_at: new Date().toISOString(),
         })

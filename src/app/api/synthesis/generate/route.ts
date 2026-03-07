@@ -169,10 +169,8 @@ export const POST = withAuthMiddleware(
             source_bookmark_ids: string[] | null;
             title: string;
           };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: report, error: fetchError } = (await (
-            supabase.from("synthesis_reports") as any
-          )
+          const { data: report, error: fetchError } = (await supabase
+            .from("synthesis_reports")
             .select("*")
             .eq("id", reportId)
             .eq("user_id", userId)
@@ -219,10 +217,8 @@ export const POST = withAuthMiddleware(
           }
 
           // 使用乐观锁更新状态
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: updated } = (await (
-            supabase.from("synthesis_reports") as any
-          )
+          const { data: updated } = (await supabase
+            .from("synthesis_reports")
             .update({ status: "generating" })
             .eq("id", reportId)
             .eq("status", "pending")

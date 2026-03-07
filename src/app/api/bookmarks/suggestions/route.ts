@@ -39,13 +39,13 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
 
   // 3. 调用数据库函数处理建议
   if (body.action === "accept") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: processed, error: acceptError } = (await (
-      supabase.rpc as any
-    )("accept_classification_suggestions", {
-      p_user_id: userId,
-      p_suggestion_ids: [body.suggestionId],
-    })) as { data: unknown; error: { message: string } | null };
+    const { data: processed, error: acceptError } = await supabase.rpc(
+      "accept_classification_suggestions",
+      {
+        p_user_id: userId,
+        p_suggestion_ids: [body.suggestionId],
+      },
+    );
 
     if (acceptError) {
       logger.error(
@@ -75,8 +75,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     });
   } else {
     // reject
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rejected, error: rejectError } = (await (supabase.rpc as any)(
+    const { data: rejected, error: rejectError } = (await supabase.rpc(
       "reject_classification_suggestions",
       {
         p_user_id: userId,

@@ -19,14 +19,10 @@ export const POST = withAuthMiddleware(
     const supabase = await createClient();
 
     // 2. 调用存储过程初始化预设
-    // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: insertedCount, error: initError } = (await (
-      supabase.rpc as any
-    )("init_smart_list_presets", { p_user_id: userId })) as {
-      data: number | null;
-      error: { message: string } | null;
-    };
+    const { data: insertedCount, error: initError } = await supabase.rpc(
+      "init_smart_list_presets",
+      { p_user_id: userId },
+    );
 
     if (initError) {
       logger.error(
@@ -41,10 +37,8 @@ export const POST = withAuthMiddleware(
     }
 
     // 3. 查询所有预设列表返回给前端
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: presets, error: queryError } = (await (
-      supabase.from("smart_lists") as any
-    )
+    const { data: presets, error: queryError } = (await supabase
+      .from("smart_lists")
       .select("*")
       .eq("user_id", userId)
       .eq("is_preset", true)

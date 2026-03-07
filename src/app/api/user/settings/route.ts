@@ -27,10 +27,8 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
   // 从 profiles 表获取设置
   // 类型断言: 手动维护类型文件时需要此断言
   type ProfileSettingsRow = { settings: Json | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile, error: profileError } = (await (
-    supabase.from("profiles") as any
-  )
+  const { data: profile, error: profileError } = (await supabase
+    .from("profiles")
     .select("settings")
     .eq("id", userId)
     .single()) as {
@@ -69,8 +67,8 @@ export const PUT = withAuthMiddleware(
     // 先获取现有设置
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileSettingsRow = { settings: Json | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = (await (supabase.from("profiles") as any)
+    const { data: profile } = (await supabase
+      .from("profiles")
       .select("settings")
       .eq("id", userId)
       .single()) as { data: ProfileSettingsRow | null };
@@ -91,10 +89,7 @@ export const PUT = withAuthMiddleware(
 
     // 更新或插入设置（将 UserSettings 转换为 Json 类型）
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (
-      supabase.from("profiles") as any
-    ).upsert(
+    const { error: upsertError } = await supabase.from("profiles").upsert(
       {
         id: userId,
         settings: newSettings as unknown as Json,

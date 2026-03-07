@@ -113,10 +113,8 @@ export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
     is_system: boolean | null;
     created_at: string | null;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: folders, error: foldersError } = (await (
-    supabase.from("folders") as any
-  )
+  const { data: folders, error: foldersError } = (await supabase
+    .from("folders")
     .select("id, name, parent_id, is_system, created_at")
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -148,10 +146,8 @@ export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
     updated_at: string | null;
     folders: { name: string }[] | null;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: bookmarks, error: bookmarksError } = (await (
-    supabase.from("bookmarks") as any
-  )
+  const { data: bookmarks, error: bookmarksError } = (await supabase
+    .from("bookmarks")
     .select(
       `
         id, title, url, description, platform, folder_id,
@@ -187,10 +183,9 @@ export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
 
   let browserBookmarks: BrowserBookmarkRow[] = [];
   try {
-    // browser_bookmarks 表可能不在当前类型定义中
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error: browserBookmarksError } = await (supabase as any)
-      .from("browser_bookmarks")
+    // browser_bookmarks 表不在自动生成的类型定义中，使用类型断言
+    const { data, error: browserBookmarksError } = (await supabase
+      .from("browser_bookmarks" as "bookmarks")
       .select(
         `
           id, title, url, folder_id, source, created_at,
@@ -198,7 +193,10 @@ export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
         `,
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })) as unknown as {
+      data: BrowserBookmarkRow[] | null;
+      error: { message: string } | null;
+    };
 
     if (browserBookmarksError) {
       logger.warn(
@@ -224,8 +222,8 @@ export const POST = withAuthMiddleware(async (_request, { userId, user }) => {
   // 5. 获取用户设置
   // 类型断言: 手动维护类型文件时需要此断言
   type ProfileSettingsRow = { settings: Record<string, unknown> | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = (await (supabase.from("profiles") as any)
+  const { data: profile } = (await supabase
+    .from("profiles")
     .select("settings")
     .eq("id", userId)
     .single()) as { data: ProfileSettingsRow | null };

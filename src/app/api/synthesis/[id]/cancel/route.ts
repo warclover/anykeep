@@ -23,10 +23,8 @@ export const POST = withAuthMiddleware<{ id: string }>(
 
     // 获取报告当前状态
     type ReportStatusRow = { id: string; status: string; user_id: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error: fetchError } = (await (
-      supabase.from("synthesis_reports") as any
-    )
+    const { data: report, error: fetchError } = (await supabase
+      .from("synthesis_reports")
       .select("id, status, user_id")
       .eq("id", id)
       .eq("user_id", userId)
@@ -43,10 +41,8 @@ export const POST = withAuthMiddleware<{ id: string }>(
     }
 
     // 使用乐观锁更新状态
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updated, error: updateError } = (await (
-      supabase.from("synthesis_reports") as any
-    )
+    const { data: updated, error: updateError } = (await supabase
+      .from("synthesis_reports")
       .update({
         status: "cancelled",
         updated_at: new Date().toISOString(),
@@ -69,10 +65,8 @@ export const POST = withAuthMiddleware<{ id: string }>(
     }
 
     if (!updated) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: currentReport } = (await (
-        supabase.from("synthesis_reports") as any
-      )
+      const { data: currentReport } = (await supabase
+        .from("synthesis_reports")
         .select("status")
         .eq("id", id)
         .single()) as { data: { status: string } | null };

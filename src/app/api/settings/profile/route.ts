@@ -107,10 +107,8 @@ export const POST = withAuthMiddleware(
     // Get current profile settings
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileSettingsRow = { settings: Record<string, unknown> | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: fetchError } = (await (
-      supabase.from("profiles") as any
-    )
+    const { data: profile, error: fetchError } = (await supabase
+      .from("profiles")
       .select("settings")
       .eq("id", userId)
       .single()) as {
@@ -139,8 +137,8 @@ export const POST = withAuthMiddleware(
     };
 
     // Update profile
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = (await (supabase.from("profiles") as any)
+    const { error: updateError } = (await supabase
+      .from("profiles")
       .update({ settings: updatedSettings })
       .eq("id", userId)) as { error: { message: string } | null };
 

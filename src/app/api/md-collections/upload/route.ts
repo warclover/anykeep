@@ -39,10 +39,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   // 1. 检查用户会员类型和功能权限
   // 类型断言: 手动维护类型文件时需要此断言
   type ProfileRow = { membership_type: string | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile, error: profileError } = (await (
-    supabase.from("profiles") as any
-  )
+  const { data: profile, error: profileError } = (await supabase
+    .from("profiles")
     .select("membership_type")
     .eq("id", userId)
     .single()) as {
@@ -57,10 +55,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   const membershipType = profile?.membership_type || "FREE";
 
   // 3. 获取当前 MD 收藏数量并检查权限
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: currentCount, error: countError } = (await (
-    supabase.from("md_collections") as any
-  )
+  const { count: currentCount, error: countError } = (await supabase
+    .from("md_collections")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("deleted_at", null)) as {
@@ -130,10 +126,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   // 11. 检查重复
   // 类型断言: 手动维护类型文件时需要此断言
   type ExistingCollectionRow = { id: number; title: string };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existingCollection, error: dupError } = (await (
-    supabase.from("md_collections") as any
-  )
+  const { data: existingCollection, error: dupError } = (await supabase
+    .from("md_collections")
     .select("id, title")
     .eq("user_id", userId)
     .eq("content_hash", contentHash)
@@ -180,10 +174,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   // 15. 创建记录
   // 类型断言: 手动维护类型文件时需要此断言
   type NewCollectionRow = { id: number; [key: string]: unknown };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: newCollection, error: createError } = (await (
-    supabase.from("md_collections") as any
-  )
+  const { data: newCollection, error: createError } = (await supabase
+    .from("md_collections")
     .insert({
       user_id: userId,
       title: finalTitle,

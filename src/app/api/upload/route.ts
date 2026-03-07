@@ -70,10 +70,8 @@ export const POST = withAuthMiddleware(
       storage_quota: number | null;
       storage_used: number | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = (await (
-      supabase.from("profiles") as any
-    )
+    const { data: profile, error: profileError } = (await supabase
+      .from("profiles")
       .select("storage_quota, storage_used")
       .eq("id", userId)
       .single()) as {
@@ -147,8 +145,8 @@ export const POST = withAuthMiddleware(
       .getPublicUrl(filePath);
 
     // 9. 更新用户存储使用量
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = (await (supabase.from("profiles") as any)
+    const { error: updateError } = (await supabase
+      .from("profiles")
       .update({
         storage_used: (profile?.storage_used ?? 0) + fileSizeInMB,
       })

@@ -56,10 +56,8 @@ export const GET = withAuthMiddleware(
       user_tags: string[] | null;
       ai_tags: string[] | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmarks, error: queryError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmarks, error: queryError } = (await supabase
+      .from("bookmarks")
       .select("user_tags, ai_tags")
       .eq("user_id", userId)
       .eq("is_deleted", false)) as {

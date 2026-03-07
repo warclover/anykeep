@@ -52,10 +52,8 @@ export const GET = withAuthMiddleware<{ bookmarkId: string }>(
       created_at: string;
       updated_at: string;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmark, error: bookmarkError } = (await supabase
+      .from("bookmarks")
       .select(
         "id, user_id, title, url, ai_summary, ai_tags, content_type, created_at, updated_at",
       )

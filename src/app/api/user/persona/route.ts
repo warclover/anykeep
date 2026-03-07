@@ -190,8 +190,8 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
   // 获取存储的设置
   // 类型断言: 手动维护类型文件时需要此断言
   type ProfilePersonaRow = { persona_settings: Json | null };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profileResult = (await (supabase.from("profiles") as any)
+  const profileResult = (await supabase
+    .from("profiles")
     .select("persona_settings")
     .eq("id", userId)
     .single()) as {
@@ -319,10 +319,7 @@ export const PUT = withAuthMiddleware(
 
     // 更新或插入设置
     // 类型断言: 手动维护类型文件时需要此断言
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (
-      supabase.from("profiles") as any
-    ).upsert(
+    const { error: upsertError } = await supabase.from("profiles").upsert(
       {
         id: userId,
         persona_settings: settings as unknown as Json,
@@ -364,8 +361,8 @@ export const DELETE = withAuthMiddleware(async (_request, { userId }) => {
 
   // 清除设置
   // 类型断言: 手动维护类型文件时需要此断言
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updateError } = await (supabase.from("profiles") as any)
+  const { error: updateError } = await supabase
+    .from("profiles")
     .update({
       persona_settings: null,
       updated_at: new Date().toISOString(),

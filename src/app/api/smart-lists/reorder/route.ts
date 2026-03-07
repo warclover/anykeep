@@ -36,10 +36,8 @@ export const POST = withAuthMiddleware(
     // 类型断言: 手动维护类型文件时需要此断言
     // 注意: ids 来自验证层，可能为 string[] 或 number[]，需统一处理
     type SmartListIdRow = { id: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingLists, error: checkError } = (await (
-      supabase.from("smart_lists") as any
-    )
+    const { data: existingLists, error: checkError } = (await supabase
+      .from("smart_lists")
       .select("id")
       .eq("user_id", userId)
       .in("id", ids)
@@ -68,8 +66,8 @@ export const POST = withAuthMiddleware(
     let updateError: { message: string } | null = null;
 
     for (let i = 0; i < ids.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = (await (supabase.from("smart_lists") as any)
+      const { error } = (await supabase
+        .from("smart_lists")
         .update({ sort_order: i })
         .eq("id", ids[i])
         .eq("user_id", userId)) as { error: { message: string } | null };

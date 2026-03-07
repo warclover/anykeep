@@ -53,8 +53,8 @@ export const GET = withAuthMiddleware<{ id: string }>(
     }
 
     // 4. 更新最后访问时间
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("smart_lists") as any)
+    await supabase
+      .from("smart_lists")
       .update({ last_accessed_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId);
@@ -93,10 +93,8 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
     // 4. 检查智能列表是否存在
     // 类型断言: 手动维护类型文件时需要此断言
     type ExistingSmartListRow = { id: string; is_preset: boolean };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = (await (
-      supabase.from("smart_lists") as any
-    )
+    const { data: existing, error: checkError } = (await supabase
+      .from("smart_lists")
       .select("id, is_preset")
       .eq("id", id)
       .eq("user_id", userId)
@@ -121,10 +119,8 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
         return successResponse({ error: "预设智能列表只能修改置顶状态" }, 400);
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updatedPreset, error: updateError } = (await (
-        supabase.from("smart_lists") as any
-      )
+      const { data: updatedPreset, error: updateError } = (await supabase
+        .from("smart_lists")
         .update(allowedUpdates)
         .eq("id", id)
         .eq("user_id", userId)
@@ -170,10 +166,8 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
     if (updates.isPinned !== undefined) updateData.is_pinned = updates.isPinned;
 
     // 8. 执行更新
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: smartList, error: updateError } = (await (
-      supabase.from("smart_lists") as any
-    )
+    const { data: smartList, error: updateError } = (await supabase
+      .from("smart_lists")
       .update(updateData)
       .eq("id", id)
       .eq("user_id", userId)
@@ -225,10 +219,8 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
       is_preset: boolean;
       name: string;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: checkError } = (await (
-      supabase.from("smart_lists") as any
-    )
+    const { data: existing, error: checkError } = (await supabase
+      .from("smart_lists")
       .select("id, is_preset, name")
       .eq("id", id)
       .eq("user_id", userId)
@@ -248,8 +240,8 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
     }
 
     // 5. 软删除
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = (await (supabase.from("smart_lists") as any)
+    const { error: deleteError } = (await supabase
+      .from("smart_lists")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId)) as { error: { message: string } | null };

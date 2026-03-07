@@ -92,10 +92,8 @@ export const GET = withAuthMiddleware(async (request, { userId }) => {
   // 3. 获取统计信息
   // 类型断言: 手动维护类型文件时需要此断言
   type StatusRow = { status: string };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: stats } = (await (
-    supabase.from("classification_suggestions") as any
-  )
+  const { data: stats } = (await supabase
+    .from("classification_suggestions")
     .select("status")
     .eq("user_id", userId)) as { data: StatusRow[] | null };
 
@@ -150,8 +148,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
         return badRequestError("请指定要接受的建议ID");
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: count } = (await (supabase.rpc as any)(
+      const { data: count } = (await supabase.rpc(
         "accept_classification_suggestions",
         {
           p_user_id: userId,
@@ -167,8 +164,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
         return badRequestError("请指定要拒绝的建议ID");
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: count } = (await (supabase.rpc as any)(
+      const { data: count } = (await supabase.rpc(
         "reject_classification_suggestions",
         {
           p_user_id: userId,
@@ -183,18 +179,15 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       // 获取所有待处理建议
       // 类型断言: 手动维护类型文件时需要此断言
       type IdRow = { id: number };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: pending } = (await (
-        supabase.from("classification_suggestions") as any
-      )
+      const { data: pending } = (await supabase
+        .from("classification_suggestions")
         .select("id")
         .eq("user_id", userId)
         .eq("status", "pending")) as { data: IdRow[] | null };
 
       if (pending && pending.length > 0) {
         const ids = pending.map((s) => s.id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: count } = (await (supabase.rpc as any)(
+        const { data: count } = (await supabase.rpc(
           "accept_classification_suggestions",
           {
             p_user_id: userId,
@@ -210,18 +203,15 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       // 获取所有待处理建议
       // 类型断言: 手动维护类型文件时需要此断言
       type IdRowReject = { id: number };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: pending } = (await (
-        supabase.from("classification_suggestions") as any
-      )
+      const { data: pending } = (await supabase
+        .from("classification_suggestions")
         .select("id")
         .eq("user_id", userId)
         .eq("status", "pending")) as { data: IdRowReject[] | null };
 
       if (pending && pending.length > 0) {
         const ids = pending.map((s) => s.id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: count } = (await (supabase.rpc as any)(
+        const { data: count } = (await supabase.rpc(
           "reject_classification_suggestions",
           {
             p_user_id: userId,

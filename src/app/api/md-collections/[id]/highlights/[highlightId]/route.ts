@@ -73,10 +73,8 @@ async function validateHighlightAccess(
 
   // 1. 双重验证：先验证 collection 所有权
   type CollectionCheckRow = { id: number; user_id: string };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: collection, error: collectionError } = (await (
-    supabase.from("md_collections") as any
-  )
+  const { data: collection, error: collectionError } = (await supabase
+    .from("md_collections")
     .select("id, user_id")
     .eq("id", collectionId)
     .is("deleted_at", null)
@@ -105,10 +103,8 @@ async function validateHighlightAccess(
     user_id: string;
     collection_id: number;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existingHighlight, error: checkError } = (await (
-    supabase.from("md_collection_highlights") as any
-  )
+  const { data: existingHighlight, error: checkError } = (await supabase
+    .from("md_collection_highlights")
     .select("id, user_id, collection_id")
     .eq("id", highlightId)
     .eq("collection_id", collectionId)
@@ -176,10 +172,8 @@ export const PATCH = withAuthMiddleware<{ id: string; highlightId: string }>(
       const { color } = schemaValidation.data;
 
       // 更新高亮
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updatedHighlight, error: updateError } = (await (
-        supabase.from("md_collection_highlights") as any
-      )
+      const { data: updatedHighlight, error: updateError } = (await supabase
+        .from("md_collection_highlights")
         .update({ color })
         .eq("id", highlightId)
         .select()

@@ -55,10 +55,8 @@ export const POST = withAuthMiddleware(
       url: string;
       platform: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmark, error: bookmarkError } = (await supabase
+      .from("bookmarks")
       .select("id, url, platform")
       .eq("id", bookmarkId)
       .eq("user_id", userId)
@@ -86,10 +84,8 @@ export const POST = withAuthMiddleware(
       status: string;
       readable_content: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingSnapshot } = (await (
-      supabase.from("bookmark_snapshots") as any
-    )
+    const { data: existingSnapshot } = (await supabase
+      .from("bookmark_snapshots")
       .select("id, status, readable_content")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", userId)
@@ -110,18 +106,16 @@ export const POST = withAuthMiddleware(
     if (existingSnapshot) {
       snapshotId = existingSnapshot.id;
       // 更新状态为处理中
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (serviceClient.from("bookmark_snapshots") as any)
+      await serviceClient
+        .from("bookmark_snapshots")
         .update({ status: "processing" })
         .eq("id", snapshotId);
     } else {
       // 创建新快照记录
       // 类型断言: 手动维护类型文件时需要此断言
       type NewSnapshotRow = { id: number };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newSnapshot, error: createError } = (await (
-        serviceClient.from("bookmark_snapshots") as any
-      )
+      const { data: newSnapshot, error: createError } = (await serviceClient
+        .from("bookmark_snapshots")
         .insert({
           bookmark_id: bookmarkId,
           user_id: userId,
@@ -160,10 +154,8 @@ export const POST = withAuthMiddleware(
       const originalHtml = extractBodyHtml(html);
 
       // 更新快照记录
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (
-        serviceClient.from("bookmark_snapshots") as any
-      )
+      const { error: updateError } = await serviceClient
+        .from("bookmark_snapshots")
         .update({
           status: "completed",
           readable_title: readability.title || null,
@@ -198,8 +190,8 @@ export const POST = withAuthMiddleware(
       const errorMessage =
         fetchError instanceof Error ? fetchError.message : "抓取失败";
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (serviceClient.from("bookmark_snapshots") as any)
+      await serviceClient
+        .from("bookmark_snapshots")
         .update({
           status: "failed",
           error_message: errorMessage,

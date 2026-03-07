@@ -97,10 +97,8 @@ export const DELETE = withAuthMiddleware(async (request, { userId, user }) => {
       html_storage_path: string | null;
       mhtml_storage_path: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: snapshots } = (await (
-      supabase.from("bookmark_snapshots") as any
-    )
+    const { data: snapshots } = (await supabase
+      .from("bookmark_snapshots")
       .select("screenshot_storage_path, html_storage_path, mhtml_storage_path")
       .eq("user_id", userId)) as { data: SnapshotPathsRow[] | null };
 
@@ -178,17 +176,14 @@ export const DELETE = withAuthMiddleware(async (request, { userId, user }) => {
 
   for (const tableName of deletionOrder) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (serviceClient as any)
-        .from(tableName)
-        .delete()
-        .eq("user_id", userId);
+      // tableName 是动态字符串，需要类型断言绕过字面量类型检查
+      const fromBuilder = serviceClient.from(tableName as "profiles");
+      const { error } = await fromBuilder.delete().eq("user_id", userId);
 
       if (error) {
         // 某些表可能不存在 user_id 列（如 profiles 使用 id）
         if (tableName === "profiles") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: profileError } = await (serviceClient as any)
+          const { error: profileError } = await serviceClient
             .from("profiles")
             .delete()
             .eq("id", userId);

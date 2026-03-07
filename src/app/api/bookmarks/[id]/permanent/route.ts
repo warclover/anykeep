@@ -108,10 +108,8 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
 
     // 4. 永久删除（设置 deleted_at）
     const serviceClient = await createServiceClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = (await (
-      serviceClient.from("bookmarks") as any
-    )
+    const { error: deleteError } = (await serviceClient
+      .from("bookmarks")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", bookmarkId)) as { error: { message: string } | null };
 
@@ -128,8 +126,7 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
     }
 
     // 5. 减少用户存储计数
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: decrementError } = (await (serviceClient.rpc as any)(
+    const { error: decrementError } = (await serviceClient.rpc(
       "decrement_storage_used",
       {
         target_user_id: userId,

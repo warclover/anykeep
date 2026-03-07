@@ -63,10 +63,8 @@ export const GET = withAuthMiddleware<{ id: string }>(
 
       // 1. 验证文档存在且属于当前用户
       type CollectionCheckRow = { id: number; user_id: string };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: collection, error: collectionError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { data: collection, error: collectionError } = (await supabase
+        .from("md_collections")
         .select("id, user_id")
         .eq("id", collectionId)
         .is("deleted_at", null)
@@ -149,10 +147,8 @@ export const POST = withAuthMiddleware<{ id: string }>(
 
       // 1. 验证文档存在且属于当前用户
       type CollectionCheckRowPost = { id: number; user_id: string };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: collection, error: collectionError } = (await (
-        supabase.from("md_collections") as any
-      )
+      const { data: collection, error: collectionError } = (await supabase
+        .from("md_collections")
         .select("id, user_id")
         .eq("id", collectionId)
         .is("deleted_at", null)

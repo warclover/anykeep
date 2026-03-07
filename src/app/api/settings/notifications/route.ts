@@ -44,10 +44,8 @@ export const GET = withAuthMiddleware(
       dnd_start_time: string | null;
       dnd_end_time: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: preferences, error: queryError } = (await (
-      supabase.from("notification_preferences") as any
-    )
+    const { data: preferences, error: queryError } = (await supabase
+      .from("notification_preferences")
       .select("*")
       .eq("user_id", userId)
       .single()) as {
@@ -150,10 +148,8 @@ export const PATCH = withAuthMiddleware(
       dnd_start_time: string | null;
       dnd_end_time: string | null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updated, error: upsertError } = (await (
-      supabase.from("notification_preferences") as any
-    )
+    const { data: updated, error: upsertError } = (await supabase
+      .from("notification_preferences")
       .upsert(
         {
           user_id: userId,

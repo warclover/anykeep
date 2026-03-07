@@ -58,10 +58,8 @@ export const POST = withAuthMiddleware(
     // 验证书签存在且属于当前用户
     // 类型断言: 手动维护类型文件时需要此断言
     type BookmarkRegenRow = { id: number; user_id: string; title: string };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bookmark, error: bookmarkError } = (await (
-      supabase.from("bookmarks") as any
-    )
+    const { data: bookmark, error: bookmarkError } = (await supabase
+      .from("bookmarks")
       .select("id, user_id, title")
       .eq("id", bookmarkId)
       .single()) as {
@@ -88,8 +86,8 @@ export const POST = withAuthMiddleware(
     const result = await summaryService.regenerate(bookmarkId, userId, options);
 
     // 更新书签摘要
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = (await (supabase.from("bookmarks") as any)
+    const { error: updateError } = (await supabase
+      .from("bookmarks")
       .update({
         ai_summary: result.summary,
         ai_tags: result.tags,
