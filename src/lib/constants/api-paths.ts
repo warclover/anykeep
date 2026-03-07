@@ -12,8 +12,32 @@
  * - 支持动态参数
  * - 包含 internal API 路径
  *
- * @version 1.0.0
+ * ## 版本状态定义
+ *
+ * 每个路径的生命周期状态：
+ *
+ * | 状态         | 含义                                           | 新代码可用 |
+ * |-------------|-----------------------------------------------|-----------|
+ * | active      | 推荐使用，持续维护                              | ✅ 是     |
+ * | legacy-only | 旧版独有功能，v1 暂未实现，保留使用              | ✅ 是     |
+ * | deprecated  | 已有 v1/v2 替代，不应在新代码中使用              | ❌ 否     |
+ * | redirect    | 已 308 重定向到新版，仅为兼容保留                | ❌ 否     |
+ *
+ * ## 书签 API 迁移指引
+ *
+ * - CRUD 操作：使用 `list`/`detail`/`batchDelete` 等（v1 路径，active）
+ * - 专属功能：使用 `permanent`/`embeddings`/`fetchContent` 等（legacy-only，v1 暂未实现）
+ * - legacy* 前缀路径：deprecated，请勿在新代码中使用
+ *
+ * ## 分类 API 迁移指引
+ *
+ * - 分类执行与规则：v2 为当前标准（active）
+ * - v5 独占端点（entropy/shadow/metrics/rollout/t1-*）：独立功能模块，非旧版本，active
+ * - v5 共有端点（classify/batch/feedback/rules）：已 308 重定向到 v2（redirect）
+ *
+ * @version 1.1.0
  * @since 2025-12-24
+ * @updated 2026-03-07
  */
 
 // ============================================
@@ -100,30 +124,31 @@ export const API_BOOKMARKS = {
   batchTags: "/api/v1/bookmarks/batch/tags",
 
   // =====================================================
-  // 旧版 API 路径（v1 尚未实现的独有功能）
+  // 旧版独有功能（legacy-only）
+  // v1 暂未实现这些能力，保留使用，新代码可正常调用
   // =====================================================
 
-  /** 永久删除（旧版独有） */
+  /** 永久删除（legacy-only: v1 未实现） */
   permanent: (id: number) => `/api/bookmarks/${id}/permanent`,
-  /** 相关书签（旧版独有） */
+  /** 相关书签（legacy-only: v1 未实现） */
   related: (id: number) => `/api/bookmarks/${id}/related`,
-  /** 单个书签恢复（旧版独有，批量恢复使用 v1） */
+  /** 单个书签恢复（legacy-only: 批量恢复使用 v1） */
   restoreSingle: (id: number) => `/api/bookmarks/${id}/restore`,
-  /** 批量导入（旧版独有） */
+  /** 批量导入（legacy-only: v1 未实现） */
   batchImport: "/api/bookmarks/batch-import",
-  /** 批量状态查询（旧版独有） */
+  /** 批量状态查询（legacy-only: v1 未实现） */
   batchStatus: "/api/bookmarks/batch-status",
-  /** 向量嵌入（旧版独有） */
+  /** 向量嵌入（legacy-only: v1 未实现） */
   embeddings: "/api/bookmarks/embeddings",
-  /** 抓取内容（旧版独有） */
+  /** 抓取内容（legacy-only: v1 未实现） */
   fetchContent: "/api/bookmarks/fetch-content",
-  /** 生成标签（旧版独有） */
+  /** 生成标签（legacy-only: v1 未实现） */
   generateTags: "/api/bookmarks/generate-tags",
-  /** 元数据（旧版独有） */
+  /** 元数据（legacy-only: v1 未实现） */
   metadata: "/api/bookmarks/metadata",
-  /** 建议（旧版独有） */
+  /** 建议（legacy-only: v1 未实现） */
   suggestions: "/api/bookmarks/suggestions",
-  /** 验证（旧版独有） */
+  /** 验证（legacy-only: v1 未实现） */
   validate: "/api/bookmarks/validate",
 
   // =====================================================
@@ -231,9 +256,9 @@ export const API_CLASSIFICATION = {
   // 其他端点
   // =====================================================
 
-  /** 执行分类 - v5.0 */
+  /** 执行分类（redirect: v5 → 308 → v2） */
   classify: "/api/classification/v5/classify",
-  /** 执行分类 - 旧版（备用） */
+  /** 执行分类 - 旧版（redirect: → 308 → v2） */
   classifyLegacy: "/api/classification/classify",
   /**
    * @deprecated 使用 inbox POST/DELETE 代替

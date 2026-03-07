@@ -20,6 +20,68 @@ import { createClient } from "@/lib/supabase/server";
 
 const logger = createLogger("api-middleware");
 
+// ============================================
+// API 废弃路径治理
+// ============================================
+
+/**
+ * 已废弃的 API 路径及其推荐替代路径
+ *
+ * 仅包含已有 v1 替代的路径，不包含 legacy-only 端点
+ * （如 /api/bookmarks/embeddings、/api/bookmarks/fetch-content 等）
+ */
+const DEPRECATED_API_PATHS: Record<string, string> = {
+  "/api/bookmarks": "/api/v1/bookmarks",
+  "/api/bookmarks/batch-delete": "/api/v1/bookmarks/batch/delete",
+  "/api/bookmarks/batch-move": "/api/v1/bookmarks/batch/move",
+  "/api/bookmarks/batch-restore": "/api/v1/bookmarks/batch/restore",
+  "/api/bookmarks/batch-tags": "/api/v1/bookmarks/batch/tags",
+};
+
+/**
+ * 匹配已废弃的 API 路径（含动态路由 /api/bookmarks/:id）
+ *
+ * @returns 推荐的替代路径，未匹配则返回 null
+ */
+function matchDeprecatedPath(pathname: string): string | null {
+  // 精确匹配
+  if (DEPRECATED_API_PATHS[pathname]) {
+    return DEPRECATED_API_PATHS[pathname];
+  }
+
+  // 动态路由匹配: /api/bookmarks/:id（排除 /api/bookmarks/batch-* 等子路径）
+  const bookmarkDetailMatch = pathname.match(/^\/api\/bookmarks\/(\d+)$/);
+  if (bookmarkDetailMatch) {
+    return `/api/v1/bookmarks/${bookmarkDetailMatch[1]}`;
+  }
+
+  return null;
+}
+
+/**
+ * 为响应添加废弃头并记录埋点日志
+ */
+function applyDeprecationHeaders(
+  response: NextResponse | Response,
+  request: NextRequest,
+  recommendedPath: string,
+): void {
+  response.headers.set("X-API-Version", "legacy");
+  response.headers.set("X-API-Deprecated", "true");
+  response.headers.set("X-API-Recommended", recommendedPath);
+
+  const pathname = new URL(request.url).pathname;
+  logger.info(
+    {
+      path: pathname,
+      method: request.method,
+      recommended: recommendedPath,
+      referer: request.headers.get("referer") ?? undefined,
+    },
+    "[API-DEPRECATION] Legacy API endpoint called",
+  );
+}
+
 /**
  * 认证上下文
  */
@@ -151,6 +213,13 @@ export function withAuthMiddleware<TParams = Record<string, string>>(
           },
           "Slow API request",
         );
+      }
+
+      // API 废弃治理：为已废弃路径添加响应头 + 埋点日志
+      const pathname = new URL(url).pathname;
+      const recommendedPath = matchDeprecatedPath(pathname);
+      if (recommendedPath) {
+        applyDeprecationHeaders(response, request, recommendedPath);
       }
 
       return response;

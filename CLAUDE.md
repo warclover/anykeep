@@ -305,6 +305,14 @@ export const GET = withAuthMiddleware(async (request, { userId, user }) => {
 - OAuth 回调路由
 - Token 鉴权路由（如 RSS feed）
 
+### API 路径调用规范
+
+1. **必须使用 `API_PATHS` 常量**：所有 API 调用通过 `src/lib/constants/api-paths.ts` 中的常量引用，禁止硬编码路径字符串
+2. **禁止使用 `legacy*` 前缀路径**：`legacyList`、`legacyDetail`、`legacyBatchDelete` 等已废弃，新代码使用对应的 v1 路径（`list`、`detail`、`batchDelete`）
+3. **legacy-only 端点正常使用**：`permanent`、`embeddings`、`fetchContent` 等 v1 暂未实现的功能保留使用
+4. **分类 API 使用 v2**：新代码中分类执行与规则直接使用 v2 路径，v5 独占功能端点（entropy/shadow/metrics 等）正常使用
+5. **版本状态参考**：详见 `docs/api-version-status.md`
+
 ---
 
 ## 已实现功能
