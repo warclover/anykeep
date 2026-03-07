@@ -12,18 +12,73 @@ import { NextRequest } from "next/server";
 import { GET } from "../route";
 
 // =============================================================================
+// Mock auth state
+// =============================================================================
+
+let mockAuthUserId: string | null = "test-user-id";
+let mockAuthError: Error | null = null;
+let mockAuthShouldThrow: Error | null = null;
+
+// =============================================================================
+// Mock @/lib/api/middleware - intercept withAuthMiddleware
+// =============================================================================
+
+jest.mock("@/lib/api/middleware", () => ({
+  withAuthMiddleware: (handler: (...args: unknown[]) => Promise<unknown>) => {
+    return async (request: any, context?: any) => {
+      const { NextResponse } = await import("next/server");
+
+      if (mockAuthShouldThrow) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "INTERNAL_ERROR",
+              message: mockAuthShouldThrow.message,
+            },
+          },
+          { status: 500 },
+        );
+      }
+
+      if (mockAuthError || !mockAuthUserId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Authentication required",
+            },
+          },
+          { status: 401 },
+        );
+      }
+      return handler(request, {
+        user: { id: mockAuthUserId },
+        userId: mockAuthUserId,
+        authResult: {
+          user: { id: mockAuthUserId },
+          userId: mockAuthUserId,
+          error: null,
+          method: "token",
+          duration: 1,
+        },
+        params: context?.params ?? Promise.resolve({}),
+      });
+    };
+  },
+}));
+
+// =============================================================================
 // Mock Supabase
 // =============================================================================
 
 const mockSupabaseClient = {
-  auth: {
-    getUser: jest.fn(),
-  },
   from: jest.fn(),
 };
 
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(() => mockSupabaseClient),
+  createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }));
 
 jest.mock("@/lib/classification/infrastructure/shared-services/logger", () => ({
@@ -34,6 +89,26 @@ jest.mock("@/lib/classification/infrastructure/shared-services/logger", () => ({
     debug: jest.fn(),
   })),
 }));
+
+// =============================================================================
+// 认证辅助函数
+// =============================================================================
+
+function mockAuthenticated(userId = "test-user-id") {
+  mockAuthUserId = userId;
+  mockAuthError = null;
+  mockAuthShouldThrow = null;
+}
+
+function mockUnauthenticated() {
+  mockAuthUserId = null;
+  mockAuthError = new Error("Unauthorized");
+  mockAuthShouldThrow = null;
+}
+
+function mockAuthThrows(error: Error) {
+  mockAuthShouldThrow = error;
+}
 
 // =============================================================================
 // 测试辅助函数
@@ -58,24 +133,19 @@ describe("Metrics API - Authentication", () => {
   });
 
   it("should return 401 if user is not authenticated", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: null },
-      error: new Error("Not authenticated"),
-    });
+    mockUnauthenticated();
 
     const request = createTestRequest();
     const response = await GET(request);
 
     expect(response.status).toBe(401);
     const json = await response.json();
-    expect(json).toHaveProperty("error", "Unauthorized");
+    expect(json.success).toBe(false);
+    expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
   it("should return 401 if auth error occurs", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: null },
-      error: null,
-    });
+    mockUnauthenticated();
 
     const request = createTestRequest();
     const response = await GET(request);
@@ -91,10 +161,7 @@ describe("Metrics API - Authentication", () => {
 describe("Metrics API - Time Range Validation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
+    mockAuthenticated();
   });
 
   it("should accept valid timeRange parameter (7d)", async () => {
@@ -166,10 +233,7 @@ describe("Metrics API - Time Range Validation", () => {
 describe("Metrics API - Data Query and Response", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
+    mockAuthenticated();
   });
 
   it("should return correct response structure with metrics data", async () => {
@@ -261,10 +325,7 @@ describe("Metrics API - Error Handling", () => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
+    mockAuthenticated();
   });
 
   afterEach(() => {
@@ -294,9 +355,7 @@ describe("Metrics API - Error Handling", () => {
   });
 
   it("should handle unexpected errors", async () => {
-    mockSupabaseClient.auth.getUser.mockRejectedValue(
-      new Error("Unexpected error"),
-    );
+    mockAuthThrows(new Error("Unexpected error"));
 
     const request = createTestRequest();
     const response = await GET(request);

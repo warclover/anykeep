@@ -9,8 +9,51 @@
 import { GET, POST } from "../route";
 import { NextRequest } from "next/server";
 
-// Mock Supabase
+// =============================================================================
+// Mock auth state
+// =============================================================================
+
 const mockSupabaseUser = { id: "user_123", email: "test@example.com" };
+let mockAuthUserId: string | null = mockSupabaseUser.id;
+let mockAuthError: Error | null = null;
+
+// =============================================================================
+// Mock @/lib/api/middleware - intercept withAuthMiddleware
+// =============================================================================
+
+jest.mock("@/lib/api/middleware", () => ({
+  withAuthMiddleware: (handler: (...args: unknown[]) => Promise<unknown>) => {
+    return async (request: any, context?: any) => {
+      if (mockAuthError || !mockAuthUserId) {
+        const { NextResponse } = await import("next/server");
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Authentication required",
+            },
+          },
+          { status: 401 },
+        );
+      }
+      return handler(request, {
+        user: { id: mockAuthUserId, email: "test@example.com" },
+        userId: mockAuthUserId,
+        authResult: {
+          user: { id: mockAuthUserId },
+          userId: mockAuthUserId,
+          error: null,
+          method: "token",
+          duration: 1,
+        },
+        params: context?.params ?? Promise.resolve({}),
+      });
+    };
+  },
+}));
+
+// Mock Supabase
 const mockConversations = [
   {
     conversation_id: "conv_1",
@@ -28,15 +71,24 @@ const mockConversations = [
 ];
 
 const mockSupabaseClient = {
-  auth: {
-    getUser: jest.fn(),
-  },
   from: jest.fn(),
 };
 
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }));
+
+// 辅助函数：模拟已认证用户
+function mockAuthenticated() {
+  mockAuthUserId = mockSupabaseUser.id;
+  mockAuthError = null;
+}
+
+// 辅助函数：模拟未认证
+function mockUnauthenticated() {
+  mockAuthUserId = null;
+  mockAuthError = new Error("Unauthorized");
+}
 
 describe("Conversations API", () => {
   beforeEach(() => {
@@ -45,9 +97,7 @@ describe("Conversations API", () => {
 
   describe("GET /api/conversations", () => {
     it("should return 401 if not authenticated", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: null },
-      });
+      mockUnauthenticated();
 
       const request = new NextRequest("http://localhost/api/conversations");
       const response = await GET(request);
@@ -58,9 +108,7 @@ describe("Conversations API", () => {
     });
 
     it("should return conversations list", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: mockSupabaseUser },
-      });
+      mockAuthenticated();
 
       const mockQuery = {
         select: jest.fn().mockReturnThis(),
@@ -98,9 +146,7 @@ describe("Conversations API", () => {
     });
 
     it("should handle pagination parameters", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: mockSupabaseUser },
-      });
+      mockAuthenticated();
 
       const mockQuery = {
         select: jest.fn().mockReturnThis(),
@@ -133,9 +179,7 @@ describe("Conversations API", () => {
     });
 
     it("should handle database error", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: mockSupabaseUser },
-      });
+      mockAuthenticated();
 
       const mockQuery = {
         select: jest.fn().mockReturnThis(),
@@ -160,9 +204,7 @@ describe("Conversations API", () => {
 
   describe("POST /api/conversations", () => {
     it("should return 401 if not authenticated", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: null },
-      });
+      mockUnauthenticated();
 
       const response = await POST();
       const data = await response.json();
@@ -172,9 +214,7 @@ describe("Conversations API", () => {
     });
 
     it("should create new conversation", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: mockSupabaseUser },
-      });
+      mockAuthenticated();
 
       const mockQuery = {
         insert: jest.fn().mockResolvedValue({
@@ -193,9 +233,7 @@ describe("Conversations API", () => {
     });
 
     it("should handle database error on create", async () => {
-      mockSupabaseClient.auth.getUser.mockResolvedValue({
-        data: { user: mockSupabaseUser },
-      });
+      mockAuthenticated();
 
       const mockQuery = {
         insert: jest.fn().mockResolvedValue({

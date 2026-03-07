@@ -12,21 +12,73 @@ import { NextRequest } from "next/server";
 import { GET } from "../route";
 
 // =============================================================================
+// Mock auth state
+// =============================================================================
+
+let mockAuthUserId: string | null = "test-user-id";
+let mockAuthError: Error | null = null;
+let mockAuthShouldThrow: Error | null = null;
+
+// =============================================================================
+// Mock @/lib/api/middleware - intercept withAuthMiddleware
+// =============================================================================
+
+jest.mock("@/lib/api/middleware", () => ({
+  withAuthMiddleware: (handler: (...args: unknown[]) => Promise<unknown>) => {
+    return async (request: any, context?: any) => {
+      const { NextResponse } = await import("next/server");
+
+      if (mockAuthShouldThrow) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "INTERNAL_ERROR",
+              message: mockAuthShouldThrow.message,
+            },
+          },
+          { status: 500 },
+        );
+      }
+
+      if (mockAuthError || !mockAuthUserId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Authentication required",
+            },
+          },
+          { status: 401 },
+        );
+      }
+      return handler(request, {
+        user: { id: mockAuthUserId },
+        userId: mockAuthUserId,
+        authResult: {
+          user: { id: mockAuthUserId },
+          userId: mockAuthUserId,
+          error: null,
+          method: "token",
+          duration: 1,
+        },
+        params: context?.params ?? Promise.resolve({}),
+      });
+    };
+  },
+}));
+
+// =============================================================================
 // Mock Supabase
 // =============================================================================
 
 const mockSupabaseClient = {
-  auth: {
-    getUser: jest.fn().mockResolvedValue({
-      data: { user: null },
-      error: null,
-    }),
-  },
   from: jest.fn(),
 };
 
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(() => mockSupabaseClient),
+  createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }));
 
 // =============================================================================
@@ -41,6 +93,26 @@ jest.mock("@/lib/classification/infrastructure/shared-services/logger", () => ({
     debug: jest.fn(),
   })),
 }));
+
+// =============================================================================
+// 认证辅助函数
+// =============================================================================
+
+function mockAuthenticated(userId = "test-user-id") {
+  mockAuthUserId = userId;
+  mockAuthError = null;
+  mockAuthShouldThrow = null;
+}
+
+function mockUnauthenticated() {
+  mockAuthUserId = null;
+  mockAuthError = new Error("Unauthorized");
+  mockAuthShouldThrow = null;
+}
+
+function mockAuthThrows(error: Error) {
+  mockAuthShouldThrow = error;
+}
 
 // =============================================================================
 // 测试辅助函数
@@ -220,6 +292,7 @@ describe("T1 Stream API - Parameter Validation", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthenticated();
   });
 
   it("should return 400 if bookmarkId is missing", async () => {
@@ -269,24 +342,19 @@ describe("T1 Stream API - Authentication", () => {
   });
 
   it("should return 401 if user is not authenticated", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: null },
-      error: new Error("Not authenticated"),
-    });
+    mockUnauthenticated();
 
     const request = createTestRequest("123");
     const response = await GET(request);
 
     expect(response.status).toBe(401);
-    const text = await response.text();
-    expect(text).toBe("Unauthorized");
+    const json = await response.json();
+    expect(json.success).toBe(false);
+    expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
   it("should return 401 if auth error occurs", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: null },
-      error: null,
-    });
+    mockUnauthenticated();
 
     const request = createTestRequest("123");
     const response = await GET(request);
@@ -328,14 +396,10 @@ describe("T1 Stream API - SSE Stream", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthenticated();
   });
 
   it("should return SSE response with correct headers", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
-
     const mockFrom = jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
@@ -371,11 +435,6 @@ describe("T1 Stream API - SSE Stream", () => {
     // Debug logging
     console.log("Global Response name:", global.Response.name);
     console.log("Global ReadableStream name:", global.ReadableStream.name);
-
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
 
     const mockFrom = jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
@@ -469,14 +528,10 @@ describe("T1 Stream API - SSE Stream", () => {
 describe("T1 Stream API - Queue Status", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthenticated();
   });
 
   it("should handle processing status", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
-
     const mockT1Record = {
       bookmark_id: 123,
       status: "processing",
@@ -512,11 +567,6 @@ describe("T1 Stream API - Queue Status", () => {
   });
 
   it("should handle completed status with results", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
-
     const mockT1Record = {
       bookmark_id: 123,
       status: "completed",
@@ -552,11 +602,6 @@ describe("T1 Stream API - Queue Status", () => {
   });
 
   it("should handle failed status with error message", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
-
     const mockT1Record = {
       bookmark_id: 123,
       status: "failed",
@@ -599,14 +644,10 @@ describe("T1 Stream API - Queue Status", () => {
 describe("T1 Stream API - Error Handling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthenticated();
   });
 
   it("should handle database query errors gracefully", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValue({
-      data: { user: { id: "test-user-id" } },
-      error: null,
-    });
-
     const mockFrom = jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
@@ -634,9 +675,7 @@ describe("T1 Stream API - Error Handling", () => {
   });
 
   it("should handle unexpected errors", async () => {
-    mockSupabaseClient.auth.getUser.mockRejectedValue(
-      new Error("Unexpected error"),
-    );
+    mockAuthThrows(new Error("Unexpected error"));
 
     const request = createTestRequest("123");
     const response = await GET(request);

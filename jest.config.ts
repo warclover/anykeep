@@ -29,6 +29,8 @@ const config: Config = {
     "^p-limit$": "<rootDir>/__mocks__/p-limit.js",
     // Mock franc-min to avoid ESM issues
     "^franc-min$": "<rootDir>/__mocks__/franc-min.js",
+    // Mock jose to avoid ESM issues (jose v6 is ESM-only)
+    "^jose$": "<rootDir>/__mocks__/jose.js",
   },
   // Transform ESM modules that Jest can't handle natively
   // Note: lucide-react is handled by moduleNameMapper, so not included here
