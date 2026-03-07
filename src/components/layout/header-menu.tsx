@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useDialogSafe, useSelectionSafe } from "@/contexts/home-page";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { DialogType } from "@/components/home/types";
 
@@ -35,8 +35,9 @@ export function HeaderMenu() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // 获取 HomePageContext（安全版本，不抛错）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（dialog + selection）
+  const dialogContext = useDialogSafe();
+  const selectionContext = useSelectionSafe();
 
   // 仅在首页显示完整菜单
   const isHomePage = pathname === "/home";
@@ -49,8 +50,8 @@ export function HeaderMenu() {
    * 优先使用 Context，Fallback 到 UIEventBus
    */
   const triggerDialog = (dialogType: DialogType) => {
-    if (homeContext) {
-      homeContext.dialog.openDialogAction(dialogType);
+    if (dialogContext) {
+      dialogContext.openDialogAction(dialogType);
     } else {
       uiEventBus.emit(UIEvents.DIALOG_OPEN, { type: dialogType });
     }
@@ -62,8 +63,8 @@ export function HeaderMenu() {
    * 优先使用 Context，Fallback 到 UIEventBus
    */
   const triggerSelectionMode = () => {
-    if (homeContext) {
-      homeContext.selection.toggleSelectionMode();
+    if (selectionContext) {
+      selectionContext.toggleSelectionMode();
     } else {
       uiEventBus.emit(UIEvents.SELECTION_TOGGLE, { enabled: true });
     }

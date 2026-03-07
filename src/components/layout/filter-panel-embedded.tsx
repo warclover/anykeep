@@ -15,7 +15,7 @@ import { useSearchParams } from "next/navigation";
 import { X, Trash2, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useFilterSafe } from "@/contexts/home-page";
 import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
@@ -56,7 +56,8 @@ export function FilterPanelEmbedded({
   onClose,
 }: FilterPanelEmbeddedProps) {
   const searchParams = useSearchParams();
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（仅 filter）
+  const filterContext = useFilterSafe();
   const { customTags: customUsageTags, isLoading } = useCustomUsageTags();
 
   // 从 URL 获取初始值
@@ -98,8 +99,8 @@ export function FilterPanelEmbedded({
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        if (homeContext) {
-          homeContext.filter.setUsageTags(tags);
+        if (filterContext) {
+          filterContext.setUsageTags(tags);
         } else {
           const params = new URLSearchParams(searchParams?.toString() ?? "");
           if (tags.length > 0) {
@@ -117,7 +118,7 @@ export function FilterPanelEmbedded({
         }
       }, DEBOUNCE_DELAY);
     },
-    [homeContext, searchParams],
+    [filterContext, searchParams],
   );
 
   /**
@@ -145,8 +146,8 @@ export function FilterPanelEmbedded({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (homeContext) {
-      homeContext.filter.setUsageTags([]);
+    if (filterContext) {
+      filterContext.setUsageTags([]);
     } else {
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.delete("usageTags");
@@ -158,7 +159,7 @@ export function FilterPanelEmbedded({
       );
       uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: [] });
     }
-  }, [homeContext, searchParams]);
+  }, [filterContext, searchParams]);
 
   /**
    * 保存为智能列表后清除筛选

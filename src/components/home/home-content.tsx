@@ -32,7 +32,7 @@ import {
 import { VirtualListSkeleton } from "./virtual-list-skeleton";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { EmptyState } from "@/components/bookmark/empty-state";
-import { useHomePageContext } from "@/contexts/home-page-context";
+import { useFilter } from "@/contexts/home-page";
 import { useHomeData } from "./providers/home-data-provider";
 import type { ViewMode, LayoutMode, BookmarkWithFolder } from "./types";
 
@@ -365,7 +365,8 @@ export const HomeContent = memo(function HomeContent({
   initialError,
   onRetry,
 }: HomeContentProps) {
-  const { filter } = useHomePageContext();
+  // P0-2: 细粒度 Context 订阅（仅 filter）
+  const { isBrowserPlatform, isTrashFolder } = useFilter();
   const { bookmarks, isLoading, hasMore, loadMore, isLoadingMore } =
     useHomeData();
 
@@ -399,8 +400,6 @@ export const HomeContent = memo(function HomeContent({
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
   }, []);
-
-  const { isBrowserPlatform, isTrashFolder } = filter;
 
   // 稳定的 loadMore 回调，避免内联箭头函数导致下游 memo 组件重渲染
   const handleLoadMore = useCallback(() => {

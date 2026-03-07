@@ -18,7 +18,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation } from "@/contexts/navigation-context";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useFilterSafe, useViewModeSafe } from "@/contexts/home-page";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 /**
@@ -81,8 +81,9 @@ export const PlatformFilter = memo(function PlatformFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Phase 3.2: 尝试获取 HomePageContext（安全版本，不抛错）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（filter + viewMode）
+  const filterContext = useFilterSafe();
+  const viewContext = useViewModeSafe();
 
   // 获取导航上下文（支持客户端导航模式）
   const navigationContext = useSafeNavigation();
@@ -108,11 +109,10 @@ export const PlatformFilter = memo(function PlatformFilter() {
   });
 
   // 当前使用的值：优先从 Context 读取，Fallback 到本地状态
-  const currentPlatform = homeContext?.filter.platform ?? localPlatform;
-  const currentFolder = homeContext?.filter.folder ?? localFolder;
-  const viewMode = homeContext?.view.viewMode ?? localViewMode;
-  const enableFlipCard =
-    homeContext?.view.enableFlipCard ?? localEnableFlipCard;
+  const currentPlatform = filterContext?.platform ?? localPlatform;
+  const currentFolder = filterContext?.folder ?? localFolder;
+  const viewMode = viewContext?.viewMode ?? localViewMode;
+  const enableFlipCard = viewContext?.enableFlipCard ?? localEnableFlipCard;
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -125,14 +125,14 @@ export const PlatformFilter = memo(function PlatformFilter() {
   // Fallback: 监听来自其他组件的翻转状态变化事件（仅无 Context 时需要）
   useEffect(() => {
     // 如果有 Context，不需要事件监听（Context 已处理同步）
-    if (homeContext) return;
+    if (viewContext) return;
 
     const unsubscribe = uiEventBus.on(UIEvents.FLIP_CARD_CHANGE, (payload) => {
       setLocalEnableFlipCard(payload.enabled);
     });
 
     return unsubscribe;
-  }, [homeContext]);
+  }, [viewContext]);
 
   /**
    * 切换翻转卡片状态
@@ -141,9 +141,9 @@ export const PlatformFilter = memo(function PlatformFilter() {
   const handleFlipToggle = () => {
     const newValue = !enableFlipCard;
 
-    if (homeContext) {
-      // Phase 3.2: 使用 Context
-      homeContext.view.setEnableFlipCard(newValue);
+    if (viewContext) {
+      // P0-2: 细粒度 Context
+      viewContext.setEnableFlipCard(newValue);
     } else {
       // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
       setLocalEnableFlipCard(newValue);
@@ -154,7 +154,9 @@ export const PlatformFilter = memo(function PlatformFilter() {
 
   /**
    * 切换平台
-   * 优先使用 Context，Fallback 到 UIEventBus
+   *
+   * Context 更新（UI 即时响应）+ URL 更新（触发 HomeDataProvider 数据刷新）
+   * HomeDataProvider / SWR 缓存键由 URL 参数驱动，必须同步更新 URL
    */
   const handlePlatformChange = (platformValue: string, href: string | null) => {
     // 如果有独立页面跳转链接，直接导航
@@ -168,37 +170,29 @@ export const PlatformFilter = memo(function PlatformFilter() {
       return;
     }
 
-    if (homeContext) {
-      // Phase 3.2: 使用 Context
-      homeContext.filter.setPlatform(platformValue);
-      homeContext.filter.setFolder(""); // 切换平台时清除文件夹
+    // 1. Context 更新（UI 即时响应）
+    if (filterContext) {
+      filterContext.setPlatform(platformValue);
+      filterContext.setFolder("");
     } else {
-      // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
-      // 1. 立即更新本地状态（UI 即时响应）
       setLocalPlatform(platformValue);
-      setLocalFolder(""); // 切换平台时清除文件夹
-
-      // 2. 更新 URL（用于书签和分享）
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.delete("folder");
-      if (platformValue) {
-        params.set("platform", platformValue);
-      } else {
-        params.delete("platform");
-      }
-      const newUrl = `/home?${params.toString()}`;
-      window.history.replaceState(
-        { ...window.history.state, as: newUrl, url: newUrl },
-        "",
-        newUrl,
-      );
-
-      // 3. 触发事件通知 HomePageClient 平台已变化
+      setLocalFolder("");
+      // 无 Context 时通过 EventBus 通知其他组件
       uiEventBus.emit(UIEvents.PLATFORM_CHANGE, {
         platform: platformValue,
         folder: "",
       });
     }
+
+    // 2. 更新 URL（驱动 HomeDataProvider 数据层刷新）
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("folder");
+    if (platformValue) {
+      params.set("platform", platformValue);
+    } else {
+      params.delete("platform");
+    }
+    router.replace(`/home?${params.toString()}`);
   };
 
   // 非首页不显示

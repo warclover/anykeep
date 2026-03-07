@@ -24,7 +24,8 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { useHomePageContext } from "@/contexts/home-page-context";
+// P0-2: 细粒度 Context 订阅（filter + dialog + selection）
+import { useFilter, useDialog, useSelection } from "@/contexts/home-page";
 import { useHomeData } from "./providers/home-data-provider";
 import { useHomeViewMode } from "./hooks/use-home-view-mode";
 import { useHomeMutations } from "./hooks/use-home-mutations";
@@ -89,8 +90,10 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
   const searchParams = useSearchParams();
   const { fetchWithAbort } = useAbortableFetch();
 
-  // ========== Context 状态 ==========
-  const homeContext = useHomePageContext();
+  // ========== Context 状态（P0-2: 细粒度订阅） ==========
+  const filter = useFilter();
+  const dialog = useDialog();
+  const selection = useSelection();
   const { bookmarks, refetch, updateCacheItem, removeCacheItem, setBookmarks } =
     useHomeData();
 
@@ -101,11 +104,11 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
 
   // 同步 URL 参数到 Context（仅首次挂载时）
   useEffect(() => {
-    if (urlPlatform && urlPlatform !== homeContext.filter.platform) {
-      homeContext.filter.setPlatform(urlPlatform);
+    if (urlPlatform && urlPlatform !== filter.platform) {
+      filter.setPlatform(urlPlatform);
     }
-    if (urlFolder && urlFolder !== homeContext.filter.folder) {
-      homeContext.filter.setFolder(urlFolder);
+    if (urlFolder && urlFolder !== filter.folder) {
+      filter.setFolder(urlFolder);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首次挂载
   }, []);
@@ -119,7 +122,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
     enableFlipCard,
     setEnableFlipCard,
   } = useHomeViewMode({
-    isBrowserPlatform: homeContext.filter.isBrowserPlatform,
+    isBrowserPlatform: filter.isBrowserPlatform,
   });
 
   // 翻转卡片切换
@@ -260,7 +263,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
 
   // 响应对话框请求
   useEffect(() => {
-    const dialogType = homeContext.dialog.openDialog;
+    const dialogType = dialog.openDialog;
     if (!dialogType) return;
 
     switch (dialogType) {
@@ -281,9 +284,9 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
         break;
     }
 
-    homeContext.dialog.closeDialog();
+    dialog.closeDialog();
   }, [
-    homeContext.dialog,
+    dialog,
     openCreateDialog,
     openImportDialog,
     openBrowserImportDialog,
@@ -292,11 +295,9 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
   ]);
 
   // 响应选择模式切换（使用 ref 防止循环触发）
-  const prevContextSelectionModeRef = useRef(
-    homeContext.selection.isSelectionMode,
-  );
+  const prevContextSelectionModeRef = useRef(selection.isSelectionMode);
   useEffect(() => {
-    const contextSelectionMode = homeContext.selection.isSelectionMode;
+    const contextSelectionMode = selection.isSelectionMode;
     if (
       contextSelectionMode !== prevContextSelectionModeRef.current &&
       contextSelectionMode !== isSelectionMode
@@ -304,11 +305,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       toggleSelectionMode();
     }
     prevContextSelectionModeRef.current = contextSelectionMode;
-  }, [
-    homeContext.selection.isSelectionMode,
-    isSelectionMode,
-    toggleSelectionMode,
-  ]);
+  }, [selection.isSelectionMode, isSelectionMode, toggleSelectionMode]);
 
   // ========== 回调函数 ==========
 
@@ -439,7 +436,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       onViewModeChange: setViewMode,
       onLayoutModeChange: setLayoutMode,
       onFlipCardToggle: handleFlipCardToggle,
-      currentPlatform: homeContext.filter.platform,
+      currentPlatform: filter.platform,
       currentSort: urlSort,
       onPlatformChange: handlePlatformChange,
       onSortChange: handleSortChange,
@@ -461,8 +458,8 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       onOpenExportDialog: openExportDialog,
       onOpenTagDialog: () => setShowBatchTagDialog(true),
       onOpenSynthesisDialog: () => setShowSynthesisDialog(true),
-      isBrowserPlatform: homeContext.filter.isBrowserPlatform,
-      isTrashFolder: homeContext.filter.isTrashFolder,
+      isBrowserPlatform: filter.isBrowserPlatform,
+      isTrashFolder: filter.isTrashFolder,
       isSnapshotEnabled,
       isMobileMoreMenuOpen,
       onMobileMoreMenuOpenChange: setIsMobileMoreMenuOpen,
@@ -474,7 +471,9 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       setViewMode,
       setLayoutMode,
       handleFlipCardToggle,
-      homeContext.filter,
+      filter.platform,
+      filter.isBrowserPlatform,
+      filter.isTrashFolder,
       urlSort,
       handlePlatformChange,
       handleSortChange,

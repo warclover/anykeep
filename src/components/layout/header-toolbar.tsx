@@ -25,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useViewModeSafe } from "@/contexts/home-page";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { ViewMode, LayoutMode } from "@/components/home/types";
 
@@ -90,8 +90,8 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
   const currentPlatform = searchParams?.get("platform") || "";
   const currentSort = searchParams?.get("sort") || "created_desc";
 
-  // 获取 HomePageContext（安全版本，不抛错）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（仅 viewMode）
+  const viewContext = useViewModeSafe();
 
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
@@ -105,8 +105,8 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
   }
 
   // 视图/布局模式：优先从 Context 读取，Fallback 到本地状态
-  const viewMode = homeContext?.view.viewMode ?? getStoredViewMode();
-  const layoutMode = homeContext?.view.layoutMode ?? getStoredLayoutMode();
+  const viewMode = viewContext?.viewMode ?? getStoredViewMode();
+  const layoutMode = viewContext?.layoutMode ?? getStoredLayoutMode();
 
   /**
    * 切换视图模式
@@ -115,8 +115,8 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
   const handleViewModeChange = (mode: string) => {
     if (!mode) return; // ToggleGroup 可能传空字符串
     const typedMode = mode as ViewMode;
-    if (homeContext) {
-      homeContext.view.setViewMode(typedMode);
+    if (viewContext) {
+      viewContext.setViewMode(typedMode);
     } else {
       localStorage.setItem(VIEW_MODE_STORAGE_KEY, typedMode);
       uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode: typedMode });
@@ -128,8 +128,8 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
    * 优先使用 Context，Fallback 到 UIEventBus
    */
   const handleLayoutModeChange = (mode: LayoutMode) => {
-    if (homeContext) {
-      homeContext.view.setLayoutMode(mode);
+    if (viewContext) {
+      viewContext.setLayoutMode(mode);
     } else {
       localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
       uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });

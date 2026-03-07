@@ -88,7 +88,6 @@ export function HomePageClient({
     exitSelectionMode,
   });
   const dialogs = useHomeDialogs({
-    homeContext: urlSync.homeContext,
     exitSelectionMode,
     refetch: bookmarkData.refetch,
     selectedIds,

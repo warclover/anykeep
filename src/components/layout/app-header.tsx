@@ -35,7 +35,7 @@ import { HeaderMenu } from "@/components/layout/header-menu";
 import { HeaderToolbar } from "@/components/layout/header-toolbar";
 import { NotificationDropdown } from "@/components/layout/notification-dropdown";
 import { useUser } from "@/contexts/user-context";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useFilterSafe, useAIPanelSafe } from "@/contexts/home-page";
 import { QuickAddBookmark } from "@/components/quick-add";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useUiText } from "@/lib/i18n";
@@ -55,14 +55,15 @@ export const AppHeader = memo(function AppHeader() {
   const sidebarContext = useSafeSidebar();
   const sidebarWidth = sidebarContext?.displayWidth ?? SIDEBAR_WIDTH.expanded;
 
-  // 获取首页上下文（用于平台筛选判断）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（filter + aiPanel）
+  const filterContext = useFilterSafe();
+  const aiPanelContext = useAIPanelSafe();
 
   // 获取当前文件夹和平台（用于判断浏览器书签）
   const currentFolder =
-    homeContext?.filter.folder ?? searchParams?.get("folder") ?? "";
+    filterContext?.folder ?? searchParams?.get("folder") ?? "";
   const currentPlatform =
-    homeContext?.filter.platform ?? searchParams?.get("platform") ?? "";
+    filterContext?.platform ?? searchParams?.get("platform") ?? "";
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = currentPlatform === "browser";
@@ -73,15 +74,15 @@ export const AppHeader = memo(function AppHeader() {
 
   // 手动创建按钮点击事件 - 使用挤压式面板
   const handleOpenCreatePanel = () => {
-    if (homeContext) {
-      homeContext.aiPanel.toggleCreatePanel();
+    if (aiPanelContext) {
+      aiPanelContext.toggleCreatePanel();
     }
   };
 
   // 用途筛选按钮点击事件 - 使用挤压式面板
   const handleOpenFilterPanel = () => {
-    if (homeContext) {
-      homeContext.aiPanel.toggleFilterPanel();
+    if (aiPanelContext) {
+      aiPanelContext.toggleFilterPanel();
     }
   };
 
@@ -141,7 +142,7 @@ export const AppHeader = memo(function AppHeader() {
               {t.mobileMenu.manualCreate}
             </Button>
 
-            {!isBrowserPlatform && !currentFolder && homeContext && (
+            {!isBrowserPlatform && !currentFolder && aiPanelContext && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -152,12 +153,12 @@ export const AppHeader = memo(function AppHeader() {
               </Button>
             )}
 
-            {homeContext && (
+            {aiPanelContext && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="shrink-0 h-7 px-2 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => homeContext.aiPanel.toggleAIPanel()}
+                onClick={() => aiPanelContext.toggleAIPanel()}
               >
                 {t.mobileMenu.aiAssistant}
               </Button>

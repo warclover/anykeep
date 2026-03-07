@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHomePageContext } from "@/contexts/home-page-context";
+import { useFilter } from "@/contexts/home-page";
 import { prefetchCustomUsageTags } from "@/hooks/data";
 
 interface UseHomeUrlSyncOptions {
@@ -21,7 +21,6 @@ export interface UseHomeUrlSyncReturn {
   currentSort: string;
   isBrowserPlatform: boolean;
   isTrashFolder: boolean;
-  homeContext: ReturnType<typeof useHomePageContext>;
   currentSmartListId: number | null | undefined;
   handlePlatformChange: (platformValue: string) => void;
   handleSortChange: (sortValue: string) => void;
@@ -34,7 +33,8 @@ export function useHomeUrlSync(
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const homeContext = useHomePageContext();
+  // P0-2: 细粒度 Context 订阅（仅 filter）
+  const filter = useFilter();
 
   const urlPlatform = propPlatform ?? searchParams?.get("platform") ?? "";
   const urlFolder = propFolder ?? searchParams?.get("folder") ?? "";
@@ -50,18 +50,17 @@ export function useHomeUrlSync(
     if (hasSyncedRef.current) return;
     hasSyncedRef.current = true;
 
-    if (urlPlatform && urlPlatform !== homeContext.filter.platform) {
-      homeContext.filter.setPlatform(urlPlatform);
+    if (urlPlatform && urlPlatform !== filter.platform) {
+      filter.setPlatform(urlPlatform);
     }
-    if (urlFolder && urlFolder !== homeContext.filter.folder) {
-      homeContext.filter.setFolder(urlFolder);
+    if (urlFolder && urlFolder !== filter.folder) {
+      filter.setFolder(urlFolder);
     }
     if (
       parsedUsageTags.length > 0 &&
-      JSON.stringify(parsedUsageTags) !==
-        JSON.stringify([...homeContext.filter.usageTags])
+      JSON.stringify(parsedUsageTags) !== JSON.stringify([...filter.usageTags])
     ) {
-      homeContext.filter.setUsageTags(parsedUsageTags);
+      filter.setUsageTags(parsedUsageTags);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首次挂载
   }, []);
@@ -88,14 +87,10 @@ export function useHomeUrlSync(
       isFirstRenderRef.current = false;
       return;
     }
-    setCurrentPlatform(homeContext.filter.platform);
-    setCurrentFolder(homeContext.filter.folder);
-    setLocalUsageTags([...homeContext.filter.usageTags]);
-  }, [
-    homeContext.filter.platform,
-    homeContext.filter.folder,
-    homeContext.filter.usageTags,
-  ]);
+    setCurrentPlatform(filter.platform);
+    setCurrentFolder(filter.folder);
+    setLocalUsageTags([...filter.usageTags]);
+  }, [filter.platform, filter.folder, filter.usageTags]);
 
   const isBrowserPlatform = currentPlatform === "browser";
   const isTrashFolder = currentFolder === "trash";
@@ -132,7 +127,6 @@ export function useHomeUrlSync(
     currentSort,
     isBrowserPlatform,
     isTrashFolder,
-    homeContext,
     currentSmartListId,
     handlePlatformChange,
     handleSortChange,

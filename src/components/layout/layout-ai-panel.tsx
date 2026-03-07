@@ -13,7 +13,7 @@
 import { AIAssistantPanelEmbedded } from "@/components/ai";
 import { FilterPanelEmbedded } from "@/components/layout/filter-panel-embedded";
 import { CreatePanelEmbedded } from "@/components/layout/create-panel-embedded";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useAIPanelSafe } from "@/contexts/home-page";
 import { useOptionalUser } from "@/contexts/user-context";
 
 /**
@@ -25,12 +25,12 @@ import { useOptionalUser } from "@/contexts/user-context";
  * - 手动创建面板（挤压式布局）
  */
 export function LayoutAIPanel() {
-  // 安全获取 Context（可能不在 Provider 内）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（仅 aiPanel）
+  const aiPanelContext = useAIPanelSafe();
   const userContext = useOptionalUser();
 
   // 如果没有 Context 或用户未登录，不显示
-  if (!homeContext || !userContext?.user?.id) {
+  if (!aiPanelContext || !userContext?.user?.id) {
     return null;
   }
 
@@ -41,7 +41,7 @@ export function LayoutAIPanel() {
     closeAIPanel,
     closeFilterPanel,
     closeCreatePanel,
-  } = homeContext.aiPanel;
+  } = aiPanelContext;
 
   return (
     <>

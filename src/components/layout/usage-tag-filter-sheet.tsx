@@ -15,7 +15,7 @@ import { Filter, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USAGE_TAG_PRESETS, getAllUsageTags } from "@/lib/constants/usage-tags";
 import { useSafeNavigation } from "@/contexts/navigation-context";
-import { useHomePageSafe } from "@/contexts/home-page-context";
+import { useFilterSafe } from "@/contexts/home-page";
 import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "@/components/bookmark/usage-tag-button";
 import { SmartListQuickSave } from "@/components/smart-list";
@@ -63,8 +63,8 @@ export function UsageTagFilterSheet({
 }: UsageTagFilterSheetProps) {
   const searchParams = useSearchParams();
 
-  // Phase 3.3: 尝试获取 HomePageContext（安全版本，不抛错）
-  const homeContext = useHomePageSafe();
+  // P0-2: 细粒度 Context 订阅（仅 filter）
+  const filterContext = useFilterSafe();
 
   // 获取导航上下文
   const navigationContext = useSafeNavigation();
@@ -155,9 +155,9 @@ export function UsageTagFilterSheet({
 
       // 设置新的防抖定时器
       debounceTimerRef.current = setTimeout(() => {
-        if (homeContext) {
+        if (filterContext) {
           // Phase 3.3: 使用 Context
-          homeContext.filter.setUsageTags(tags);
+          filterContext.setUsageTags(tags);
         } else {
           // Fallback: UIEventBus（内置 Legacy Bridge 保持兼容）
           // 更新 URL
@@ -182,7 +182,7 @@ export function UsageTagFilterSheet({
         onFilterChange?.(tags);
       }, DEBOUNCE_DELAY);
     },
-    [homeContext, searchParams, onFilterChange],
+    [filterContext, searchParams, onFilterChange],
   );
 
   /**
@@ -214,8 +214,8 @@ export function UsageTagFilterSheet({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (homeContext) {
-      homeContext.filter.setUsageTags([]);
+    if (filterContext) {
+      filterContext.setUsageTags([]);
     } else {
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.delete("usageTags");
@@ -229,7 +229,7 @@ export function UsageTagFilterSheet({
     }
 
     onFilterChange?.([]);
-  }, [homeContext, searchParams, onFilterChange]);
+  }, [filterContext, searchParams, onFilterChange]);
 
   /**
    * 保存为智能列表后清除筛选

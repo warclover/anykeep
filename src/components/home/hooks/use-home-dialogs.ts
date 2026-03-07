@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { useDialogs } from "@/hooks/core";
-import type { HomePageContextTypeV2 } from "@/contexts/home-page";
+// P0-2: 细粒度 Context 订阅（dialog + selection）
+import { useDialog, useSelection } from "@/contexts/home-page";
 
 interface UseHomeDialogsOptions {
-  homeContext: HomePageContextTypeV2;
   exitSelectionMode: () => void;
   refetch: () => Promise<unknown>;
   selectedIds: Set<number>;
@@ -17,7 +17,6 @@ interface UseHomeDialogsOptions {
 }
 
 export function useHomeDialogs({
-  homeContext,
   exitSelectionMode,
   refetch,
   selectedIds,
@@ -25,6 +24,9 @@ export function useHomeDialogs({
   toggleSelectionMode,
 }: UseHomeDialogsOptions) {
   const router = useRouter();
+  // P0-2: 直接订阅细粒度 Context
+  const dialogContext = useDialog();
+  const selectionContext = useSelection();
 
   const {
     showCreateDialog,
@@ -52,7 +54,7 @@ export function useHomeDialogs({
 
   // Context 对话框联动
   useEffect(() => {
-    const dialogType = homeContext.dialog.openDialog;
+    const dialogType = dialogContext.openDialog;
     if (!dialogType) return;
 
     switch (dialogType) {
@@ -73,9 +75,9 @@ export function useHomeDialogs({
         break;
     }
 
-    homeContext.dialog.closeDialog();
+    dialogContext.closeDialog();
   }, [
-    homeContext.dialog,
+    dialogContext,
     openCreateDialog,
     openImportDialog,
     openBrowserImportDialog,
@@ -84,9 +86,9 @@ export function useHomeDialogs({
   ]);
 
   // Context 选择模式联动
-  const prevSelectionModeRef = useRef(homeContext.selection.isSelectionMode);
+  const prevSelectionModeRef = useRef(selectionContext.isSelectionMode);
   useEffect(() => {
-    const contextSelectionMode = homeContext.selection.isSelectionMode;
+    const contextSelectionMode = selectionContext.isSelectionMode;
     if (
       contextSelectionMode !== prevSelectionModeRef.current &&
       contextSelectionMode !== isSelectionMode
@@ -94,11 +96,7 @@ export function useHomeDialogs({
       toggleSelectionMode();
     }
     prevSelectionModeRef.current = contextSelectionMode;
-  }, [
-    homeContext.selection.isSelectionMode,
-    isSelectionMode,
-    toggleSelectionMode,
-  ]);
+  }, [selectionContext.isSelectionMode, isSelectionMode, toggleSelectionMode]);
 
   const handleMoveSuccess = useCallback(() => {
     exitSelectionMode();
