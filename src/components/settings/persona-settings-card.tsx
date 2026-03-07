@@ -26,7 +26,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -34,27 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Check,
-  Loader2,
-  HelpCircle,
-  RefreshCw,
-  Sparkles,
-  UserCog,
-  GraduationCap,
-  Briefcase,
-  Palette,
-  TrendingUp,
-  Code2,
-  PenTool,
-  BookOpen,
-} from "lucide-react";
+import { Check, Loader2, RefreshCw, Sparkles, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -73,82 +52,13 @@ import {
 } from "@/lib/ai-agent/personas/types";
 import { clientLogger } from "@/lib/client-logger";
 
-// ============================================================================
-// UI 文本常量
-// ============================================================================
-
-const UI_TEXT = {
-  title: "AI 个性化",
-  version: "Phase 4",
-  description: "让 AI 更懂你的使用习惯和偏好",
-  inferredSection: "AI 识别的你",
-  basedOn: "基于你的 {count} 条收藏",
-  primaryPersona: "主画像",
-  confidence: "置信度",
-  secondaryTraits: "次要特征",
-  modeSection: "画像模式",
-  useInference: "使用 AI 推断",
-  useInferenceDesc: "AI 根据你的收藏行为自动识别最适合的画像",
-  manualSelect: "手动选择",
-  manualSelectDesc: "自己选择画像类型，覆盖 AI 推断结果",
-  selectGroup: "选择分组",
-  selectType: "选择画像",
-  preferencesSection: "响应偏好",
-  responseStyle: "响应风格",
-  emojiStyle: "Emoji 风格",
-  proactiveReminders: "主动提醒",
-  academicCitations: "学术引用",
-  saveButton: "保存设置",
-  saving: "保存中...",
-  saved: "已保存",
-  resetButton: "重置",
-  restoreDefaults: "恢复默认设置",
-  insufficientData: "收藏数据不足（少于 10 条），无法推断画像",
-  featureDisabled: "画像功能未启用",
-} as const;
-
-// ============================================================================
-// 分组配置
-// ============================================================================
-
-const PERSONA_GROUPS = [
-  {
-    id: "academic" as PersonaGroup,
-    icon: GraduationCap,
-    name: "学术研究",
-    description: "学生、教师、科研人员",
-  },
-  {
-    id: "content" as PersonaGroup,
-    icon: PenTool,
-    name: "内容创作",
-    description: "博主、讲师、策展人",
-  },
-  {
-    id: "tech" as PersonaGroup,
-    icon: Code2,
-    name: "技术实践",
-    description: "开发者、架构师、研究员",
-  },
-  {
-    id: "professional" as PersonaGroup,
-    icon: Briefcase,
-    name: "专业服务",
-    description: "咨询、分析、法律、医学",
-  },
-  {
-    id: "design" as PersonaGroup,
-    icon: Palette,
-    name: "产品设计",
-    description: "产品经理、UX、策划",
-  },
-  {
-    id: "growth" as PersonaGroup,
-    icon: TrendingUp,
-    name: "自我提升",
-    description: "学习、考证、转型",
-  },
-];
+import {
+  UI_TEXT,
+  PERSONA_GROUPS,
+  getPersonasByGroup,
+} from "./persona-constants";
+import { PersonaInferredSection } from "./persona-inferred-section";
+import { PersonaPreferencesForm } from "./persona-preferences-form";
 
 // ============================================================================
 // 类型定义
@@ -156,26 +66,6 @@ const PERSONA_GROUPS = [
 
 interface PersonaSettingsCardProps {
   className?: string;
-}
-
-// ============================================================================
-// 辅助函数
-// ============================================================================
-
-function getPersonaIcon(group: PersonaGroup) {
-  const groupConfig = PERSONA_GROUPS.find((g) => g.id === group);
-  return groupConfig?.icon || BookOpen;
-}
-
-function getPersonasByGroup(group: PersonaGroup): PersonaType[] {
-  return (
-    Object.entries(PERSONA_METADATA) as [
-      PersonaType,
-      (typeof PERSONA_METADATA)[PersonaType],
-    ][]
-  )
-    .filter(([, meta]) => meta.group === group && meta.enabled)
-    .map(([type]) => type);
 }
 
 // ============================================================================
@@ -404,97 +294,19 @@ export function PersonaSettingsCard({ className }: PersonaSettingsCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* ════════════════════════════════════════════════════════════════ */}
         {/* AI 推断结果 */}
-        {/* ════════════════════════════════════════════════════════════════ */}
-        {inferredPersona && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <Sparkles className="size-4 text-purple-500" />
-                {UI_TEXT.inferredSection}
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refreshInference()}
-                className="text-xs"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                刷新
-              </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              {UI_TEXT.basedOn.replace(
-                "{count}",
-                bookmarkCount.toLocaleString(),
-              )}
-            </div>
-
-            {/* 主画像 */}
-            <div className="rounded-lg border p-4 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const Icon = getPersonaIcon(inferredGroup ?? "academic");
-                    return <Icon className="size-6 text-purple-500" />;
-                  })()}
-                  <div>
-                    <span className="font-medium">
-                      {inferredPersona &&
-                        PERSONA_METADATA[inferredPersona.primaryType]
-                          ?.displayName}
-                    </span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {inferredPersona &&
-                        PERSONA_METADATA[inferredPersona.primaryType]
-                          ?.description}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {confidence}% {UI_TEXT.confidence}
-                  </Badge>
-                  <Badge className="bg-purple-500">
-                    {UI_TEXT.primaryPersona}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* 次要特征 */}
-            {alternatives.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {UI_TEXT.secondaryTraits}
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {alternatives.slice(0, 3).map(({ persona, confidence }) => (
-                    <Badge key={persona} variant="outline" className="text-xs">
-                      {PERSONA_METADATA[persona]?.displayName} ({confidence}%)
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 数据不足提示 */}
-        {!inferredPersona && bookmarkCount < 10 && (
-          <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
-            <BookOpen className="mx-auto size-8 mb-2 opacity-50" />
-            <p className="text-sm">{UI_TEXT.insufficientData}</p>
-          </div>
-        )}
+        <PersonaInferredSection
+          inferredPersona={inferredPersona}
+          inferredGroup={inferredGroup}
+          confidence={confidence}
+          alternatives={alternatives}
+          bookmarkCount={bookmarkCount}
+          onRefresh={refreshInference}
+        />
 
         <Separator />
 
-        {/* ════════════════════════════════════════════════════════════════ */}
         {/* 模式选择 */}
-        {/* ════════════════════════════════════════════════════════════════ */}
         <div className="space-y-4">
           <Label className="text-sm font-medium flex items-center gap-2">
             <UserCog className="size-4" />
@@ -576,9 +388,7 @@ export function PersonaSettingsCard({ className }: PersonaSettingsCardProps) {
           </RadioGroup>
         </div>
 
-        {/* ════════════════════════════════════════════════════════════════ */}
         {/* 手动选择画像 */}
-        {/* ════════════════════════════════════════════════════════════════ */}
         {mode === "manual" && (
           <>
             <Separator />
@@ -646,100 +456,13 @@ export function PersonaSettingsCard({ className }: PersonaSettingsCardProps) {
 
         <Separator />
 
-        {/* ════════════════════════════════════════════════════════════════ */}
         {/* 响应偏好 */}
-        {/* ════════════════════════════════════════════════════════════════ */}
-        <div className="space-y-4">
-          <Label className="text-sm font-medium">
-            {UI_TEXT.preferencesSection}
-          </Label>
+        <PersonaPreferencesForm
+          preferences={preferences}
+          onPreferenceChange={updatePreference}
+        />
 
-          <div className="grid gap-4">
-            {/* 响应风格 */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm">{UI_TEXT.responseStyle}</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="size-3.5 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">控制 AI 响应的详细程度</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Select
-                value={preferences.responseStyle}
-                onValueChange={(value) =>
-                  updatePreference(
-                    "responseStyle",
-                    value as PersonaPreferences["responseStyle"],
-                  )
-                }
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="concise">简洁</SelectItem>
-                  <SelectItem value="detailed">详细</SelectItem>
-                  <SelectItem value="auto">自动</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Emoji 风格 */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">{UI_TEXT.emojiStyle}</Label>
-              <Select
-                value={preferences.emojiStyle}
-                onValueChange={(value) =>
-                  updatePreference(
-                    "emojiStyle",
-                    value as PersonaPreferences["emojiStyle"],
-                  )
-                }
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">不使用</SelectItem>
-                  <SelectItem value="minimal">适度</SelectItem>
-                  <SelectItem value="rich">丰富</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 主动提醒 */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">{UI_TEXT.proactiveReminders}</Label>
-              <Switch
-                checked={preferences.proactiveReminders}
-                onCheckedChange={(checked) =>
-                  updatePreference("proactiveReminders", checked)
-                }
-              />
-            </div>
-
-            {/* 学术引用 */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">{UI_TEXT.academicCitations}</Label>
-              <Switch
-                checked={preferences.academicCitations}
-                onCheckedChange={(checked) =>
-                  updatePreference("academicCitations", checked)
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ════════════════════════════════════════════════════════════════ */}
         {/* 恢复默认 */}
-        {/* ════════════════════════════════════════════════════════════════ */}
         <div className="pt-2">
           <Button
             variant="ghost"

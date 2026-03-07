@@ -9,10 +9,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, Clock, X, Loader2, Flame } from "lucide-react";
+import { Search, Sparkles, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SearchEmptyState } from "./search-empty-state";
 import { SearchResultCard } from "@/components/search/search-result-card";
 import { ErrorMessage } from "@/components/ui/error-message";
 import {
@@ -404,22 +405,14 @@ export function SearchPageClient({
       <div className="flex-1 px-4 md:px-8 py-6 md:py-8">
         {/* 搜索框区域 */}
         <div className="max-w-2xl mx-auto">
-          {/* 空状态标题区域 - 仅在无搜索时显示 */}
+          {/* 空状态：标题 + 搜索历史 + 热门标签 */}
           {!hasQuery && (
-            <div className="flex flex-col items-center text-center mb-6 pt-4">
-              {/* 紫色图标 - 缩小尺寸突出搜索框焦点 */}
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20 rounded-full flex items-center justify-center mb-3">
-                <Search className="size-7 text-purple-500 dark:text-purple-400" />
-              </div>
-              {/* 标题 */}
-              <h2 className="text-gray-900 dark:text-white text-xl md:text-2xl font-semibold mb-2">
-                开始搜索你的收藏
-              </h2>
-              {/* 副标题 - 合并为单行，消除信息冗余 */}
-              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md">
-                搜索标题、作者或摘要，支持 AI 语义匹配
-              </p>
-            </div>
+            <SearchEmptyState
+              searchHistory={searchHistory}
+              hotTags={hotTags}
+              onTagClick={handleTagClick}
+              onClearHistory={clearHistory}
+            />
           )}
 
           {/* 搜索框 + AI 切换一体化 */}
@@ -478,60 +471,6 @@ export function SearchPageClient({
             visible={!hasQuery}
             className="mb-6 hidden md:flex"
           />
-
-          {/* 搜索历史 — 始终挂载，CSS 控制显隐，避免条件渲染破坏 Suspense 流式子树 */}
-          <div
-            className={
-              searchHistory.length > 0 && !hasQuery ? "mb-6" : "hidden"
-            }
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                <Clock className="size-4" />
-                搜索历史
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearHistory}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                清空
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {searchHistory.map((item, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={() => handleTagClick(item)}
-                >
-                  {item}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* 热门标签 — 客户端加载，CSS 控制显隐，与搜索历史同模式 */}
-          <div className={hotTags.length > 0 && !hasQuery ? "mb-6" : "hidden"}>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              <Flame className="size-4 text-orange-500" />
-              热门标签
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {hotTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 text-sm"
-                  onClick={() => handleTagClick(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* 搜索结果 */}
