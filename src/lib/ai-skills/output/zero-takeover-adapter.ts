@@ -233,7 +233,8 @@ export class ZeroTakeoverAdapter {
 
     // 添加任务理解信息
     if (understanding || result.understanding) {
-      const u = understanding || result.understanding!;
+      const u = understanding ?? result.understanding;
+      if (!u) return doneChunk;
       doneChunk.data.understanding = {
         goal: u.goal,
         reasoning: u.reasoning,

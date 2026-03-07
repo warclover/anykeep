@@ -35,7 +35,7 @@ export function ExclusionsTab({
     const map = new Map<number, ExclusionRecord[]>();
     for (const ex of exclusions) {
       if (!map.has(ex.folder_id)) map.set(ex.folder_id, []);
-      map.get(ex.folder_id)!.push(ex);
+      map.get(ex.folder_id)?.push(ex);
     }
     return [...map.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [exclusions]);

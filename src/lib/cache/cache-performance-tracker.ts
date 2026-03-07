@@ -276,13 +276,13 @@ class CachePerformanceTracker {
     const cacheHits = history.filter((m) => m.cacheHit).length;
     const restoreTimes = history
       .filter((m) => m.cacheRestoreTime !== null)
-      .map((m) => m.cacheRestoreTime!);
+      .map((m) => m.cacheRestoreTime ?? 0);
     const renderTimes = history
       .filter((m) => m.timeToFirstRender !== null)
-      .map((m) => m.timeToFirstRender!);
+      .map((m) => m.timeToFirstRender ?? 0);
     const refreshTimes = history
       .filter((m) => m.backgroundRefreshTime !== null)
-      .map((m) => m.backgroundRefreshTime!);
+      .map((m) => m.backgroundRefreshTime ?? 0);
 
     const avg = (arr: number[]) =>
       arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;

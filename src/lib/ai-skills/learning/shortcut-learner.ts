@@ -275,7 +275,8 @@ export class PersonalizedShortcutLearner {
         });
       }
 
-      const stats = inputStats.get(normalizedInput)!;
+      const stats = inputStats.get(normalizedInput);
+      if (!stats) continue;
       stats.count++;
 
       const intentKey = `${feedback.predictedIntent.type}:${feedback.predictedIntent.subType || "*"}`;
@@ -548,7 +549,7 @@ export class PersonalizedShortcutLearner {
     // 检查缓存
     const cacheKey = `${userId}:${options.activeOnly ? "active" : "all"}`;
     if (this.shortcutCache.has(cacheKey)) {
-      return this.shortcutCache.get(cacheKey)!;
+      return this.shortcutCache.get(cacheKey) ?? [];
     }
 
     const supabase = await createClient();

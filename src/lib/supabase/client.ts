@@ -51,7 +51,7 @@ function createFetchWithTimeout(timeout: number) {
       const needsTimeout = !options?.signal;
       const controller = needsTimeout ? new AbortController() : null;
       const timeoutId = needsTimeout
-        ? setTimeout(() => controller!.abort(), timeout)
+        ? setTimeout(() => controller?.abort(), timeout)
         : null;
 
       try {

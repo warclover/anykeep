@@ -228,7 +228,7 @@ export class WeightOptimizer {
 
       // 更新当前权重
       if (currentWeights.has(intentKey)) {
-        s.currentWeight = currentWeights.get(intentKey)!;
+        s.currentWeight = currentWeights.get(intentKey) ?? s.currentWeight;
       }
 
       // 低准确率：降权

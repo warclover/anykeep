@@ -264,7 +264,8 @@ export function ContentAnalysisCreateClient() {
         clearTimeout(searchDebounceRef.current);
       }
     };
-  }, [searchQuery]); // 移除 loadBookmarks 依赖，通过闭包访问最新的函数
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadBookmarks 通过 ref 闭包访问，避免搜索防抖时 effect 重复触发
+  }, [searchQuery]);
 
   // 加载更多
   const handleLoadMore = useCallback(() => {

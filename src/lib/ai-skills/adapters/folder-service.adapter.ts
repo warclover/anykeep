@@ -258,12 +258,14 @@ export class FolderServiceAdapter {
 
         // 累计匹配计数
         if (recommendationMap.has(key)) {
-          const existing = recommendationMap.get(key)!;
-          existing.matchingBookmarkCount += 1;
-          // 保留最高置信度
-          if (rec.confidence > existing.confidence) {
-            existing.confidence = rec.confidence;
-            existing.reason = rec.reason;
+          const existing = recommendationMap.get(key);
+          if (existing) {
+            existing.matchingBookmarkCount += 1;
+            // 保留最高置信度
+            if (rec.confidence > existing.confidence) {
+              existing.confidence = rec.confidence;
+              existing.reason = rec.reason;
+            }
           }
         } else {
           recommendationMap.set(key, {

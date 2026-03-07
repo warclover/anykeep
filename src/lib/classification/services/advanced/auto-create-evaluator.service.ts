@@ -521,7 +521,7 @@ export class AutoCreateEvaluatorService {
       .map((f) => ({
         id: f.id,
         name: f.name,
-        nameEmbedding: embeddingByFolderId.get(f.id)!,
+        nameEmbedding: embeddingByFolderId.get(f.id) ?? [],
       }));
   }
 

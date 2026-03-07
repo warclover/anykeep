@@ -42,7 +42,7 @@ function buildFolderTree(flatFolders: FolderType[]): FolderTreeNode[] {
   // 第二遍：连接父子关系
   for (const node of map.values()) {
     if (node.parent_id != null && map.has(node.parent_id)) {
-      map.get(node.parent_id)!.children!.push(node);
+      map.get(node.parent_id)?.children?.push(node);
     } else {
       roots.push(node);
     }

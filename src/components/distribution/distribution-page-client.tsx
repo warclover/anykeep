@@ -300,7 +300,7 @@ export function DistributionPageClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetType,
-          name: `${TARGET_TYPE_CONFIG[targetType!]?.label || targetType} 同步`,
+          name: `${(targetType ? TARGET_TYPE_CONFIG[targetType]?.label : undefined) || targetType} 同步`,
           targetConfig: {
             vaultPath: configRecord.vaultPath,
             folderName: configRecord.folderName,

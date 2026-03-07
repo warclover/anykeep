@@ -201,7 +201,14 @@ export function BookmarkDetailClient({
         pollTimerRef.current = null;
       }
     };
-  }, [userId, bookmark.id, bookmark.status, bookmark.ai_summary, localSummary]);
+  }, [
+    userId,
+    bookmark.id,
+    bookmark.status,
+    bookmark.ai_summary,
+    localSummary,
+    setLocalSummary,
+  ]);
 
   // 判断是否为浏览器书签
   const isBrowserPlatform = [

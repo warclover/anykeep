@@ -55,7 +55,7 @@ export class KeywordGroupingService {
         if (!groups.has(primaryKeyword)) {
           groups.set(primaryKeyword, []);
         }
-        groups.get(primaryKeyword)!.push(bookmark.id);
+        groups.get(primaryKeyword)?.push(bookmark.id);
       } else {
         ungrouped.push(bookmark.id);
       }

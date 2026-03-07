@@ -94,17 +94,19 @@ export async function sampledDbscanClustering(
     }
 
     // 累加向量
-    const centroid = clusterCentroids.get(label)!;
+    const centroid = clusterCentroids.get(label);
+    if (!centroid) continue;
     const embedding = sampleBookmarks[i].embedding;
     for (let d = 0; d < embedding.length; d++) {
       centroid[d] += embedding[d];
     }
-    clusterMembers.get(label)!.push(sampleBookmarks[i].id);
+    clusterMembers.get(label)?.push(sampleBookmarks[i].id);
   }
 
   // 归一化质心
   for (const [label, centroid] of clusterCentroids) {
-    const count = clusterMembers.get(label)!.length;
+    const members = clusterMembers.get(label);
+    const count = members?.length ?? 1;
     for (let d = 0; d < centroid.length; d++) {
       centroid[d] /= count;
     }
@@ -149,7 +151,7 @@ export async function sampledDbscanClustering(
       if (!allClusterMembers.has(bestLabel)) {
         allClusterMembers.set(bestLabel, []);
       }
-      allClusterMembers.get(bestLabel)!.push(bookmark.id);
+      allClusterMembers.get(bestLabel)?.push(bookmark.id);
     }
   }
 
@@ -167,7 +169,8 @@ export async function sampledDbscanClustering(
       continue;
     }
 
-    const centroid = clusterCentroids.get(label)!;
+    const centroid = clusterCentroids.get(label);
+    if (!centroid) continue;
     const cohesion = computeClusterCohesion(memberIds, centroid, bookmarkMap);
     const representatives = selectRepresentatives(
       memberIds,
@@ -236,7 +239,7 @@ function fullDbscan(
       if (!clusterMap.has(label)) {
         clusterMap.set(label, []);
       }
-      clusterMap.get(label)!.push(bookmarks[i].id);
+      clusterMap.get(label)?.push(bookmarks[i].id);
     }
   }
 
@@ -360,7 +363,8 @@ function expandCluster(
   const queue = [...neighbors];
 
   while (queue.length > 0) {
-    const current = queue.shift()!;
+    const current = queue.shift();
+    if (current === undefined) break;
 
     if (!visited.has(current)) {
       visited.add(current);

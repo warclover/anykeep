@@ -94,7 +94,7 @@ export class VectorSearchService {
         "match_folder_profiles_v5",
         {
           p_user_id: request.userId,
-          p_content_embedding: request.contentEmbedding!,
+          p_content_embedding: request.contentEmbedding ?? null,
           p_behavior_embedding: null,
           p_alpha: 0, // 纯内容搜索
           p_match_threshold: minSimilarity,
@@ -142,7 +142,7 @@ export class VectorSearchService {
         {
           p_user_id: request.userId,
           p_content_embedding: null,
-          p_behavior_embedding: request.behaviorEmbedding!,
+          p_behavior_embedding: request.behaviorEmbedding ?? null,
           p_alpha: 1, // 纯行为搜索
           p_match_threshold: minSimilarity,
           p_match_count: limit,
@@ -190,8 +190,8 @@ export class VectorSearchService {
         "match_folder_profiles_v5",
         {
           p_user_id: request.userId,
-          p_content_embedding: request.contentEmbedding!,
-          p_behavior_embedding: request.behaviorEmbedding!,
+          p_content_embedding: request.contentEmbedding ?? null,
+          p_behavior_embedding: request.behaviorEmbedding ?? null,
           p_alpha: alpha,
           p_match_threshold: minSimilarity,
           p_match_count: limit,

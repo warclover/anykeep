@@ -59,11 +59,14 @@ export function CreateBookmarkDialog({
     debouncedFetch,
     abortAll,
   });
+  const { resetForm } = form;
+  const { resetFetchState } = metadata;
+  const { resetExpanded } = sections;
   const resetAll = useCallback(() => {
-    form.resetForm();
-    metadata.resetFetchState();
-    sections.resetExpanded();
-  }, [form.resetForm, metadata.resetFetchState, sections.resetExpanded]);
+    resetForm();
+    resetFetchState();
+    resetExpanded();
+  }, [resetForm, resetFetchState, resetExpanded]);
   const submit = useBookmarkSubmit({
     form,
     resetAll,

@@ -71,10 +71,12 @@ export function CreateBookmarkDrawer({
     setUrl: form.setUrl,
   });
 
+  const { resetForm } = form;
+  const { resetFetchState } = metadata;
   const resetAll = useCallback(() => {
-    form.resetForm();
-    metadata.resetFetchState();
-  }, [form.resetForm, metadata.resetFetchState]);
+    resetForm();
+    resetFetchState();
+  }, [resetForm, resetFetchState]);
 
   const submit = useBookmarkSubmit({
     form,

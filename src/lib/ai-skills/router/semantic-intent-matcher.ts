@@ -417,9 +417,11 @@ function cosineSimilarity(vec1: number[], vec2: number[]): number {
   let norm2 = 0;
 
   for (let i = 0; i < vec1.length; i++) {
-    dotProduct += vec1[i]! * vec2[i]!;
-    norm1 += vec1[i]! * vec1[i]!;
-    norm2 += vec2[i]! * vec2[i]!;
+    const v1 = vec1[i] ?? 0;
+    const v2 = vec2[i] ?? 0;
+    dotProduct += v1 * v2;
+    norm1 += v1 * v1;
+    norm2 += v2 * v2;
   }
 
   const denominator = Math.sqrt(norm1) * Math.sqrt(norm2);

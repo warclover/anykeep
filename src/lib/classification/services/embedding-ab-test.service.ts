@@ -316,7 +316,10 @@ export class EmbeddingABTestService {
 
         const acceptanceRateSum = data
           .filter((d) => d.acceptanceRate !== null)
-          .reduce((sum, d) => sum + d.acceptanceRate! * d.feedbackCount, 0);
+          .reduce(
+            (sum, d) => sum + (d.acceptanceRate ?? 0) * d.feedbackCount,
+            0,
+          );
         const acceptanceRate =
           totalFeedback > 0 ? acceptanceRateSum / totalFeedback : null;
 

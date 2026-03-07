@@ -77,8 +77,17 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
       // 快速路径：本地验证成功且 Token 未即将过期
       const duration = performance.now() - startTime;
       // 构造简化 User 对象（与 getCachedUser 对齐，提供 email 等字段）
+      if (!localResult.userId) {
+        return {
+          user: null,
+          userId: null,
+          error: new Error("JWT missing userId"),
+          method: "token",
+          duration: performance.now() - startTime,
+        };
+      }
       const localUser: User = {
-        id: localResult.userId!,
+        id: localResult.userId,
         email: localResult.payload?.email,
         app_metadata: localResult.payload?.app_metadata || {},
         user_metadata: localResult.payload?.user_metadata || {},
@@ -161,9 +170,18 @@ export async function withAuth(request: NextRequest): Promise<AuthResult> {
       if (localResult.valid && !localResult.nearExpiry) {
         // 快速路径：本地验证成功且 Token 未即将过期
         const duration = performance.now() - startTime;
+        if (!localResult.userId) {
+          return {
+            user: null,
+            userId: null,
+            error: new Error("JWT missing userId"),
+            method: "cookie",
+            duration: performance.now() - startTime,
+          };
+        }
         // 构造简化 User 对象（与 getCachedUser 对齐，提供 email 等字段）
         const localUser: User = {
-          id: localResult.userId!,
+          id: localResult.userId,
           email: localResult.payload?.email,
           app_metadata: localResult.payload?.app_metadata || {},
           user_metadata: localResult.payload?.user_metadata || {},

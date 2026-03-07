@@ -94,33 +94,45 @@ export function KnowledgeStudioV2PageClient() {
     k,
   });
 
+  // 解构稳定的 setter 引用，避免 exhaustive-deps 误报
+  const {
+    setError: genSetError,
+    setCurrentStep,
+    setGeneratedContent,
+    setStructuredOutput,
+    setReportId,
+    reportId: genReportId,
+  } = gen;
+  const { setCondensedContent } = cond;
+  const { setMaterialsFromRecommendations } = mat;
+
   const handleBlueprintSelect = useCallback(
     (id: string) => {
       setSelectedBlueprintId(id);
-      gen.setError(null);
+      genSetError(null);
     },
-    [gen.setError],
+    [genSetError],
   );
 
   const handleUpgrade = useCallback(() => router.push("/pricing"), [router]);
   const handleViewReport = useCallback(() => {
-    if (gen.reportId) router.push(`/synthesis/${gen.reportId}`);
-  }, [gen.reportId, router]);
+    if (genReportId) router.push(`/synthesis/${genReportId}`);
+  }, [genReportId, router]);
 
   const handleRegenerate = useCallback(() => {
-    gen.setCurrentStep("materials");
-    gen.setGeneratedContent("");
-    gen.setStructuredOutput(null);
-    gen.setReportId(undefined);
-    cond.setCondensedContent("");
-    mat.setMaterialsFromRecommendations({});
+    setCurrentStep("materials");
+    setGeneratedContent("");
+    setStructuredOutput(null);
+    setReportId(undefined);
+    setCondensedContent("");
+    setMaterialsFromRecommendations({});
   }, [
-    gen.setCurrentStep,
-    gen.setGeneratedContent,
-    gen.setStructuredOutput,
-    gen.setReportId,
-    cond.setCondensedContent,
-    mat.setMaterialsFromRecommendations,
+    setCurrentStep,
+    setGeneratedContent,
+    setStructuredOutput,
+    setReportId,
+    setCondensedContent,
+    setMaterialsFromRecommendations,
   ]);
 
   if (blueprintError) {

@@ -51,7 +51,7 @@ export async function triggerMoveLearning(
       await learningEventHandler.learnFromBookmarkMove({
         userId,
         bookmarkId: bm.id,
-        sourceFolderId: bm.folder_id!,
+        sourceFolderId: bm.folder_id ?? 0,
         targetFolderId,
         bookmarkTags: bm.ai_tags ?? undefined,
         bookmarkSourceId: bm.source_id ?? undefined,
@@ -64,9 +64,9 @@ export async function triggerMoveLearning(
     } else {
       const byFolder = new Map<number, BookmarkMoveData[]>();
       for (const bm of validBookmarks) {
-        const fid = bm.folder_id!;
+        const fid = bm.folder_id ?? 0;
         if (!byFolder.has(fid)) byFolder.set(fid, []);
-        byFolder.get(fid)!.push(bm);
+        byFolder.get(fid)?.push(bm);
       }
 
       for (const [sourceFolderId, group] of byFolder) {

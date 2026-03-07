@@ -242,7 +242,11 @@ export class LearningPathSkill extends OrchestrationSkill<
     context: OrchestrationContext,
     input: LearningPathInput,
   ): AsyncGenerator<OrchestrationStreamChunk> {
-    const options = input.createOptions!;
+    const options = input.createOptions;
+    if (!options) {
+      yield* this.emitText("缺少创建选项，无法创建学习路径。");
+      return;
+    }
     const difficultyConfig =
       DIFFICULTY_CONFIG[options.difficulty || "intermediate"];
 

@@ -195,7 +195,8 @@ class ConversationAttachmentTracker {
       });
     }
 
-    const store = this.stores.get(conversationId)!;
+    const store = this.stores.get(conversationId);
+    if (!store) return;
     const now = new Date();
 
     // 创建附件记录

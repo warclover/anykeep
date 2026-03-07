@@ -179,7 +179,7 @@ export class GardenerTriggerService {
       bookmarkIds:
         (n.metadata as { bookmarkIds?: number[] })?.bookmarkIds || [],
       confidence: 0.8,
-      createdAt: new Date(n.created_at!),
+      createdAt: new Date(n.created_at ?? Date.now()),
       expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
       status: "pending" as const,
     }));

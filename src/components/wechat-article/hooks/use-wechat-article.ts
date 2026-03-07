@@ -51,7 +51,7 @@ const fetchWechatArticle = async (
 export function useWechatArticle(snapshotId: number | null) {
   const query = useQuery({
     queryKey: snapshotId ? wechatArticleKeys.detail(snapshotId) : ["disabled"],
-    queryFn: () => fetchWechatArticle(snapshotId!),
+    queryFn: () => fetchWechatArticle(snapshotId as number),
     enabled: snapshotId !== null,
     // 缓存配置
     staleTime: 60 * 1000, // 1分钟内认为数据新鲜

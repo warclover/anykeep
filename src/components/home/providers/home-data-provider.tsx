@@ -320,12 +320,11 @@ export function HomeDataProvider({
     [mutate, refetch],
   );
 
-  const safeBookmarks = bookmarks || [];
   const errorMessage = swrError?.message;
 
   const value: HomeDataContextValue = useMemo(
     () => ({
-      bookmarks: safeBookmarks,
+      bookmarks: bookmarks || [],
       isLoading,
       isValidating,
       isStale,
@@ -343,7 +342,7 @@ export function HomeDataProvider({
       setIsLoadingMore,
     }),
     [
-      safeBookmarks,
+      bookmarks,
       isLoading,
       isValidating,
       isStale,

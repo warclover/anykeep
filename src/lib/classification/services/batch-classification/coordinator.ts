@@ -392,7 +392,11 @@ export class BatchClassificationCoordinator {
 
     // 2. 处理每个决策
     for (const decision of decisions) {
-      await this.processDecision(decision, transaction.batch_id!);
+      const batchId = transaction.batch_id;
+      if (!batchId) {
+        throw new Error("Transaction missing batch_id");
+      }
+      await this.processDecision(decision, batchId);
     }
 
     // 3. 更新事务状态
@@ -634,10 +638,10 @@ export class BatchClassificationCoordinator {
       if (request.bookmarkIds && request.bookmarkIds.length > 0) {
         query = query.in("id", request.bookmarkIds);
       } else if (request.batchId || request.importSessionId) {
-        query = query.eq(
-          "import_batch_id",
-          (request.batchId || request.importSessionId)!,
-        );
+        const filterBatchId = request.batchId || request.importSessionId;
+        if (filterBatchId) {
+          query = query.eq("import_batch_id", filterBatchId);
+        }
       }
 
       const { data, error } = await query;
@@ -658,7 +662,7 @@ export class BatchClassificationCoordinator {
         domain: this.extractDomain(b.url),
         meaningfulDomain: this.extractMeaningfulDomain(b.url),
         embedding: b.embedding as unknown as number[],
-        createdAt: new Date(b.created_at!),
+        createdAt: new Date(b.created_at ?? Date.now()),
         originalPath: b.original_path,
         originalPathParts: b.original_path_parts as string[] | null,
         keywords: (b.ai_tags as string[]) || [],

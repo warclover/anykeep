@@ -370,6 +370,7 @@ export function useAIChatActions({
       }, 100);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialMessageProcessedRef 是 useRef，引用恒定不变
   }, [autoSendInitialMessage, initialMessage, isLoading, sendMessage]);
 
   const handleSubmit = useCallback(

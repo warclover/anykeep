@@ -128,7 +128,7 @@ export function useFolderProfile(
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: folderId ? folderProfileKeys.byFolderId(folderId) : ["noop"],
-    queryFn: () => fetchFolderProfile(folderId!),
+    queryFn: () => fetchFolderProfile(folderId as number),
     enabled: !!folderId,
     staleTime: 5 * 60 * 1000,
   });

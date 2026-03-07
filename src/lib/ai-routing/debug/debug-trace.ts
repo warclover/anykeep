@@ -370,7 +370,7 @@ export class DebugTracer {
   getErrors(): Array<{ stage: TraceStageType; error: string }> {
     return this.trace.stages
       .filter((s) => s.error)
-      .map((s) => ({ stage: s.stage, error: s.error! }));
+      .map((s) => ({ stage: s.stage, error: s.error ?? "" }));
   }
 
   /**

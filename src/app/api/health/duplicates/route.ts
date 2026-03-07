@@ -76,7 +76,8 @@ export const GET = withAuthMiddleware(
         });
       }
 
-      const group = groupMap.get(groupId)!;
+      const group = groupMap.get(groupId);
+      if (!group) continue;
       group.items.push({
         bookmarkId: row.bookmark_id,
         isRecommendedKeep: row.bookmark_id === group.recommendedKeepId,

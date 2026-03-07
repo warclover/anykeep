@@ -324,10 +324,14 @@ export class AuditLogService {
       results = results.filter((l) => l.resourceType === options.resourceType);
     }
     if (options.startTime) {
-      results = results.filter((l) => l.timestamp >= options.startTime!);
+      results = results.filter(
+        (l) => options.startTime && l.timestamp >= options.startTime,
+      );
     }
     if (options.endTime) {
-      results = results.filter((l) => l.timestamp <= options.endTime!);
+      results = results.filter(
+        (l) => options.endTime && l.timestamp <= options.endTime,
+      );
     }
 
     // 排序（最新在前）

@@ -86,7 +86,7 @@ export async function iterativeDbscanClustering(
       if (!clusterMap.has(label)) {
         clusterMap.set(label, []);
       }
-      clusterMap.get(label)!.push(bookmarks[i].id);
+      clusterMap.get(label)?.push(bookmarks[i].id);
     }
   }
 
@@ -214,7 +214,8 @@ function expandCluster(
   const queue = [...neighbors];
 
   while (queue.length > 0) {
-    const current = queue.shift()!;
+    const current = queue.shift();
+    if (current === undefined) break;
 
     if (!visited.has(current)) {
       visited.add(current);

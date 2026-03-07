@@ -154,7 +154,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       if (!groupMap.has(groupId)) {
         groupMap.set(groupId, []);
       }
-      groupMap.get(groupId)!.push(issue);
+      groupMap.get(groupId)?.push(issue);
     }
 
     for (const [, groupIssues] of groupMap) {

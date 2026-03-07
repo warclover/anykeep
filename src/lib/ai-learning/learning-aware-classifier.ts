@@ -181,11 +181,11 @@ export class LearningAwareClassifier {
     if (learningResult.applied && learningResult.adjustedIntent) {
       // 如果有学习结果但相似度不够高，根据置信度混合
       if (
-        learningResult.adjustmentConfidence! > originalConfidence &&
-        learningResult.adjustmentConfidence! >= 0.7
+        (learningResult.adjustmentConfidence ?? 0) > originalConfidence &&
+        (learningResult.adjustmentConfidence ?? 0) >= 0.7
       ) {
         finalIntent = learningResult.adjustedIntent;
-        finalConfidence = learningResult.adjustmentConfidence!;
+        finalConfidence = learningResult.adjustmentConfidence ?? 0;
         learningResult.originalConfidence = originalConfidence;
       }
     }

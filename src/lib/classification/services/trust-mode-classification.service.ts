@@ -336,7 +336,10 @@ export class TrustModeClassificationService {
     bookmark: EnhancedBookmarkInput,
     routeDecision: RouteDecision,
   ): Promise<ClassificationResult> {
-    const fastResult = routeDecision.fastPathResult!;
+    const fastResult = routeDecision.fastPathResult;
+    if (!fastResult) {
+      throw new Error("fastPathResult is required for fast path execution");
+    }
 
     if (fastResult.suggestedFolderId) {
       // 快速路径命中

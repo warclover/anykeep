@@ -237,7 +237,10 @@ export class ImportSessionManager {
    */
   private async executeImport(): Promise<SessionResult> {
     // currentSession 已在 startImport 中检查，此处必定存在
-    const session = this.currentSession!;
+    const session = this.currentSession;
+    if (!session) {
+      throw new Error("No active import session");
+    }
     const sessionId = session.id;
     const startTime = Date.now();
     const wasResumed = session.status !== "pending";

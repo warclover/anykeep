@@ -303,7 +303,12 @@ export function DuplicatesTab({ onUpdate }: DuplicatesTabProps) {
     let failCount = 0;
 
     for (const group of targetGroups) {
-      const keepId = group.recommendedKeepId!;
+      const keepId = group.recommendedKeepId;
+      if (keepId == null) {
+        failCount++;
+        setBatchProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+        continue;
+      }
       const deleteIds = group.items
         .filter(
           (item) => item.bookmarkId !== null && item.bookmarkId !== keepId,

@@ -71,7 +71,7 @@ export class UrlPathGroupingService {
         if (!groups.has(groupKey)) {
           groups.set(groupKey, []);
         }
-        groups.get(groupKey)!.push(bookmark.id);
+        groups.get(groupKey)?.push(bookmark.id);
       } else {
         ungrouped.push(bookmark.id);
       }
