@@ -39,6 +39,8 @@ const eslintConfig = defineConfig([
     "workspace/**",  // PPT 工具脚本（独立项目）
     ".claude/**",  // Claude 技能文件
     "analyze_*.js",  // 临时分析脚本
+    "public/vendor/**",  // 第三方 vendor 文件（Swagger UI 等）
+    "docs/templates/**",  // 文档模板（含占位符语法，非可执行代码）
   ]),
   // Custom rules for code quality
   {
