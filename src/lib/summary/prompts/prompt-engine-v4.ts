@@ -38,7 +38,7 @@ const FEW_SHOT_MIN_CONTENT_LENGTH = 500;
 /** JSON Schema 输出模板 */
 const JSON_OUTPUT_SCHEMA = `请严格输出以下 JSON 格式（不要任何额外文字或代码块标记）：
 {
-  "tldr": "一句话总结（不超过50字），直击核心价值",
+  "tldr": "核心摘要（不超过150字），概括核心观点及其价值",
   "key_points": [
     "关键要点1",
     "关键要点2",

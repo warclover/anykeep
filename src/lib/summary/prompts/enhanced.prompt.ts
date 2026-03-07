@@ -33,7 +33,7 @@ export const ENHANCED_SYSTEM_PROMPT = `你是一位专业的内容分析助手�
 请严格按照以下 JSON 格式输出，不要包含任何其他文字或代码块标记：
 
 {
-  "tldr": "一句话总结（50字以内）",
+  "tldr": "核心摘要（150字以内）",
   "key_points": ["要点1", "要点2", "要点3"],
   "keywords": ["关键词1", "关键词2", "关键词3"],
   "sentiment": "positive|neutral|negative",
@@ -95,7 +95,7 @@ export const ENHANCED_SYSTEM_PROMPT_LITE = `你是一位专业的内容分析助
 请严格按照以下 JSON 格式输出，不要包含任何其他文字或代码块标记：
 
 {
-  "tldr": "一句话总结（50字以内）",
+  "tldr": "核心摘要（150字以内）",
   "key_points": ["要点1", "要点2", "要点3"],
   "keywords": ["关键词1", "关键词2", "关键词3"],
   "sentiment": "positive|neutral|negative",

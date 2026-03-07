@@ -36,7 +36,7 @@ export interface TypePromptConfigV2 {
 // ============================================================
 
 const JSON_OUTPUT_SCHEMA = `{
-  "tldr": "一句话总结，不超过50字，直击核心价值",
+  "tldr": "核心摘要，不超过150字，概括核心观点及其价值",
   "key_points": [
     "关键要点1",
     "关键要点2",
@@ -49,7 +49,7 @@ const JSON_OUTPUT_SCHEMA = `{
 }`;
 
 const JSON_OUTPUT_RULES = `【JSON 输出规则】
-1. tldr: 一句话总结（≤50字），直接说明「这篇内容讲了什么」
+1. tldr: 核心摘要（≤150字），概括核心观点及其价值
 2. key_points: 3-5 个核心信息点，每个要点独立完整
 3. keywords: 5 个标签，包含领域、主题、技术栈等
 4. sentiment: 判断内容基调（positive/neutral/negative）

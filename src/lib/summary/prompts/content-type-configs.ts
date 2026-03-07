@@ -219,7 +219,7 @@ const SOCIAL_POST_CONFIG: ContentTypePromptConfig = {
   systemRole:
     "你是一位社交媒体内容分析师，擅长从简短的社交帖子中提取核心信息和观点。你的摘要简洁精炼，适配碎片化内容。",
   structureGuide: [
-    "- tldr：直接提炼帖子的核心信息，不超过 30 字",
+    "- tldr：直接提炼帖子的核心信息，不超过 100 字",
     "- key_points：提炼 2-3 个要点即可，社交帖子内容通常较短",
     "- keywords：提取 3-5 个关键词或话题标签",
     "- sentiment：根据帖子语气和情绪判断",
