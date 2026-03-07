@@ -8,13 +8,10 @@ import { jwtVerify, type JWTPayload } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { supabaseEnv } from "@/lib/env";
 
-// JWT 签名密钥
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.PLUGIN_JWT_SECRET ||
-    process.env.SUPABASE_JWT_SECRET ||
-    "fallback-secret-change-in-production",
-);
+// JWT 签名密钥（通过 env.ts 统一管理，pluginJwtSecret 会自动 fallback 到 jwtSecret）
+const JWT_SECRET = new TextEncoder().encode(supabaseEnv.pluginJwtSecret);
 
 /**
  * 扩展的 JWT Payload 类型

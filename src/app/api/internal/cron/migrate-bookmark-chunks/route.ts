@@ -8,8 +8,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { createChunkMigrationService } from "@/lib/chunking/chunk-migration.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
@@ -17,10 +16,6 @@ import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
-
-// 使用服务角色密钥创建客户端
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 /**
  * GET: 获取迁移状态和统计
@@ -41,19 +36,8 @@ export async function GET(request: Request) {
       });
     }
 
-    // 验证环境变量
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: "Missing Supabase configuration" },
-        { status: 500 },
-      );
-    }
-
     // 创建服务角色客户端
-    const supabase = createClient<Database>(
-      SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY,
-    );
+    const supabase = getSupabaseAdmin();
 
     // 创建迁移服务
     const migrationService = createChunkMigrationService(supabase);
@@ -100,14 +84,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // 验证环境变量
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: "Missing Supabase configuration" },
-        { status: 500 },
-      );
-    }
-
     // 解析选项
     let options: {
       batchSize?: number;
@@ -131,10 +107,7 @@ export async function POST(request: Request) {
     logger.info({ options }, "ChunkMigration API: Starting migration");
 
     // 创建服务角色客户端
-    const supabase = createClient<Database>(
-      SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY,
-    );
+    const supabase = getSupabaseAdmin();
 
     // 创建迁移服务
     const migrationService = createChunkMigrationService(supabase, {

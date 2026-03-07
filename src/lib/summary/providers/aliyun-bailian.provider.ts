@@ -12,6 +12,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import { BaseProvider } from "./base.provider";
 import type { ProviderConfig } from "../summary.types";
 import {
@@ -42,7 +43,9 @@ export class AliyunBailianProvider extends BaseProvider {
     super({
       ...ALIYUN_BAILIAN_DEFAULT_CONFIG,
       ...config,
-      apiKey: config?.apiKey || process.env.DASHSCOPE_API_KEY || "",
+      apiKey:
+        config?.apiKey ||
+        (aiEnv.hasDashscopeApiKey ? aiEnv.dashscopeApiKey : ""),
     });
   }
 

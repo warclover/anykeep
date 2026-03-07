@@ -1,15 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { forbiddenError } from "@/lib/utils/api-response";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 
 export const PATCH = withAuthMiddleware<{ id: string }>(
   async (request: NextRequest, { userId, user, params }) => {
@@ -51,7 +46,7 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
       updates.resolved_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from("user_feedbacks")
       .update(updates)
       .eq("id", id)
@@ -85,7 +80,7 @@ export const GET = withAuthMiddleware<{ id: string }>(
     // 获取详情，包含用户信息
     // 注意：Supabase JS 客户端联表查询需要外键存在。user_id 是外键指向 auth.users，但 auth schema 通常不可访问。
     // 如果有 profiles 表关联 user_id，可以查 profiles。
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from("user_feedbacks")
       .select("*, profiles(*)")
       .eq("id", id)

@@ -11,6 +11,7 @@
 
 import WebSocket from "ws";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   TTSOptions,
   TTSResult,
@@ -90,7 +91,7 @@ class AliyunTTSService {
   private apiKey: string | undefined;
 
   constructor() {
-    this.apiKey = process.env.DASHSCOPE_API_KEY;
+    this.apiKey = aiEnv.hasDashscopeApiKey ? aiEnv.dashscopeApiKey : undefined;
   }
 
   /**

@@ -8,6 +8,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type { ContentTypeResult } from "@/lib/classification/content-type-detector";
 import {
   getPromptConfig,
@@ -31,11 +32,11 @@ export async function generateWithAI(
   prompt: string,
   options?: GenerateWithAIOptions,
 ): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-
-  if (!apiKey) {
+  if (!aiEnv.hasDeepseekApiKey) {
     throw new Error("DEEPSEEK_API_KEY 环境变量未配置");
   }
+
+  const apiKey = aiEnv.deepseekApiKey;
 
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -92,11 +93,11 @@ export async function callDeepSeekAPI(
   content?: string,
   existingFolderNames?: string[],
 ): Promise<AIGenerateResult> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-
-  if (!apiKey) {
+  if (!aiEnv.hasDeepseekApiKey) {
     throw new Error("DEEPSEEK_API_KEY 环境变量未配置");
   }
+
+  const apiKey = aiEnv.deepseekApiKey;
 
   const useJsonOutput = isJsonOutputEnabled();
 

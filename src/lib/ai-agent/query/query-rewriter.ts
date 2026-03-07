@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import { LRUCache } from "lru-cache";
 import type {
   QueryRewriteResult,
@@ -36,7 +37,7 @@ export class QueryRewriter {
 
   constructor(config?: Partial<QueryRewriterConfig>) {
     this.config = { ...DEFAULT_QUERY_REWRITER_CONFIG, ...config };
-    this.apiKey = process.env.DEEPSEEK_API_KEY || "";
+    this.apiKey = aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : "";
 
     // 初始化 LRU 缓存
     this.cache = new LRUCache<string, QueryRewriteResult>({

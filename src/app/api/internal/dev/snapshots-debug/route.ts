@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 
 // 禁用 Next.js 缓存
 export const dynamic = "force-dynamic";
@@ -22,22 +22,7 @@ export async function GET() {
   }
 
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!url || !serviceKey) {
-      return NextResponse.json(
-        { error: "Missing Supabase credentials" },
-        { status: 500 },
-      );
-    }
-
-    const supabase = createClient(url, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const supabase = getSupabaseAdmin();
 
     // 获取所有快照记录
     const { data: snapshots, error } = await supabase

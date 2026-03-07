@@ -11,6 +11,7 @@ import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type { AgentConversation, AgentMessage } from "../core/types";
 import { getEpisodicMemoryService } from "./episodic-memory";
 import { FeatureFlags } from "../config/feature-flags";
@@ -194,7 +195,7 @@ export class SummaryGenerator {
       // 使用阿里云百炼 (DashScope) 替代 OpenAI
       // DashScope 使用 OpenAI 兼容 API，需要自定义 baseURL
       const dashscopeProvider = createOpenAI({
-        apiKey: process.env.DASHSCOPE_API_KEY,
+        apiKey: aiEnv.dashscopeApiKey,
         baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
       });
       const result = await generateObject({

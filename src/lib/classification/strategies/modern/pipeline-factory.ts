@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseEnv } from "@/lib/env";
 import { LoggerService } from "@/lib/classification/infrastructure/shared-services/logger/index";
 import { DashScopeEmbeddingAdapter } from "@/lib/classification/infrastructure/shared-services/embedding/dashscope-embedding-adapter";
 import { VectorSearchService } from "@/lib/classification/infrastructure/shared-services/vector-search/index";
@@ -63,12 +64,9 @@ export class ClassificationPipelineFactory {
   private constructor(config?: PipelineFactoryConfig) {
     this.config = {
       dashscopeQpm: config?.dashscopeQpm ?? 60,
-      supabaseUrl:
-        config?.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      supabaseUrl: config?.supabaseUrl ?? supabaseEnv.url,
       supabaseServiceKey:
-        config?.supabaseServiceKey ??
-        process.env.SUPABASE_SERVICE_ROLE_KEY ??
-        "",
+        config?.supabaseServiceKey ?? supabaseEnv.serviceRoleKey,
       pipelineConfig: config?.pipelineConfig ?? {},
     };
   }

@@ -10,6 +10,7 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { supabaseEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import {
   successResponse,
@@ -32,7 +33,7 @@ async function invokeEdgeFunction(
   serviceRoleKey: string,
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   try {
-    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${functionName}`;
+    const functionUrl = `${supabaseEnv.url}/functions/v1/${functionName}`;
 
     logger.debug(
       {
@@ -146,16 +147,7 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. 获取服务角色密钥
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-      logger.error(
-        {
-          action: "missing_service_role_key",
-        },
-        "POST: Missing service role key",
-      );
-      return databaseError("系统配置错误");
-    }
+    const serviceRoleKey = supabaseEnv.serviceRoleKey;
 
     // 4. 调用对应的 Edge Function
     const result = await invokeEdgeFunction(task, serviceRoleKey);

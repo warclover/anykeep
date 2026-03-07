@@ -11,6 +11,7 @@
 import { BaseProvider } from "./base.provider";
 import type { ProviderConfig } from "../summary.types";
 import { DEEPSEEK_DEFAULT_CONFIG } from "../summary.config";
+import { aiEnv } from "@/lib/env";
 
 /**
  * DeepSeek Provider 实现
@@ -29,7 +30,8 @@ export class DeepSeekProvider extends BaseProvider {
     super({
       ...DEEPSEEK_DEFAULT_CONFIG,
       ...config,
-      apiKey: config?.apiKey || process.env.DEEPSEEK_API_KEY || "",
+      apiKey:
+        config?.apiKey || (aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : ""),
     });
   }
 

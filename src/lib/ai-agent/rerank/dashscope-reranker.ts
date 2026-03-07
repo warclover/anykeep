@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   DashScopeRerankConfig,
   DashScopeRerankResponse,
@@ -38,7 +39,7 @@ export class DashScopeReranker {
   private usageStats: RerankUsageStats;
 
   constructor(config?: Partial<DashScopeRerankConfig>) {
-    this.apiKey = process.env.DASHSCOPE_API_KEY || "";
+    this.apiKey = aiEnv.hasDashscopeApiKey ? aiEnv.dashscopeApiKey : "";
     this.config = { ...DEFAULT_DASHSCOPE_RERANK_CONFIG, ...config };
 
     // 初始化使用量统计

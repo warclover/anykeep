@@ -5,6 +5,7 @@
  */
 
 import { createLogger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import { generateText, streamText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
 import type {
@@ -259,8 +260,10 @@ export class BlueprintEngine {
         modelId: selection?.provider?.defaultModel,
         selectionReason: selection?.reason,
         envCheck: {
-          hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
-          deepSeekKeyLength: process.env.DEEPSEEK_API_KEY?.length || 0,
+          hasDeepSeekKey: aiEnv.hasDeepseekApiKey,
+          deepSeekKeyLength: aiEnv.hasDeepseekApiKey
+            ? aiEnv.deepseekApiKey.length
+            : 0,
         },
       },
       "Selecting AI model for outline generation",
@@ -408,8 +411,10 @@ export class BlueprintEngine {
         modelId: selection?.provider?.defaultModel,
         selectionReason: selection?.reason,
         envCheck: {
-          hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
-          deepSeekKeyLength: process.env.DEEPSEEK_API_KEY?.length || 0,
+          hasDeepSeekKey: aiEnv.hasDeepseekApiKey,
+          deepSeekKeyLength: aiEnv.hasDeepseekApiKey
+            ? aiEnv.deepseekApiKey.length
+            : 0,
         },
       },
       "Selecting AI model for content generation",

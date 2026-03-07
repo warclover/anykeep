@@ -15,6 +15,7 @@ import type {
 import { CLASSIFICATION_WEIGHTS, AI_SERVICE_CONFIG } from "../constants";
 import type { FolderProfileRepository } from "../repositories";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import {
   resilientFetch,
   FetchError,
@@ -61,9 +62,7 @@ export class AIRecommender implements IMatcher {
    * Get AI recommendation for bookmark classification
    */
   async match(context: MatcherContext): Promise<MatchResult[]> {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-
-    if (!apiKey) {
+    if (!aiEnv.hasDeepseekApiKey) {
       logger.warn(
         { action: "ai_recommender_no_api_key" },
         "AI Recommender: No API key configured",
@@ -84,7 +83,7 @@ export class AIRecommender implements IMatcher {
       }
 
       const prompt = this.buildEnhancedPrompt(aiContext);
-      const recommendation = await this.callAI(prompt, apiKey);
+      const recommendation = await this.callAI(prompt, aiEnv.deepseekApiKey);
 
       if (!recommendation || recommendation.folderId === null) {
         return [];
@@ -118,7 +117,7 @@ export class AIRecommender implements IMatcher {
    * Check if AI recommendation is available
    */
   async isAvailable(_context: MatcherContext): Promise<boolean> {
-    return process.env.DEEPSEEK_API_KEY != null;
+    return aiEnv.hasDeepseekApiKey;
   }
 
   /**

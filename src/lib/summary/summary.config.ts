@@ -14,6 +14,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   SummaryServiceConfig,
   ProviderConfig,
@@ -53,7 +54,7 @@ export const ENV_VARS = {
  * DeepSeek 默认配置
  */
 export const DEEPSEEK_DEFAULT_CONFIG: ProviderConfig = {
-  apiKey: process.env.DEEPSEEK_API_KEY || "",
+  apiKey: aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : "",
   baseUrl: "https://api.deepseek.com/v1",
   model: "deepseek-chat",
   timeoutMs: 30000,
@@ -68,7 +69,7 @@ export const DEEPSEEK_DEFAULT_CONFIG: ProviderConfig = {
  * @see https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
  */
 export const ALIYUN_BAILIAN_DEFAULT_CONFIG: ProviderConfig = {
-  apiKey: process.env.DASHSCOPE_API_KEY || "",
+  apiKey: aiEnv.hasDashscopeApiKey ? aiEnv.dashscopeApiKey : "",
   baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   model: "qwen-turbo",
   timeoutMs: 30000,
@@ -226,9 +227,9 @@ export function getProviderConfig(provider: ProviderName): ProviderConfig {
 export function isProviderConfigured(provider: ProviderName): boolean {
   switch (provider) {
     case "deepseek":
-      return !!process.env.DEEPSEEK_API_KEY;
+      return aiEnv.hasDeepseekApiKey;
     case "aliyun-bailian":
-      return !!process.env.DASHSCOPE_API_KEY;
+      return aiEnv.hasDashscopeApiKey;
     case "ollama":
       // Ollama 是本地服务，不需要 API Key
       return false; // P3: 检查 Ollama 服务是否运行 (见 provider-router.ts)

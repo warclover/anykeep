@@ -176,6 +176,23 @@ export const supabaseEnv = {
   get hasServiceRoleKey(): boolean {
     return hasEnvVar("SUPABASE_SERVICE_ROLE_KEY");
   },
+
+  /** Supabase JWT 密钥（用于本地 JWT 验证） */
+  get jwtSecret(): string {
+    return getEnvVar("SUPABASE_JWT_SECRET");
+  },
+
+  /** JWT 密钥版本号（用于密钥轮换） */
+  get jwtSecretVersion(): string {
+    return getOptionalEnvVar("SUPABASE_JWT_SECRET_VERSION", "1");
+  },
+
+  /** 插件 JWT 密钥（fallback 到 Supabase JWT 密钥） */
+  get pluginJwtSecret(): string {
+    const pluginSecret = getOptionalEnvVar("PLUGIN_JWT_SECRET", "");
+    if (pluginSecret) return pluginSecret;
+    return this.jwtSecret;
+  },
 } as const;
 
 // ============================================
@@ -224,6 +241,41 @@ export const aiEnv = {
   /** Anthropic API 密钥是否可用 */
   get hasAnthropicApiKey(): boolean {
     return hasEnvVar("ANTHROPIC_API_KEY");
+  },
+
+  /** Embedding API 密钥（优先 EMBEDDING_API_KEY，fallback 到 DASHSCOPE_API_KEY） */
+  get embeddingApiKey(): string {
+    const embeddingKey = getOptionalEnvVar("EMBEDDING_API_KEY", "");
+    if (embeddingKey) return embeddingKey;
+    return getOptionalEnvVar("DASHSCOPE_API_KEY", "");
+  },
+
+  /** Embedding API 密钥是否可用 */
+  get hasEmbeddingApiKey(): boolean {
+    return hasEnvVar("EMBEDDING_API_KEY") || hasEnvVar("DASHSCOPE_API_KEY");
+  },
+
+  /** Embedding API Base URL */
+  get embeddingApiBaseUrl(): string {
+    return getOptionalEnvVar(
+      "EMBEDDING_API_BASE_URL",
+      "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    );
+  },
+
+  /** Embedding 模型名称 */
+  get embeddingModel(): string {
+    return getOptionalEnvVar("EMBEDDING_MODEL", "text-embedding-v4");
+  },
+
+  /** OpenAI API Base URL（支持代理） */
+  get openaiApiBaseUrl(): string {
+    return getOptionalEnvVar("OPENAI_API_BASE_URL", "");
+  },
+
+  /** OpenAI 模型名称 */
+  get openaiModel(): string {
+    return getOptionalEnvVar("OPENAI_MODEL", "");
   },
 } as const;
 
@@ -327,7 +379,7 @@ export function validateRequiredEnvVars(): void {
 export function validateServerEnvVars(): void {
   validateRequiredEnvVars();
 
-  const serverVars = ["SUPABASE_SERVICE_ROLE_KEY"];
+  const serverVars = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"];
   const missingVars = serverVars.filter((key) => !hasEnvVar(key));
 
   if (missingVars.length > 0) {

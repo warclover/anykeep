@@ -5,6 +5,7 @@
  */
 
 import OpenAI from "openai";
+import { aiEnv } from "@/lib/env";
 import type { LoggerService } from "../logger";
 import type {
   LLMConfig,
@@ -25,7 +26,8 @@ export class LLMService {
     this.logger = logger.child({ service: "LLMService" });
 
     this.config = {
-      apiKey: config?.apiKey ?? process.env.DEEPSEEK_API_KEY ?? "",
+      apiKey:
+        config?.apiKey ?? (aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : ""),
       model: config?.model ?? "deepseek-chat",
       baseURL: config?.baseURL ?? "https://api.deepseek.com",
       temperature: config?.temperature ?? 0.1,

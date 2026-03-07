@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { getIncrementalIndexService } from "@/lib/embedding/incremental-index.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import { logger } from "@/lib/logger";
@@ -19,10 +19,6 @@ import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
-
-// 配置
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 /**
  * GET /api/internal/cron/process-embedding-queue
@@ -50,17 +46,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // 3. 验证环境变量
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-      logger.error("Embedding Queue Cron: Missing Supabase credentials");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
-    }
-
-    // 4. 创建服务客户端
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    // 3. 创建服务客户端
+    const supabase = getSupabaseAdmin();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = getIncrementalIndexService(supabase as any);
 

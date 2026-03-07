@@ -17,6 +17,7 @@ import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
 // =============================================================================
@@ -210,7 +211,7 @@ export async function generateSessionSummary(
   try {
     // 使用 DashScope (阿里云百炼) API
     const dashscopeProvider = createOpenAI({
-      apiKey: process.env.DASHSCOPE_API_KEY,
+      apiKey: aiEnv.dashscopeApiKey,
       baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     });
 

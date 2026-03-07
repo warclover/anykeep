@@ -16,6 +16,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   MdSummaryInput,
   MdSummaryResult,
@@ -84,38 +85,35 @@ function getAvailableProviders(): ProviderConfig[] {
   const providers: ProviderConfig[] = [];
 
   // DeepSeek (优先级 1)
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (deepseekKey) {
+  if (aiEnv.hasDeepseekApiKey) {
     providers.push({
       name: "deepseek",
       baseUrl: "https://api.deepseek.com/v1",
       model: "deepseek-chat",
-      apiKey: deepseekKey,
+      apiKey: aiEnv.deepseekApiKey,
       priority: 1,
     });
   }
 
   // Aliyun Bailian (优先级 2)
-  const aliyunKey = process.env.DASHSCOPE_API_KEY;
-  if (aliyunKey) {
+  if (aiEnv.hasDashscopeApiKey) {
     providers.push({
       name: "aliyun",
       baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
       model: "qwen-plus",
-      apiKey: aliyunKey,
+      apiKey: aiEnv.dashscopeApiKey,
       priority: 2,
     });
   }
 
   // OpenAI (优先级 3 - 备用)
   // 支持通过 OPENAI_API_BASE_URL 环境变量配置自定义端点（国内代理等）
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
+  if (aiEnv.hasOpenaiApiKey) {
     providers.push({
       name: "openai",
-      baseUrl: process.env.OPENAI_API_BASE_URL || "https://api.openai.com/v1",
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      apiKey: openaiKey,
+      baseUrl: aiEnv.openaiApiBaseUrl || "https://api.openai.com/v1",
+      model: aiEnv.openaiModel || "gpt-4o-mini",
+      apiKey: aiEnv.openaiApiKey,
       priority: 3,
     });
   }

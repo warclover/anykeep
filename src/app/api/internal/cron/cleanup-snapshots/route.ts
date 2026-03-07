@@ -15,7 +15,7 @@
  * @since 2025-12-12
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { NextRequest } from "next/server";
@@ -39,23 +39,6 @@ interface ExpiredSnapshot {
   storage_path: string | null;
   html_storage_path: string | null;
   screenshot_storage_path: string | null;
-}
-
-// Supabase Admin Client (bypass RLS)
-let supabaseAdmin: ReturnType<typeof createClient> | null = null;
-
-function getSupabaseAdmin() {
-  if (!supabaseAdmin) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!url || !serviceKey) {
-      throw new Error("Missing Supabase credentials");
-    }
-
-    supabaseAdmin = createClient(url, serviceKey);
-  }
-  return supabaseAdmin;
 }
 
 /**

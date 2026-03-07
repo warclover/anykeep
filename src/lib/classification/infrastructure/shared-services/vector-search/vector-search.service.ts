@@ -7,6 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import type { LoggerService } from "../logger";
+import { supabaseEnv } from "@/lib/env";
 import type {
   VectorSearchConfig,
   VectorSearchRequest,
@@ -27,12 +28,9 @@ export class VectorSearchService {
     this.logger = logger.child({ service: "VectorSearchService" });
 
     this.config = {
-      supabaseUrl:
-        config?.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      supabaseUrl: config?.supabaseUrl ?? supabaseEnv.url,
       supabaseServiceKey:
-        config?.supabaseServiceKey ??
-        process.env.SUPABASE_SERVICE_ROLE_KEY ??
-        "",
+        config?.supabaseServiceKey ?? supabaseEnv.serviceRoleKey,
       defaultLimit: config?.defaultLimit ?? 5,
       minSimilarity: config?.minSimilarity ?? 0.3, // v5.1.4: 从 0.5 降至 0.3，适配实际相似度分布
       maxRetries: config?.maxRetries ?? 3,

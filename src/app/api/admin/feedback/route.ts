@@ -1,17 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { isAdminUser } from "@/lib/auth/admin-check";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { forbiddenError } from "@/lib/utils/api-response";
-
-// 使用 Service Role Key 创建 Admin Client 以绕过 RLS
-// 注意：实际项目中必须配合严格的权限检查，防止普通用户调用此接口
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-);
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 
 export const GET = withAuthMiddleware(
   async (request: NextRequest, { userId, user }) => {
@@ -34,6 +27,7 @@ export const GET = withAuthMiddleware(
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
 
+    const supabaseAdmin = getSupabaseAdmin();
     let query = supabaseAdmin
       .from("user_feedbacks")
       .select("*, profiles(nickname, phone)", { count: "exact" }) // 关联查询用户信息(如果有 profiles 表)

@@ -13,6 +13,7 @@
  */
 
 import * as jose from "jose";
+import { supabaseEnv, hasEnvVar } from "@/lib/env";
 
 /**
  * JWT Payload 类型（Supabase 格式）
@@ -74,8 +75,13 @@ let forceRefreshFlag: boolean = false;
  * V5.4 修复：添加缓存过期机制，支持密钥轮换
  */
 function getJwtSecret(): Uint8Array | null {
-  const secret = process.env.SUPABASE_JWT_SECRET;
-  const version = process.env.SUPABASE_JWT_SECRET_VERSION || "1";
+  if (!hasEnvVar("SUPABASE_JWT_SECRET")) {
+    // 配置缺失时静默返回 null，让调用方回退到网络验证
+    return null;
+  }
+
+  const secret = supabaseEnv.jwtSecret;
+  const version = supabaseEnv.jwtSecretVersion;
   const now = Date.now();
 
   // 检查强制刷新标志
@@ -93,11 +99,6 @@ function getJwtSecret(): Uint8Array | null {
     now - cachedAt < JWT_SECRET_CACHE_TTL
   ) {
     return cachedSecret;
-  }
-
-  if (!secret) {
-    // 配置缺失时静默返回 null，让调用方回退到网络验证
-    return null;
   }
 
   // Supabase JWT Secret 是 UTF-8 纯文本字符串，直接编码使用

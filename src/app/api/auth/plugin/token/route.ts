@@ -31,13 +31,10 @@ import {
   type BrowserType,
 } from "@/lib/auth/plugin-oauth";
 import { logger } from "@/lib/logger";
+import { supabaseEnv } from "@/lib/env";
 
-// JWT 签名密钥
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.PLUGIN_JWT_SECRET ||
-    process.env.SUPABASE_JWT_SECRET ||
-    "fallback-secret-change-in-production",
-);
+// JWT 签名密钥（通过 env.ts 统一管理，pluginJwtSecret 会自动 fallback 到 jwtSecret）
+const JWT_SECRET = new TextEncoder().encode(supabaseEnv.pluginJwtSecret);
 
 // 授权码记录类型
 interface OAuthAuthorizationCode {

@@ -16,6 +16,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TypedSupabaseClient } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import {
   NAMING_SYSTEM_PROMPT,
   buildNamingPrompt,
@@ -331,11 +332,12 @@ export class NamingEngineService {
   private async callAIForNaming(
     context: NamingContext,
   ): Promise<NamingResponse | null> {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
+    if (!aiEnv.hasDeepseekApiKey) {
       logger.warn("NamingEngine: DEEPSEEK_API_KEY not configured");
       return null;
     }
+
+    const apiKey = aiEnv.deepseekApiKey;
 
     try {
       const prompt = buildNamingPrompt(context);
@@ -398,10 +400,11 @@ export class NamingEngineService {
     newName: string;
     existingNames: string[];
   }): Promise<DeduplicationResponse | null> {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
+    if (!aiEnv.hasDeepseekApiKey) {
       return null;
     }
+
+    const apiKey = aiEnv.deepseekApiKey;
 
     try {
       const prompt = buildDeduplicationPrompt(context);

@@ -13,6 +13,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { supabaseEnv } from "@/lib/env";
 
 // 单例模式：全局共享一个 Admin 客户端实例
 let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
@@ -32,12 +33,8 @@ let supabaseAdmin: ReturnType<typeof createClient<Database>> | null = null;
  * ```
  */
 export function initSupabaseAdmin(): ReturnType<typeof createClient<Database>> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase credentials in environment variables");
-  }
+  const url = supabaseEnv.url;
+  const serviceKey = supabaseEnv.serviceRoleKey;
 
   // 如果已经初始化，直接返回
   if (supabaseAdmin) {

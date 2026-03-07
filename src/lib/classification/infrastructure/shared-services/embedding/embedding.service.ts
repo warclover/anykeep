@@ -9,6 +9,7 @@
  */
 
 import OpenAI from "openai";
+import { aiEnv } from "@/lib/env";
 import type { LoggerService } from "../logger";
 import type { EmbeddingConfig, EmbeddingResult } from "./types";
 import { EmbeddingError } from "./types";
@@ -25,13 +26,8 @@ export class EmbeddingService {
     this.logger = logger.child({ service: "EmbeddingService" });
 
     this.config = {
-      apiKey:
-        config?.apiKey ??
-        process.env.EMBEDDING_API_KEY ??
-        process.env.DASHSCOPE_API_KEY ??
-        "",
-      model:
-        config?.model ?? process.env.EMBEDDING_MODEL ?? "text-embedding-v4",
+      apiKey: config?.apiKey ?? aiEnv.embeddingApiKey,
+      model: config?.model ?? aiEnv.embeddingModel,
       dimensions: config?.dimensions ?? 1024,
       maxRetries: config?.maxRetries ?? 3,
       retryDelays: config?.retryDelays ?? [1000, 2000, 4000],
@@ -44,9 +40,7 @@ export class EmbeddingService {
     // 使用兼容 OpenAI 格式的 API (默认阿里百炼 DashScope)
     this.client = new OpenAI({
       apiKey: this.config.apiKey,
-      baseURL:
-        process.env.EMBEDDING_API_BASE_URL ||
-        "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      baseURL: aiEnv.embeddingApiBaseUrl,
     });
   }
 

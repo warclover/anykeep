@@ -24,6 +24,7 @@ import type { SkillContext } from "../../core/types";
 import type { OrchestrationSkillMetadata } from "../../orchestration/types";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import { generateText } from "ai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import type {
@@ -591,8 +592,7 @@ export class WechatDigestSkill extends OrchestrationSkill<
 
       try {
         // 验证 API Key
-        const apiKey = process.env.DEEPSEEK_API_KEY;
-        if (!apiKey) {
+        if (!aiEnv.hasDeepseekApiKey) {
           logger.warn(
             { group: group.name },
             "WechatDigestSkill: DEEPSEEK_API_KEY not configured, using fallback",
@@ -602,7 +602,7 @@ export class WechatDigestSkill extends OrchestrationSkill<
         }
 
         // 创建 DeepSeek 模型实例
-        const deepseek = createDeepSeek({ apiKey });
+        const deepseek = createDeepSeek({ apiKey: aiEnv.deepseekApiKey });
 
         // 调用 LLM 生成摘要
         const result = await generateText({

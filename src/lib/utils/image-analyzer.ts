@@ -14,6 +14,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   ImageAnalysisResult,
   ImageAnalysisData,
@@ -132,15 +133,15 @@ export async function analyzeImage(
   customPrompt?: string,
   config: Partial<VisionAnalysisConfig> = {},
 ): Promise<{ result: ImageAnalysisResult; usage: VisionUsage }> {
-  const apiKey = process.env.DASHSCOPE_API_KEY;
-
-  if (!apiKey) {
+  if (!aiEnv.hasDashscopeApiKey) {
     logger.error(
       { action: "vision_no_api_key" },
       "Vision: DASHSCOPE_API_KEY not configured",
     );
     throw new Error("DASHSCOPE_API_KEY 环境变量未配置");
   }
+
+  const apiKey = aiEnv.dashscopeApiKey;
 
   // 验证图片 URL
   if (!imageUrl || !isValidImageUrl(imageUrl)) {
@@ -495,7 +496,7 @@ export function extractImageUrls(
  * 检查视觉分析服务是否可用
  */
 export function isVisionServiceAvailable(): boolean {
-  return !!process.env.DASHSCOPE_API_KEY;
+  return aiEnv.hasDashscopeApiKey;
 }
 
 /**

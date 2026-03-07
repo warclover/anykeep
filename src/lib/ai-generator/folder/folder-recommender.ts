@@ -8,6 +8,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type { FolderRecommendation, ExistingFolder } from "../types";
 import {
   calculateSemanticSimilarity,
@@ -254,7 +255,7 @@ export async function recommendFolder(
   tags: string[],
   existingFolders: ExistingFolder[],
 ): Promise<FolderRecommendation> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : "";
 
   if (!apiKey || existingFolders.length === 0) {
     return generateFallbackFolderRecommendation(title, tags, existingFolders);

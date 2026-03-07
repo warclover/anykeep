@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { createHash } from "crypto";
@@ -12,28 +12,6 @@ import { logger } from "@/lib/logger";
 
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
-
-/**
- * 创建具有完全绕过 RLS 能力的 Supabase 客户端
- */
-function createServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase credentials");
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    db: {
-      schema: "public",
-    },
-  });
-}
 
 const FETCH_TIMEOUT = 30000;
 const DEFAULT_HEADERS = {
@@ -64,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // 使用正确配置的 service client 来绕过 RLS
-    const supabase = createServiceClient();
+    const supabase = getSupabaseAdmin();
 
     // Get the snapshot with bookmark URL
     const { data: snapshot, error: fetchError } = await supabase

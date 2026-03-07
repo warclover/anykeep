@@ -12,6 +12,12 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // 验证服务端必需的环境变量（生产环境 fail-fast）
+    if (process.env.NODE_ENV === "production") {
+      const { validateServerEnvVars } = await import("@/lib/env");
+      validateServerEnvVars();
+    }
+
     // Import server config for Node.js runtime
     await import("./sentry.server.config");
   }

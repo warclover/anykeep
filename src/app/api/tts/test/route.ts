@@ -6,20 +6,21 @@
 
 import { NextResponse } from "next/server";
 import WebSocket from "ws";
+import { aiEnv } from "@/lib/env";
 
 const DASHSCOPE_WS_ENDPOINT =
   "wss://dashscope.aliyuncs.com/api-ws/v1/inference/";
 
 export async function GET() {
-  const apiKey = process.env.DASHSCOPE_API_KEY;
-
-  if (!apiKey) {
+  if (!aiEnv.hasDashscopeApiKey) {
     return NextResponse.json({
       success: false,
       error: "DASHSCOPE_API_KEY not configured",
       envKeys: Object.keys(process.env).filter((k) => k.includes("DASHSCOPE")),
     });
   }
+
+  const apiKey = aiEnv.dashscopeApiKey;
 
   return new Promise<Response>((resolve) => {
     const taskId = `test-${Date.now()}`;

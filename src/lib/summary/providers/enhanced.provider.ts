@@ -9,6 +9,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { aiEnv } from "@/lib/env";
 import type {
   ISummaryProvider,
   PromptBuildResult,
@@ -89,7 +90,8 @@ export class EnhancedSummaryProvider implements ISummaryProvider {
     this.config = {
       ...DEEPSEEK_DEFAULT_CONFIG,
       ...config,
-      apiKey: config?.apiKey || process.env.DEEPSEEK_API_KEY || "",
+      apiKey:
+        config?.apiKey || (aiEnv.hasDeepseekApiKey ? aiEnv.deepseekApiKey : ""),
       maxTokens: 2500, // 增强版需要更多输出空间
     };
 
