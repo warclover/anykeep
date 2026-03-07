@@ -84,8 +84,44 @@ export {
   type EnhancedPromptConfig,
 } from "./enhanced.prompt";
 
-// TODO: P1 - 实现本模块专用的 Prompt 构建器
-// export { buildArticlePrompt } from './article.prompt';
-// export { buildTutorialPrompt } from './tutorial.prompt';
-// export { buildVideoPrompt } from './video.prompt';
-// export { buildToolPrompt } from './tool.prompt';
+// ============================================================================
+// V4 Prompt Engine
+// ============================================================================
+
+export { PromptEngineV4 } from "./prompt-engine-v4";
+
+// ============================================================================
+// V4 CoT 模板
+// ============================================================================
+
+export { getCotTemplate } from "./cot-templates";
+
+// ============================================================================
+// V4 负面约束
+// ============================================================================
+
+export {
+  NEGATIVE_CONSTRAINTS,
+  NEGATIVE_CONSTRAINTS_LITE,
+} from "./negative-constraints";
+
+// ============================================================================
+// V4 Few-shot 示例库
+// ============================================================================
+
+export {
+  FEW_SHOT_EXAMPLES,
+  getFewShotExamples,
+  type FewShotExample,
+} from "./few-shot-examples";
+
+// ============================================================================
+// V4 内容类型专用 Prompt 配置
+// ============================================================================
+
+export {
+  CONTENT_TYPE_CONFIGS,
+  getContentTypeConfig,
+  type ContentTypePromptConfig,
+  type SummaryLengthRange,
+} from "./content-type-configs";

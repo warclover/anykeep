@@ -40,7 +40,9 @@ import { getSummaryServiceConfig, isFallbackEnabled } from "../summary.config";
 import {
   getUserSummaryMode,
   getEnhancedModeConfig,
+  isMapReduceEnabled,
 } from "@/lib/classification/config/ai-summary-config";
+import { MapReduceSummaryStrategy } from "../strategies";
 import { getEntityRepository } from "../repositories/entity.repository";
 import { getSummaryRepository } from "../repositories/summary.repository";
 import { createClient } from "@/lib/supabase/server";
@@ -134,12 +136,78 @@ export class SummaryService implements ISummaryService {
     const summaryMode: SummaryMode =
       options?.summaryMode || (await getUserSummaryMode(input.userId));
 
+    // MapReduce 长文检测：超过阈值自动分段摘要
+    if (isMapReduceEnabled() && input.content) {
+      const mapReduceStrategy = new MapReduceSummaryStrategy();
+      if (mapReduceStrategy.shouldUseMapReduce(input.content)) {
+        try {
+          return await this.generateWithMapReduce(
+            input,
+            mapReduceStrategy,
+            startTime,
+          );
+        } catch (error) {
+          // SKIP_MAP_REDUCE 信号：降级到标准流程
+          if (error instanceof Error && error.message === "SKIP_MAP_REDUCE") {
+            logger.info(
+              { bookmarkId: input.bookmarkId },
+              "MapReduce 跳过，降级到标准流程",
+            );
+          } else {
+            logger.warn(
+              {
+                bookmarkId: input.bookmarkId,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              "MapReduce 失败，降级到标准流程",
+            );
+          }
+        }
+      }
+    }
+
     // 根据模式选择生成方法
     if (summaryMode === "enhanced") {
       return this.generateEnhanced(input, options, startTime);
     }
 
     return this.generateStandard(input, options, startTime);
+  }
+
+  /**
+   * MapReduce 长文分段摘要
+   *
+   * 超过阈值的长文自动分段，各段并发提取要点，最终聚合为全局摘要。
+   * 复用 updateStats 和 emitEvents 保持统计和事件一致性。
+   */
+  private async generateWithMapReduce(
+    input: SummaryInput,
+    strategy: MapReduceSummaryStrategy,
+    startTime: number,
+  ): Promise<SummaryResult> {
+    const factory = getProviderFactory();
+    const provider = await factory.getAvailableProvider();
+
+    const result = await strategy.execute(input, provider);
+
+    const latencyMs = Date.now() - startTime;
+    result.latencyMs = latencyMs;
+
+    // 复用现有统计和事件发布逻辑
+    this.updateStats(result, latencyMs, false);
+    await this.emitEvents(input, result, true);
+
+    logger.info(
+      {
+        bookmarkId: input.bookmarkId,
+        provider: result.providerUsed,
+        latencyMs,
+        strategy: "map_reduce",
+      },
+      "摘要生成完成 (MapReduce)",
+    );
+
+    return result;
   }
 
   /**

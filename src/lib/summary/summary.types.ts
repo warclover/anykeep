@@ -322,6 +322,61 @@ export interface UserFeedback {
 }
 
 // ============================================================================
+// MapReduce Types (v4.0 长文分段摘要)
+// ============================================================================
+
+/**
+ * 长文处理策略
+ * - truncate: 截断模式（现有默认）
+ * - map_reduce: 分段摘要再聚合
+ */
+export type LongContentStrategy = "truncate" | "map_reduce";
+
+/**
+ * MapReduce 中间结果 - 单段摘要
+ */
+export interface ChunkSummary {
+  /** 段落索引 */
+  chunkIndex: number;
+  /** 段落摘要 */
+  summary: string;
+  /** 段落关键要点 */
+  keyPoints: string[];
+  /** 段落 Token 数 */
+  tokenCount: number;
+}
+
+/**
+ * MapReduce 配置
+ */
+export interface MapReduceConfig {
+  /** 触发 MapReduce 的内容长度阈值（字符数） */
+  contentLengthThreshold: number;
+  /** Map 阶段最大并发数 */
+  mapConcurrency: number;
+  /** Map 阶段每个 chunk 的最大 Token 数 */
+  chunkMaxTokens: number;
+  /** Reduce 阶段聚合输入的最大 Token 数 */
+  reduceMaxInputTokens: number;
+  /** Map 阶段单段超时（ms） */
+  mapTimeoutMs: number;
+  /** MapReduce 总超时（ms） */
+  totalTimeoutMs: number;
+}
+
+/**
+ * MapReduce 默认配置
+ */
+export const DEFAULT_MAP_REDUCE_CONFIG: MapReduceConfig = {
+  contentLengthThreshold: 6000,
+  mapConcurrency: 3,
+  chunkMaxTokens: 1024,
+  reduceMaxInputTokens: 4000,
+  mapTimeoutMs: 20000,
+  totalTimeoutMs: 60000,
+};
+
+// ============================================================================
 // Error Types
 // ============================================================================
 

@@ -32,8 +32,10 @@ import {
   buildTypeSpecificPrompt,
   getPromptConfigV2,
   buildTypeSpecificPromptV2,
+  PromptEngineV4,
 } from "../prompts";
 import { isJsonOutputEnabled } from "../summary.config";
+import { isPromptV4Enabled } from "@/lib/classification/config/ai-summary-config";
 import { safeParseJson, detectContentType } from "../summary.types";
 import { isSummaryComplete } from "@/lib/utils/content-extractor";
 
@@ -514,6 +516,11 @@ export abstract class BaseProvider implements ISummaryProvider {
    * 构建 Prompt
    */
   buildPrompts(input: SummaryInput): PromptBuildResult {
+    // V4: Prompt 引擎（CoT + FewShot + 负面约束 + 12 种内容类型模板）
+    if (isPromptV4Enabled()) {
+      return PromptEngineV4.buildPrompts(input, this.config.maxTokens);
+    }
+
     const useJsonOutput = isJsonOutputEnabled();
     const contentType = input.contentType || "article";
 

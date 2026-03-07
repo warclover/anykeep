@@ -17,6 +17,12 @@
 import { logger } from "@/lib/logger";
 import type { ContentType } from "@/lib/classification/content-type-detector";
 import { detectContentType } from "@/lib/classification/content-type-detector";
+import {
+  isEnhancedExtractionEnabled,
+  isContentCleaningEnabled,
+} from "@/lib/classification/config/ai-summary-config";
+import { getParserRegistry } from "../parsers";
+import { ContentCleanerService } from "./content-cleaner.service";
 
 // ============================================================================
 // Types
@@ -321,7 +327,16 @@ export class ContentFetcherService {
     // 提取正文
     let content: string | undefined;
     if (opts.extractContent) {
-      content = this.extractMainContent(html, opts.maxContentLength);
+      if (isEnhancedExtractionEnabled()) {
+        // V4: 平台定制解析器 + 去噪
+        content = this.extractWithEnhancedPipeline(
+          html,
+          url,
+          opts.maxContentLength,
+        );
+      } else {
+        content = this.extractMainContent(html, opts.maxContentLength);
+      }
     }
 
     // 检测内容类型
@@ -432,6 +447,69 @@ export class ContentFetcherService {
   private extractMetaDescription(html: string): string | undefined {
     const match = html.match(/<meta\s+name="description"\s+content="([^"]+)"/i);
     return match ? this.decodeHtmlEntities(match[1]) : undefined;
+  }
+
+  /**
+   * V4 增强内容提取管线
+   *
+   * 1. 平台定制解析器按 URL 匹配提取正文
+   * 2. ContentCleaner 去噪（广告/导航/推荐移除）
+   * 3. 回退到通用 extractMainContent
+   */
+  private extractWithEnhancedPipeline(
+    html: string,
+    url: string,
+    maxLength: number,
+  ): string {
+    try {
+      const registry = getParserRegistry();
+      const parser = registry.findParser(url);
+      const parsed = parser.parse(html, url);
+
+      // 解析器置信度过低时回退
+      if (parsed.confidence < 0.3 || parsed.content.length < 50) {
+        logger.debug(
+          { url, parser: parser.name, confidence: parsed.confidence },
+          "增强提取: 置信度过低，回退到通用提取",
+        );
+        return this.extractMainContent(html, maxLength);
+      }
+
+      let content = parsed.content;
+
+      // 去噪
+      if (isContentCleaningEnabled()) {
+        const cleaner = new ContentCleanerService();
+        content = cleaner.clean(content);
+      }
+
+      // 截断
+      if (content.length > maxLength) {
+        content = content.slice(0, maxLength) + "...";
+      }
+
+      logger.info(
+        {
+          url,
+          parser: parser.name,
+          confidence: parsed.confidence,
+          wordCount: parsed.wordCount,
+          resultLength: content.length,
+        },
+        "增强提取: 完成",
+      );
+
+      return content;
+    } catch (error) {
+      logger.warn(
+        {
+          url,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "增强提取: 失败，回退到通用提取",
+      );
+      return this.extractMainContent(html, maxLength);
+    }
   }
 
   /**

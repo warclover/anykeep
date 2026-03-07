@@ -41,3 +41,12 @@ export {
 } from "./content-fetcher.service";
 
 export type { FetchOptions } from "./content-fetcher.service";
+
+// Content Cleaner Service
+export {
+  ContentCleanerService,
+  getContentCleanerService,
+  resetContentCleanerService,
+} from "./content-cleaner.service";
+
+export type { CleanOptions } from "./content-cleaner.service";

@@ -400,17 +400,89 @@ export async function setUserSummaryMode(
   }
 }
 
+// ============================================================================
+// v4.0: 摘要质量增强 Feature Flags
+// ============================================================================
+
+/**
+ * 是否启用平台定制解析器（内容提取强化）
+ * 启用后使用 ParserRegistry 按平台提取正文
+ */
+export function isEnhancedExtractionEnabled(): boolean {
+  return process.env.AI_SUMMARY_ENHANCED_EXTRACTION !== "false";
+}
+
+/**
+ * 是否启用内容去噪
+ * 启用后使用 ContentCleaner 移除广告/导航/推荐
+ */
+export function isContentCleaningEnabled(): boolean {
+  return process.env.AI_SUMMARY_CONTENT_CLEANING !== "false";
+}
+
+/**
+ * 是否启用 MapReduce 长文分段摘要
+ * 启用后超过阈值的长文自动分段摘要再聚合
+ */
+export function isMapReduceEnabled(): boolean {
+  return process.env.AI_SUMMARY_MAP_REDUCE === "true";
+}
+
+/**
+ * 获取 MapReduce 触发阈值（字符数）
+ */
+export function getMapReduceThreshold(): number {
+  const threshold = process.env.AI_SUMMARY_MAP_REDUCE_THRESHOLD;
+  if (threshold) {
+    const parsed = parseInt(threshold, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return 6000;
+}
+
+/**
+ * 是否启用 V4 Prompt 引擎
+ */
+export function isPromptV4Enabled(): boolean {
+  return process.env.AI_SUMMARY_PROMPT_V4 !== "false";
+}
+
+/**
+ * 是否启用 Chain-of-Thought 引导
+ */
+export function isCotEnabled(): boolean {
+  return process.env.AI_SUMMARY_COT !== "false";
+}
+
+/**
+ * 是否启用 Few-shot 示例
+ */
+export function isFewShotEnabled(): boolean {
+  return process.env.AI_SUMMARY_FEW_SHOT !== "false";
+}
+
+/**
+ * 是否启用负面约束
+ */
+export function isNegativeConstraintsEnabled(): boolean {
+  return process.env.AI_SUMMARY_NEGATIVE_CONSTRAINTS !== "false";
+}
+
 /**
  * 配置版本信息（用于调试和日志）
  */
 export const CONFIG_VERSION = {
-  version: "3.0.0",
-  lastUpdated: "2025-12-14",
+  version: "4.0.0",
+  lastUpdated: "2026-03-07",
   features: {
     jsonOutput: "Phase 1 - 结构化 JSON 输出",
     jinaReader: "Phase 2 - Jina Reader 内容提取",
     modelRouting: "Phase 3 - 智能模型路由",
     enhancedMode: "Phase 4 - 智能浓缩 v3.0（实体提取、关键数据、难度评估）",
     summaryModeSwitch: "Phase 4 - 用户摘要模式切换",
+    enhancedExtraction: "Phase 5 - 平台定制解析器（内容提取强化）",
+    contentCleaning: "Phase 5 - 内容去噪管线",
+    mapReduce: "Phase 5 - MapReduce 长文分段摘要",
+    promptV4: "Phase 5 - V4 Prompt 引擎（CoT + Few-shot + 负面约束）",
   },
 };
