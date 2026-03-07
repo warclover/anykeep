@@ -9,12 +9,24 @@
 
 "use client";
 
-import { useMemo, type ReactNode } from "react";
-import { ViewModeProvider, useViewMode } from "./view-mode-context";
-import { FilterProvider, useFilter } from "./filter-context";
-import { DialogProvider, useDialog } from "./dialog-context";
-import { SelectionProvider, useSelection } from "./selection-context";
-import { AIPanelProvider, useAIPanel } from "./ai-panel-context";
+import { useContext, useMemo, type ReactNode } from "react";
+import {
+  ViewModeProvider,
+  useViewMode,
+  ViewModeContext,
+} from "./view-mode-context";
+import { FilterProvider, useFilter, FilterContext } from "./filter-context";
+import { DialogProvider, useDialog, DialogContext } from "./dialog-context";
+import {
+  SelectionProvider,
+  useSelection,
+  SelectionContext,
+} from "./selection-context";
+import {
+  AIPanelProvider,
+  useAIPanel,
+  AIPanelContext,
+} from "./ai-panel-context";
 
 import type { ViewModeContextType } from "./view-mode-context";
 import type { FilterContextType } from "./filter-context";
@@ -107,11 +119,18 @@ export function useHomePageContextV2(): HomePageContextTypeV2 {
 
 /**
  * 安全版本的兼容层
+ *
+ * 直接使用 useContext 读取各 Context，避免调用会 throw 的强类型 Hook，
+ * 确保 Hooks 调用次数在每次渲染中保持一致（符合 Rules of Hooks）
  */
 export function useHomePageSafeV2(): HomePageContextTypeV2 | null {
-  try {
-    return useHomePageContextV2();
-  } catch {
-    return null;
-  }
+  const view = useContext(ViewModeContext);
+  const filter = useContext(FilterContext);
+  const dialog = useContext(DialogContext);
+  const selection = useContext(SelectionContext);
+  const aiPanel = useContext(AIPanelContext);
+
+  if (!view || !filter || !dialog || !selection || !aiPanel) return null;
+
+  return { view, filter, dialog, selection, aiPanel };
 }

@@ -4,7 +4,7 @@
  * Phase 2 性能优化：从 HomePageContext 拆分出筛选相关状态
  * 只有订阅筛选的组件才会在筛选变化时重渲染
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-07
  */
 
@@ -74,6 +74,9 @@ export function FilterProvider({
   const isBrowserPlatform = platform === "browser";
   const isTrashFolder = folder === "trash";
 
+  // 防止自回环：标记当前 emit 来源是否为自身
+  const isEmittingRef = useRef(false);
+
   // 使用 ref 存储回调需要的状态值
   const filterRef = useRef({ platform, folder });
   useEffect(() => {
@@ -83,10 +86,12 @@ export function FilterProvider({
   // 筛选操作
   const setPlatform = useCallback((newPlatform: string) => {
     setPlatformState(newPlatform);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.PLATFORM_CHANGE, {
       platform: newPlatform,
       folder: filterRef.current.folder,
     });
+    isEmittingRef.current = false;
   }, []);
 
   const setFolder = useCallback((newFolder: string) => {
@@ -95,15 +100,18 @@ export function FilterProvider({
 
   const setUsageTags = useCallback((tags: string[]) => {
     setUsageTagsState(tags);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.USAGE_TAGS_CHANGE, { usageTags: tags });
+    isEmittingRef.current = false;
   }, []);
 
-  // 订阅外部事件
+  // 订阅外部事件（仅响应非自身触发的事件）
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
     unsubscribers.push(
       uiEventBus.on(UIEvents.PLATFORM_CHANGE, (payload) => {
+        if (isEmittingRef.current) return;
         setPlatformState(payload.platform);
         if (payload.folder !== undefined) {
           setFolderState(payload.folder);
@@ -112,6 +120,7 @@ export function FilterProvider({
     );
     unsubscribers.push(
       uiEventBus.on(UIEvents.USAGE_TAGS_CHANGE, (payload) => {
+        if (isEmittingRef.current) return;
         setUsageTagsState(payload.usageTags);
       }),
     );

@@ -4,7 +4,7 @@
  * Phase 2 性能优化：从 HomePageContext 拆分出视图模式相关状态
  * 只有订阅视图模式的组件才会在视图模式变化时重渲染
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-07
  */
 
@@ -96,6 +96,9 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
     useState<LayoutMode>(DEFAULT_LAYOUT_MODE);
   const [enableFlipCard, setEnableFlipCardState] = useState<boolean>(false);
 
+  // 防止自回环：标记当前 emit 来源是否为自身
+  const isEmittingRef = useRef(false);
+
   // 客户端 hydration 后从 localStorage 读取初始值
   // 这是合法的 hydration 模式：SSR 使用默认值，客户端挂载后从 localStorage 同步
   useEffect(() => {
@@ -107,47 +110,50 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
     setEnableFlipCardState(getStoredFlipCard());
   }, []);
 
-  // 使用 ref 存储回调需要的状态值，保持回调引用稳定
-  const stateRef = useRef({ viewMode, layoutMode, enableFlipCard });
-  useEffect(() => {
-    stateRef.current = { viewMode, layoutMode, enableFlipCard };
-  }, [viewMode, layoutMode, enableFlipCard]);
-
   // 视图模式操作（带持久化）
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode);
     localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.VIEW_MODE_CHANGE, { mode });
+    isEmittingRef.current = false;
   }, []);
 
   const setLayoutMode = useCallback((mode: LayoutMode) => {
     setLayoutModeState(mode);
     localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.LAYOUT_MODE_CHANGE, { mode });
+    isEmittingRef.current = false;
   }, []);
 
   const setEnableFlipCard = useCallback((enabled: boolean) => {
     setEnableFlipCardState(enabled);
     localStorage.setItem(FLIP_CARD_STORAGE_KEY, String(enabled));
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.FLIP_CARD_CHANGE, { enabled });
+    isEmittingRef.current = false;
   }, []);
 
-  // 订阅外部事件（UIEventBus）
+  // 订阅外部事件（仅响应非自身触发的事件）
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
     unsubscribers.push(
       uiEventBus.on(UIEvents.VIEW_MODE_CHANGE, (payload) => {
+        if (isEmittingRef.current) return;
         setViewModeState(payload.mode);
       }),
     );
     unsubscribers.push(
       uiEventBus.on(UIEvents.LAYOUT_MODE_CHANGE, (payload) => {
+        if (isEmittingRef.current) return;
         setLayoutModeState(payload.mode);
       }),
     );
     unsubscribers.push(
       uiEventBus.on(UIEvents.FLIP_CARD_CHANGE, (payload) => {
+        if (isEmittingRef.current) return;
         setEnableFlipCardState(payload.enabled);
       }),
     );

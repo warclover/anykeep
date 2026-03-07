@@ -4,7 +4,16 @@ import { WeeklyDigestEmail } from "./templates/weekly-digest";
 import { render } from "@react-email/components";
 import type { LedgerResult } from "../ledger/types/ledger.types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// 延迟初始化：避免模块加载时因缺少 API key 导致构建失败
+let resendInstance: Resend | null = null;
+
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
 
 export class EmailService {
   /**
@@ -15,7 +24,8 @@ export class EmailService {
     digest: NonNullable<LedgerResult>,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      if (!process.env.RESEND_API_KEY) {
+      const resend = getResend();
+      if (!resend) {
         logger.warn("Resend API key not configured, skipping email send");
         return { success: false, error: "Missing API Key" };
       }

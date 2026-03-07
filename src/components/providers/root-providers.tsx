@@ -31,7 +31,6 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 import { UserProvider } from "@/contexts/user-context";
 import { NavigationProvider } from "@/contexts/navigation-context";
-import { HomePageProvider } from "@/contexts/home-page-context";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { KeepAliveProvider } from "@/lib/cache";
 import { OnboardingProvider } from "@/components/providers/onboarding-provider";
@@ -81,9 +80,14 @@ const EssentialProviders = composeProviders(
  * 页面导航和缓存必需的 Provider
  * 注意：NavigationProvider 使用 useSearchParams()，需要 Suspense 包裹
  */
+/**
+ * 导航相关 Providers
+ *
+ * HomePageProvider 已移至页面级 (home-page-client-layered.tsx)，
+ * 避免全局 + 页面级双重嵌套导致 EventBus 冲突和内存浪费。
+ * 布局组件通过 Safe hooks 在非首页场景下自动降级。
+ */
 const NavigationProviders = composeProviders(
-  // 首页状态管理（必须在 NavigationProvider 外层）
-  HomePageProvider,
   // 导航状态（使用 useSearchParams，需要 Suspense）
   withSuspense(NavigationProvider, null),
   // 组件缓存

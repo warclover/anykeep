@@ -53,11 +53,12 @@ export function useHomeDialogs({
   const [isCreatingSynthesis, setIsCreatingSynthesis] = useState(false);
 
   // Context 对话框联动
+  const { openDialog: contextOpenDialog, closeDialog: contextCloseDialog } =
+    dialogContext;
   useEffect(() => {
-    const dialogType = dialogContext.openDialog;
-    if (!dialogType) return;
+    if (!contextOpenDialog) return;
 
-    switch (dialogType) {
+    switch (contextOpenDialog) {
       case "create":
         openCreateDialog();
         break;
@@ -75,9 +76,10 @@ export function useHomeDialogs({
         break;
     }
 
-    dialogContext.closeDialog();
+    contextCloseDialog();
   }, [
-    dialogContext,
+    contextOpenDialog,
+    contextCloseDialog,
     openCreateDialog,
     openImportDialog,
     openBrowserImportDialog,
@@ -105,8 +107,21 @@ export function useHomeDialogs({
     });
   }, [exitSelectionMode, refetch]);
 
+  // AbortController 用于组件卸载时取消进行中的 fetch
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleCreateSynthesis = useCallback(async () => {
     if (selectedIds.size < 3) return;
+
+    // 取消前一次未完成的请求
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsCreatingSynthesis(true);
     try {
@@ -118,6 +133,7 @@ export function useHomeDialogs({
           bookmarkIds: Array.from(selectedIds),
           depthMode: "standard",
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -127,11 +143,15 @@ export function useHomeDialogs({
       const { data } = await response.json();
       router.push(`/synthesis/${data.id}?generate=true`);
     } catch (error) {
+      // 组件卸载导致的 abort 不需要提示用户
+      if (error instanceof DOMException && error.name === "AbortError") return;
       clientLogger.error({ error }, "Create synthesis error:");
       toast.error("创建综述失败");
     } finally {
-      setIsCreatingSynthesis(false);
-      setShowSynthesisDialog(false);
+      if (!controller.signal.aborted) {
+        setIsCreatingSynthesis(false);
+        setShowSynthesisDialog(false);
+      }
     }
   }, [selectedIds, router]);
 

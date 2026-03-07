@@ -29,9 +29,11 @@ import { useViewModeSafe } from "@/contexts/home-page";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { ViewMode, LayoutMode } from "@/components/home/types";
 
-// 本地存储 key（Fallback 使用）
-const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
-const LAYOUT_MODE_STORAGE_KEY = "anykeep-layout-mode";
+// 本地存储 key（Fallback 使用，统一从 constants 导入）
+import {
+  VIEW_MODE_STORAGE_KEY,
+  LAYOUT_MODE_STORAGE_KEY,
+} from "@/components/home/constants";
 
 // 排序选项
 const sortOptions = [

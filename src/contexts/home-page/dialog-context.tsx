@@ -3,7 +3,7 @@
  *
  * Phase 2 性能优化：从 HomePageContext 拆分出对话框相关状态
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-02-07
  */
 
@@ -16,6 +16,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import type { DialogType } from "@/components/home/types";
@@ -55,29 +56,31 @@ export function DialogProvider({ children }: DialogProviderProps) {
     null,
   );
 
+  // 防止自回环：标记当前 emit 来源是否为自身
+  const isEmittingRef = useRef(false);
+
   const openDialogAction = useCallback((type: DialogType) => {
     setOpenDialogState(type);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.DIALOG_OPEN, { type });
+    isEmittingRef.current = false;
   }, []);
 
   const closeDialog = useCallback(() => {
     setOpenDialogState(null);
+    isEmittingRef.current = true;
     uiEventBus.emit(UIEvents.DIALOG_CLOSE, {});
+    isEmittingRef.current = false;
   }, []);
 
-  // 订阅外部事件
+  // 订阅外部事件（仅响应非自身触发的事件）
   useEffect(() => {
-    const unsubscribers: (() => void)[] = [];
+    const unsubscribe = uiEventBus.on(UIEvents.DIALOG_OPEN, (payload) => {
+      if (isEmittingRef.current) return;
+      setOpenDialogState(payload.type);
+    });
 
-    unsubscribers.push(
-      uiEventBus.on(UIEvents.DIALOG_OPEN, (payload) => {
-        setOpenDialogState(payload.type);
-      }),
-    );
-
-    return () => {
-      unsubscribers.forEach((unsub) => unsub());
-    };
+    return unsubscribe;
   }, []);
 
   const value = useMemo<DialogContextType>(

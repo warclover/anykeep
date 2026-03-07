@@ -18,7 +18,11 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSafeNavigation } from "@/contexts/navigation-context";
-import { useFilterSafe, useViewModeSafe } from "@/contexts/home-page";
+import {
+  useFilterSafe,
+  useViewModeSafe,
+  useSelectionSafe,
+} from "@/contexts/home-page";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 
 /**
@@ -72,18 +76,21 @@ const platforms = [
   { id: "md", name: "笔记", value: "md", href: "/md-collections" },
 ];
 
-// 本地存储 key（Fallback 使用）
-const VIEW_MODE_STORAGE_KEY = "anykeep-view-mode";
-const FLIP_CARD_STORAGE_KEY = "anykeep-flip-card";
+// 本地存储 key（Fallback 使用，统一从 constants 导入）
+import {
+  VIEW_MODE_STORAGE_KEY,
+  FLIP_CARD_STORAGE_KEY,
+} from "@/components/home/constants";
 
 export const PlatformFilter = memo(function PlatformFilter() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // P0-2: 细粒度 Context 订阅（filter + viewMode）
+  // P0-2: 细粒度 Context 订阅（filter + viewMode + selection）
   const filterContext = useFilterSafe();
   const viewContext = useViewModeSafe();
+  const selectionContext = useSelectionSafe();
 
   // 获取导航上下文（支持客户端导航模式）
   const navigationContext = useSafeNavigation();
@@ -171,6 +178,11 @@ export const PlatformFilter = memo(function PlatformFilter() {
     }
 
     // 1. Context 更新（UI 即时响应）
+    // 平台切换时退出批量选择模式，避免跨平台 selectedIds 不一致
+    if (selectionContext?.isSelectionMode) {
+      selectionContext.setSelectionMode(false);
+    }
+
     if (filterContext) {
       filterContext.setPlatform(platformValue);
       filterContext.setFolder("");

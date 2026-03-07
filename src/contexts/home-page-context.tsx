@@ -54,9 +54,11 @@ export type {
   AIPanelContextType,
 } from "./home-page";
 
-// 保留旧的 Context 引用（向后兼容）
-import { ViewModeContext } from "./home-page";
-export const HomePageContext = ViewModeContext;
+// HomePageContext 别名已移除（v1.1.0）
+// 原 `HomePageContext = ViewModeContext` 是误导性映射，
+// 旧代码期望完整首页状态但实际只拿到 ViewModeContext。
+// 如需直接访问 Context 对象，请使用具体的：
+//   ViewModeContext, FilterContext, DialogContext, SelectionContext, AIPanelContext
 
 // 兼容层 Provider Props
 export interface HomePageProviderProps {
