@@ -179,8 +179,14 @@ function NotificationListItem({
  */
 export function NotificationDropdown() {
   const router = useRouter();
-  const { unreadCount, notifications, isLoading, markAsRead, markAllAsRead } =
-    useNotificationCount();
+  const {
+    unreadCount,
+    notifications,
+    isLoading,
+    markAsRead,
+    markAllAsRead,
+    activateList,
+  } = useNotificationCount();
 
   const handleNotificationClick = (notification: NotificationItem) => {
     // 标记已读
@@ -197,7 +203,7 @@ export function NotificationDropdown() {
   };
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => open && activateList()}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"

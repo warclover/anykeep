@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
@@ -61,7 +61,7 @@ export interface UseNotificationCountReturn {
   unreadCount: number;
   /** 按优先级分组的计数 */
   counts: NotificationCounts;
-  /** 通知列表（最近 20 条） */
+  /** 通知列表（最近 20 条，调用 activateList 后才加载） */
   notifications: NotificationItem[];
   /** 是否正在加载 */
   isLoading: boolean;
@@ -73,6 +73,8 @@ export interface UseNotificationCountReturn {
   markAllAsRead: () => Promise<void>;
   /** 刷新数据 */
   refresh: () => Promise<void>;
+  /** 激活通知列表获取（首次打开下拉面板时调用） */
+  activateList: () => void;
 }
 
 // ============================================================================
@@ -96,6 +98,12 @@ const LIST_QUERY_KEY = ["notifications-list"] as const;
  */
 export function useNotificationCount(): UseNotificationCountReturn {
   const queryClient = useQueryClient();
+
+  // 通知列表延迟加载：仅在用户打开下拉面板时才获取
+  const [isListActive, setIsListActive] = useState(false);
+  const activateList = useCallback(() => {
+    setIsListActive(true);
+  }, []);
 
   // ==================== 计数查询 ====================
   const {
@@ -156,6 +164,7 @@ export function useNotificationCount(): UseNotificationCountReturn {
     error: listError,
   } = useQuery({
     queryKey: LIST_QUERY_KEY,
+    enabled: isListActive, // 延迟加载：仅在下拉面板打开后才获取
     queryFn: async (): Promise<NotificationItem[]> => {
       const supabase = createClient();
 
@@ -330,5 +339,6 @@ export function useNotificationCount(): UseNotificationCountReturn {
     markAsRead: markReadMutation.mutateAsync,
     markAllAsRead: markAllReadMutation.mutateAsync,
     refresh,
+    activateList,
   };
 }

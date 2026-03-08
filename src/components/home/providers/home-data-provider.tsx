@@ -32,6 +32,7 @@ import { clientLogger } from "@/lib/client-logger";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { useProcessingPoller } from "@/hooks/ui";
 import { customTagKeys } from "@/hooks/queries/keys";
+import type { NotificationCounts } from "@/hooks/domain/notification/use-notification-count";
 import { getPageSizeByView } from "../constants";
 import type { ViewMode, BookmarkWithFolder } from "../types";
 
@@ -134,6 +135,7 @@ export function HomeDataProvider({
   const {
     bookmarks: initBookmarks,
     customUsageTags: initCustomUsageTags,
+    unreadCount: initUnreadCount,
     isLoading: isInitDataLoading,
   } = useInitData({
     enabled: shouldUseInitData,
@@ -147,6 +149,27 @@ export function HomeDataProvider({
       initCustomUsageTags,
     );
   }, [shouldUseInitData, isInitDataLoading, initCustomUsageTags, queryClient]);
+
+  // init 数据就绪后，填充 notification count 缓存，
+  // 避免 useNotificationCount 重复发起 get_notification_counts RPC
+  useEffect(() => {
+    if (!shouldUseInitData || isInitDataLoading) return;
+    if (!initUnreadCount) return;
+
+    const counts: NotificationCounts = {
+      total: initUnreadCount.total ?? 0,
+      critical: 0, // init API 未返回 critical，默认 0
+      important: initUnreadCount.important ?? 0,
+      normal: initUnreadCount.normal ?? 0,
+      silent: initUnreadCount.silent ?? 0,
+    };
+
+    // 仅在缓存为空时填充，避免覆盖 Realtime 更新的新数据
+    const existing = queryClient.getQueryData(["notification-count"]);
+    if (existing === undefined) {
+      queryClient.setQueryData(["notification-count"], counts);
+    }
+  }, [shouldUseInitData, isInitDataLoading, initUnreadCount, queryClient]);
 
   // 优先使用聚合 API 数据作为初始值
   const effectiveInitialData = initialBookmarks?.length

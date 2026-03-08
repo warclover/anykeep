@@ -6,28 +6,21 @@
  * - 桌面端：渲染 AppSidebar，不渲染 MobileBottomNav
  * - 移动端：渲染 MobileBottomNav，不渲染 AppSidebar
  *
+ * V5.4 修复 (2026-03-08):
+ * - 移除 dynamic({ ssr: false })，改为直接导入
+ * - 在服务端组件中使用 next/dynamic 会导致 RSC payload 异步模块标记，
+ *   客户端 requireAsyncModule 解析失败 → hydration 崩溃
+ * - 直接导入 "use client" 组件是安全的，Suspense fallback={null} 不阻塞首屏
+ *
  * @since V5.3 (2026-02-01)
  */
 
 "use client";
 
 import { Suspense, memo } from "react";
-import dynamic from "next/dynamic";
 import { useIsMobile } from "@/hooks/ai/use-is-mobile";
-
-// 懒加载组件
-const AppSidebar = dynamic(
-  () => import("@/components/layout/app-sidebar").then((mod) => mod.AppSidebar),
-  { ssr: false },
-);
-
-const MobileBottomNav = dynamic(
-  () =>
-    import("@/components/layout/mobile-bottom-nav").then(
-      (mod) => mod.MobileBottomNav,
-    ),
-  { ssr: false },
-);
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 
 /**
  * 桌面端侧边栏（仅桌面端渲染）

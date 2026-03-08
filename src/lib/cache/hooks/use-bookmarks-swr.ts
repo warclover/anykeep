@@ -335,6 +335,18 @@ export function useBookmarksSWR(
   // 记录是否使用了 initialData（用于防止缓存覆盖 SSR 数据）
   const hasInitialDataRef = useRef(initialData && initialData.length > 0);
 
+  // V5.4 修复：当 initialData 从 undefined 变为有值时（如 init API 返回数据后），
+  // 同步更新 ref，确保跳过逻辑生效，避免多余的 /api/bookmarks 请求
+  const prevInitialDataRef = useRef(initialData);
+  if (
+    initialData &&
+    initialData.length > 0 &&
+    (!prevInitialDataRef.current || prevInitialDataRef.current.length === 0)
+  ) {
+    hasInitialDataRef.current = true;
+  }
+  prevInitialDataRef.current = initialData;
+
   /**
    * 参数变化时重新获取数据
    */
@@ -360,7 +372,7 @@ export function useBookmarksSWR(
       prevCacheKeyRef.current = cacheKey;
     }
 
-    // 如果有 SSR initialData，首次挂载时跳过 fetchData，避免不必要的请求
+    // 如果有 initialData（SSR 或 init API），跳过首次 fetch，避免不必要的请求
     // 后续 cacheKey 变化时正常刷新
     if (hasInitialDataRef.current && prevCacheKeyRef.current === cacheKey) {
       hasInitialDataRef.current = false; // 标记已消费，后续正常刷新
