@@ -5,8 +5,6 @@
  * 文档章节结构渲染器。
  */
 
-"use client";
-
 import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";

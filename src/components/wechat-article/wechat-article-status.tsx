@@ -4,8 +4,6 @@
  * @module wechat-article
  */
 
-"use client";
-
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import {

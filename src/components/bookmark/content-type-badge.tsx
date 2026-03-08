@@ -3,8 +3,6 @@
  * Displays the detected content type as a small badge
  */
 
-"use client";
-
 import { cn } from "@/lib/utils";
 import { FileText, BookOpen, Video, Wrench } from "lucide-react";
 import type { ContentType } from "@/lib/classification/content-type-detector";

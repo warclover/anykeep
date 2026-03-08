@@ -7,8 +7,6 @@
  * @since 2026-01-01 [E2]
  */
 
-"use client";
-
 import {
   CheckCircle2,
   AlertTriangle,

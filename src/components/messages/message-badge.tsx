@@ -3,8 +3,6 @@
  * @description 显示未读消息数量的角标
  */
 
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 

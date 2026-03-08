@@ -3,8 +3,6 @@
  * @description 显示日期分组的粘性标题
  */
 
-"use client";
-
 import type { DateGroup } from "@/lib/messages";
 
 // ============================================

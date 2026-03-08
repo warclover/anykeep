@@ -7,8 +7,6 @@
  * @since 2026-01-07
  */
 
-"use client";
-
 import { memo } from "react";
 import { Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";

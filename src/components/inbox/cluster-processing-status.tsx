@@ -3,9 +3,13 @@
  * 显示 AI 智能分拣的处理进度
  */
 
-"use client";
-
-import { Clock, Brain, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Clock,
+  Brain,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";

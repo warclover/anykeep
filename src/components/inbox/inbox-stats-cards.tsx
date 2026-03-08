@@ -10,8 +10,6 @@
  * @since 2026-02-07
  */
 
-"use client";
-
 import { Inbox, Star, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

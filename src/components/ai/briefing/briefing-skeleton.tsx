@@ -7,8 +7,6 @@
  * @since 2025-12-30
  */
 
-"use client";
-
 import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";

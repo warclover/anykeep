@@ -3,8 +3,6 @@
  * 显示检测进度和实时统计
  */
 
-"use client";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {

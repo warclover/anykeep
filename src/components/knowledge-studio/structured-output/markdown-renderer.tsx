@@ -6,8 +6,6 @@
  * 同时作为其他类型验证失败时的降级渲染器。
  */
 
-"use client";
-
 import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";

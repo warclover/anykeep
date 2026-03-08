@@ -7,8 +7,6 @@
  * @since 2025-12-24
  */
 
-"use client";
-
 import { memo } from "react";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";

@@ -7,8 +7,6 @@
  * @since 2026-01-02
  */
 
-"use client";
-
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -12,8 +12,6 @@
  * @since 2025-12-27
  */
 
-"use client";
-
 import { memo } from "react";
 import {
   BarChart3,

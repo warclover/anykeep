@@ -1,5 +1,3 @@
-"use client";
-
 import { IMPORT_DIALOG_STEPS, IMPORT_STEP_NAMES } from "@/lib/browser-bookmark";
 import type { ImportDialogStep } from "@/lib/browser-bookmark";
 

@@ -8,8 +8,6 @@
  * @since 2026-02-07
  */
 
-"use client";
-
 import { Flame } from "lucide-react";
 import {
   Tooltip,

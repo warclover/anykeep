@@ -3,8 +3,6 @@
  * 用于卡片视图中展示评级和锁定状态
  */
 
-"use client";
-
 import { Star, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 

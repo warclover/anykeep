@@ -3,8 +3,6 @@
  * @description 根据不同场景展示相应的空状态
  */
 
-"use client";
-
 import { Inbox, CheckCircle2, Search, Filter } from "lucide-react";
 import type { MessageStatus, MessageLevel } from "@/lib/messages";
 
