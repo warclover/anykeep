@@ -31,31 +31,22 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { MESSAGES } from "@/lib/constants/messages";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
+
+const { CONFIRM_DIALOG } = MESSAGES.AI_COMPONENTS;
 
 // ============================================
 // 常量定义
 // ============================================
 
-const DIALOG_STRINGS = {
-  title: "确认操作",
-  cancelButton: "取消",
-  confirmButton: "确认执行",
-  confirmingButton: "执行中...",
-  affectedItemsTitle: "影响的书签：",
-  riskLevelLabels: {
-    low: "低风险",
-    medium: "中风险",
-    high: "高风险",
-  },
-  toolDescriptions: {
-    batch_tags: "批量标签操作",
-    move_bookmarks: "批量移动书签",
-    export_bookmarks: "导出书签",
-    default: "批量操作",
-  },
-  expirationWarning: "此确认将在 5 分钟后过期",
-} as const;
+const DIALOG_STRINGS = CONFIRM_DIALOG;
+
+const RISK_LEVEL_LABELS: Record<string, string> = {
+  low: CONFIRM_DIALOG.RISK_LEVEL.LOW,
+  medium: CONFIRM_DIALOG.RISK_LEVEL.MEDIUM,
+  high: CONFIRM_DIALOG.RISK_LEVEL.HIGH,
+};
 
 // ============================================
 // 类型定义
@@ -144,9 +135,8 @@ function getRiskLevelStyles(riskLevel: PendingConfirmation["riskLevel"]) {
  */
 function getToolDescription(toolName: string): string {
   return (
-    DIALOG_STRINGS.toolDescriptions[
-      toolName as keyof typeof DIALOG_STRINGS.toolDescriptions
-    ] || DIALOG_STRINGS.toolDescriptions.default
+    DIALOG_STRINGS.TOOL_DESCRIPTIONS[toolName] ||
+    DIALOG_STRINGS.TOOL_DESCRIPTIONS.default
   );
 }
 
@@ -192,16 +182,18 @@ export function ActionConfirmDialog({
               toolName={confirmation.toolName}
               className={cn("w-5 h-5", styles.icon)}
             />
-            <span>{DIALOG_STRINGS.title}</span>
+            <span>{DIALOG_STRINGS.TITLE}</span>
             <Badge className={cn("ml-auto text-xs", styles.badge)}>
-              {DIALOG_STRINGS.riskLevelLabels[confirmation.riskLevel]}
+              {RISK_LEVEL_LABELS[confirmation.riskLevel]}
             </Badge>
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               {/* 操作类型 */}
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">操作类型：</span>
+                <span className="text-muted-foreground">
+                  {DIALOG_STRINGS.OPERATION_TYPE}
+                </span>
                 <span className="font-medium">{toolDescription}</span>
               </div>
 
@@ -215,7 +207,9 @@ export function ActionConfirmDialog({
                     className={cn("w-4 h-4 mt-0.5", styles.icon)}
                   />
                   <div>
-                    <p className="text-sm font-medium">影响范围</p>
+                    <p className="text-sm font-medium">
+                      {DIALOG_STRINGS.IMPACT_SCOPE}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {confirmation.impactSummary}
                     </p>
@@ -227,7 +221,7 @@ export function ActionConfirmDialog({
               {showItemsList && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">
-                    {DIALOG_STRINGS.affectedItemsTitle}
+                    {DIALOG_STRINGS.AFFECTED_ITEMS_TITLE}
                   </p>
                   <ScrollArea className="h-32 rounded-md border">
                     <div className="p-2 space-y-1">
@@ -248,21 +242,21 @@ export function ActionConfirmDialog({
               {/* 超过20条时显示提示 */}
               {affectedItems.length > 20 && (
                 <p className="text-xs text-muted-foreground">
-                  共 {affectedItems.length} 个书签将受影响
+                  {DIALOG_STRINGS.AFFECTED_BOOKMARKS(affectedItems.length)}
                 </p>
               )}
 
               {/* 过期提醒 */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Info className="w-3 h-3" />
-                <span>{DIALOG_STRINGS.expirationWarning}</span>
+                <span>{DIALOG_STRINGS.EXPIRATION_WARNING}</span>
               </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel} disabled={isLoading}>
-            {DIALOG_STRINGS.cancelButton}
+            {MESSAGES.COMMON.CANCEL}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
@@ -275,10 +269,10 @@ export function ActionConfirmDialog({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {DIALOG_STRINGS.confirmingButton}
+                {DIALOG_STRINGS.CONFIRMING_BUTTON}
               </>
             ) : (
-              DIALOG_STRINGS.confirmButton
+              DIALOG_STRINGS.CONFIRM_BUTTON
             )}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -328,10 +322,12 @@ export function ActionConfirmInline({
             toolName={confirmation.toolName}
             className={cn("w-4 h-4", styles.icon)}
           />
-          <span className="text-sm font-medium">需要确认操作</span>
+          <span className="text-sm font-medium">
+            {DIALOG_STRINGS.NEED_CONFIRM}
+          </span>
         </div>
         <Badge className={cn("text-xs", styles.badge)}>
-          {DIALOG_STRINGS.riskLevelLabels[confirmation.riskLevel]}
+          {RISK_LEVEL_LABELS[confirmation.riskLevel]}
         </Badge>
       </div>
 
@@ -353,7 +349,7 @@ export function ActionConfirmInline({
           disabled={isLoading}
           className="flex-1 px-3 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50"
         >
-          取消
+          {MESSAGES.COMMON.CANCEL}
         </button>
         <button
           onClick={() => onConfirm(confirmation.confirmationId)}
@@ -366,10 +362,10 @@ export function ActionConfirmInline({
           {isLoading ? (
             <span className="flex items-center justify-center gap-1">
               <Loader2 className="w-3 h-3 animate-spin" />
-              执行中...
+              {DIALOG_STRINGS.CONFIRMING_BUTTON}
             </span>
           ) : (
-            "确认执行"
+            DIALOG_STRINGS.CONFIRM_BUTTON
           )}
         </button>
       </div>

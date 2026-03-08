@@ -648,6 +648,165 @@ export const MD_READER = {
 } as const;
 
 /**
+ * AI 组件相关文案
+ */
+export const AI_COMPONENTS = {
+  /** AI 操作反馈 */
+  ACTION_FEEDBACK: {
+    // 风险等级标签
+    RISK_LEVEL: {
+      LOW: "低风险",
+      MEDIUM: "中风险",
+      HIGH: "高风险",
+    },
+    // 操作描述映射
+    ACTION_LABELS: {
+      "bookmark:delete": "删除书签",
+      "bookmark:move": "移动书签",
+      "bookmark:update": "更新书签",
+      "folder:delete": "删除文件夹",
+      "folder:update": "更新文件夹",
+      "tag:batch_add": "批量添加标签",
+      "tag:batch_remove": "批量移除标签",
+      "tag:add": "添加标签",
+      "tag:remove": "移除标签",
+    } as Record<string, string>,
+    // 对话框
+    DIALOG_TITLE: "确认执行操作",
+    AFFECTED_SCOPE: "影响范围",
+    AFFECTED_ITEMS: (count: number) => `${count} 个项目`,
+    REVERSIBLE_LABEL: "可撤销",
+    REVERSIBLE_YES: "是",
+    REVERSIBLE_NO: "否",
+    ACTIONS_COUNT: (count: number) => `将执行 ${count} 个操作`,
+    EXECUTING: "执行中...",
+    EXECUTING_SHORT: "执行中",
+    CONFIRM_EXECUTE: "确认执行",
+    // 内联状态
+    CONFIRMED_ACTION: (label: string) => `已确认执行「${label}」`,
+    CANCELLED_ACTION: (label: string) => `已取消「${label}」`,
+    VIEW_DETAILS: (count: number) => `查看详情 (${count} 个操作)`,
+    // 内联底部提示
+    AFFECTED_SHORT: (count: number) => `影响 ${count} 个项目`,
+    REVERSIBLE: "可撤销",
+    IRREVERSIBLE: "不可撤销",
+  },
+
+  /** AI 快捷操作 */
+  QUICK_ACTIONS: {
+    // 卡片标题
+    CARD_TITLE: "AI 快捷操作",
+    CARD_DESCRIPTION: "一键执行智能处理",
+    CARD_HINT: "点击按钮让 AI 自动处理",
+    // 操作配置
+    ACTIONS: {
+      AUTO_TAG: {
+        LABEL: "智能标签",
+        DESCRIPTION: "AI 自动推荐标签",
+      },
+      AUTO_CLASSIFY: {
+        LABEL: "智能分类",
+        DESCRIPTION: "AI 推荐文件夹",
+      },
+      EXTRACT_KEY: {
+        LABEL: "提取要点",
+        DESCRIPTION: "提取关键信息",
+      },
+      RATE_QUALITY: {
+        LABEL: "质量评估",
+        DESCRIPTION: "AI 评估内容质量",
+      },
+    },
+    // 情感标签
+    SENTIMENT: {
+      POSITIVE: "正面",
+      NEUTRAL: "中性",
+      NEGATIVE: "负面",
+    } as Record<string, string>,
+    // 结果消息
+    RESULTS: {
+      NO_NEW_TAGS: "未发现新标签",
+      TAGS_ADDED: (count: number) => `已添加 ${count} 个标签`,
+      TAGS_RECOMMENDED: (count: number) => `推荐 ${count} 个新标签`,
+      SUGGEST_NEW_FOLDER: "建议创建新文件夹",
+      MOVED_TO_FOLDER: (name: string) => `已移动到「${name}」`,
+      RECOMMEND_FOLDER: (name: string) => `推荐「${name}」`,
+      KEY_POINTS_EXTRACTED: (count: number) => `提取 ${count} 个要点`,
+      RATING_APPLIED: (rating: number) => `评分 ${rating} 星`,
+      RATING_SUGGESTED: (rating: number) => `建议评分 ${rating} 星`,
+      DONE: "完成",
+    },
+    // 面板标题
+    PANEL_TITLE: "提取要点",
+    // 时间单位
+    MINUTES: (n: number) => `${n} 分钟`,
+    // 错误
+    ACTION_FAILED: "操作失败",
+  },
+
+  /** 操作确认对话框 */
+  CONFIRM_DIALOG: {
+    TITLE: "确认操作",
+    CANCEL_BUTTON: "取消",
+    CONFIRM_BUTTON: "确认执行",
+    CONFIRMING_BUTTON: "执行中...",
+    AFFECTED_ITEMS_TITLE: "影响的书签：",
+    RISK_LEVEL: {
+      LOW: "低风险",
+      MEDIUM: "中风险",
+      HIGH: "高风险",
+    },
+    TOOL_DESCRIPTIONS: {
+      batch_tags: "批量标签操作",
+      move_bookmarks: "批量移动书签",
+      export_bookmarks: "导出书签",
+      default: "批量操作",
+    } as Record<string, string>,
+    EXPIRATION_WARNING: "此确认将在 5 分钟后过期",
+    OPERATION_TYPE: "操作类型：",
+    IMPACT_SCOPE: "影响范围",
+    AFFECTED_BOOKMARKS: (count: number) => `共 ${count} 个书签将受影响`,
+    NEED_CONFIRM: "需要确认操作",
+  },
+
+  /** AI 记忆查看器 */
+  MEMORY_VIEWER: {
+    TITLE: "AI 记住了什么",
+    DESCRIPTION: "查看 AI 从对话中学习到的信息",
+    SECTIONS: {
+      SUMMARIES: {
+        TITLE: "最近对话",
+        EMPTY: "暂无对话记录",
+      },
+      PENDING: {
+        TITLE: "待办事项",
+        EMPTY: "暂无待办事项",
+        COMPLETE: "标记完成",
+      },
+      PREFERENCES: {
+        TITLE: "学习偏好",
+        EMPTY: "暂未学习到偏好",
+      },
+    },
+    ACTIONS: {
+      REFRESH: "刷新",
+      CLEAR: "清除记忆",
+      CLEAR_CONFIRM: {
+        TITLE: "确认清除记忆？",
+        DESCRIPTION:
+          "此操作将删除所有 AI 记忆内容，包括历史摘要、待办事项和学习偏好。此操作不可撤销。",
+        CONFIRM: "确认清除",
+      },
+    },
+    STATES: {
+      LOADING: "加载中...",
+      ERROR: "加载失败",
+      EMPTY: "AI 还没有记住任何内容",
+    },
+  },
+} as const;
+
+/**
  * 所有文案的聚合导出
  */
 export const MESSAGES = {
@@ -669,6 +828,7 @@ export const MESSAGES = {
   TTS,
   MD_READER,
   KS_QUOTA,
+  AI_COMPONENTS,
 } as const;
 
 /**

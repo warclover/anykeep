@@ -347,6 +347,7 @@ export async function getMembershipType(
 
     return normalizeMembershipType(profile?.membership_type);
   } catch {
+    // intentionally empty: 查询失败时默认为 FREE 用户
     return "FREE";
   }
 }

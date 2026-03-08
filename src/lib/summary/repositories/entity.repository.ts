@@ -11,6 +11,30 @@ import { logger } from "@/lib/logger";
 // V4.2.5: 修复 - 使用服务端客户端而非浏览器客户端
 import { createClient } from "@/lib/supabase/server";
 import type { Entity, EntityType } from "@/lib/classification/types/ai-summary";
+import type { RpcResult } from "@/lib/supabase/typed-queries";
+
+/**
+ * bookmark_entities 表及其 RPC 函数不在 Supabase 生成类型中，
+ * 使用以下辅助函数集中处理类型断言。
+ */
+
+type SupabaseInstance = Awaited<ReturnType<typeof createClient>>;
+
+/** 内部 RPC 调用辅助（bookmark_entities 相关 RPC） */
+function callEntityRpc<T>(
+  supabase: SupabaseInstance,
+  name: string,
+  params: Record<string, unknown>,
+): Promise<RpcResult<T>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bookmark_entities RPC 不在 Supabase 生成类型中
+  return (supabase.rpc as any)(name, params) as Promise<RpcResult<T>>;
+}
+
+/** 查询 bookmark_entities 表的辅助函数 */
+function fromBookmarkEntities(supabase: SupabaseInstance) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bookmark_entities 表不在 Supabase 生成类型中
+  return (supabase as any).from("bookmark_entities");
+}
 
 /**
  * 实体存储数据
@@ -78,8 +102,8 @@ export class EntityRepository {
       const supabase = await createClient();
 
       // 使用数据库函数批量保存（会自动替换现有实体）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await callEntityRpc<number>(
+        supabase,
         "save_bookmark_entities",
         {
           p_bookmark_id: bookmarkId,
@@ -137,13 +161,11 @@ export class EntityRepository {
     try {
       const supabase = await createClient();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
-        "get_bookmark_entities",
-        {
-          p_bookmark_id: bookmarkId,
-        },
-      );
+      const { data, error } = await callEntityRpc<
+        Array<{ name: string; type: string; confidence: number }>
+      >(supabase, "get_bookmark_entities", {
+        p_bookmark_id: bookmarkId,
+      });
 
       if (error) {
         logger.error(
@@ -188,12 +210,8 @@ export class EntityRepository {
     try {
       const supabase = await createClient();
 
-      // bookmark_entities 表尚未在类型定义中，使用类型断言
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("bookmark_entities")
-        .delete()
-        .eq("bookmark_id", bookmarkId);
+      const table = await fromBookmarkEntities(supabase);
+      const { error } = await table.delete().eq("bookmark_id", bookmarkId);
 
       if (error) {
         logger.error(
@@ -248,17 +266,19 @@ export class EntityRepository {
     try {
       const supabase = await createClient();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(
-        "find_bookmarks_by_shared_entities",
-        {
-          p_user_id: userId,
-          p_entity_names: entityNames,
-          p_exclude_bookmark_id: excludeBookmarkId ?? null,
-          p_min_shared: minShared,
-          p_limit: limit,
-        },
-      );
+      const { data, error } = await callEntityRpc<
+        Array<{
+          bookmark_id: number;
+          shared_entities: string[];
+          shared_count: number;
+        }>
+      >(supabase, "find_bookmarks_by_shared_entities", {
+        p_user_id: userId,
+        p_entity_names: entityNames,
+        p_exclude_bookmark_id: excludeBookmarkId ?? null,
+        p_min_shared: minShared,
+        p_limit: limit,
+      });
 
       if (error) {
         logger.error(
@@ -310,12 +330,8 @@ export class EntityRepository {
     try {
       const supabase = await createClient();
 
-      // bookmark_entities 表尚未在类型定义中，使用类型断言
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from("bookmark_entities")
-        .select("type")
-        .eq("user_id", userId);
+      const table = await fromBookmarkEntities(supabase);
+      const { data, error } = await table.select("type").eq("user_id", userId);
 
       if (error) {
         logger.error(
@@ -374,10 +390,8 @@ export class EntityRepository {
     try {
       const supabase = await createClient();
 
-      // bookmark_entities 表尚未在类型定义中，使用类型断言
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from("bookmark_entities")
+      const table = await fromBookmarkEntities(supabase);
+      const { data, error } = await table
         .select("name, type, normalized_name")
         .eq("user_id", userId);
 

@@ -16,6 +16,7 @@ import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
+import type { Json } from "@/types/supabase";
 
 // 配置常量
 const MIN_PENDING_AGE_HOURS = 1; // 最少等待 1 小时
@@ -86,9 +87,9 @@ export async function GET(request: Request) {
     }
 
     // 去重用户 ID
-    // 类型断言
-    type UserIdRow = { user_id: string };
-    const typedUsersWithPending = (usersWithPending || []) as UserIdRow[];
+    const typedUsersWithPending = (usersWithPending || []) as Array<{
+      user_id: string;
+    }>;
     const uniqueUserIds = [
       ...new Set(typedUsersWithPending.map((row) => row.user_id)),
     ].slice(0, MAX_USERS_PER_RUN);
@@ -461,24 +462,23 @@ async function autoCreateFolder(
     // const _snapshotId = crypto.randomUUID();
 
     // 4. 创建文件夹
-    // 类型断言: 手动维护类型文件时需要此断言
+    // is_ai_suggested, ai_reason 是 V4.2 新增字段，未在 Supabase 生成类型中
     type CreatedFolderType = { id: number; name: string };
 
-    const { data: newFolder, error: createError } =
-      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (getSupabaseAdmin().from("folders") as any)
-        .insert({
-          user_id: userId,
-          name: folderName.name,
-          is_system: false,
-          is_ai_suggested: true,
-          ai_reason: folderName.reason,
-        })
-        .select("id, name")
-        .single()) as {
-        data: CreatedFolderType | null;
-        error: { message: string } | null;
-      };
+    const { data: newFolder, error: createError } = (await getSupabaseAdmin()
+      .from("folders")
+      .insert({
+        user_id: userId,
+        name: folderName.name,
+        is_system: false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- V4.2 新增字段，待重新生成类型后移除
+        ...({ is_ai_suggested: true, ai_reason: folderName.reason } as any),
+      })
+      .select("id, name")
+      .single()) as {
+      data: CreatedFolderType | null;
+      error: { message: string } | null;
+    };
 
     if (createError || !newFolder) {
       throw new Error(`Failed to create folder: ${createError?.message}`);
@@ -488,60 +488,59 @@ async function autoCreateFolder(
     // Note: pending_cluster, pending_since, cluster_id 是 V4.2 新增字段
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
 
-    const { error: moveError } =
-      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (getSupabaseAdmin().from("bookmarks") as any)
-        .update({
-          folder_id: newFolder.id,
-          pending_cluster: false,
-          pending_since: null,
-          cluster_id: null,
-        })
-        .in("id", bookmarkIds)) as { error: { message: string } | null };
+    const { error: moveError } = await getSupabaseAdmin()
+      .from("bookmarks")
+      .update({
+        folder_id: newFolder.id,
+        pending_cluster: false,
+        pending_since: null,
+        cluster_id: null,
+      })
+      .in("id", bookmarkIds);
 
     if (moveError) {
       throw new Error(`Failed to move bookmarks: ${moveError.message}`);
     }
 
     // 6. 记录操作快照
-    // Note: operation_snapshots 是 V4.2 新增表
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabaseAdmin().from("operation_snapshots") as any).insert({
-      user_id: userId,
-      operation_type: "folder_evolution",
-      action: "create",
-      folder_id: newFolder.id,
-      folder_name: newFolder.name,
-      bookmark_ids: bookmarkIds,
-      before_state: null,
-      after_state: {
-        folder: { id: newFolder.id, name: newFolder.name },
-        bookmarkIds,
-      },
-      reason: folderName.reason,
-      source: "ai_auto",
-      expires_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2天后过期
-    });
+    await getSupabaseAdmin()
+      .from("operation_snapshots")
+      .insert({
+        user_id: userId,
+        action: "create",
+        folder_id: newFolder.id,
+        bookmark_ids: bookmarkIds,
+        before_state: null,
+        after_state: {
+          folder: { id: newFolder.id, name: newFolder.name },
+          bookmarkIds,
+        } as unknown as Json,
+        reason: folderName.reason,
+        expires_at: new Date(
+          Date.now() + 2 * 24 * 60 * 60 * 1000,
+        ).toISOString(), // 2天后过期
+      });
 
     // 7. 创建消息通知
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabaseAdmin().from("user_notifications") as any).insert({
-      user_id: userId,
-      type_code: "folder.auto_created",
-      priority: "normal",
-      title: `AI 自动创建了「${newFolder.name}」`,
-      body: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
-      channels: ["in_app"],
-      status: "unread",
-      metadata: {
-        folderId: newFolder.id,
-        folderName: newFolder.name,
-        bookmarkCount: bookmarkIds.length,
-        reason: folderName.reason,
-      },
-      entity_id: String(newFolder.id),
-      entity_type: "folder",
-    });
+    await getSupabaseAdmin()
+      .from("user_notifications")
+      .insert({
+        user_id: userId,
+        type_code: "folder.auto_created",
+        priority: "normal",
+        title: `AI 自动创建了「${newFolder.name}」`,
+        body: `已将 ${bookmarkIds.length} 个相似书签整理到新文件夹中`,
+        channels: ["in_app"],
+        status: "unread",
+        metadata: {
+          folderId: newFolder.id,
+          folderName: newFolder.name,
+          bookmarkCount: bookmarkIds.length,
+          reason: folderName.reason,
+        },
+        entity_id: String(newFolder.id),
+        entity_type: "folder",
+      });
 
     logger.info(
       {
@@ -583,10 +582,9 @@ async function createSuggestion(
     const clusterId = crypto.randomUUID();
     const bookmarkIds = cluster.bookmarks.map((b) => b.id);
 
-    // 3. 更新书签的聚类 ID
-    // Note: cluster_id, cluster_confidence 是 V4.2 新增字段
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabaseAdmin().from("bookmarks") as any)
+    // 3. 更新书签的聚类 ID（cluster_id, cluster_confidence 在生成类型中）
+    await getSupabaseAdmin()
+      .from("bookmarks")
       .update({
         cluster_id: clusterId,
         cluster_confidence: 0.8, // 初始置信度
@@ -594,10 +592,9 @@ async function createSuggestion(
       .in("id", bookmarkIds);
 
     // 4. 创建建议记录
-    // Note: bookmark_ids, suggested_action, metadata 是 V4.2 待添加字段，当前使用现有 schema
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabaseAdmin().from("classification_suggestions") as any).insert(
-      {
+    await getSupabaseAdmin()
+      .from("classification_suggestions")
+      .insert({
         user_id: userId,
         batch_id: clusterId, // 使用聚类 ID 作为批次标识
         bookmark_id: bookmarkIds[0], // 使用第一个书签 ID
@@ -606,8 +603,7 @@ async function createSuggestion(
         confidence: 0.8,
         reason: `聚类建议: ${folderName.reason} (包含 ${bookmarkIds.length} 个书签, IDs: ${bookmarkIds.slice(0, 5).join(",")})`,
         status: "pending",
-      },
-    );
+      });
 
     logger.info(
       {

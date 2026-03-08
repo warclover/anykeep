@@ -8,6 +8,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 import type { FolderCategory } from "@/types/domain";
 
 interface DefaultCategoryDef {
@@ -46,7 +47,7 @@ export async function ensureDefaultCategories(
     .order("created_at", { ascending: true });
 
   if (queryError) {
-    console.error("[ensureDefaultCategories] query error:", queryError);
+    logger.error({ error: queryError }, "ensureDefaultCategories: query error");
     return [];
   }
 
@@ -69,7 +70,10 @@ export async function ensureDefaultCategories(
     .select();
 
   if (insertError) {
-    console.error("[ensureDefaultCategories] insert error:", insertError);
+    logger.error(
+      { error: insertError },
+      "ensureDefaultCategories: insert error",
+    );
     return [];
   }
 

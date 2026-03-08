@@ -218,6 +218,7 @@ export function useSynthesisHighlights({
       try {
         return await createMutation.mutateAsync({ content, position, options });
       } catch {
+        // intentionally empty: 错误已由 mutation onError 处理
         return null;
       }
     },
@@ -234,6 +235,7 @@ export function useSynthesisHighlights({
       try {
         return await updateMutation.mutateAsync({ highlightId, updates });
       } catch {
+        // intentionally empty: 错误已由 mutation onError 处理
         return null;
       }
     },
@@ -248,6 +250,7 @@ export function useSynthesisHighlights({
         await deleteMutation.mutateAsync(highlightId);
         return true;
       } catch {
+        // intentionally empty: 错误已由 mutation onError 处理
         return false;
       }
     },

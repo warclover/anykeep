@@ -489,6 +489,7 @@ export class BookmarkService extends BaseService {
       const hostname = new URL(url).hostname;
       return hostname.replace(/^www\./, "");
     } catch {
+      // intentionally empty: URL 解析失败时返回原始 URL 作为标题
       return url;
     }
   }
@@ -525,6 +526,7 @@ export class BookmarkService extends BaseService {
 
       return "web";
     } catch {
+      // intentionally empty: URL 解析失败时默认为 web 平台
       return "web";
     }
   }

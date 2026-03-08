@@ -136,7 +136,7 @@ export function RulesPageClient() {
         }));
       }
 
-      // TODO: 加载工作流统计
+      // TODO(@backlog): 加载工作流统计
       // const workflowResponse = await fetch("/api/rules/workflows/stats");
     } catch (error) {
       clientLogger.error({ error }, "Failed to load stats:");

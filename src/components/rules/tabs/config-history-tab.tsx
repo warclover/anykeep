@@ -269,7 +269,7 @@ export function ConfigHistoryTab() {
    * 加载工作流日志
    */
   const loadWorkflowLogs = useCallback(async () => {
-    // TODO: 从 API 加载工作流执行日志
+    // TODO(@backlog): 从 API 加载工作流执行日志
     // const response = await fetch("/api/rules/workflows/logs?limit=50");
     setWorkflowLogs([]);
   }, []);

@@ -313,7 +313,7 @@ export class ContextAnchorService {
 
       // 2. 关联书签到锚点
       // NOTE: context_anchor_id 列尚未添加到 bookmarks 表，暂时跳过关联
-      // TODO: 创建迁移添加 context_anchor_id 列后启用此功能
+      // TODO(@backlog): 创建迁移添加 context_anchor_id 列后启用此功能
       // const { error: linkError } = await this.supabase
       //   .from("bookmarks")
       //   .update({ context_anchor_id: anchorId })

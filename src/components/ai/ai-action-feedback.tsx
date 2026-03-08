@@ -36,7 +36,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { MESSAGES } from "@/lib/constants/messages";
 import type { ConfirmationInfo, AIActionType } from "@/lib/ai-actions";
+
+const { ACTION_FEEDBACK } = MESSAGES.AI_COMPONENTS;
 
 // ============================================
 // 类型定义
@@ -98,17 +101,17 @@ const RISK_LEVEL_CONFIG: Record<
   low: {
     color: "text-blue-600",
     bgColor: "bg-blue-50",
-    label: "低风险",
+    label: ACTION_FEEDBACK.RISK_LEVEL.LOW,
   },
   medium: {
     color: "text-amber-600",
     bgColor: "bg-amber-50",
-    label: "中风险",
+    label: ACTION_FEEDBACK.RISK_LEVEL.MEDIUM,
   },
   high: {
     color: "text-red-600",
     bgColor: "bg-red-50",
-    label: "高风险",
+    label: ACTION_FEEDBACK.RISK_LEVEL.HIGH,
   },
 };
 
@@ -158,18 +161,7 @@ function DynamicActionIcon({
  * 获取操作的中文描述
  */
 function getActionLabel(actionType: AIActionType): string {
-  const descriptions: Record<string, string> = {
-    "bookmark:delete": "删除书签",
-    "bookmark:move": "移动书签",
-    "bookmark:update": "更新书签",
-    "folder:delete": "删除文件夹",
-    "folder:update": "更新文件夹",
-    "tag:batch_add": "批量添加标签",
-    "tag:batch_remove": "批量移除标签",
-    "tag:add": "添加标签",
-    "tag:remove": "移除标签",
-  };
-  return descriptions[actionType] || actionType;
+  return ACTION_FEEDBACK.ACTION_LABELS[actionType] || actionType;
 }
 
 // ============================================
@@ -233,7 +225,7 @@ export function AIActionFeedback({
           </div>
 
           <AlertDialogTitle className="text-left">
-            确认执行操作
+            {ACTION_FEEDBACK.DIALOG_TITLE}
           </AlertDialogTitle>
 
           <AlertDialogDescription className="text-left">
@@ -246,9 +238,11 @@ export function AIActionFeedback({
           {/* 影响范围 */}
           {confirmation.affectedCount !== undefined && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">影响范围</span>
+              <span className="text-muted-foreground">
+                {ACTION_FEEDBACK.AFFECTED_SCOPE}
+              </span>
               <span className="font-medium">
-                {confirmation.affectedCount} 个项目
+                {ACTION_FEEDBACK.AFFECTED_ITEMS(confirmation.affectedCount)}
               </span>
             </div>
           )}
@@ -256,14 +250,18 @@ export function AIActionFeedback({
           {/* 可撤销提示 */}
           {confirmation.reversible !== undefined && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">可撤销</span>
+              <span className="text-muted-foreground">
+                {ACTION_FEEDBACK.REVERSIBLE_LABEL}
+              </span>
               <span
                 className={cn(
                   "font-medium",
                   confirmation.reversible ? "text-green-600" : "text-red-600",
                 )}
               >
-                {confirmation.reversible ? "是" : "否"}
+                {confirmation.reversible
+                  ? ACTION_FEEDBACK.REVERSIBLE_YES
+                  : ACTION_FEEDBACK.REVERSIBLE_NO}
               </span>
             </div>
           )}
@@ -277,7 +275,7 @@ export function AIActionFeedback({
                 onClick={() => setShowDetails(!showDetails)}
               >
                 <span className="text-muted-foreground">
-                  将执行 {confirmation.actions.length} 个操作
+                  {ACTION_FEEDBACK.ACTIONS_COUNT(confirmation.actions.length)}
                 </span>
                 {showDetails ? (
                   <ChevronUp className="size-4" />
@@ -311,7 +309,7 @@ export function AIActionFeedback({
             className="flex-1 sm:flex-none"
           >
             <X className="size-4 mr-1" />
-            取消
+            {MESSAGES.COMMON.CANCEL}
           </Button>
           <Button
             variant={riskLevel === "high" ? "destructive" : "default"}
@@ -322,12 +320,12 @@ export function AIActionFeedback({
             {isExecuting ? (
               <>
                 <Loader2 className="size-4 mr-1 animate-spin" />
-                执行中...
+                {ACTION_FEEDBACK.EXECUTING}
               </>
             ) : (
               <>
                 <Check className="size-4 mr-1" />
-                确认
+                {MESSAGES.COMMON.CONFIRM}
               </>
             )}
           </Button>
@@ -376,13 +374,15 @@ export function AIActionFeedbackInline({
             <>
               <Check className="size-4 text-green-600" />
               <span className="text-green-700">
-                已确认执行「{actionLabel}」
+                {ACTION_FEEDBACK.CONFIRMED_ACTION(actionLabel)}
               </span>
             </>
           ) : (
             <>
               <X className="size-4 text-gray-500" />
-              <span className="text-gray-600">已取消「{actionLabel}」</span>
+              <span className="text-gray-600">
+                {ACTION_FEEDBACK.CANCELLED_ACTION(actionLabel)}
+              </span>
             </>
           )}
         </div>
@@ -437,7 +437,7 @@ export function AIActionFeedbackInline({
             ) : (
               <ChevronDown className="size-3" />
             )}
-            查看详情 ({confirmation.actions.length} 个操作)
+            {ACTION_FEEDBACK.VIEW_DETAILS(confirmation.actions.length)}
           </button>
 
           {showDetails && (
@@ -463,7 +463,7 @@ export function AIActionFeedbackInline({
           className="h-8"
         >
           <X className="size-3 mr-1" />
-          取消
+          {MESSAGES.COMMON.CANCEL}
         </Button>
         <Button
           size="sm"
@@ -475,12 +475,12 @@ export function AIActionFeedbackInline({
           {isExecuting ? (
             <>
               <Loader2 className="size-3 mr-1 animate-spin" />
-              执行中
+              {ACTION_FEEDBACK.EXECUTING_SHORT}
             </>
           ) : (
             <>
               <Check className="size-3 mr-1" />
-              确认执行
+              {ACTION_FEEDBACK.CONFIRM_EXECUTE}
             </>
           )}
         </Button>
@@ -489,11 +489,15 @@ export function AIActionFeedbackInline({
       {/* 影响范围和可撤销提示 */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         {confirmation.affectedCount !== undefined && (
-          <span>影响 {confirmation.affectedCount} 个项目</span>
+          <span>
+            {ACTION_FEEDBACK.AFFECTED_SHORT(confirmation.affectedCount)}
+          </span>
         )}
         {confirmation.reversible !== undefined && (
           <span className={confirmation.reversible ? "" : "text-red-500"}>
-            {confirmation.reversible ? "可撤销" : "不可撤销"}
+            {confirmation.reversible
+              ? ACTION_FEEDBACK.REVERSIBLE
+              : ACTION_FEEDBACK.IRREVERSIBLE}
           </span>
         )}
       </div>

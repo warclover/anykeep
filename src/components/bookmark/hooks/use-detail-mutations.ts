@@ -3,14 +3,18 @@
  *
  * 处理收藏详情页的所有 CRUD 操作，支持乐观更新和错误回滚。
  *
- * @version 1.0.0
+ * @version 2.0.0 - 迁移到 TanStack Query useMutation
  * @since 2025-12-24 (Phase 2.3.7)
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useAbortableFetch } from "@/hooks/core";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
+import { API_PATHS } from "@/lib/constants/api-paths";
+import { invalidateBookmarkCaches } from "@/lib/cache/invalidate-caches";
+import { bookmarkKeys } from "@/hooks/queries/keys";
 
 // ============================================
 // 类型定义
@@ -73,6 +77,25 @@ export interface UseDetailMutationsReturn {
 }
 
 // ============================================
+// 辅助：通用书签字段更新 mutationFn
+// ============================================
+
+async function updateBookmarkField(
+  bookmarkId: number,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const response = await fetchWithAuth(API_PATHS.bookmarks.detail(bookmarkId), {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || "操作失败");
+  }
+}
+
+// ============================================
 // Hook 实现
 // ============================================
 
@@ -87,7 +110,7 @@ export function useDetailMutations({
   initialIsRead,
 }: UseDetailMutationsOptions): UseDetailMutationsReturn {
   const router = useRouter();
-  const { fetchWithAbort } = useAbortableFetch();
+  const queryClient = useQueryClient();
 
   // ===== 核心状态 =====
   const [rating, setRating] = useState(initialRating);
@@ -95,7 +118,6 @@ export function useDetailMutations({
   const [isMarkedForDeletion, setIsMarkedForDeletion] = useState(
     initialIsMarkedForDeletion,
   );
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // 本地状态（乐观更新）
   const [localUserTags, setLocalUserTags] = useState<string[] | null>(
@@ -109,12 +131,10 @@ export function useDetailMutations({
   // ===== 标签编辑状态 =====
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [editedTags, setEditedTags] = useState("");
-  const [isSavingTags, setIsSavingTags] = useState(false);
 
   // ===== 备注编辑状态 =====
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState("");
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   // 防止重复调用标记已读 API
   const hasMarkedAsRead = useRef(false);
@@ -129,9 +149,8 @@ export function useDetailMutations({
       hasMarkedAsRead.current = true;
 
       try {
-        await fetch(`/api/bookmarks/${bookmarkId}`, {
+        await fetchWithAuth(API_PATHS.bookmarks.detail(bookmarkId), {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isRead: true }),
         });
       } catch {
@@ -143,82 +162,103 @@ export function useDetailMutations({
   }, [bookmarkId, initialIsRead]);
 
   // ===== 评级变更 =====
+  const ratingMutation = useMutation({
+    mutationFn: (newRating: number) =>
+      updateBookmarkField(bookmarkId, { rating: newRating }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.detail(bookmarkId),
+      });
+    },
+  });
+
   const handleRatingChange = useCallback(
     async (newRating: number) => {
       const previousRating = rating;
       setRating(newRating);
 
       try {
-        const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rating: newRating }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error?.message || "评级更新失败");
-        }
+        await ratingMutation.mutateAsync(newRating);
       } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
         setRating(previousRating);
         toast.error(error instanceof Error ? error.message : "评级更新失败");
       }
     },
-    [bookmarkId, fetchWithAbort, rating],
+    [ratingMutation, rating],
   );
 
   // ===== 锁定切换 =====
+  const lockMutation = useMutation({
+    mutationFn: (newLockState: boolean) =>
+      updateBookmarkField(bookmarkId, { isLocked: newLockState }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.detail(bookmarkId),
+      });
+    },
+  });
+
   const handleLockToggle = useCallback(async () => {
     const previousState = isLocked;
     const newLockState = !isLocked;
     setIsLocked(newLockState);
 
     try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isLocked: newLockState }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "操作失败");
-      }
+      await lockMutation.mutateAsync(newLockState);
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
       setIsLocked(previousState);
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
-  }, [bookmarkId, fetchWithAbort, isLocked]);
+  }, [lockMutation, isLocked]);
 
   // ===== 删除标记切换 =====
+  const markerMutation = useMutation({
+    mutationFn: (newMarkerState: boolean) =>
+      updateBookmarkField(bookmarkId, { isMarkedForDeletion: newMarkerState }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.detail(bookmarkId),
+      });
+    },
+  });
+
   const handleMarkerToggle = useCallback(async () => {
     const previousState = isMarkedForDeletion;
     const newMarkerState = !isMarkedForDeletion;
     setIsMarkedForDeletion(newMarkerState);
 
     try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isMarkedForDeletion: newMarkerState }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "操作失败");
-      }
+      await markerMutation.mutateAsync(newMarkerState);
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
       setIsMarkedForDeletion(previousState);
       toast.error(error instanceof Error ? error.message : "操作失败");
     }
-  }, [bookmarkId, fetchWithAbort, isMarkedForDeletion]);
+  }, [markerMutation, isMarkedForDeletion]);
 
   // ===== 删除 =====
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetchWithAuth(
+        API_PATHS.bookmarks.detail(bookmarkId),
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error?.message || "删除失败");
+      }
+    },
+    onSuccess: () => {
+      toast.success("删除成功");
+      invalidateBookmarkCaches(queryClient);
+      router.push("/home");
+    },
+  });
+
   const handleDelete = useCallback(async () => {
-    if (isDeleting) return;
+    if (deleteMutation.isPending) return;
 
     if (isLocked) {
       toast.error("此收藏已锁定，无法删除");
@@ -229,30 +269,28 @@ export function useDetailMutations({
       return;
     }
 
-    setIsDeleting(true);
     try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message || "删除失败");
-      }
-
-      toast.success("删除成功");
-      router.push("/home");
+      await deleteMutation.mutateAsync();
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        setIsDeleting(false);
-        return;
-      }
       toast.error(error instanceof Error ? error.message : "删除失败");
-      setIsDeleting(false);
     }
-  }, [bookmarkId, fetchWithAbort, isDeleting, isLocked, router]);
+  }, [deleteMutation, isLocked]);
 
   // ===== 标签编辑 =====
+  const tagsMutation = useMutation({
+    mutationFn: (tagsToSave: string[] | null) =>
+      updateBookmarkField(bookmarkId, { userTags: tagsToSave }),
+    onSuccess: () => {
+      toast.success("标签更新成功");
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.detail(bookmarkId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.userTags(),
+      });
+    },
+  });
+
   const handleEditTags = useCallback(() => {
     setIsEditingTags(true);
     setEditedTags(localUserTags?.join(", ") || "");
@@ -264,9 +302,7 @@ export function useDetailMutations({
   }, []);
 
   const handleSaveTags = useCallback(async () => {
-    if (isSavingTags) return;
-
-    setIsSavingTags(true);
+    if (tagsMutation.isPending) return;
 
     const newTags = editedTags
       .split(/[,，\s]+/)
@@ -280,29 +316,25 @@ export function useDetailMutations({
     setIsEditingTags(false);
 
     try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userTags: tagsToSave }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新标签失败");
-      }
-
-      toast.success("标签更新成功");
+      await tagsMutation.mutateAsync(tagsToSave);
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
       setLocalUserTags(previousTags);
       toast.error(error instanceof Error ? error.message : "更新标签失败");
-    } finally {
-      setIsSavingTags(false);
     }
-  }, [bookmarkId, editedTags, fetchWithAbort, isSavingTags, localUserTags]);
+  }, [editedTags, tagsMutation, localUserTags]);
 
   // ===== 备注编辑 =====
+  const notesMutation = useMutation({
+    mutationFn: (notesToSave: string | null) =>
+      updateBookmarkField(bookmarkId, { notes: notesToSave }),
+    onSuccess: () => {
+      toast.success("备注更新成功");
+      queryClient.invalidateQueries({
+        queryKey: bookmarkKeys.detail(bookmarkId),
+      });
+    },
+  });
+
   const handleEditNotes = useCallback(() => {
     setIsEditingNotes(true);
     setEditedNotes(localNotes || "");
@@ -314,9 +346,7 @@ export function useDetailMutations({
   }, []);
 
   const handleSaveNotes = useCallback(async () => {
-    if (isSavingNotes) return;
-
-    setIsSavingNotes(true);
+    if (notesMutation.isPending) return;
 
     const previousNotes = localNotes;
     const notesToSave = editedNotes.trim() || null;
@@ -325,27 +355,12 @@ export function useDetailMutations({
     setIsEditingNotes(false);
 
     try {
-      const res = await fetchWithAbort(`/api/bookmarks/${bookmarkId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: notesToSave }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新备注失败");
-      }
-
-      toast.success("备注更新成功");
+      await notesMutation.mutateAsync(notesToSave);
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
       setLocalNotes(previousNotes);
       toast.error(error instanceof Error ? error.message : "更新备注失败");
-    } finally {
-      setIsSavingNotes(false);
     }
-  }, [bookmarkId, editedNotes, fetchWithAbort, isSavingNotes, localNotes]);
+  }, [editedNotes, notesMutation, localNotes]);
 
   return {
     // 状态
@@ -355,12 +370,12 @@ export function useDetailMutations({
     localUserTags,
     localNotes,
     localSummary,
-    isDeleting,
+    isDeleting: deleteMutation.isPending,
 
     // 标签编辑
     isEditingTags,
     editedTags,
-    isSavingTags,
+    isSavingTags: tagsMutation.isPending,
     setEditedTags,
     handleEditTags,
     handleCancelEditTags,
@@ -369,7 +384,7 @@ export function useDetailMutations({
     // 备注编辑
     isEditingNotes,
     editedNotes,
-    isSavingNotes,
+    isSavingNotes: notesMutation.isPending,
     setEditedNotes,
     handleEditNotes,
     handleCancelEditNotes,

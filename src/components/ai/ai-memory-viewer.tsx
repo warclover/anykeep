@@ -25,6 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MESSAGES } from "@/lib/constants/messages";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -86,39 +87,40 @@ interface AIMemoryViewerProps {
 // UI 文本常量
 // ============================================
 
+const { MEMORY_VIEWER } = MESSAGES.AI_COMPONENTS;
+
 const UI_TEXT = {
-  title: "AI 记住了什么",
-  description: "查看 AI 从对话中学习到的信息",
+  title: MEMORY_VIEWER.TITLE,
+  description: MEMORY_VIEWER.DESCRIPTION,
   sections: {
     summaries: {
-      title: "最近对话",
-      empty: "暂无对话记录",
+      title: MEMORY_VIEWER.SECTIONS.SUMMARIES.TITLE,
+      empty: MEMORY_VIEWER.SECTIONS.SUMMARIES.EMPTY,
     },
     pending: {
-      title: "待办事项",
-      empty: "暂无待办事项",
-      complete: "标记完成",
+      title: MEMORY_VIEWER.SECTIONS.PENDING.TITLE,
+      empty: MEMORY_VIEWER.SECTIONS.PENDING.EMPTY,
+      complete: MEMORY_VIEWER.SECTIONS.PENDING.COMPLETE,
     },
     preferences: {
-      title: "学习偏好",
-      empty: "暂未学习到偏好",
+      title: MEMORY_VIEWER.SECTIONS.PREFERENCES.TITLE,
+      empty: MEMORY_VIEWER.SECTIONS.PREFERENCES.EMPTY,
     },
   },
   actions: {
-    refresh: "刷新",
-    clear: "清除记忆",
+    refresh: MEMORY_VIEWER.ACTIONS.REFRESH,
+    clear: MEMORY_VIEWER.ACTIONS.CLEAR,
     clearConfirm: {
-      title: "确认清除记忆？",
-      description:
-        "此操作将删除所有 AI 记忆内容，包括历史摘要、待办事项和学习偏好。此操作不可撤销。",
-      cancel: "取消",
-      confirm: "确认清除",
+      title: MEMORY_VIEWER.ACTIONS.CLEAR_CONFIRM.TITLE,
+      description: MEMORY_VIEWER.ACTIONS.CLEAR_CONFIRM.DESCRIPTION,
+      cancel: MESSAGES.COMMON.CANCEL,
+      confirm: MEMORY_VIEWER.ACTIONS.CLEAR_CONFIRM.CONFIRM,
     },
   },
   states: {
-    loading: "加载中...",
-    error: "加载失败",
-    empty: "AI 还没有记住任何内容",
+    loading: MEMORY_VIEWER.STATES.LOADING,
+    error: MEMORY_VIEWER.STATES.ERROR,
+    empty: MEMORY_VIEWER.STATES.EMPTY,
   },
 } as const;
 
@@ -300,7 +302,7 @@ export const AIMemoryViewer = memo(function AIMemoryViewer({
       const data = await onLoad();
       setMemory(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "加载失败");
+      setError(err instanceof Error ? err.message : MEMORY_VIEWER.STATES.ERROR);
     } finally {
       setIsLoading(false);
     }

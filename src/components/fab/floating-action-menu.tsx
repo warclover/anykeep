@@ -126,22 +126,22 @@ export function FloatingActionMenu() {
     // 1. 开启 Loading 状态，提供视觉反馈
     setIsSubmitting(true);
 
-    // 2. 启动后台请求
-    const requestPromise = fetch("/api/bookmarks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: trimmedUrl }),
-    });
-
-    // 3. 人为延迟 800ms，防止窗口闪退，让用户看清"正在添加"的状态
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // 4. 延迟结束后立即关闭窗口，营造"已后台处理"的感觉
-    setDialogOpen(false);
-    setUrl("");
+    // 2. 等待请求完成（最少展示 300ms 加载态，防止对话框闪烁）
+    const MIN_DISPLAY_MS = 300;
 
     try {
-      const response = await requestPromise;
+      const [response] = await Promise.all([
+        fetch("/api/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmedUrl }),
+        }),
+        new Promise((resolve) => setTimeout(resolve, MIN_DISPLAY_MS)),
+      ]);
+
+      // 3. 请求完成后关闭对话框
+      setDialogOpen(false);
+      setUrl("");
 
       if (!response.ok) {
         throw new Error("添加失败");

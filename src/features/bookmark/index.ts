@@ -57,7 +57,6 @@ export { SourceBadge } from "@/components/bookmark/source-badge";
 
 // 摘要和推荐
 export { SummaryRenderer } from "@/components/bookmark/summary-renderer";
-export { RelatedBookmarks } from "@/components/bookmark/related-bookmarks";
 export { RelatedBookmarksV2 } from "@/components/bookmark/related-bookmarks-v2";
 
 // 分类和反馈

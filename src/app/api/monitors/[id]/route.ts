@@ -10,7 +10,11 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { updateMonitorSchema, type MonitorDetailResponse } from "../validation";
+import {
+  updateMonitorSchema,
+  type MonitorDetailResponse,
+  type CheckRecordResponse,
+} from "../validation";
 import {
   successResponse,
   badRequestError,
@@ -19,7 +23,48 @@ import {
 } from "@/lib/utils/api-response";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
+import {
+  MONITOR_QUOTA,
+  CHECK_INTERVAL_HOURS,
+  type CheckInterval,
+} from "@/lib/monitor/constants";
+import type { PageMonitorUpdate } from "@/types/supabase";
+
+/**
+ * 监控 JOIN 书签查询结果类型
+ * Supabase 的 `bookmarks!inner` JOIN 返回嵌套对象，生成类型不包含此结构
+ */
+interface MonitorWithBookmark {
+  id: number;
+  bookmark_id: number;
+  check_interval: CheckInterval;
+  custom_interval_hours: number | null;
+  status: "active" | "paused" | "failed" | "deleted";
+  change_count: number;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  consecutive_failures: number;
+  last_error_message: string | null;
+  notification_enabled: boolean;
+  baseline_snapshot_id: number | null;
+  baseline_content_hash: string | null;
+  created_at: string;
+  updated_at: string;
+  bookmarks: { id: number; title: string; url: string } | null;
+}
+
+/**
+ * 检查日志行类型
+ */
+interface CheckLogRow {
+  id: number;
+  check_result: string;
+  checked_at: string;
+  similarity_score: number | null;
+  change_summary: string | null;
+  error_message: string | null;
+  duration_ms: number | null;
+}
 
 /**
  * GET /api/monitors/[id]
@@ -36,8 +81,8 @@ export const GET = withAuthMiddleware<{ id: string }>(
 
     // 1. 获取监控详情
     const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: monitor, error: queryError } = await (supabase as any)
+    // Supabase JOIN 查询 (bookmarks!inner) 的返回类型无法自动推断，使用显式类型断言
+    const { data: monitor, error: queryError } = (await supabase
       .from("page_monitors")
       .select(
         `
@@ -66,15 +111,17 @@ export const GET = withAuthMiddleware<{ id: string }>(
       .eq("id", monitorId)
       .eq("user_id", userId)
       .neq("status", "deleted")
-      .single();
+      .single()) as unknown as {
+      data: MonitorWithBookmark | null;
+      error: { message: string } | null;
+    };
 
     if (queryError || !monitor) {
       return notFoundError("监控不存在或无权访问");
     }
 
     // 2. 获取最近的检查记录
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentLogs } = await (supabase as any)
+    const { data: recentLogs } = (await supabase
       .from("monitor_check_logs")
       .select(
         `
@@ -89,7 +136,7 @@ export const GET = withAuthMiddleware<{ id: string }>(
       )
       .eq("monitor_id", monitorId)
       .order("checked_at", { ascending: false })
-      .limit(10);
+      .limit(10)) as unknown as { data: CheckLogRow[] | null };
 
     // 3. 转换响应格式
     const response: MonitorDetailResponse = {
@@ -109,16 +156,17 @@ export const GET = withAuthMiddleware<{ id: string }>(
       baselineSnapshotId: monitor.baseline_snapshot_id,
       createdAt: monitor.created_at,
       updatedAt: monitor.updated_at,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recentChecks: (recentLogs || []).map((log: any) => ({
-        id: log.id,
-        result: log.check_result,
-        checkedAt: log.checked_at,
-        similarityScore: log.similarity_score,
-        changeSummary: log.change_summary,
-        errorMessage: log.error_message,
-        durationMs: log.duration_ms,
-      })),
+      recentChecks: (recentLogs || []).map(
+        (log: CheckLogRow): CheckRecordResponse => ({
+          id: log.id,
+          result: log.check_result,
+          checkedAt: log.checked_at,
+          similarityScore: log.similarity_score,
+          changeSummary: log.change_summary,
+          errorMessage: log.error_message,
+          durationMs: log.duration_ms,
+        }),
+      ),
     };
 
     return successResponse(response);
@@ -151,8 +199,7 @@ export const PUT = withAuthMiddleware<{ id: string }>(
 
     // 2. 验证监控所有权
     const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: existError } = await (supabase as any)
+    const { data: existing, error: existError } = await supabase
       .from("page_monitors")
       .select("id, status, check_interval")
       .eq("id", monitorId)
@@ -166,16 +213,14 @@ export const PUT = withAuthMiddleware<{ id: string }>(
 
     // 3. 检查会员权限（如果更改检查间隔）
     if (checkInterval) {
-      // 类型断言: 手动维护类型文件时需要此断言
-      type ProfileRow = { membership_type: string | null };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: profile } = (await (supabase.from("profiles") as any)
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("membership_type")
         .eq("id", userId)
-        .single()) as { data: ProfileRow | null };
+        .single();
 
       const membershipType =
-        (profile?.membership_type as "FREE" | "PRO") || "FREE";
+        (profile?.membership_type as string as "FREE" | "PRO") || "FREE";
       const quotaConfig = MONITOR_QUOTA[membershipType];
 
       if (!quotaConfig.allowedIntervals.includes(checkInterval)) {
@@ -186,8 +231,7 @@ export const PUT = withAuthMiddleware<{ id: string }>(
     }
 
     // 4. 构建更新数据
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {
+    const updateData: PageMonitorUpdate & { updated_at: string } = {
       updated_at: new Date().toISOString(),
     };
 
@@ -215,8 +259,7 @@ export const PUT = withAuthMiddleware<{ id: string }>(
     }
 
     // 5. 执行更新
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase as any)
+    const { error: updateError } = await supabase
       .from("page_monitors")
       .update(updateData)
       .eq("id", monitorId);
@@ -260,8 +303,7 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
 
     // 1. 验证监控所有权
     const supabase = await createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing, error: existError } = await (supabase as any)
+    const { data: existing, error: existError } = await supabase
       .from("page_monitors")
       .select("id, status")
       .eq("id", monitorId)
@@ -274,8 +316,7 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
     }
 
     // 2. 执行软删除
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = await (supabase as any)
+    const { error: deleteError } = await supabase
       .from("page_monitors")
       .update({
         status: "deleted",

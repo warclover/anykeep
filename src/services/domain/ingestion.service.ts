@@ -371,6 +371,7 @@ export class IngestionService extends BaseService {
 
       return "web";
     } catch {
+      // intentionally empty: URL 解析失败时默认为 web 平台
       return "web";
     }
   }
@@ -402,6 +403,7 @@ export class IngestionService extends BaseService {
 
       return cleanHostname;
     } catch {
+      // intentionally empty: URL 解析失败时返回原始字符串作为标题
       return url;
     }
   }
@@ -414,6 +416,7 @@ export class IngestionService extends BaseService {
       const parsed = new URL(url);
       return ["http:", "https:"].includes(parsed.protocol);
     } catch {
+      // intentionally empty: 无效 URL 直接返回 false
       return false;
     }
   }

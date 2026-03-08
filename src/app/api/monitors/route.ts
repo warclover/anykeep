@@ -23,8 +23,42 @@ import {
 } from "@/lib/utils/api-response";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
-import { MONITOR_QUOTA, CHECK_INTERVAL_HOURS } from "@/lib/monitor/constants";
+import {
+  MONITOR_QUOTA,
+  CHECK_INTERVAL_HOURS,
+  type CheckInterval,
+} from "@/lib/monitor/constants";
 import { isUrlMonitorable } from "@/lib/monitor/page-fetcher";
+
+/**
+ * 监控列表 JOIN 查询结果类型
+ */
+interface MonitorListItem {
+  id: number;
+  bookmark_id: number;
+  check_interval: CheckInterval;
+  custom_interval_hours: number | null;
+  status: "active" | "paused" | "failed" | "deleted";
+  change_count: number;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  consecutive_failures: number;
+  last_error_message: string | null;
+  notification_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  bookmarks: { id: number; title: string; url: string } | null;
+}
+
+/**
+ * create_monitor_atomic RPC 返回类型
+ */
+interface CreateMonitorAtomicResult {
+  success: boolean;
+  monitor_id?: number;
+  error_code?: string;
+  error_message?: string;
+}
 
 /**
  * GET /api/monitors
@@ -48,21 +82,19 @@ export const GET = withAuthMiddleware(
 
     // 2. 获取用户会员信息
     const supabase = await createClient();
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileRow = { membership_type: string | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = (await (supabase.from("profiles") as any)
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("membership_type")
       .eq("id", userId)
-      .single()) as { data: ProfileRow | null };
+      .single();
 
     const membershipType =
-      (profile?.membership_type as "FREE" | "PRO") || "FREE";
+      (profile?.membership_type as string as "FREE" | "PRO") || "FREE";
     const quotaConfig = MONITOR_QUOTA[membershipType];
 
     // 3. 构建查询
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    // Supabase JOIN 查询 (bookmarks!inner) 的返回类型无法自动推断
+    let query = supabase
       .from("page_monitors")
       .select(
         `
@@ -99,7 +131,10 @@ export const GET = withAuthMiddleware(
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    const { data: monitors, error: queryError } = await query;
+    const { data: monitors, error: queryError } = (await query) as unknown as {
+      data: MonitorListItem[] | null;
+      error: { message: string } | null;
+    };
 
     if (queryError) {
       logger.error({
@@ -111,32 +146,25 @@ export const GET = withAuthMiddleware(
     }
 
     // 4. 获取统计信息
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: statsData } = await (supabase as any)
+    const { data: statsData } = await supabase
       .from("page_monitors")
       .select("status")
       .eq("user_id", userId)
       .neq("status", "deleted");
 
+    const statsRows = (statsData || []) as Array<{ status: string }>;
     const stats: MonitorStatsResponse = {
-      total: statsData?.length || 0,
-      active:
-        statsData?.filter((m: { status: string }) => m.status === "active")
-          .length || 0,
-      paused:
-        statsData?.filter((m: { status: string }) => m.status === "paused")
-          .length || 0,
-      failed:
-        statsData?.filter((m: { status: string }) => m.status === "failed")
-          .length || 0,
-      quotaUsed: statsData?.length || 0,
+      total: statsRows.length,
+      active: statsRows.filter((m) => m.status === "active").length,
+      paused: statsRows.filter((m) => m.status === "paused").length,
+      failed: statsRows.filter((m) => m.status === "failed").length,
+      quotaUsed: statsRows.length,
       quotaMax: quotaConfig.maxCount,
     };
 
     // 5. 转换响应格式
     const formattedMonitors: MonitorResponse[] = (monitors || []).map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase JOIN 类型复杂
-      (m: any) => ({
+      (m: MonitorListItem): MonitorResponse => ({
         id: m.id,
         bookmarkId: m.bookmark_id,
         bookmarkTitle: m.bookmarks?.title || "未命名",
@@ -190,16 +218,14 @@ export const POST = withAuthMiddleware(
 
     // 2. 获取用户会员信息和配额检查
     const supabase = await createClient();
-    // 类型断言: 手动维护类型文件时需要此断言
-    type ProfileRowPost = { membership_type: string | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = (await (supabase.from("profiles") as any)
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("membership_type")
       .eq("id", userId)
-      .single()) as { data: ProfileRowPost | null };
+      .single();
 
     const membershipType =
-      (profile?.membership_type as "FREE" | "PRO") || "FREE";
+      (profile?.membership_type as string as "FREE" | "PRO") || "FREE";
     const quotaConfig = MONITOR_QUOTA[membershipType];
 
     // 检查检查间隔是否允许
@@ -211,8 +237,7 @@ export const POST = withAuthMiddleware(
 
     // 早期配额检查（优化：快速失败，避免不必要的后续查询）
     // 注意：原子函数 create_monitor_atomic 会再次检查以防止并发问题
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: currentCount } = await (supabase as any)
+    const { count: currentCount } = await supabase
       .from("page_monitors")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -251,8 +276,8 @@ export const POST = withAuthMiddleware(
     }
 
     // 5. 使用原子 RPC 函数创建监控（解决 TOCTOU 漏洞）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: result, error: rpcError } = await (supabase as any).rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- create_monitor_atomic RPC 不在 Supabase 生成类型中
+    const { data: result, error: rpcError } = (await (supabase.rpc as any)(
       "create_monitor_atomic",
       {
         p_user_id: userId,
@@ -263,7 +288,10 @@ export const POST = withAuthMiddleware(
         p_notification_enabled: notificationEnabled,
         p_quota_limit: quotaConfig.maxCount,
       },
-    );
+    )) as {
+      data: CreateMonitorAtomicResult | CreateMonitorAtomicResult[] | null;
+      error: { message: string } | null;
+    };
 
     if (rpcError) {
       logger.error({

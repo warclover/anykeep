@@ -262,6 +262,13 @@ SUPABASE_SERVICE_ROLE_KEY=服务角色密钥
 - **函数**: camelCase (如 `handleSubmit`)
 - **常量**: UPPER_SNAKE_CASE (如 `MAX_STORAGE_QUOTA`)
 
+### 目录命名规范
+
+- **组件目录**: 使用单数形式 kebab-case（如 `folder/`，不用 `folders/`）
+- **功能模块目录**: 以领域名 + 功能动词命名（如 `folder-operations/`）
+- **AI 模块目录**: 统一使用 `ai-` 前缀（如 `ai-agent/`、`ai-skills/`）
+- **新建目录**时遵守上述规范，**已有目录**保持现状（避免大范围 import 变更）
+
 ### 代码组织原则
 
 1. 单一职责：每个文件专注一个功能

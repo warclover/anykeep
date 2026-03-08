@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { MESSAGES } from "@/lib/constants/messages";
 import type {
   QuickActionType,
   AutoTagResult,
@@ -108,35 +109,37 @@ interface KeyPointsPanel {
 // 常量配置
 // ============================================
 
+const { QUICK_ACTIONS: QA_TEXT } = MESSAGES.AI_COMPONENTS;
+
 const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "auto-tag",
-    label: "智能标签",
-    description: "AI 自动推荐标签",
+    label: QA_TEXT.ACTIONS.AUTO_TAG.LABEL,
+    description: QA_TEXT.ACTIONS.AUTO_TAG.DESCRIPTION,
     icon: Tags,
     color: "text-blue-600 dark:text-blue-400",
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
   },
   {
     id: "auto-classify",
-    label: "智能分类",
-    description: "AI 推荐文件夹",
+    label: QA_TEXT.ACTIONS.AUTO_CLASSIFY.LABEL,
+    description: QA_TEXT.ACTIONS.AUTO_CLASSIFY.DESCRIPTION,
     icon: FolderInput,
     color: "text-green-600 dark:text-green-400",
     bgColor: "bg-green-100 dark:bg-green-900/30",
   },
   {
     id: "extract-key",
-    label: "提取要点",
-    description: "提取关键信息",
+    label: QA_TEXT.ACTIONS.EXTRACT_KEY.LABEL,
+    description: QA_TEXT.ACTIONS.EXTRACT_KEY.DESCRIPTION,
     icon: FileText,
     color: "text-amber-600 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/30",
   },
   {
     id: "rate-quality",
-    label: "质量评估",
-    description: "AI 评估内容质量",
+    label: QA_TEXT.ACTIONS.RATE_QUALITY.LABEL,
+    description: QA_TEXT.ACTIONS.RATE_QUALITY.DESCRIPTION,
     icon: Star,
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-100 dark:bg-purple-900/30",
@@ -147,11 +150,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 // 组件
 // ============================================
 
-const SENTIMENT_LABELS: Record<string, string> = {
-  positive: "正面",
-  neutral: "中性",
-  negative: "负面",
-};
+const SENTIMENT_LABELS = QA_TEXT.SENTIMENT;
 
 export function AIQuickActions({
   bookmarkId,
@@ -181,30 +180,30 @@ export function AIQuickActions({
       case "auto-tag": {
         const tagData = data as AutoTagResult;
         const tagCount = tagData.newTags.length;
-        if (tagCount === 0) return "未发现新标签";
+        if (tagCount === 0) return QA_TEXT.RESULTS.NO_NEW_TAGS;
         return applied
-          ? `已添加 ${tagCount} 个标签`
-          : `推荐 ${tagCount} 个新标签`;
+          ? QA_TEXT.RESULTS.TAGS_ADDED(tagCount)
+          : QA_TEXT.RESULTS.TAGS_RECOMMENDED(tagCount);
       }
       case "auto-classify": {
         const classifyData = data as AutoClassifyResult;
-        if (!classifyData.folderId) return "建议创建新文件夹";
+        if (!classifyData.folderId) return QA_TEXT.RESULTS.SUGGEST_NEW_FOLDER;
         return applied
-          ? `已移动到「${classifyData.folderName}」`
-          : `推荐「${classifyData.folderName}」`;
+          ? QA_TEXT.RESULTS.MOVED_TO_FOLDER(classifyData.folderName)
+          : QA_TEXT.RESULTS.RECOMMEND_FOLDER(classifyData.folderName);
       }
       case "extract-key": {
         const keyData = data as ExtractKeyResult;
-        return `提取 ${keyData.keyPoints.length} 个要点`;
+        return QA_TEXT.RESULTS.KEY_POINTS_EXTRACTED(keyData.keyPoints.length);
       }
       case "rate-quality": {
         const rateData = data as RateQualityResult;
         return applied
-          ? `评分 ${rateData.rating} 星`
-          : `建议评分 ${rateData.rating} 星`;
+          ? QA_TEXT.RESULTS.RATING_APPLIED(rateData.rating)
+          : QA_TEXT.RESULTS.RATING_SUGGESTED(rateData.rating);
       }
       default:
-        return "完成";
+        return QA_TEXT.RESULTS.DONE;
     }
   };
 
@@ -278,7 +277,8 @@ export function AIQuickActions({
         // 回调
         onActionComplete?.(actionId, result.data, result.applied);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "操作失败";
+        const message =
+          err instanceof Error ? err.message : QA_TEXT.ACTION_FAILED;
 
         setActionStates((prev) => ({
           ...prev,
@@ -330,9 +330,9 @@ export function AIQuickActions({
             <Wand2 className="size-4 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-base">AI 快捷操作</CardTitle>
+            <CardTitle className="text-base">{QA_TEXT.CARD_TITLE}</CardTitle>
             <CardDescription className="text-xs">
-              一键执行智能处理
+              {QA_TEXT.CARD_DESCRIPTION}
             </CardDescription>
           </div>
         </div>
@@ -399,7 +399,7 @@ export function AIQuickActions({
 
         {/* 提示 */}
         <p className="text-xs text-muted-foreground text-center mt-3">
-          点击按钮让 AI 自动处理
+          {QA_TEXT.CARD_HINT}
         </p>
 
         {/* 提取要点结果面板 */}
@@ -410,12 +410,12 @@ export function AIQuickActions({
               <div className="flex items-center gap-1.5">
                 <FileText className="size-3.5 text-amber-600 dark:text-amber-400" />
                 <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                  提取要点
+                  {QA_TEXT.PANEL_TITLE}
                 </span>
                 {keyPointsPanel.readingTime && (
                   <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                     <Clock className="size-3" />
-                    {keyPointsPanel.readingTime} 分钟
+                    {QA_TEXT.MINUTES(keyPointsPanel.readingTime)}
                   </span>
                 )}
                 {keyPointsPanel.sentiment && (

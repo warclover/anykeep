@@ -257,7 +257,7 @@ export function AutomationTab() {
   const loadWorkflows = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: 从 API 加载用户工作流
+      // TODO(@backlog): 从 API 加载用户工作流
       // const response = await fetch("/api/rules/workflows");
       // const data = await response.json();
       // if (data.success) {
@@ -281,7 +281,7 @@ export function AutomationTab() {
       prev.map((t) => (t.type === type ? { ...t, enabled } : t)),
     );
 
-    // TODO: 保存到后端
+    // TODO(@backlog): 保存到后端
     toast.success(enabled ? "已启用" : "已禁用");
   };
 
@@ -293,7 +293,7 @@ export function AutomationTab() {
       prev.map((w) => (w.id === id ? { ...w, enabled } : w)),
     );
 
-    // TODO: 保存到后端
+    // TODO(@backlog): 保存到后端
     toast.success(enabled ? "已启用" : "已禁用");
   };
 
@@ -305,7 +305,7 @@ export function AutomationTab() {
       prev.map((w) => (w.id === id ? { ...w, status: "running" } : w)),
     );
 
-    // TODO: 调用执行 API
+    // TODO(@backlog): 调用执行 API
     toast.info("正在执行工作流...");
 
     // 模拟执行完成
@@ -325,7 +325,7 @@ export function AutomationTab() {
    * 删除工作流
    */
   const handleWorkflowDelete = async (id: string) => {
-    // TODO: 调用删除 API
+    // TODO(@backlog): 调用删除 API
     setWorkflows((prev) => prev.filter((w) => w.id !== id));
     toast.success("已删除工作流");
   };

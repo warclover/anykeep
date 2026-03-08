@@ -184,7 +184,7 @@ export class MaterialScorer {
    * 计算相关度分数
    */
   private async calculateRelevance(bookmark: BookmarkData): Promise<number> {
-    // TODO: 使用向量相似度计算与其他素材的相关性
+    // TODO(@backlog): 使用向量相似度计算与其他素材的相关性
     // 临时基于摘要长度来评分
     let score = 50;
 

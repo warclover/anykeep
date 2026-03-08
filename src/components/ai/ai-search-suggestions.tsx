@@ -162,10 +162,7 @@ export function AISearchSuggestions({
     const generateSuggestions = async () => {
       setLoading(true);
 
-      // 模拟 AI 建议生成
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // 检查是否已取消
+      // TODO(@backlog): 接入真实 AI 建议 API，替换 mock 数据
       if (isCancelled) return;
 
       const newAiSuggestions: SearchSuggestion[] = [

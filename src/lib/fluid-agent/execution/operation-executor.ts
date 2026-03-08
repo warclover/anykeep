@@ -115,7 +115,7 @@ class OperationExecutor {
 
         const bookmark = selection[i];
 
-        // TODO: 执行实际操作（调用对应的 Tool/Skill）
+        // TODO(@backlog): 执行实际操作（调用对应的 Tool/Skill）
         await this.executeAction(action, bookmark, params);
 
         affectedCount++;
@@ -241,7 +241,7 @@ class OperationExecutor {
     _bookmark: Bookmark,
     _params?: Record<string, unknown>,
   ): Promise<void> {
-    // TODO: 根据 action 调用对应的 Tool/Skill
+    // TODO(@backlog): 根据 action 调用对应的 Tool/Skill
     // 这里先用模拟延迟代替
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

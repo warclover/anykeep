@@ -365,6 +365,16 @@ export const analyticsKeys = {
 };
 
 /**
+ * MD Collections Query Keys (Markdown 收藏)
+ */
+export const mdCollectionKeys = {
+  all: ["mdCollections"] as const,
+  lists: () => [...mdCollectionKeys.all, "list"] as const,
+  details: () => [...mdCollectionKeys.all, "detail"] as const,
+  detail: (id: number) => [...mdCollectionKeys.details(), id] as const,
+};
+
+/**
  * User Settings Query Keys (用户设置)
  */
 export const settingsKeys = {

@@ -80,7 +80,7 @@ export class LoggerService {
       this.logToConsole(entry);
     }
 
-    // TODO: 输出到文件（如果需要）
+    // TODO(@backlog): 输出到文件（如果需要）
     if (this.config.enableFile && this.config.filePath) {
       // 实现文件日志
     }

@@ -223,7 +223,7 @@ export class BlueprintEngine {
     return materials.map((m) => ({
       ...m,
       wordCount: this.estimateTokens(m.content),
-      keyPoints: [], // TODO: 提取关键点
+      keyPoints: [], // TODO(@backlog): 提取关键点
     }));
   }
 

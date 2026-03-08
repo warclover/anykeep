@@ -13,6 +13,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import type { AgentStreamChunk } from "@/lib/ai-agent/core/types";
 import { conversationStorage } from "@/lib/storage/conversation-storage";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
@@ -321,10 +322,13 @@ export function useAIChat(config: UseAIChatConfig = {}): UseAIChatReturn {
     // 从 localStorage 恢复
     const restored = conversationStorage.restore();
     if (restored && restored.messages.length > 0) {
-      console.info(
-        "[useAIChat] Restored session:",
-        restored.conversationId,
-        `(${restored.messages.length} messages)`,
+      clientLogger.info(
+        {
+          component: "use-ai-chat",
+          conversationId: restored.conversationId,
+          messageCount: restored.messages.length,
+        },
+        "Restored session",
       );
       // 需要将日期字符串转回 Date 对象
       return restored.messages.map((m) => ({

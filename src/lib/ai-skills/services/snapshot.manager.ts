@@ -137,9 +137,9 @@ export interface SnapshotServiceResponse<T = void> {
  *
  * 注意：运行 `npm run supabase:gen:types` 后可直接使用 supabase.from()
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSnapshotsTable(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any).from("ai_operation_snapshots");

@@ -236,9 +236,9 @@ export function useGeneration(
           const { done, value } = await reader.read();
 
           if (done) {
-            console.info(
-              "SSE stream ended, receivedDoneEvent:",
-              receivedDoneEvent,
+            clientLogger.info(
+              { component: "use-generation", receivedDoneEvent },
+              "SSE stream ended",
             );
             break;
           }
@@ -251,14 +251,24 @@ export function useGeneration(
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") {
-                console.info("Received [DONE] marker");
+                clientLogger.info(
+                  { component: "use-generation" },
+                  "Received [DONE] marker",
+                );
                 continue;
               }
 
               try {
                 const chunk: StreamChunk = JSON.parse(data);
 
-                console.info("Received SSE chunk:", chunk.type, chunk.data);
+                clientLogger.info(
+                  {
+                    component: "use-generation",
+                    type: chunk.type,
+                    data: chunk.data,
+                  },
+                  "Received SSE chunk",
+                );
 
                 // 处理进度更新
                 if (chunk.type === "progress" && chunk.data.stage) {
@@ -283,11 +293,13 @@ export function useGeneration(
                   receivedDoneEvent = true;
                   const reportId = chunk.data.reportId;
 
-                  console.info(
-                    "Received done event, reportId:",
-                    reportId,
-                    "hasReportId:",
-                    !!reportId,
+                  clientLogger.info(
+                    {
+                      component: "use-generation",
+                      reportId,
+                      hasReportId: !!reportId,
+                    },
+                    "Received done event",
                   );
 
                   // 检查 reportId 是否存在
@@ -340,11 +352,9 @@ export function useGeneration(
         // 如果没有收到完成事件但流已结束
         // 注意：使用 receivedDoneEvent 标志而不是 status，因为状态更新是异步的
         if (!receivedDoneEvent) {
-          console.info(
-            "Stream ended without done event, status:",
-            status,
-            "receivedDoneEvent:",
-            receivedDoneEvent,
+          clientLogger.info(
+            { component: "use-generation", status, receivedDoneEvent },
+            "Stream ended without done event",
           );
           // 如果流结束了但没有收到完成事件，可能是错误
           const generationResult: GenerationResult = {

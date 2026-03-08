@@ -185,7 +185,7 @@ export function BatchPageClient({ embedded = false }: BatchPageClientProps) {
   );
 
   // 批量标签操作失败回调（回滚到快照）
-  // TODO: 集成到 BatchTagDialog 组件的 onError 回调
+  // TODO(@backlog): 集成到 BatchTagDialog 组件的 onError 回调
   const _handleBatchTagsError = useCallback(
     (snapshot: ReturnType<typeof createSnapshot>) => {
       rollback(snapshot);
@@ -194,7 +194,7 @@ export function BatchPageClient({ embedded = false }: BatchPageClientProps) {
   );
 
   // 创建批量操作快照（供 BatchTagDialog 使用）
-  // TODO: 传递给 BatchTagDialog 实现乐观更新
+  // TODO(@backlog): 传递给 BatchTagDialog 实现乐观更新
   const _handleCreateSnapshot = useCallback(() => {
     return createSnapshot();
   }, [createSnapshot]);

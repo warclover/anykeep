@@ -310,7 +310,7 @@ export class WechatArticleService {
 
     // 3. 重新抓取网页内容
     // 注意：这里需要实现实际的网页抓取，目前使用现有内容
-    // TODO: 集成 browserless 或其他抓取服务
+    // TODO(@backlog): 集成 browserless 或其他抓取服务
     const newTextContent = extractTextContent(
       snapshotData.readable_content || "",
     );

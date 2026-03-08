@@ -312,6 +312,7 @@ export class FolderRepository extends BaseRepository<
 
       return (data as number[]) || [];
     } catch {
+      // intentionally empty: RPC 不可用时回退到递归查询
       return this.getAllDescendantIdsFallback(folderId);
     }
   }

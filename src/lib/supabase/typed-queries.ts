@@ -327,13 +327,26 @@ type AnyRpcCaller = (
 ) => Promise<RpcResult<unknown>>;
 
 /**
+ * 内部 RPC 调用辅助函数
+ *
+ * Supabase 生成的类型不包含自定义 RPC 函数，因此需要绕过类型检查。
+ * 此函数将 `as any` 集中在一处，所有 rpcXxx 函数均通过此调用。
+ */
+function callRpc<T>(
+  supabase: TypedSupabaseClient,
+  name: string,
+  params?: Record<string, unknown>,
+): Promise<RpcResult<T>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase 生成类型不含自定义 RPC，集中在此处断言
+  return (supabase.rpc as any)(name, params) as Promise<RpcResult<T>>;
+}
+
+/**
  * 创建类型安全的 RPC 调用器
  */
 export function createRpcCaller(supabase: TypedSupabaseClient): AnyRpcCaller {
   return async (name: string, params?: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (supabase.rpc as any)(name, params);
-    return result as RpcResult<unknown>;
+    return callRpc<unknown>(supabase, name, params);
   };
 }
 
@@ -363,8 +376,7 @@ export async function rpcClaimJobsBatch(
     p_lock_duration: string;
   },
 ): Promise<RpcResult<ClaimJobsBatchResult[]>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("claim_jobs_batch", params);
+  return callRpc<ClaimJobsBatchResult[]>(supabase, "claim_jobs_batch", params);
 }
 
 /**
@@ -379,8 +391,7 @@ export async function rpcCompleteJob(
     p_result: unknown | null;
   },
 ): Promise<RpcResult<void>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("complete_job", params);
+  return callRpc<void>(supabase, "complete_job", params);
 }
 
 // ----- Snapshot RPC Functions -----
@@ -403,8 +414,11 @@ export async function rpcGetUserSnapshotQuota(
   supabase: TypedSupabaseClient,
   params: { p_user_id: string },
 ): Promise<RpcResult<UserSnapshotQuotaResult[]>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("get_user_snapshot_quota", params);
+  return callRpc<UserSnapshotQuotaResult[]>(
+    supabase,
+    "get_user_snapshot_quota",
+    params,
+  );
 }
 
 /**
@@ -414,8 +428,7 @@ export async function rpcCanCreateSnapshot(
   supabase: TypedSupabaseClient,
   params: { p_user_id: string; p_estimated_size: number },
 ): Promise<RpcResult<boolean>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("can_create_snapshot", params);
+  return callRpc<boolean>(supabase, "can_create_snapshot", params);
 }
 
 /**
@@ -446,8 +459,11 @@ export async function rpcAtomicCreateSnapshot(
 ): Promise<
   RpcResult<AtomicCreateSnapshotResult | AtomicCreateSnapshotResult[]>
 > {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("atomic_create_snapshot", params);
+  return callRpc<AtomicCreateSnapshotResult | AtomicCreateSnapshotResult[]>(
+    supabase,
+    "atomic_create_snapshot",
+    params,
+  );
 }
 
 /**
@@ -477,8 +493,9 @@ export async function rpcAtomicBatchCreateSnapshots(
     AtomicBatchCreateSnapshotsResult | AtomicBatchCreateSnapshotsResult[]
   >
 > {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (supabase.rpc as any)("atomic_batch_create_snapshots", params);
+  return callRpc<
+    AtomicBatchCreateSnapshotsResult | AtomicBatchCreateSnapshotsResult[]
+  >(supabase, "atomic_batch_create_snapshots", params);
 }
 
 // ============================================

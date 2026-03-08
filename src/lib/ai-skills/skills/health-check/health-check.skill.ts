@@ -20,7 +20,7 @@ import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 // 复用现有检测器
-// TODO: 集成现有检测器进行实时检测
+// TODO(@backlog): 集成现有检测器进行实时检测
 // import { linkHealthCheckSkill } from "../link-health-check/link-health-check.skill";
 // import { duplicateCleanupSkill } from "../duplicate-cleanup/duplicate-cleanup.skill";
 import { staleContentDetector } from "./detectors/stale-detector";
@@ -482,7 +482,7 @@ export class HealthCheckSkill extends OrchestrationSkill<
     }
 
     // 如果没有缓存或需要强制刷新，记录警告并返回空数组
-    // TODO: 集成 linkHealthCheckSkill 进行实时检测
+    // TODO(@backlog): 集成 linkHealthCheckSkill 进行实时检测
     logger.warn(
       { userId, forceRefresh: input.forceRefresh },
       "HealthCheckSkill: Real-time broken link detection not implemented, returning cached or empty results",
@@ -537,7 +537,7 @@ export class HealthCheckSkill extends OrchestrationSkill<
       }
     }
 
-    // TODO: 集成 duplicateCleanupSkill 进行实时检测
+    // TODO(@backlog): 集成 duplicateCleanupSkill 进行实时检测
     logger.warn(
       { userId, forceRefresh: input.forceRefresh },
       "HealthCheckSkill: Real-time duplicate detection not implemented, returning cached or empty results",

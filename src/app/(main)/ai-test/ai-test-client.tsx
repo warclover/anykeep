@@ -23,7 +23,7 @@ import {
   FloatingAIAssistantButton,
 } from "@/components/ai";
 
-// TODO: 从认证上下文获取真实用户 ID
+// TODO(@backlog): 从认证上下文获取真实用户 ID
 const TEST_USER_ID = "test-user-123";
 
 export function AIAssistantTestClient() {

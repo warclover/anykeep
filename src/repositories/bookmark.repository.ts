@@ -377,6 +377,7 @@ export class BookmarkRepository extends BaseRepository<
         return this.toggleStarredFallback(id);
       }
     } catch {
+      // intentionally empty: RPC 不可用时回退到手动切换
       return this.toggleStarredFallback(id);
     }
   }
@@ -805,6 +806,7 @@ export class BookmarkRepository extends BaseRepository<
           try {
             emb = JSON.parse(row.embedding);
           } catch {
+            // intentionally empty: embedding JSON 解析失败时使用空数组
             emb = [];
           }
         } else {
@@ -857,6 +859,7 @@ export class BookmarkRepository extends BaseRepository<
         try {
           embeddingArray = JSON.parse(row.embedding);
         } catch {
+          // intentionally empty: embedding JSON 解析失败时置空
           embeddingArray = null;
         }
       } else if (Array.isArray(row.embedding)) {

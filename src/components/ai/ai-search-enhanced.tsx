@@ -98,9 +98,7 @@ export function AISearchEnhanced({
     setError(null);
 
     try {
-      // 模拟 AI 生成洞察
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
+      // TODO(@backlog): 接入真实 AI 洞察 API，替换 mock 数据
       const mockInsights: SearchInsight[] = [
         {
           type: "summary",

@@ -160,7 +160,7 @@ class ConfirmationExpiryCron {
   private async sendExpirationNotifications(
     result: ExpirationResult,
   ): Promise<number> {
-    // TODO: 实现按用户分组发送通知
+    // TODO(@backlog): 实现按用户分组发送通知
     // 目前 processExpired 没有返回用户信息，需要扩展
 
     // 占位实现：记录日志

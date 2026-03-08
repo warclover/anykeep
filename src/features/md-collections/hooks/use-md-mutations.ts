@@ -1,11 +1,18 @@
 /**
  * MD 收藏数据变更 Hook
  * P2-007: Markdown 内容收藏
+ *
+ * 使用 TanStack Query useMutation 管理状态
+ *
+ * @version 2.0.0 - 迁移到 useMutation
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { mdCollectionKeys } from "@/hooks/queries/keys";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import { computeContentHash } from "../lib/md-processor";
 import type {
   MdCollection,
@@ -14,52 +21,49 @@ import type {
   MdCheckDuplicateResponse,
 } from "../types";
 
-interface MutationState {
-  isLoading: boolean;
-  error: string | null;
+// ============================================
+// 辅助函数：解析 API 响应
+// ============================================
+
+async function parseResponse<T>(
+  response: Response,
+  fallbackMsg: string,
+): Promise<T> {
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error?.message || fallbackMsg);
+  }
+
+  return result.data as T;
 }
 
 /**
  * 创建 MD 收藏 Hook
  */
 export function useCreateMdCollection() {
-  const [state, setState] = useState<MutationState>({
-    isLoading: false,
-    error: null,
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (
+      data: MdCollectionCreateRequest,
+    ): Promise<MdCollection> => {
+      const response = await fetchWithAuth(API_PATHS.mdCollections.list, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      return parseResponse<MdCollection>(response, "创建失败");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mdCollectionKeys.lists() });
+    },
   });
 
-  const create = useCallback(
-    async (data: MdCollectionCreateRequest): Promise<MdCollection | null> => {
-      setState({ isLoading: true, error: null });
-
-      try {
-        const response = await fetch("/api/md-collections", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error?.message || "创建失败");
-        }
-
-        setState({ isLoading: false, error: null });
-        return result.data as MdCollection;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "创建失败";
-        setState({ isLoading: false, error: errorMessage });
-        return null;
-      }
-    },
-    [],
-  );
-
   return {
-    create,
-    isLoading: state.isLoading,
-    error: state.error,
+    create: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
   };
 }
 
@@ -67,46 +71,47 @@ export function useCreateMdCollection() {
  * 更新 MD 收藏 Hook
  */
 export function useUpdateMdCollection() {
-  const [state, setState] = useState<MutationState>({
-    isLoading: false,
-    error: null,
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: MdCollectionUpdateRequest;
+    }): Promise<MdCollection> => {
+      const response = await fetchWithAuth(
+        API_PATHS.mdCollections.detail(String(id)),
+        {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        },
+      );
+
+      return parseResponse<MdCollection>(response, "更新失败");
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: mdCollectionKeys.detail(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: mdCollectionKeys.lists() });
+    },
   });
 
-  const update = useCallback(
-    async (
+  return {
+    update: async (
       id: number,
       data: MdCollectionUpdateRequest,
     ): Promise<MdCollection | null> => {
-      setState({ isLoading: true, error: null });
-
       try {
-        const response = await fetch(`/api/md-collections/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error?.message || "更新失败");
-        }
-
-        setState({ isLoading: false, error: null });
-        return result.data as MdCollection;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "更新失败";
-        setState({ isLoading: false, error: errorMessage });
+        return await mutation.mutateAsync({ id, data });
+      } catch {
         return null;
       }
     },
-    [],
-  );
-
-  return {
-    update,
-    isLoading: state.isLoading,
-    error: state.error,
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
   };
 }
 
@@ -114,53 +119,94 @@ export function useUpdateMdCollection() {
  * 删除 MD 收藏 Hook
  */
 export function useDeleteMdCollection() {
-  const [state, setState] = useState<MutationState>({
-    isLoading: false,
-    error: null,
-  });
+  const queryClient = useQueryClient();
 
-  const remove = useCallback(async (id: number): Promise<boolean> => {
-    setState({ isLoading: true, error: null });
-
-    try {
-      const response = await fetch(`/api/md-collections/${id}`, {
-        method: "DELETE",
-      });
+  const mutation = useMutation({
+    mutationFn: async (id: number): Promise<void> => {
+      const response = await fetchWithAuth(
+        API_PATHS.mdCollections.detail(String(id)),
+        {
+          method: "DELETE",
+        },
+      );
 
       const result = await response.json();
 
       if (!result.success) {
         throw new Error(result.error?.message || "删除失败");
       }
-
-      setState({ isLoading: false, error: null });
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "删除失败";
-      setState({ isLoading: false, error: errorMessage });
-      return false;
-    }
-  }, []);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mdCollectionKeys.lists() });
+    },
+  });
 
   return {
-    remove,
-    isLoading: state.isLoading,
-    error: state.error,
+    remove: async (id: number): Promise<boolean> => {
+      try {
+        await mutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
   };
 }
 
 /**
  * 上传 MD 文件 Hook
+ *
+ * 注意：文件上传使用 FormData，属于允许直接 fetch 的例外场景，
+ * 但仍通过 useMutation 管理状态。
  */
 export function useUploadMdFile() {
-  const [state, setState] = useState<MutationState & { progress: number }>({
-    isLoading: false,
-    error: null,
-    progress: 0,
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      file,
+      options,
+    }: {
+      file: File;
+      options?: {
+        contentType?: string;
+        userTags?: string[];
+        folderId?: number;
+      };
+    }): Promise<MdCollection> => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      if (options?.contentType) {
+        formData.append("contentType", options.contentType);
+      }
+      if (options?.userTags) {
+        formData.append("userTags", JSON.stringify(options.userTags));
+      }
+      if (options?.folderId) {
+        formData.append("folderId", String(options.folderId));
+      }
+
+      const response = await fetchWithAuth(API_PATHS.mdCollections.upload, {
+        method: "POST",
+        body: formData,
+        // fetchWithAuth 会在有 body 时自动设置 Content-Type，
+        // 但 FormData 需要浏览器自动设置 boundary，
+        // 所以传入空 headers 覆盖
+        headers: {},
+      });
+
+      return parseResponse<MdCollection>(response, "上传失败");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mdCollectionKeys.lists() });
+    },
   });
 
-  const upload = useCallback(
-    async (
+  return {
+    upload: async (
       file: File,
       options?: {
         contentType?: string;
@@ -168,49 +214,15 @@ export function useUploadMdFile() {
         folderId?: number;
       },
     ): Promise<MdCollection | null> => {
-      setState({ isLoading: true, error: null, progress: 0 });
-
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        if (options?.contentType) {
-          formData.append("contentType", options.contentType);
-        }
-        if (options?.userTags) {
-          formData.append("userTags", JSON.stringify(options.userTags));
-        }
-        if (options?.folderId) {
-          formData.append("folderId", String(options.folderId));
-        }
-
-        const response = await fetch("/api/md-collections/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error?.message || "上传失败");
-        }
-
-        setState({ isLoading: false, error: null, progress: 100 });
-        return result.data as MdCollection;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "上传失败";
-        setState({ isLoading: false, error: errorMessage, progress: 0 });
+        return await mutation.mutateAsync({ file, options });
+      } catch {
         return null;
       }
     },
-    [],
-  );
-
-  return {
-    upload,
-    isLoading: state.isLoading,
-    error: state.error,
-    progress: state.progress,
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    progress: mutation.isSuccess ? 100 : 0,
   };
 }
 
@@ -218,45 +230,34 @@ export function useUploadMdFile() {
  * 检查内容重复 Hook
  */
 export function useCheckDuplicate() {
-  const [state, setState] = useState<MutationState>({
-    isLoading: false,
-    error: null,
+  const mutation = useMutation({
+    mutationFn: async (content: string): Promise<MdCheckDuplicateResponse> => {
+      const contentHash = computeContentHash(content);
+
+      const response = await fetchWithAuth(
+        API_PATHS.mdCollections.checkDuplicate,
+        {
+          method: "POST",
+          body: JSON.stringify({ contentHash }),
+        },
+      );
+
+      return parseResponse<MdCheckDuplicateResponse>(response, "检查失败");
+    },
   });
 
-  const check = useCallback(
-    async (content: string): Promise<MdCheckDuplicateResponse | null> => {
-      setState({ isLoading: true, error: null });
-
+  return {
+    check: async (
+      content: string,
+    ): Promise<MdCheckDuplicateResponse | null> => {
       try {
-        const contentHash = computeContentHash(content);
-
-        const response = await fetch("/api/md-collections/check-duplicate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contentHash }),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error?.message || "检查失败");
-        }
-
-        setState({ isLoading: false, error: null });
-        return result.data as MdCheckDuplicateResponse;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "检查失败";
-        setState({ isLoading: false, error: errorMessage });
+        return await mutation.mutateAsync(content);
+      } catch {
         return null;
       }
     },
-    [],
-  );
-
-  return {
-    check,
-    isLoading: state.isLoading,
-    error: state.error,
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
   };
 }
 
@@ -264,37 +265,38 @@ export function useCheckDuplicate() {
  * 触发 AI 处理 Hook
  */
 export function useTriggerAIProcess() {
-  const [state, setState] = useState<MutationState>({
-    isLoading: false,
-    error: null,
-  });
+  const queryClient = useQueryClient();
 
-  const trigger = useCallback(async (id: number): Promise<boolean> => {
-    setState({ isLoading: true, error: null });
-
-    try {
-      const response = await fetch(`/api/md-collections/${id}/process`, {
-        method: "POST",
-      });
+  const mutation = useMutation({
+    mutationFn: async (id: number): Promise<void> => {
+      const response = await fetchWithAuth(
+        API_PATHS.mdCollections.process(String(id)),
+        {
+          method: "POST",
+        },
+      );
 
       const result = await response.json();
 
       if (!result.success) {
         throw new Error(result.error?.message || "处理失败");
       }
-
-      setState({ isLoading: false, error: null });
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "处理失败";
-      setState({ isLoading: false, error: errorMessage });
-      return false;
-    }
-  }, []);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mdCollectionKeys.lists() });
+    },
+  });
 
   return {
-    trigger,
-    isLoading: state.isLoading,
-    error: state.error,
+    trigger: async (id: number): Promise<boolean> => {
+      try {
+        await mutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    isLoading: mutation.isPending,
+    error: mutation.error?.message ?? null,
   };
 }

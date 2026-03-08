@@ -70,7 +70,7 @@ export function useClusterDistribution(): UseClusterDistributionReturn {
       const supabase = createClient();
 
       // RPC 函数未在 supabase.generated.ts 中定义，需手动类型断言
-      // TODO: 运行 supabase gen types 后移除此断言
+      // TODO(@backlog): 运行 supabase gen types 后移除此断言
       const { data, error } = await supabase.rpc(
         "get_cluster_size_distribution" as never,
       );

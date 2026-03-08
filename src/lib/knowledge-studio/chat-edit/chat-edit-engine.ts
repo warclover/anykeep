@@ -181,7 +181,7 @@ export class ChatEditEngine {
 
     let olderTurnsSummary: string | undefined;
     if (olderTurns.length > 0) {
-      // TODO: 使用 AI 生成摘要
+      // TODO(@backlog): 使用 AI 生成摘要
       olderTurnsSummary = this.generateTurnsSummary(olderTurns);
     }
 
