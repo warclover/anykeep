@@ -134,10 +134,11 @@ export async function fetchJsonWithAuth<T = unknown>(
 }
 
 /**
- * SWR 兼容的 fetcher 函数
+ * 通用 fetcher 函数（适用于 TanStack Query 等数据获取库）
  *
  * @example
- * const { data } = useSWR('/api/bookmarks', authFetcher);
+ * // TanStack Query
+ * const { data } = useQuery({ queryKey: ['bookmarks'], queryFn: () => authFetcher('/api/bookmarks') });
  */
 export async function authFetcher<T = unknown>(url: string): Promise<T> {
   const response = await fetchWithAuth(url);

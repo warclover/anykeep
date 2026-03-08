@@ -30,7 +30,10 @@ import {
 } from "@/lib/export/utils/preview.utils";
 import { DEFAULT_CSV_FIELDS, EXPORT_PAGE_TEXT } from "@/lib/export/constants";
 import { exportAnalytics } from "@/lib/export/analytics";
-import { useBookmarksSWR } from "@/lib/cache/hooks/use-bookmarks-swr";
+import { useQuery } from "@tanstack/react-query";
+import { bookmarkKeys, type BookmarkFilters } from "@/hooks/queries/keys";
+import { authFetcher } from "@/lib/api/fetch-with-auth";
+import { API_PATHS } from "@/lib/constants/api-paths";
 import { useFolders } from "@/hooks/data";
 import type {
   BookmarkWithFolder,
@@ -86,24 +89,58 @@ export function ExportPageClient({ embedded = false }: ExportPageClientProps) {
 
   // ==================== 数据获取 ====================
 
+  // 构建查询过滤条件（稳定引用，避免 queryKey 不必要变化）
+  const filters = useMemo<BookmarkFilters>(
+    () => ({
+      platform: selectedPlatform !== "all" ? selectedPlatform : undefined,
+      folderId:
+        selectedFolderId !== "all"
+          ? Number(selectedFolderId) || undefined
+          : undefined,
+      sortBy: "created_at",
+      sortOrder: "desc",
+    }),
+    [selectedPlatform, selectedFolderId],
+  );
+
   // 获取书签列表
   const {
-    data: bookmarksData,
+    data: bookmarksResponse,
     isLoading: isLoadingBookmarks,
     error: bookmarksError,
     refetch: refetchBookmarks,
-  } = useBookmarksSWR({
-    platform: selectedPlatform !== "all" ? selectedPlatform : "",
-    sort: "created_desc",
-    folder: selectedFolderId !== "all" ? selectedFolderId : "",
+  } = useQuery({
+    queryKey: bookmarkKeys.list(filters),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters.platform) params.set("platform", filters.platform);
+      if (filters.folderId) params.set("folderId", String(filters.folderId));
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+      // 导出页面不使用分页，排除浏览器书签由前端 useMemo 过滤
+      params.set("excludeBrowser", "true");
+      return authFetcher<{
+        data: {
+          items?: Bookmark[];
+          bookmarks?: Bookmark[];
+          pagination?: { hasMore: boolean };
+        };
+      }>(`${API_PATHS.bookmarks.list}?${params}`);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   // 获取文件夹列表
   const { folders, isLoading: isLoadingFolders } = useFolders();
 
-  // 处理后的书签数据（根据 scope 过滤浏览器书签）
+  // 处理后的书签数据（提取 + scope 过滤合并，避免中间变量引用不稳定）
   const bookmarks = useMemo<BookmarkWithFolder[]>(() => {
-    if (!bookmarksData) return [];
+    // 从响应中提取书签数组（兼容 v1 和旧版 API 格式）
+    const items =
+      bookmarksResponse?.data?.items ??
+      bookmarksResponse?.data?.bookmarks ??
+      [];
+    if (items.length === 0) return [];
 
     // 浏览器平台列表
     const browserPlatforms = [
@@ -113,7 +150,7 @@ export function ExportPageClient({ embedded = false }: ExportPageClientProps) {
       "BROWSER_SAFARI",
     ];
 
-    return bookmarksData
+    return items
       .filter((b: Bookmark & { folders?: { name: string } | null }) => {
         // 如果 scope 是 all，排除浏览器书签
         if (
@@ -129,7 +166,7 @@ export function ExportPageClient({ embedded = false }: ExportPageClientProps) {
         ...b,
         folders: b.folders || null,
       }));
-  }, [bookmarksData, scope]);
+  }, [bookmarksResponse, scope]);
 
   // ==================== 副作用 ====================
 

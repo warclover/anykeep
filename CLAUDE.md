@@ -313,6 +313,54 @@ export const GET = withAuthMiddleware(async (request, { userId, user }) => {
 4. **分类 API 使用 v2**：新代码中分类执行与规则直接使用 v2 路径，v5 独占功能端点（entropy/shadow/metrics 等）正常使用
 5. **版本状态参考**：详见 `docs/api-version-status.md`
 
+### 数据获取规范
+
+项目统一使用 **TanStack Query** 作为数据获取和缓存管理方案。
+
+**必须使用 TanStack Query 的场景：**
+
+1. **所有 GET 查询**：需要缓存、去重、自动刷新的数据读取
+2. **CRUD 变更操作**：使用 `useMutation` + 乐观更新 + 缓存失效
+3. **分页/无限滚动**：使用 `useInfiniteQuery`
+
+```typescript
+// ✅ 标准数据读取
+import { useQuery } from "@tanstack/react-query";
+import { bookmarkKeys } from "@/hooks/queries/keys";
+import { authFetcher } from "@/lib/api/fetch-with-auth";
+
+const { data } = useQuery({
+  queryKey: bookmarkKeys.detail(id),
+  queryFn: () => authFetcher(`/api/v1/bookmarks/${id}`),
+});
+
+// ✅ 变更操作
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+const queryClient = useQueryClient();
+const mutation = useMutation({
+  mutationFn: (data) =>
+    fetchWithAuth("/api/v1/bookmarks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  onSuccess: () =>
+    queryClient.invalidateQueries({ queryKey: bookmarkKeys.lists() }),
+});
+```
+
+**允许直接 fetch 的例外场景：**
+
+- **流式响应**：AI 生成、合成等 SSE/streaming 场景
+- **文件上传**：FormData 上传
+- **一次性触发**：后台任务启动等无需缓存的 fire-and-forget 操作
+
+**关键约束：**
+
+- Query Key 必须使用 `src/hooks/queries/keys.ts` 中的工厂函数，禁止硬编码
+- 缓存失效使用 `src/lib/cache/invalidate-caches.ts` 中的集合函数
+- 新代码禁止引入 SWR 或自定义 SWR-like 缓存（遗留 `useBookmarksSWR` 待迁移）
+
 ---
 
 ## 已实现功能
