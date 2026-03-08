@@ -58,7 +58,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useSynthesisList } from "@/hooks/synthesis/use-synthesis-list";
+import { useSynthesisListQuery } from "@/hooks/synthesis/use-synthesis-list-query";
 import type {
   SynthesisReportSummary,
   SynthesisDepthMode,
@@ -283,7 +283,7 @@ export function SynthesisListPageClient() {
   const sortOption =
     SORT_OPTIONS.find((o) => o.value === sortValue) || SORT_OPTIONS[0];
 
-  const { data, isLoading, error, refetch } = useSynthesisList({
+  const { data, isLoading, error, refetch } = useSynthesisListQuery({
     search: search || undefined,
     depthMode:
       depthFilter !== "all" ? (depthFilter as SynthesisDepthMode) : undefined,

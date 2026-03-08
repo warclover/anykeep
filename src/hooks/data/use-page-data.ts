@@ -18,7 +18,7 @@ import type { Bookmark } from "@/types/supabase";
 import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
 import type { FolderWithStats, FolderCategory } from "@/types/domain";
-import { folderKeys } from "@/hooks/queries/keys";
+import { folderKeys, analyticsKeys, settingsKeys } from "@/hooks/queries/keys";
 
 // ==================== 通用类型 ====================
 
@@ -166,158 +166,103 @@ function _createEmptyAnalyticsData(): AnalyticsData {
 }
 
 /**
+ * 统计数据 fetcher
+ */
+async function fetchAnalyticsStats(): Promise<AnalyticsData> {
+  const response = await fetch("/api/analytics/stats");
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error?.message || "加载统计数据失败");
+  }
+
+  return result.data;
+}
+
+/**
  * 数据统计页面数据获取 Hook
- * 返回与服务层 AnalyticsData 兼容的数据结构
- * V5.2: 使用聚合 API 优化性能（全量查询 → 服务端聚合）
- * V5.3: P2-2.4 添加 AbortController 请求中断，防止竞态条件
+ * V5.2: 使用聚合 API 优化性能
+ * V6.0: 迁移到 TanStack Query（消除手写 useState/useEffect/AbortController）
  */
 export function useAnalyticsData() {
   const { user } = useUser();
-  const [state, setState] = useState<DataState<AnalyticsData>>({
-    data: null,
-    isLoading: true,
-    error: null,
-    lastFetched: 0,
+
+  const { data, isLoading, error, refetch } = useQuery<AnalyticsData>({
+    queryKey: analyticsKeys.stats(),
+    queryFn: fetchAnalyticsStats,
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    meta: {
+      onError: (err: unknown) =>
+        clientLogger.error({ error: err }, "useAnalyticsData fetch failed"),
+    },
   });
 
-  // V5.3: AbortController ref，用于取消进行中的请求
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const fetchData = useCallback(async () => {
-    if (!user) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      return;
-    }
-
-    // V5.3: 取消之前的请求，防止竞态条件
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      // V5.2: 使用聚合 API 替代客户端全量查询 + 计算
-      // V5.3: 传入 AbortController signal
-      const response = await fetch("/api/analytics/stats", {
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error?.message || "加载统计数据失败");
-      }
-
-      setState({
-        data: result.data,
-        isLoading: false,
-        error: null,
-        lastFetched: Date.now(),
-      });
-    } catch (err) {
-      // V5.3: 忽略被取消的请求错误
-      if ((err as Error).name === "AbortError") {
-        return;
-      }
-      clientLogger.error({ error: err }, "useAnalyticsData fetch failed");
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : "加载失败",
-      }));
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // V5.3: 组件卸载时取消进行中的请求
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, []);
-
   return {
-    ...state,
-    refetch: fetchData,
+    data: data ?? null,
+    isLoading,
+    error: error ? (error instanceof Error ? error.message : "加载失败") : null,
+    lastFetched: 0,
+    refetch: async () => {
+      await refetch();
+    },
   };
 }
 
 // ==================== 设置页面数据 ====================
 
 /**
+ * 用户设置 fetcher
+ */
+async function fetchUserSettings(): Promise<UserSettings> {
+  const response = await fetch("/api/user/settings");
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error?.message || "加载设置失败");
+  }
+
+  return result.data;
+}
+
+/**
  * 设置页面数据获取 Hook
  * 从 API 加载用户设置，支持未登录时显示默认值
+ * V6.0: 迁移到 TanStack Query
  */
 export function useSettingsData() {
   const { user, isLoading: userLoading } = useUser();
-  const [state, setState] = useState<DataState<UserSettings>>({
-    data: DEFAULT_USER_SETTINGS,
-    isLoading: true,
-    error: null,
-    lastFetched: 0,
+
+  const { data, isLoading, error, refetch } = useQuery<UserSettings>({
+    queryKey: settingsKeys.all,
+    queryFn: fetchUserSettings,
+    enabled: !!user && !userLoading,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: DEFAULT_USER_SETTINGS,
+    meta: {
+      onError: (err: unknown) =>
+        clientLogger.error({ error: err }, "Failed to load settings"),
+    },
   });
 
-  const fetchData = useCallback(async () => {
-    if (userLoading) return;
-
-    // 未登录时使用默认设置
-    if (!user) {
-      setState({
-        data: DEFAULT_USER_SETTINGS,
-        isLoading: false,
-        error: null,
-        lastFetched: Date.now(),
-      });
-      return;
-    }
-
-    // 从 API 加载用户设置
-    try {
-      const response = await fetch("/api/user/settings");
-      const result = await response.json();
-
-      if (result.success) {
-        setState({
-          data: result.data,
-          isLoading: false,
-          error: null,
-          lastFetched: Date.now(),
-        });
-      } else {
-        throw new Error(result.error?.message || "加载设置失败");
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "加载设置失败";
-      clientLogger.error({ error: message }, "Failed to load settings");
-      setState({
-        data: DEFAULT_USER_SETTINGS,
-        isLoading: false,
-        error: message,
-        lastFetched: Date.now(),
-      });
-    }
-  }, [userLoading, user]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   return {
-    ...state,
-    refetch: fetchData,
+    data: data ?? DEFAULT_USER_SETTINGS,
+    isLoading: userLoading || isLoading,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : "加载设置失败"
+      : null,
+    lastFetched: 0,
+    refetch: async () => {
+      await refetch();
+    },
   };
 }
 

@@ -355,3 +355,18 @@ export const confirmationKeys = {
   all: ["pending-confirmations"] as const,
   list: () => [...confirmationKeys.all] as const,
 };
+
+/**
+ * Analytics Query Keys (数据统计)
+ */
+export const analyticsKeys = {
+  all: ["analytics"] as const,
+  stats: () => [...analyticsKeys.all, "stats"] as const,
+};
+
+/**
+ * User Settings Query Keys (用户设置)
+ */
+export const settingsKeys = {
+  all: ["user-settings"] as const,
+};
