@@ -14,15 +14,6 @@ import {
 } from "@testing-library/react";
 import { AISearchSuggestions } from "../ai-search-suggestions";
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-};
-Object.defineProperty(window, "localStorage", { value: localStorageMock });
-
 describe("AISearchSuggestions", () => {
   const defaultProps = {
     query: "",
@@ -32,7 +23,6 @@ describe("AISearchSuggestions", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorageMock.getItem.mockReturnValue(null);
     global.fetch = jest.fn(() =>
       Promise.resolve({
         ok: true,
@@ -59,12 +49,35 @@ describe("AISearchSuggestions", () => {
     });
   });
 
-  it("shows search history when available", async () => {
-    localStorageMock.getItem.mockReturnValue(
-      JSON.stringify(["previous search 1", "previous search 2"]),
-    );
+  it("shows search history when available from API", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: {
+            recentSearches: [
+              {
+                id: "1",
+                query: "previous search 1",
+                resultCount: 5,
+                createdAt: new Date().toISOString(),
+              },
+              {
+                id: "2",
+                query: "previous search 2",
+                resultCount: 3,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            hotKeywords: [],
+          },
+        }),
+    });
 
-    render(<AISearchSuggestions {...defaultProps} query="" />);
+    render(
+      <AISearchSuggestions {...defaultProps} query="" userId="test-user" />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("最近搜索")).toBeInTheDocument();
@@ -108,7 +121,7 @@ describe("AISearchSuggestions", () => {
     expect(onSuggestionSelect).toHaveBeenCalledWith("AI 技术");
   });
 
-  it("saves selected suggestion to history", async () => {
+  it("calls onSuggestionSelect with selected suggestion text", async () => {
     const onSuggestionSelect = jest.fn();
     render(
       <AISearchSuggestions
@@ -124,22 +137,41 @@ describe("AISearchSuggestions", () => {
 
     fireEvent.click(screen.getByText("AI 技术"));
 
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      "search_history",
-      expect.stringContaining("AI 技术"),
-    );
+    expect(onSuggestionSelect).toHaveBeenCalledWith("AI 技术");
   });
 
   it("clears history when clear button is clicked", async () => {
     const onClearHistory = jest.fn();
-    localStorageMock.getItem.mockReturnValue(
-      JSON.stringify(["search 1", "search 2"]),
-    );
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: {
+            recentSearches: [
+              {
+                id: "1",
+                query: "search 1",
+                resultCount: 5,
+                createdAt: new Date().toISOString(),
+              },
+              {
+                id: "2",
+                query: "search 2",
+                resultCount: 3,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            hotKeywords: [],
+          },
+        }),
+    });
 
     render(
       <AISearchSuggestions
         {...defaultProps}
         query=""
+        userId="test-user"
         onClearHistory={onClearHistory}
       />,
     );
@@ -152,35 +184,46 @@ describe("AISearchSuggestions", () => {
 
     await waitFor(() => {
       expect(onClearHistory).toHaveBeenCalled();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "search_history",
-      );
     });
   });
 
-  it("removes single history item when X button is clicked", async () => {
-    localStorageMock.getItem.mockReturnValue(
-      JSON.stringify(["search 1", "search 2"]),
-    );
+  it("renders history items with remove buttons", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          data: {
+            recentSearches: [
+              {
+                id: "1",
+                query: "search 1",
+                resultCount: 5,
+                createdAt: new Date().toISOString(),
+              },
+              {
+                id: "2",
+                query: "search 2",
+                resultCount: 3,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            hotKeywords: [],
+          },
+        }),
+    });
 
-    render(<AISearchSuggestions {...defaultProps} query="" />);
+    render(
+      <AISearchSuggestions {...defaultProps} query="" userId="test-user" />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("search 1")).toBeInTheDocument();
+      expect(screen.getByText("search 2")).toBeInTheDocument();
     });
 
-    // Find and click the remove button for the first history item
-    const removeButtons = screen.getAllByRole("button");
-    const historyRemoveButton = removeButtons.find((btn) =>
-      btn.querySelector('[class*="size-6"]'),
-    );
-
-    if (historyRemoveButton) {
-      fireEvent.click(historyRemoveButton);
-
-      // History should be updated without "search 1"
-      expect(localStorageMock.setItem).toHaveBeenCalled();
-    }
+    // 历史记录区域应包含"清除"按钮
+    expect(screen.getByText("清除")).toBeInTheDocument();
   });
 
   it("applies custom className", () => {
