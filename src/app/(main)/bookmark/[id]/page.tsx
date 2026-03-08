@@ -17,6 +17,10 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUserIdFromCookies } from "@/lib/server/auth";
 import { BookmarkDetailClient } from "@/components/bookmark/bookmark-detail-client";
+import {
+  inferSourceType,
+  type SourceInfo,
+} from "@/components/bookmark/source-badge";
 import type {
   CustomUsageTag,
   ProfileSettings,
@@ -132,6 +136,32 @@ export default async function BookmarkDetailPage({
     ? { id: snapshotResult.data.id, status: snapshotResult.data.status }
     : null;
 
+  // P5: 服务端预计算 sourceInfo，消除客户端 useMemo + inferSourceType 依赖
+  // source_id 是扩展字段，不在 Supabase 生成类型中，使用安全访问
+  const bookmarkAny = bookmark as Record<string, unknown>;
+  const sourceId = bookmarkAny.source_id as string | null | undefined;
+  let sourceInfo: SourceInfo | null = null;
+  if (sourceId) {
+    sourceInfo = {
+      sourceId,
+      sourceName: (bookmark.source_name as string | null) || undefined,
+      domain: bookmark.url ? new URL(bookmark.url).hostname : undefined,
+      sourceType: inferSourceType(sourceId),
+    };
+  } else if (bookmark.url) {
+    try {
+      const domain = new URL(bookmark.url).hostname;
+      sourceInfo = {
+        sourceId: domain,
+        sourceName: bookmark.source_name || domain,
+        domain,
+        sourceType: inferSourceType(domain),
+      };
+    } catch {
+      // URL 解析失败，sourceInfo 保持 null
+    }
+  }
+
   return (
     <BookmarkDetailClient
       bookmark={bookmark}
@@ -139,6 +169,7 @@ export default async function BookmarkDetailPage({
       initialCustomUsageTags={customUsageTags}
       initialHasSnapshot={initialHasSnapshot}
       initialSnapshot={initialSnapshot}
+      initialSourceInfo={sourceInfo}
     />
   );
 }

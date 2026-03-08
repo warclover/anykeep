@@ -16,12 +16,12 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 // V5.7: 按需导入图标
 import { Folder, Globe } from "lucide-react";
 import { toast } from "sonner";
-import { SourceBadge, inferSourceType } from "./source-badge";
+import { SourceBadge } from "./source-badge";
 import type { SourceInfo } from "./source-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -81,6 +81,8 @@ interface BookmarkDetailClientProps {
   initialHasSnapshot?: boolean;
   /** P1: 服务端预取的完整快照数据，传给 WechatArticleSection 跳过客户端二次请求 */
   initialSnapshot?: { id: number; status: string } | null;
+  /** P5: 服务端预计算的来源信息，消除客户端 useMemo + inferSourceType 依赖 */
+  initialSourceInfo?: SourceInfo | null;
 }
 
 export function BookmarkDetailClient({
@@ -89,6 +91,7 @@ export function BookmarkDetailClient({
   initialCustomUsageTags = [],
   initialHasSnapshot = false,
   initialSnapshot = null,
+  initialSourceInfo = null,
 }: BookmarkDetailClientProps) {
   const router = useRouter();
   const platformConfig = getPlatformConfig(bookmark.platform ?? "UNKNOWN");
@@ -269,33 +272,8 @@ export function BookmarkDetailClient({
     customUsageTags,
   );
 
-  // V4.2: 构建来源信息
-  const sourceInfo = useMemo((): SourceInfo | null => {
-    // 优先使用 source_id（如果有）
-    if (bookmark.source_id) {
-      return {
-        sourceId: bookmark.source_id,
-        sourceName: bookmark.source_name || undefined,
-        domain: bookmark.url ? new URL(bookmark.url).hostname : undefined,
-        sourceType: inferSourceType(bookmark.source_id),
-      };
-    }
-    // 否则从 URL 推断
-    if (bookmark.url) {
-      try {
-        const domain = new URL(bookmark.url).hostname;
-        return {
-          sourceId: domain,
-          sourceName: bookmark.source_name || domain,
-          domain: domain,
-          sourceType: inferSourceType(domain),
-        };
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }, [bookmark.source_id, bookmark.source_name, bookmark.url]);
+  // V4.2 → P5: sourceInfo 由服务端预计算传入，消除客户端 useMemo + inferSourceType
+  const sourceInfo = initialSourceInfo;
 
   // Phase 2.3.7: 简化的本地处理函数
   const handleBack = () => {
