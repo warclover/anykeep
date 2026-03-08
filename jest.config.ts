@@ -46,7 +46,15 @@ const config: Config = {
     "!src/**/*.d.ts",
     "!src/**/*.stories.{js,jsx,ts,tsx}",
     "!src/types/**",
-    "!src/app/**", // 排除 App Router 页面（SSR 相关）
+    // 排除 App Router 页面组件（SSR 相关），但保留 API route.ts
+    "!src/app/**/page.tsx",
+    "!src/app/**/layout.tsx",
+    "!src/app/**/loading.tsx",
+    "!src/app/**/error.tsx",
+    "!src/app/**/not-found.tsx",
+    "!src/app/**/template.tsx",
+    "!src/app/**/default.tsx",
+    "!src/app/**/opengraph-image.tsx",
   ],
   testPathIgnorePatterns: [
     "/node_modules/",

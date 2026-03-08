@@ -105,6 +105,7 @@ const eslintConfig = defineConfig([
       "**/__tests__/**/*.ts",
       "**/__tests__/**/*.tsx",
       "**/test-utils/**/*.ts",
+      "**/__test-utils__/**/*.ts",
     ],
     rules: {
       // 测试文件允许非空断言 - Mock 对象常需要断言
@@ -113,6 +114,8 @@ const eslintConfig = defineConfig([
       "no-console": "off",
       // 测试文件允许 any 类型 - Mock 对象灵活性需要
       "@typescript-eslint/no-explicit-any": "off",
+      // 测试文件允许 require() - jest.mock() 工厂函数内需要（hoisting 限制）
+      "@typescript-eslint/no-require-imports": "off",
     }
   },
   // browser-extension 目录使用独立 ESLint 配置

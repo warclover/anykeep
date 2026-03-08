@@ -9,6 +9,22 @@
 import { GET, DELETE } from "../route";
 import { NextRequest } from "next/server";
 
+// Mock logger（middleware.ts 依赖）
+jest.mock("@/lib/logger", () => ({
+  createLogger: jest.fn(() => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  })),
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 // Mock Supabase
 const mockSupabaseUser = { id: "user_123", email: "test@example.com" };
 const mockConversationData = {
