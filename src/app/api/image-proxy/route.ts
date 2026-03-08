@@ -11,6 +11,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { appEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,30 @@ const ALLOWED_IMAGE_HOSTS = [
   "mmbiz.qlogo.cn", // 微信头像
   "wx.qlogo.cn", // 微信头像
 ];
+
+/** CORS 允许的来源域名 */
+const ALLOWED_ORIGINS = (() => {
+  const origins = new Set<string>();
+  // 开发环境
+  origins.add("http://localhost:3000");
+  origins.add("http://localhost:3001");
+  // 生产环境：从 NEXT_PUBLIC_APP_URL 获取
+  const appUrl = appEnv.appUrl;
+  if (appUrl && appUrl !== "http://localhost:3000") {
+    origins.add(appUrl);
+  }
+  return origins;
+})();
+
+/**
+ * 校验请求来源是否在 CORS 白名单内
+ * 返回匹配的 origin 或 null
+ */
+function getAllowedOrigin(request: NextRequest): string | null {
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+  return ALLOWED_ORIGINS.has(origin) ? origin : null;
+}
 
 /** 图片请求超时时间 (ms) */
 const IMAGE_FETCH_TIMEOUT = 15000;
@@ -140,6 +165,25 @@ function getMimeType(buffer: ArrayBuffer): string {
 // =============================================================================
 
 /**
+ * OPTIONS /api/image-proxy - CORS preflight
+ */
+export async function OPTIONS(request: NextRequest) {
+  const allowedOrigin = getAllowedOrigin(request);
+  if (!allowedOrigin) {
+    return new NextResponse(null, { status: 403 });
+  }
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Max-Age": "86400",
+      Vary: "Origin",
+    },
+  });
+}
+
+/**
  * GET /api/image-proxy
  *
  * Query params:
@@ -221,16 +265,23 @@ export async function GET(request: NextRequest) {
       // 6. 返回图片
       const contentType = getMimeType(buffer);
 
+      const responseHeaders: Record<string, string> = {
+        "Content-Type": contentType,
+        "Content-Length": buffer.byteLength.toString(),
+        "Cache-Control": `public, max-age=${CACHE_MAX_AGE}, immutable`,
+        "X-Content-Type-Options": "nosniff",
+      };
+
+      // CORS：仅允许白名单域名跨域访问
+      const allowedOrigin = getAllowedOrigin(request);
+      if (allowedOrigin) {
+        responseHeaders["Access-Control-Allow-Origin"] = allowedOrigin;
+        responseHeaders["Vary"] = "Origin";
+      }
+
       return new NextResponse(buffer, {
         status: 200,
-        headers: {
-          "Content-Type": contentType,
-          "Content-Length": buffer.byteLength.toString(),
-          "Cache-Control": `public, max-age=${CACHE_MAX_AGE}, immutable`,
-          "Access-Control-Allow-Origin": "*",
-          // 安全头
-          "X-Content-Type-Options": "nosniff",
-        },
+        headers: responseHeaders,
       });
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
