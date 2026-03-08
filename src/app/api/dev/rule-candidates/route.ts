@@ -12,6 +12,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 /**
  * 候选规则状态
@@ -39,8 +43,15 @@ interface CandidateRuleRecord {
 /**
  * GET /api/dev/rule-candidates
  * 获取候选规则列表
+ *
+ * @security 使用 internal auth 保护（dev 工具路由）
  */
 export async function GET(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as CandidateStatus | null;
@@ -95,6 +106,11 @@ export async function GET(request: NextRequest) {
  * 更新候选规则状态
  */
 export async function PATCH(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   try {
     const body = await request.json();
     const { id, status, reviewedBy } = body as {
@@ -172,6 +188,11 @@ export async function PATCH(request: NextRequest) {
  * 删除候选规则
  */
 export async function DELETE(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

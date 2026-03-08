@@ -4,17 +4,30 @@
  * @description 测试 AI Provider 是否正常工作
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
 import { aiProviderRouter } from "@/lib/ai-providers";
 import { createLogger } from "@/lib/logger";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 const logger = createLogger("api:debug:ai-test");
 
 // 模拟 outline-generator 的 system prompt
 const OUTLINE_SYSTEM_PROMPT = `你是一位专业的内容架构师。请用 JSON 格式输出大纲。`;
 
-export async function GET() {
+/**
+ * @security 使用 internal auth 保护（调试工具路由）
+ */
+export async function GET(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   const results: {
     provider: string;
     model: string;

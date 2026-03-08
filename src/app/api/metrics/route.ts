@@ -47,8 +47,8 @@ function isAuthorized(request: NextRequest): boolean {
     return true;
   }
 
-  // 如果没有设置 METRICS_SECRET 且不是内部访问，拒绝
-  return !metricsSecret;
+  // fail-safe：未配置 METRICS_SECRET 且不是内部访问时默认拒绝
+  return false;
 }
 
 export async function GET(request: NextRequest) {

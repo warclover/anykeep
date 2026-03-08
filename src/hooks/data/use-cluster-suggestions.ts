@@ -11,6 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { inboxKeys } from "@/hooks/queries/keys";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import { authFetcher } from "@/lib/api/fetch-with-auth";
 import type { ClusterProcessingStatus } from "@/lib/classification/types/suggestion";
 
 export interface ClusterSuggestionItem {
@@ -31,11 +32,9 @@ interface ClusterSuggestionsData {
 const STALE_TIME_MS = 60 * 1000;
 
 async function fetchClusterSuggestions(): Promise<ClusterSuggestionsData> {
-  const response = await fetch(`${API_CLASSIFICATION.inbox}?type=suggestions`);
-  if (!response.ok) {
-    throw new Error("加载聚类建议失败");
-  }
-  const data = await response.json();
+  const data = await authFetcher<{ data?: ClusterSuggestionsData }>(
+    `${API_CLASSIFICATION.inbox}?type=suggestions`,
+  );
   return {
     suggestions: data.data?.suggestions ?? [],
     clusterStatus: data.data?.clusterStatus ?? null,

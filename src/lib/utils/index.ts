@@ -60,5 +60,5 @@ export * from "./usage-tags-api-helpers";
 export * from "./async-task-retry";
 export * from "./performance-monitor";
 
-// 通知工具 (React 组件)
-export * from "./classification-notification";
+// 通知工具 (React 组件) — 已迁移到 components/classification/，此处保持向后兼容
+export * from "@/components/classification/classification-notification";

@@ -4,14 +4,27 @@
  * GET /api/tts/test - 测试 WebSocket 连接
  */
 
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import WebSocket from "ws";
 import { aiEnv } from "@/lib/env";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 const DASHSCOPE_WS_ENDPOINT =
   "wss://dashscope.aliyuncs.com/api-ws/v1/inference/";
 
-export async function GET() {
+/**
+ * @security 使用 internal auth 保护（TTS 调试路由）
+ */
+export async function GET(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   if (!aiEnv.hasDashscopeApiKey) {
     return NextResponse.json({
       success: false,

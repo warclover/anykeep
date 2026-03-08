@@ -142,8 +142,15 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/cron/classification-optimize
  * 获取优化任务状态
+ *
+ * @security 使用 internal auth 保护
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
+  }
+
   const cacheStats = fastPathCacheManager.getStats();
 
   return successResponse({

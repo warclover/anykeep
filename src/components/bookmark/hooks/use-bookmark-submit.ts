@@ -10,7 +10,7 @@ import {
   acceptClassificationSuggestion,
   rejectClassificationSuggestion,
   type ClassificationResponse,
-} from "@/lib/utils/classification-notification";
+} from "@/components/classification/classification-notification";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { UseCreateBookmarkFormReturn } from "./use-create-bookmark-form";
 

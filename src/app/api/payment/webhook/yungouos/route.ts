@@ -79,15 +79,18 @@ export async function POST(request: NextRequest) {
 function verifySignature(params: Record<string, string>): boolean {
   const secret = PAYMENT_CONFIG.yungouos.webhookSecret;
   if (!secret) {
-    logger.info("[YunGouOS Webhook] No webhook secret configured");
-    return true; // 开发环境跳过验证
+    logger.error(
+      "[YunGouOS Webhook] YUNGOUOS_WEBHOOK_SECRET not configured, rejecting request",
+    );
+    return false; // fail-safe：未配置密钥时拒绝所有请求
   }
 
   // YunGouOS 签名规则：按字母排序拼接参数 + key，MD5
   const sign = params.sign;
-  delete params.sign;
-
-  const sortedKeys = Object.keys(params).sort();
+  // 避免修改原始对象：过滤排除 sign 字段
+  const sortedKeys = Object.keys(params)
+    .filter((k) => k !== "sign")
+    .sort();
   const signStr =
     sortedKeys.map((k) => `${k}=${params[k]}`).join("&") + `&key=${secret}`;
   const expectedSign = crypto
@@ -96,5 +99,14 @@ function verifySignature(params: Record<string, string>): boolean {
     .digest("hex")
     .toUpperCase();
 
-  return sign === expectedSign;
+  // 使用 timingSafeEqual 防止时序攻击
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(sign ?? ""),
+      Buffer.from(expectedSign),
+    );
+  } catch {
+    // Buffer 长度不一致时 timingSafeEqual 会抛异常
+    return false;
+  }
 }

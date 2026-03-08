@@ -78,15 +78,8 @@ export interface SnapshotViewerProps {
 // 辅助函数
 // ============================================================================
 
-/**
- * 移除 HTML 中的 img 标签
- * 用于处理微信等平台的防盗链问题，避免图片显示异常
- */
-function sanitizeHtmlImages(html: string): string {
-  if (!html) return html;
-  // 移除所有 <img> 标签（包括自闭合形式）
-  return html.replace(/<img[^>]*\/?>/gi, "");
-}
+// 使用共享的 HTML 清理工具（DOMPurify），防止 XSS 注入
+import { sanitizeHtmlWithoutImages } from "@/lib/utils/html-sanitizer";
 
 // ============================================================================
 // 辅助组件
@@ -265,7 +258,7 @@ export function SnapshotViewer({
   // 处理后的 HTML 内容（移除图片标签以避免防盗链问题）
   const sanitizedContent = useMemo(() => {
     if (!content?.readableContent) return "";
-    return sanitizeHtmlImages(content.readableContent);
+    return sanitizeHtmlWithoutImages(content.readableContent);
   }, [content?.readableContent]);
 
   // 加载快照内容

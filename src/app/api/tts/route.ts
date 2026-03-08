@@ -444,12 +444,30 @@ export const POST = withAuthMiddleware(
  *
  * CORS 预检请求
  */
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  // 与 image-proxy 保持一致的 CORS Origin 白名单校验
+  const origin = request.headers.get("origin");
+  const allowedOrigins = new Set([
+    "http://localhost:3000",
+    "http://localhost:3001",
+  ]);
+  // 添加生产环境 URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl && appUrl !== "http://localhost:3000") {
+    allowedOrigins.add(appUrl);
+  }
+
+  if (!origin || !allowedOrigins.has(origin)) {
+    return new NextResponse(null, { status: 403 });
+  }
+
   return new NextResponse(null, {
     status: 204,
     headers: {
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      Vary: "Origin",
     },
   });
 }
