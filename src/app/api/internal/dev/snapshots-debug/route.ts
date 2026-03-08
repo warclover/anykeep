@@ -5,6 +5,10 @@
 
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // 禁用 Next.js 缓存
 export const dynamic = "force-dynamic";
@@ -13,12 +17,18 @@ export const revalidate = 0;
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDev) {
     return NextResponse.json(
       { error: "This endpoint is only available in development" },
       { status: 403 },
     );
+  }
+
+  // 双重防御：非生产环境（staging/preview）也需要认证
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
   }
 
   try {

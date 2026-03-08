@@ -9,6 +9,10 @@ import { JSDOM, VirtualConsole } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { createHash } from "crypto";
 import { logger } from "@/lib/logger";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
@@ -29,6 +33,12 @@ export async function POST(request: Request) {
       { error: "This endpoint is only available in development" },
       { status: 403 },
     );
+  }
+
+  // 双重防御：非生产环境（staging/preview）也需要认证
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
   }
 
   try {

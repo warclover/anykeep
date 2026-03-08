@@ -17,7 +17,9 @@ import {
   unauthorizedError,
   databaseError,
   badRequestError,
+  forbiddenError,
 } from "@/lib/utils/api-response";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 type MaintenanceTaskName = "cleanup-trash" | "validate-all-links";
 
@@ -124,6 +126,19 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return unauthorizedError();
+    }
+
+    // 1.5 管理员权限校验：维护操作仅限管理员
+    if (!isAdminUser(user.email)) {
+      logger.warn(
+        {
+          userId: user.id,
+          email: user.email,
+          action: "maintenance_trigger_forbidden",
+        },
+        "POST: Non-admin user attempted to trigger maintenance task",
+      );
+      return forbiddenError("权限不足：仅管理员可触发维护任务");
     }
 
     // 2. 解析请求参数

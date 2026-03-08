@@ -14,8 +14,10 @@ import { logger } from "@/lib/logger";
 import {
   successResponse,
   unauthorizedError,
+  forbiddenError,
   databaseError,
 } from "@/lib/utils/api-response";
+import { isAdminUser } from "@/lib/auth/admin-check";
 
 interface MaintenanceTask {
   name: "cleanup-trash" | "validate-all-links";
@@ -78,17 +80,25 @@ export async function GET(_request: NextRequest) {
       return unauthorizedError();
     }
 
+    // 1.5 管理员权限校验
+    if (!isAdminUser(user.email)) {
+      return forbiddenError("权限不足：仅管理员可查看维护任务状态");
+    }
+
     // 2. 获取用户的维护任务时间戳
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileMaintenanceType = {
       last_trash_cleanup_at: string | null;
       last_validation_at: string | null;
     };
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = (await supabase
       .from("profiles")
       .select("last_trash_cleanup_at, last_validation_at")
       .eq("id", user.id)
-      .single() as unknown as { data: ProfileMaintenanceType | null; error: { message: string } | null };
+      .single()) as unknown as {
+      data: ProfileMaintenanceType | null;
+      error: { message: string } | null;
+    };
 
     logger.debug(
       {

@@ -138,16 +138,10 @@ const nextConfig = {
   async rewrites() {
     return [
       // =====================================================
-      // Phase 0.1: Internal API 重写
+      // Phase 0.1: Internal API 重写（已移除）
+      // 安全修复：移除旧路径映射，收敛攻击面
+      // 所有内部 API 统一通过 /api/internal/ 前缀访问
       // =====================================================
-      // Cron APIs: /api/cron/* → /api/internal/cron/*
-      { source: '/api/cron/:path*', destination: '/api/internal/cron/:path*' },
-      // Dev APIs: /api/dev/* → /api/internal/dev/*
-      { source: '/api/dev/:path*', destination: '/api/internal/dev/:path*' },
-      // Debug APIs: /api/debug/* → /api/internal/debug/*
-      { source: '/api/debug/:path*', destination: '/api/internal/debug/:path*' },
-      // Maintenance APIs: /api/maintenance/* → /api/internal/maintenance/:path*' },
-      { source: '/api/maintenance/:path*', destination: '/api/internal/maintenance/:path*' },
 
       // =====================================================
       // Phase 1.1: Classification API 合并重写

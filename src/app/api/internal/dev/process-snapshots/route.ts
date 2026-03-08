@@ -12,6 +12,10 @@ import {
   initSupabaseAdmin,
   getSupabaseAdmin,
 } from "@/lib/supabase/admin-client";
+import {
+  verifyInternalRequest,
+  internalUnauthorizedResponse,
+} from "@/lib/auth/internal-auth";
 
 // Only available in development
 const isDev = process.env.NODE_ENV === "development";
@@ -22,13 +26,19 @@ const WORKER_ID = `dev-worker-${Date.now()}`;
  * GET /api/dev/process-snapshots
  * 手动处理待执行的快照任务
  */
-export async function GET() {
+export async function GET(request: Request) {
   // Security check: only in development
   if (!isDev) {
     return NextResponse.json(
       { error: "This endpoint is only available in development" },
       { status: 403 },
     );
+  }
+
+  // 双重防御：非生产环境（staging/preview）也需要认证
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
   }
 
   try {
@@ -181,6 +191,12 @@ export async function POST(request: Request) {
       { error: "This endpoint is only available in development" },
       { status: 403 },
     );
+  }
+
+  // 双重防御：非生产环境（staging/preview）也需要认证
+  const auth = verifyInternalRequest(request);
+  if (!auth.authorized) {
+    return internalUnauthorizedResponse(auth.error);
   }
 
   try {
