@@ -11,7 +11,7 @@
  * @since 2025-12-25
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { sessionMemory } from "@/lib/ai-memory/session-memory";
 import type {
@@ -88,7 +88,7 @@ export class ContextManager {
     references: ContextReferences,
   ): Promise<ContextServiceResponse<ResolvedContext>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -320,7 +320,7 @@ export class ContextManager {
    * 解析书签引用
    */
   private async resolveBookmarks(
-    supabase: ReturnType<typeof createClient>,
+    supabase: Awaited<ReturnType<typeof createClient>>,
     userId: string,
     bookmarkIds?: number[],
   ): Promise<ContextServiceResponse<BookmarkContextData[]>> {
@@ -356,7 +356,7 @@ export class ContextManager {
    * 解析文件夹引用
    */
   private async resolveFolders(
-    supabase: ReturnType<typeof createClient>,
+    supabase: Awaited<ReturnType<typeof createClient>>,
     userId: string,
     folderIds?: number[],
   ): Promise<ContextServiceResponse<FolderContextData[]>> {
@@ -400,7 +400,7 @@ export class ContextManager {
    * 解析标签引用
    */
   private async resolveTags(
-    supabase: ReturnType<typeof createClient>,
+    supabase: Awaited<ReturnType<typeof createClient>>,
     userId: string,
     tagNames?: string[],
   ): Promise<ContextServiceResponse<TagContextData[]>> {
@@ -432,7 +432,7 @@ export class ContextManager {
    * 解析搜索结果
    */
   private async resolveSearchResults(
-    supabase: ReturnType<typeof createClient>,
+    supabase: Awaited<ReturnType<typeof createClient>>,
     userId: string,
     query: string,
   ): Promise<ContextServiceResponse<SearchResultsContextData>> {

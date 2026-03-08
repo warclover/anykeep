@@ -12,7 +12,7 @@
  * @since 2025-12-30
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/supabase";
 import { logger } from "@/lib/logger";
@@ -53,11 +53,18 @@ import {
  */
 export class GlobalInsightService {
   private config: GlobalInsightConfig;
-  private supabase: SupabaseClient<Database>;
+  private _supabase: SupabaseClient<Database> | null = null;
 
   constructor(config?: Partial<GlobalInsightConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.supabase = createClient();
+  }
+
+  /** 懒初始化服务端 Supabase 客户端 */
+  private async getSupabase(): Promise<SupabaseClient<Database>> {
+    if (!this._supabase) {
+      this._supabase = await createClient();
+    }
+    return this._supabase;
   }
 
   // ============================================
@@ -239,7 +246,8 @@ export class GlobalInsightService {
       Date.now() - this.config.analysisPeriodDays * TIME_CONSTANTS.ONE_DAY_MS,
     );
 
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from("bookmarks")
       .select("id, title, user_tags, platform, created_at, ai_summary")
       .eq("user_id", userId)
@@ -566,7 +574,8 @@ export class GlobalInsightService {
     userId: string,
   ): Promise<GlobalInsight | null> {
     try {
-      const { data, error } = await this.supabase.rpc("get_ai_global_insight", {
+      const supabase = await this.getSupabase();
+      const { data, error } = await supabase.rpc("get_ai_global_insight", {
         p_user_id: userId,
       });
 
@@ -603,7 +612,8 @@ export class GlobalInsightService {
     insight: GlobalInsight,
   ): Promise<void> {
     try {
-      const { error } = await this.supabase.rpc("update_ai_global_insight", {
+      const supabase = await this.getSupabase();
+      const { error } = await supabase.rpc("update_ai_global_insight", {
         p_user_id: userId,
         p_insight: insight as unknown as Json,
       });

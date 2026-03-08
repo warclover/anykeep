@@ -11,7 +11,7 @@
  * @see {@link 20251225000002_add_intent_corrections.sql} 数据库迁移
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { IntentType } from "@/lib/ai-skills/router/types";
 
@@ -101,7 +101,9 @@ export interface IntentCorrectionResponse<T = void> {
 /**
  * 获取 intent_corrections 表查询
  */
-function getCorrectionsTable(supabase: ReturnType<typeof createClient>) {
+function getCorrectionsTable(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any).from("intent_corrections");
 }
@@ -118,7 +120,7 @@ export class IntentCorrectionService {
     request: CreateCorrectionRequest,
   ): Promise<IntentCorrectionResponse<{ id: string }>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -212,7 +214,7 @@ export class IntentCorrectionService {
     }>
   > {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -285,7 +287,7 @@ export class IntentCorrectionService {
    */
   async getLearningStats(): Promise<IntentCorrectionResponse<LearningStats>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -342,7 +344,7 @@ export class IntentCorrectionService {
     correctionId: string,
   ): Promise<IntentCorrectionResponse> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).rpc(

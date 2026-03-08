@@ -6,17 +6,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { getCurrentEmbeddingVersion } from "@/lib/utils/embedding-generator";
-import { supabaseEnv } from "@/lib/env";
 import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
 
 // 使用 Service Role Key 以绕过 RLS
-const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+const supabaseAdmin = initSupabaseAdmin();
 
 /**
  * GET /api/cron/update-folder-profiles
@@ -168,7 +167,7 @@ async function updateFolderProfile(
   // 3. 计算画像向量（取所有书签向量的平均值）
   const validEmbeddings = bookmarks
     .filter((b) => b.embedding && Array.isArray(b.embedding))
-    .map((b) => b.embedding as number[]);
+    .map((b) => b.embedding as unknown as number[]);
 
   let profileEmbedding: number[] | null = null;
   if (validEmbeddings.length > 0) {
@@ -209,7 +208,8 @@ async function updateFolderProfile(
 
   // 5. Upsert 画像
   // V4.2.7: 添加 embedding 版本追踪
-  const { error: upsertError } = await supabaseAdmin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: upsertError } = await (supabaseAdmin as any)
     .from("folder_profiles")
     .upsert(
       {

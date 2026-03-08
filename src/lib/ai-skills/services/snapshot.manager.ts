@@ -13,7 +13,7 @@
  * 运行 `npm run supabase:gen:types` 后可移除类型断言
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   OrganizeAction,
@@ -138,7 +138,9 @@ export interface SnapshotServiceResponse<T = void> {
  * 注意：运行 `npm run supabase:gen:types` 后可直接使用 supabase.from()
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSnapshotsTable(supabase: ReturnType<typeof createClient>): any {
+function getSnapshotsTable(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (supabase as any).from("ai_operation_snapshots");
 }
@@ -147,7 +149,7 @@ function getSnapshotsTable(supabase: ReturnType<typeof createClient>): any {
  * 调用 RPC 函数（绕过类型检查）
  */
 function callRpc(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   fn: string,
   params: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,7 +172,7 @@ export class SnapshotManager {
     request: CreateSnapshotRequest,
   ): Promise<SnapshotServiceResponse<{ snapshotId: string }>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // 获取当前用户
       const {
@@ -255,7 +257,7 @@ export class SnapshotManager {
    */
   async updateAfterState(snapshotId: string): Promise<SnapshotServiceResponse> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -335,7 +337,7 @@ export class SnapshotManager {
     limit = 10,
   ): Promise<SnapshotServiceResponse<UndoableOperation[]>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -391,7 +393,7 @@ export class SnapshotManager {
     snapshotId: string,
   ): Promise<SnapshotServiceResponse<UndoResponse>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -455,7 +457,7 @@ export class SnapshotManager {
     snapshotId: string,
   ): Promise<SnapshotServiceResponse<SnapshotRecord>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },

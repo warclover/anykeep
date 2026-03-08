@@ -11,9 +11,8 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
-import { supabaseEnv } from "@/lib/env";
 import type { Database } from "@/types/supabase";
 import type { ChunkType } from "./types";
 
@@ -81,7 +80,7 @@ export class ChunkSearchService {
   constructor(supabaseClient?: SupabaseClient<Database>) {
     this.supabase =
       supabaseClient ||
-      createClient<Database>(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+      (initSupabaseAdmin() as unknown as SupabaseClient<Database>);
   }
 
   /**

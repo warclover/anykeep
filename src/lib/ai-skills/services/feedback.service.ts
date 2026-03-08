@@ -13,7 +13,7 @@
  * 运行 `npm run supabase:gen:types` 后可移除类型断言
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   FeedbackRequest,
@@ -102,7 +102,7 @@ export class FeedbackService {
     request: FeedbackRequest,
   ): Promise<FeedbackServiceResponse<{ id: string }>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // 获取当前用户
       const {
@@ -188,7 +188,7 @@ export class FeedbackService {
     request: FeedbackRequest,
   ): Promise<FeedbackServiceResponse<{ id: string }>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -263,7 +263,7 @@ export class FeedbackService {
     FeedbackServiceResponse<{ type: "positive" | "negative" } | null>
   > {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -330,7 +330,7 @@ export class FeedbackService {
    */
   async getStats(): Promise<FeedbackServiceResponse<FeedbackStats>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -399,7 +399,7 @@ export class FeedbackService {
     limit = 100,
   ): Promise<FeedbackServiceResponse<NegativeReasonStats[]>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       // 使用类型断言
       const { data, error } = await (
@@ -451,7 +451,7 @@ export class FeedbackService {
     limit = 20,
   ): Promise<FeedbackServiceResponse<FeedbackRecord[]>> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
 
       const {
         data: { user },

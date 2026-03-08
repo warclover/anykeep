@@ -15,7 +15,7 @@
  * v1.1.0: 支持依赖注入 Supabase Client，服务器端 API 路由可传入 server client
  */
 
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   SaveNoteRequest,
@@ -120,10 +120,12 @@ function getNotesTable(supabase: SupabaseClientLike) {
 }
 
 /**
- * 获取 Supabase client（优先使用注入的 client，回退到浏览器端 client）
+ * 获取 Supabase client（优先使用注入的 client，回退到服务端 client）
  */
-function resolveClient(injected?: SupabaseClientLike): SupabaseClientLike {
-  return injected ?? createClient();
+async function resolveClient(
+  injected?: SupabaseClientLike,
+): Promise<SupabaseClientLike> {
+  return injected ?? (await createClient());
 }
 
 // =============================================================================
@@ -141,7 +143,7 @@ export class NoteService {
     supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse<SaveNoteResponse>> {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       // 获取当前用户
       const {
@@ -216,7 +218,7 @@ export class NoteService {
     supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse<NoteRecord>> {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -256,7 +258,7 @@ export class NoteService {
     supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse<{ notes: NoteRecord[]; total: number }>> {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -333,7 +335,7 @@ export class NoteService {
     supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse> {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -391,7 +393,7 @@ export class NoteService {
     supabaseClient?: SupabaseClientLike,
   ): Promise<NoteServiceResponse> {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       const {
         data: { user },
@@ -434,7 +436,7 @@ export class NoteService {
     >
   > {
     try {
-      const supabase = resolveClient(supabaseClient);
+      const supabase = await resolveClient(supabaseClient);
 
       const {
         data: { user },

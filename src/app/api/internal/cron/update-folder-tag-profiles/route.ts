@@ -12,9 +12,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
-import { supabaseEnv } from "@/lib/env";
 import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import {
@@ -23,7 +22,7 @@ import {
 } from "@/lib/auth/internal-auth";
 
 // 使用 Service Role Key 以绕过 RLS
-const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+const supabaseAdmin = initSupabaseAdmin();
 
 /**
  * GET /api/internal/cron/update-folder-tag-profiles

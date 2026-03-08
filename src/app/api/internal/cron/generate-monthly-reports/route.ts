@@ -6,17 +6,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { reportService } from "@/lib/classification/services/report.service";
-import { supabaseEnv } from "@/lib/env";
 import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
 
 // Use Service Role Key to bypass RLS
-const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+const supabaseAdmin = initSupabaseAdmin();
 
 /**
  * GET /api/cron/generate-monthly-reports

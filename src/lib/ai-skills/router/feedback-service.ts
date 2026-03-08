@@ -16,7 +16,6 @@
  * @since 2026-01-11
  */
 
-import { createClient } from "@/lib/supabase/client";
 import { createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
@@ -146,21 +145,16 @@ export class FeedbackService {
   private config: FeedbackServiceConfig;
   private pendingFeedbacks: FeedbackRecord[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
-  private isServer: boolean;
 
   constructor(config?: Partial<FeedbackServiceConfig>) {
     this.config = { ...DEFAULT_FEEDBACK_SERVICE_CONFIG, ...config };
-    this.isServer = typeof window === "undefined";
 
     // 启动批量写入定时器
     if (this.config.batchWrite && this.config.enabled) {
       this.startFlushTimer();
     }
 
-    logger.debug(
-      { config: this.config, isServer: this.isServer },
-      "FeedbackService: Initialized",
-    );
+    logger.debug({ config: this.config }, "FeedbackService: Initialized");
   }
 
   /**
@@ -265,9 +259,7 @@ export class FeedbackService {
    */
   async getUserStats(userId: string): Promise<FeedbackStats | null> {
     try {
-      const supabase = this.isServer
-        ? await createServiceClient()
-        : createClient();
+      const supabase = await createServiceClient();
 
       // 调用 RPC 函数获取统计
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -332,10 +324,7 @@ export class FeedbackService {
       last30Days: { accepted: number; corrected: number; abandoned: number };
     };
   } | null> {
-    if (!this.isServer) {
-      logger.warn("FeedbackService: getGlobalStats is server-side only");
-      return null;
-    }
+    // 此方法仅限服务端调用
 
     try {
       const supabase = await createServiceClient();
@@ -499,9 +488,7 @@ export class FeedbackService {
     }
 
     try {
-      const supabase = this.isServer
-        ? await createServiceClient()
-        : createClient();
+      const supabase = await createServiceClient();
 
       const { error } = await supabase.from("ai_intent_feedback").insert({
         user_id: record.userId,

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { ledgerService } from "@/lib/ledger/services/ledger.service";
-import { supabaseEnv } from "@/lib/env";
 import pLimit from "p-limit";
 import {
   verifyInternalRequest,
@@ -10,7 +9,7 @@ import {
 } from "@/lib/auth/internal-auth";
 
 // Use Service Role Key to bypass RLS
-const supabaseAdmin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey);
+const supabaseAdmin = initSupabaseAdmin();
 
 export const maxDuration = 300; // 5 minutes
 

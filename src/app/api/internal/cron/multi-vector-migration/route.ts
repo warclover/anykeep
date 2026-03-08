@@ -9,21 +9,16 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { createMultiVectorEmbeddingService } from "@/lib/embedding";
-import { supabaseEnv } from "@/lib/env";
-import type { Database } from "@/types/supabase";
 import {
   verifyInternalRequest,
   internalUnauthorizedResponse,
 } from "@/lib/auth/internal-auth";
 
 // 使用 Service Role Key 以绕过 RLS
-const supabaseAdmin = createClient<Database>(
-  supabaseEnv.url,
-  supabaseEnv.serviceRoleKey,
-);
+const supabaseAdmin = initSupabaseAdmin();
 
 // 每次迁移的最大书签数
 const MAX_BOOKMARKS_PER_RUN = 200;

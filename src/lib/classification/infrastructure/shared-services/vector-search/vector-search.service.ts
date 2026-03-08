@@ -5,7 +5,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
+import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import type { LoggerService } from "../logger";
 import { supabaseEnv } from "@/lib/env";
 import type {
@@ -43,10 +43,7 @@ export class VectorSearchService {
       );
     }
 
-    this.client = createClient(
-      this.config.supabaseUrl,
-      this.config.supabaseServiceKey,
-    );
+    this.client = initSupabaseAdmin() as unknown as SupabaseClient;
   }
 
   /**
