@@ -43,9 +43,12 @@ import type {
 // 普鲁士蓝主题色
 const PRUSSIAN_BLUE = "#00324D";
 
-// 动态导入 SyntaxHighlighter 避免 SSR 问题
+// 动态导入 prism-light 构建（按需注册 16 种常用语言，减少 300-500 kB）
 const SyntaxHighlighter = dynamic(
-  () => import("react-syntax-highlighter").then((mod) => mod.Prism),
+  () =>
+    import("../lib/syntax-highlighter").then((mod) => ({
+      default: mod.SyntaxHighlighter,
+    })),
   {
     ssr: false,
     loading: () => (
@@ -56,20 +59,16 @@ const SyntaxHighlighter = dynamic(
   },
 );
 
-// 动态导入样式（使用 vscDarkPlus 和 vs 替代 oneDark/oneLight）
-let darkTheme: Record<string, React.CSSProperties> = {};
-let lightTheme: Record<string, React.CSSProperties> = {};
+// 样式通过共享模块 ESM 导入（替代动态 CJS 导入）
+let oneDark: Record<string, React.CSSProperties> = {};
+let oneLight: Record<string, React.CSSProperties> = {};
 
 if (typeof window !== "undefined") {
-  import("react-syntax-highlighter/dist/cjs/styles/prism").then((styles) => {
-    darkTheme = styles.vscDarkPlus;
-    lightTheme = styles.vs;
+  import("../lib/syntax-highlighter").then((mod) => {
+    oneDark = mod.darkTheme;
+    oneLight = mod.lightTheme;
   });
 }
-
-// 为兼容性导出别名
-const oneDark = darkTheme;
-const oneLight = lightTheme;
 
 interface MdRendererProps {
   /** Markdown 内容 */
