@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FolderCardGrid, FolderListItem } from "./folder-card";
 import { FOLDER_GROUPS, UI_GROUP_KEYS, type UIFolderGroup } from "./constants";
+import { LazyImage } from "@/components/ui/lazy-image";
 import type {
   FolderWithStats,
   BookmarkWithFolder,
@@ -350,11 +351,14 @@ export function FolderContentArea({
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
                           {bookmark.cover_url ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
+                            <LazyImage
                               src={bookmark.cover_url}
                               alt={bookmark.title ?? ""}
-                              className="w-12 h-12 object-cover rounded flex-shrink-0"
+                              width={48}
+                              height={48}
+                              containerClassName="w-12 h-12 rounded flex-shrink-0"
+                              className="object-cover rounded"
+                              sizes="48px"
                             />
                           ) : (
                             <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center flex-shrink-0">

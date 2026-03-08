@@ -24,6 +24,7 @@ import { formatFriendlyDate } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { PlatformBadge } from "@/components/ui/platform-badge";
+import { LazyImage } from "@/components/ui/lazy-image";
 
 interface TrashBookmarkCardProps {
   bookmark: Bookmark & {
@@ -66,7 +67,10 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
   // 生成封面图
   const coverImage =
     getProxiedImageUrl(bookmark.cover_url) ||
-    generatePlaceholderImage(bookmark.title ?? "", bookmark.platform as Platform);
+    generatePlaceholderImage(
+      bookmark.title ?? "",
+      bookmark.platform as Platform,
+    );
 
   // 计算剩余天数
   const remainingDays = calculateRemainingDays(bookmark.trashed_at);
@@ -187,16 +191,15 @@ export const TrashBookmarkCard = memo(function TrashBookmarkCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* 封面图 - 使用原生 img 避免外部域名配置 */}
+        {/* 封面图 */}
         {coverImage && (
           <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <LazyImage
               src={coverImage}
               alt={bookmark.title ?? ""}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              decoding="async"
+              containerClassName="w-full h-full"
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
         )}

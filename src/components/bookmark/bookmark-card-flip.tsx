@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
+import { LazyImage } from "@/components/ui/lazy-image";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
 import "./bookmark-card-flip.css";
@@ -166,13 +167,12 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
         <div className="h-full hover:shadow-md transition-shadow cursor-pointer flex flex-col group relative bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           {/* 使用原始卡片布局 */}
           <div className="relative aspect-video overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <LazyImage
               src={coverImage}
               alt={bookmark.title ?? ""}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              decoding="async"
+              containerClassName="w-full h-full"
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
             <div className="absolute top-2 left-2">
               <PlatformBadge
@@ -234,13 +234,12 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
 
             {/* 封面图 - P0.1: 16:9 + 顶部对齐 */}
             <div className="relative aspect-video overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LazyImage
                 src={coverImage}
                 alt={bookmark.title ?? ""}
-                className="w-full h-full object-cover card-cover-top card-cover-zoom"
-                loading="lazy"
-                decoding="async"
+                containerClassName="w-full h-full"
+                className="object-cover card-cover-top card-cover-zoom"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
 
               {/* 平台标识 - P0.5: 放大 + 固定左上角 */}
