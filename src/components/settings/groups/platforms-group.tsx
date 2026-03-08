@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   SettingsGroupSection,
@@ -18,7 +19,9 @@ export function PlatformsGroup({ settings }: PlatformsGroupProps) {
   const t = useUiText();
 
   const handlePlatformAuth = (platform: string) => {
-    alert(t.settings.platformAuth.comingSoon.replace("{platform}", platform));
+    toast.info(
+      t.settings.platformAuth.comingSoon.replace("{platform}", platform),
+    );
   };
 
   return (

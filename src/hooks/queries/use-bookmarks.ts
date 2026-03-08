@@ -556,7 +556,7 @@ export function useToggleStar() {
       id: number;
       isStarred: boolean;
     }) => {
-      const response = await fetch(`/api/bookmarks/${id}`, {
+      const response = await fetch(API_PATHS.bookmarks.detail(id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isStarred }),
@@ -611,7 +611,7 @@ export function useToggleRead() {
 
   return useMutation({
     mutationFn: async ({ id, isRead }: { id: number; isRead: boolean }) => {
-      const response = await fetch(`/api/bookmarks/${id}`, {
+      const response = await fetch(API_PATHS.bookmarks.detail(id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isRead }),

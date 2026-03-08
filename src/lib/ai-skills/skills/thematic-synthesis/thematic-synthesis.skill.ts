@@ -366,11 +366,15 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
 
     // 根据来源类型查询书签
     if (input.sourceType === "folder" && input.sourceId) {
+      const folderId = parseInt(input.sourceId, 10);
+      if (Number.isNaN(folderId) || folderId <= 0) {
+        return { bookmarks: [], estimatedTokens: 0, needsTruncation: false };
+      }
       const { data } = await supabase
         .from("bookmarks")
         .select("id, title, url, description, ai_summary, platform, created_at")
         .eq("user_id", userId)
-        .eq("folder_id", parseInt(input.sourceId, 10))
+        .eq("folder_id", folderId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -410,7 +414,9 @@ export class ThematicSynthesisSkill extends OrchestrationSkill<
         .eq("user_id", userId)
         .in(
           "id",
-          input.bookmarkIds.map((id) => parseInt(id, 10)),
+          input.bookmarkIds
+            .map((id) => parseInt(id, 10))
+            .filter((id) => !Number.isNaN(id) && id > 0),
         );
 
       bookmarks = (data || []).map((b) => ({

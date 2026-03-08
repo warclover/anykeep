@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 import { useUiText } from "@/lib/i18n";
@@ -47,7 +48,7 @@ export function useAccountActions({ userEmail }: UseAccountActionsParams) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : t.settings.export.failed;
-      alert(message);
+      toast.error(message);
       clientLogger.error({ error: message }, "Failed to export data");
     } finally {
       setExporting(false);
@@ -61,7 +62,7 @@ export function useAccountActions({ userEmail }: UseAccountActionsParams) {
     if (!confirmEmail) return;
 
     if (confirmEmail !== userEmail) {
-      alert(t.settings.deleteAccount.emailMismatch);
+      toast.error(t.settings.deleteAccount.emailMismatch);
       return;
     }
 
@@ -81,14 +82,14 @@ export function useAccountActions({ userEmail }: UseAccountActionsParams) {
         );
       }
 
-      alert(t.settings.deleteAccount.deleted);
+      toast.success(t.settings.deleteAccount.deleted);
       router.push("/login");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : t.settings.deleteAccount.failed;
-      alert(message);
+      toast.error(message);
       clientLogger.error({ error: message }, "Failed to delete account");
     } finally {
       setDeleting(false);

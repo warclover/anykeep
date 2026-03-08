@@ -36,6 +36,7 @@ import { fetchWithRetry } from "@/lib/utils/fetch-with-retry";
 import { useFolders } from "@/hooks/data";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import { confirmationKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
 // 类型定义
@@ -70,7 +71,7 @@ interface ApiConfirmation {
 // Fetcher
 // ============================================================================
 
-const CONFIRMATIONS_QUERY_KEY = ["pending-confirmations"] as const;
+const CONFIRMATIONS_QUERY_KEY = confirmationKeys.all;
 
 async function fetchPendingConfirmations(): Promise<ConfirmationMessage[]> {
   const confirmationsRes = await fetchWithRetry(

@@ -338,3 +338,20 @@ export const trustModeKeys = {
   all: ["trustMode"] as const,
   current: () => [...trustModeKeys.all, "current"] as const,
 };
+
+/**
+ * AI Related Content Query Keys (AI 相关内容推荐)
+ */
+export const aiRelatedContentKeys = {
+  all: ["ai-related-content"] as const,
+  byBookmark: (bookmarkId: number, maxItems: number) =>
+    [...aiRelatedContentKeys.all, bookmarkId, maxItems] as const,
+};
+
+/**
+ * Pending Confirmations Query Keys (待确认分类建议)
+ */
+export const confirmationKeys = {
+  all: ["pending-confirmations"] as const,
+  list: () => [...confirmationKeys.all] as const,
+};

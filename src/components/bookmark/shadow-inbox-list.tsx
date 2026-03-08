@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Virtuoso } from "react-virtuoso";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import { Loader2, Inbox } from "lucide-react";
 import { ShadowBookmarkCard } from "./shadow-bookmark-card";
 import { ShadowBatchToolbar } from "./shadow-batch-toolbar";
@@ -50,7 +51,7 @@ export function ShadowInboxList({
   const loadInbox = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/classification/v5/shadow/inbox");
+      const response = await fetch(API_CLASSIFICATION.shadowInbox);
 
       if (!response.ok) {
         throw new Error("Failed to load inbox");
@@ -109,7 +110,7 @@ export function ShadowInboxList({
     async (id: number) => {
       try {
         setIsOperating(true);
-        const response = await fetch("/api/classification/v5/shadow/confirm", {
+        const response = await fetch(API_CLASSIFICATION.shadowConfirm, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bookmarkIds: [id] }),
@@ -150,7 +151,7 @@ export function ShadowInboxList({
     async (id: number) => {
       try {
         setIsOperating(true);
-        const response = await fetch("/api/classification/v5/shadow/reject", {
+        const response = await fetch(API_CLASSIFICATION.shadowReject, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bookmarkIds: [id] }),
@@ -194,7 +195,7 @@ export function ShadowInboxList({
       setIsOperating(true);
       const bookmarkIds = Array.from(selectedIds);
 
-      const response = await fetch("/api/classification/v5/shadow/confirm", {
+      const response = await fetch(API_CLASSIFICATION.shadowConfirm, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarkIds }),
@@ -240,7 +241,7 @@ export function ShadowInboxList({
       setIsOperating(true);
       const bookmarkIds = Array.from(selectedIds);
 
-      const response = await fetch("/api/classification/v5/shadow/reject", {
+      const response = await fetch(API_CLASSIFICATION.shadowReject, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarkIds }),

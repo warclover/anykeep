@@ -293,6 +293,21 @@ export const API_CLASSIFICATION = {
   stage: "/api/classification/stage",
 
   // =====================================================
+  // v5 独占端点（独立功能模块，active）
+  // =====================================================
+
+  /** 熵分析 */
+  entropyAnalysis: "/api/classification/v5/entropy/analysis",
+  /** 分类指标 */
+  metrics: "/api/classification/v5/metrics",
+  /** 影子收件箱 */
+  shadowInbox: "/api/classification/v5/shadow/inbox",
+  /** 影子确认 */
+  shadowConfirm: "/api/classification/v5/shadow/confirm",
+  /** 影子拒绝 */
+  shadowReject: "/api/classification/v5/shadow/reject",
+
+  // =====================================================
   // 已废弃路径（保留用于向后兼容，通过 rewrite 重定向）
   // @deprecated 请使用合并后的端点
   // =====================================================

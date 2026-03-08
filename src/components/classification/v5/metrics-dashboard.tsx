@@ -7,14 +7,34 @@
  * - 支持时间范围筛选
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, TrendingUp, TrendingDown, Clock, DollarSign, Target } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import {
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  DollarSign,
+  Target,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * 指标摘要类型
@@ -57,7 +77,7 @@ export function MetricsDashboard() {
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<string>('7');
+  const [timeRange, setTimeRange] = useState<string>("7");
 
   /**
    * 加载指标数据
@@ -68,16 +88,18 @@ export function MetricsDashboard() {
       setError(null);
 
       try {
-        const response = await fetch(`/api/classification/v5/metrics?days=${timeRange}`);
+        const response = await fetch(
+          `${API_CLASSIFICATION.metrics}?days=${timeRange}`,
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch metrics');
+          throw new Error("Failed to fetch metrics");
         }
 
         const data = await response.json();
         setMetrics(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setIsLoading(false);
       }
@@ -146,9 +168,7 @@ export function MetricsDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">分类指标</h2>
-          <p className="text-muted-foreground">
-            智能分类 v5.0 性能监控
-          </p>
+          <p className="text-muted-foreground">智能分类 v5.0 性能监控</p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-32">
@@ -179,11 +199,15 @@ export function MetricsDashboard() {
           value={
             metrics.t0.accuracy !== null
               ? `${(metrics.t0.accuracy * 100).toFixed(1)}%`
-              : 'N/A'
+              : "N/A"
           }
           icon={<TrendingUp className="h-4 w-4" />}
           description={`${metrics.t0.count} 次分类`}
-          trend={metrics.t0.accuracy !== null && metrics.t0.accuracy >= 0.85 ? 'up' : 'down'}
+          trend={
+            metrics.t0.accuracy !== null && metrics.t0.accuracy >= 0.85
+              ? "up"
+              : "down"
+          }
         />
 
         {/* T0 平均延迟 */}
@@ -192,7 +216,7 @@ export function MetricsDashboard() {
           value={`${metrics.t0.avgLatency}ms`}
           icon={<Clock className="h-4 w-4" />}
           description={`P95: ${metrics.t0.p95Latency}ms`}
-          trend={metrics.t0.avgLatency < 500 ? 'up' : 'down'}
+          trend={metrics.t0.avgLatency < 500 ? "up" : "down"}
         />
 
         {/* 总成本 */}
@@ -224,7 +248,7 @@ export function MetricsDashboard() {
               value={
                 metrics.t1.accuracy !== null
                   ? `${(metrics.t1.accuracy * 100).toFixed(1)}%`
-                  : 'N/A'
+                  : "N/A"
               }
             />
             <MetricRow
@@ -262,8 +286,14 @@ export function MetricsDashboard() {
             />
             <MetricRow
               label="降级分类"
-              value={(metrics.degradation.v4Count + metrics.degradation.ruleCount).toString()}
-              badge={metrics.degradation.degradationRate > 0.05 ? 'warning' : 'default'}
+              value={(
+                metrics.degradation.v4Count + metrics.degradation.ruleCount
+              ).toString()}
+              badge={
+                metrics.degradation.degradationRate > 0.05
+                  ? "warning"
+                  : "default"
+              }
             />
           </CardContent>
         </Card>
@@ -286,7 +316,7 @@ function MetricCard({
   value: string;
   icon: React.ReactNode;
   description?: string;
-  trend?: 'up' | 'down';
+  trend?: "up" | "down";
 }) {
   return (
     <Card>
@@ -298,8 +328,12 @@ function MetricCard({
         <div className="text-2xl font-bold">{value}</div>
         {description && (
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-            {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-600" />}
-            {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-600" />}
+            {trend === "up" && (
+              <TrendingUp className="h-3 w-3 text-green-600" />
+            )}
+            {trend === "down" && (
+              <TrendingDown className="h-3 w-3 text-red-600" />
+            )}
             {description}
           </p>
         )}
@@ -318,7 +352,7 @@ function MetricRow({
 }: {
   label: string;
   value: string;
-  badge?: 'success' | 'warning' | 'default';
+  badge?: "success" | "warning" | "default";
 }) {
   return (
     <div className="flex items-center justify-between">
@@ -327,11 +361,17 @@ function MetricRow({
         <span className="text-sm font-medium">{value}</span>
         {badge && (
           <Badge
-            variant={badge === 'success' ? 'default' : badge === 'warning' ? 'destructive' : 'outline'}
+            variant={
+              badge === "success"
+                ? "default"
+                : badge === "warning"
+                  ? "destructive"
+                  : "outline"
+            }
             className="h-5 px-1.5 text-xs"
           >
-            {badge === 'success' && '正常'}
-            {badge === 'warning' && '警告'}
+            {badge === "success" && "正常"}
+            {badge === "warning" && "警告"}
           </Badge>
         )}
       </div>

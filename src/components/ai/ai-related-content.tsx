@@ -11,6 +11,7 @@
 
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { aiRelatedContentKeys } from "@/hooks/queries/keys";
 import {
   Compass,
   RefreshCw,
@@ -117,7 +118,7 @@ export function AIRelatedContent({
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey: ["ai-related-content", bookmarkId, maxItems],
+    queryKey: aiRelatedContentKeys.byBookmark(bookmarkId, maxItems),
     queryFn: () => fetchRelatedBookmarks(bookmarkId, maxItems),
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -127,7 +128,7 @@ export function AIRelatedContent({
 
   const fetchRelatedContent = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: ["ai-related-content", bookmarkId, maxItems],
+      queryKey: aiRelatedContentKeys.byBookmark(bookmarkId, maxItems),
     });
     void refetch();
   }, [queryClient, refetch, bookmarkId, maxItems]);

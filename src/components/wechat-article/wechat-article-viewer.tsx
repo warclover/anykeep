@@ -49,6 +49,7 @@ import { WechatArticleImages } from "./wechat-article-images";
 import { WechatArticleStatus } from "./wechat-article-status";
 import { ReaderToolbar } from "./reader-toolbar";
 import { StyleSelector } from "./style-selector";
+import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 
 // =============================================================================
@@ -227,7 +228,7 @@ export function WechatArticleViewer({
       onDeleted?.();
     } catch (err) {
       clientLogger.error({ error: err }, "[WechatArticleViewer] Delete failed");
-      alert(err instanceof Error ? err.message : "删除失败");
+      toast.error(err instanceof Error ? err.message : "删除失败");
     } finally {
       setIsDeleting(false);
     }
