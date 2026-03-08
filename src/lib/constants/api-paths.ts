@@ -98,6 +98,15 @@ export const API_TTS = {
 } as const;
 
 // ============================================
+// 数据统计
+// ============================================
+
+export const API_ANALYTICS = {
+  /** 统计数据 */
+  stats: "/api/analytics/stats",
+} as const;
+
+// ============================================
 // 书签管理 (v1 API 优先，旧版 API 保留用于独有功能)
 // ============================================
 
@@ -186,6 +195,24 @@ export const API_BOOKMARKS = {
    * 旧版批量标签路径
    */
   legacyBatchTags: "/api/bookmarks/batch-tags",
+} as const;
+
+// ============================================
+// 批量分类
+// ============================================
+
+export const API_BATCH_CLASSIFICATION = {
+  /** 启动批量分类 */
+  start: "/api/batch-classification/start",
+  /** 分类结果 */
+  results: (batchId: string) => `/api/batch-classification/${batchId}/results`,
+  /** 分类进度 */
+  progress: (batchId: string) =>
+    `/api/batch-classification/${batchId}/progress`,
+  /** 确认分类 */
+  confirm: (batchId: string) => `/api/batch-classification/${batchId}/confirm`,
+  /** 撤销分类 */
+  undo: (batchId: string) => `/api/batch-classification/${batchId}/undo`,
 } as const;
 
 // ============================================
@@ -361,6 +388,30 @@ export const API_CONFIRMATIONS = {
 } as const;
 
 // ============================================
+// 对话管理
+// ============================================
+
+export const API_CONVERSATIONS = {
+  /** 对话列表/创建 */
+  list: "/api/conversations",
+  /** 对话详情/删除 */
+  detail: (id: string) => `/api/conversations/${id}`,
+  /** 对话消息列表 */
+  messages: (id: string) => `/api/conversations/${id}/messages`,
+} as const;
+
+// ============================================
+// 文件夹分类
+// ============================================
+
+export const API_FOLDER_CATEGORIES = {
+  /** 分类列表/创建 */
+  list: "/api/folder-categories",
+  /** 分类详情/更新/删除 */
+  detail: (id: number) => `/api/folder-categories/${id}`,
+} as const;
+
+// ============================================
 // 文件夹管理
 // ============================================
 
@@ -393,6 +444,8 @@ export const API_FOLDERS = {
   reorder: "/api/folders/reorder",
   /** 建议 */
   suggestions: "/api/folders/suggestions",
+  /** 文件夹统计（含最近书签） */
+  withStats: "/api/folders/with-stats",
 } as const;
 
 // ============================================
@@ -429,6 +482,63 @@ export const API_KNOWLEDGE_LINK = {
   // [已移除] graphStats - 知识图谱精简重构 2026-01-29
   /** 相关内容 */
   related: (bookmarkId: number) => `/api/knowledge-link/related/${bookmarkId}`,
+} as const;
+
+// ============================================
+// 知识工坊
+// ============================================
+
+export const API_KNOWLEDGE_STUDIO = {
+  // =====================================================
+  // v1 端点
+  // =====================================================
+
+  /** 生成报告 (v1) */
+  generate: "/api/knowledge-studio/generate",
+  /** 报告列表 */
+  reports: "/api/knowledge-studio/reports",
+  /** 报告编辑 */
+  reportEdit: (id: string) => `/api/knowledge-studio/reports/${id}/edit`,
+  /** 配额查询 */
+  quota: "/api/knowledge-studio/quota",
+  /** 素材管理 */
+  materials: "/api/knowledge-studio/materials",
+  /** 使用分析 */
+  analytics: "/api/knowledge-studio/analytics",
+
+  // =====================================================
+  // v2 端点
+  // =====================================================
+
+  /** 浓缩提炼 (v2) */
+  v2Condense: "/api/knowledge-studio/v2/condense",
+  /** 生成报告 (v2) */
+  v2Generate: "/api/knowledge-studio/v2/generate",
+  /** 迭代优化 (v2) */
+  v2Iterate: "/api/knowledge-studio/v2/iterate",
+  /** 大纲生成 (v2) */
+  v2Outline: "/api/knowledge-studio/v2/outline",
+  /** 语音合成 (v2) */
+  v2Tts: "/api/knowledge-studio/v2/tts",
+  /** 风格适配 (v2) */
+  v2AdaptStyle: "/api/knowledge-studio/v2/adapt-style",
+  /** 使用量记录 (v2) */
+  v2UsageRecord: "/api/knowledge-studio/v2/usage/record",
+  /** 蓝图列表 (v2) */
+  v2Blueprints: "/api/knowledge-studio/v2/blueprints",
+  /** 蓝图推荐 (v2) */
+  v2RecommendBlueprints: "/api/knowledge-studio/v2/recommendations/blueprints",
+  /** 素材推荐 (v2) */
+  v2RecommendMaterials: "/api/knowledge-studio/v2/recommendations/materials",
+
+  // =====================================================
+  // 账单
+  // =====================================================
+
+  /** 账单列表 */
+  billingBills: "/api/knowledge-studio/billing/bills",
+  /** 用量统计 */
+  billingUsage: "/api/knowledge-studio/billing/usage",
 } as const;
 
 // ============================================
@@ -568,10 +678,53 @@ export const API_SUMMARY = {
 } as const;
 
 // ============================================
+// 主题合成
+// ============================================
+
+export const API_SYNTHESIS = {
+  /** 合成列表/创建 */
+  list: "/api/synthesis",
+  /** 合成详情 */
+  detail: (id: string) => `/api/synthesis/${id}`,
+  /** 生成合成 */
+  generate: "/api/synthesis/generate",
+  /** 预览 */
+  preview: "/api/synthesis/preview",
+  /** 问答 */
+  qa: "/api/synthesis/qa",
+  /** 取消生成 */
+  cancel: (id: string) => `/api/synthesis/${id}/cancel`,
+  /** 导出 */
+  export: (id: string) => `/api/synthesis/${id}/export`,
+  /** 高亮列表 */
+  highlights: (id: string) => `/api/synthesis/${id}/highlights`,
+  /** 高亮详情 */
+  highlightDetail: (id: string, highlightId: string) =>
+    `/api/synthesis/${id}/highlights/${highlightId}`,
+  /** 重新生成 */
+  regenerate: (id: string) => `/api/synthesis/${id}/regenerate`,
+
+  // =====================================================
+  // 推荐
+  // =====================================================
+
+  /** 推荐列表 */
+  recommend: "/api/synthesis/recommend",
+  /** 推荐已展示 */
+  recommendShown: "/api/synthesis/recommend/shown",
+  /** 忽略推荐 */
+  recommendDismiss: "/api/synthesis/recommend/dismiss",
+  /** 推荐偏好 */
+  recommendPreferences: "/api/synthesis/recommend/preferences",
+} as const;
+
+// ============================================
 // 标签
 // ============================================
 
 export const API_TAGS = {
+  /** 标签列表 */
+  list: "/api/tags",
   /** 相关标签 */
   related: (tag: string) => `/api/tags/${encodeURIComponent(tag)}/related`,
   /** 标签图谱 */
@@ -589,6 +742,10 @@ export const API_USER = {
   delete: "/api/user/delete",
   /** 导出数据 */
   export: "/api/user/export",
+  /** 引导设置 */
+  onboarding: "/api/user/onboarding",
+  /** AI 人设 */
+  persona: "/api/user/persona",
   /** 用户设置 */
   settings: "/api/user/settings",
   /** 摘要模式 */
@@ -723,14 +880,19 @@ export const API_PATHS = {
   agent: API_AGENT,
   ai: API_AI,
   admin: API_ADMIN,
+  analytics: API_ANALYTICS,
+  batchClassification: API_BATCH_CLASSIFICATION,
   bookmarks: API_BOOKMARKS,
   browserBookmark: API_BROWSER_BOOKMARK,
   classification: API_CLASSIFICATION,
   confirmations: API_CONFIRMATIONS,
+  conversations: API_CONVERSATIONS,
+  folderCategories: API_FOLDER_CATEGORIES,
   folders: API_FOLDERS,
   folderEvolution: API_FOLDER_EVOLUTION,
   internal: API_INTERNAL,
   knowledgeLink: API_KNOWLEDGE_LINK,
+  knowledgeStudio: API_KNOWLEDGE_STUDIO,
   learning: API_LEARNING,
   mdCollections: API_MD_COLLECTIONS,
   messages: API_MESSAGES,
@@ -741,6 +903,7 @@ export const API_PATHS = {
   smartLists: API_SMART_LISTS,
   snapshots: API_SNAPSHOTS,
   summary: API_SUMMARY,
+  synthesis: API_SYNTHESIS,
   tags: API_TAGS,
   tts: API_TTS,
   user: API_USER,

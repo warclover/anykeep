@@ -12,6 +12,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -327,7 +328,7 @@ export function ContentAnalysisCreateClient() {
         bookmarkIds: Array.from(selectedIds),
       };
 
-      const response = await fetch("/api/synthesis", {
+      const response = await fetch(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

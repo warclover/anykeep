@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import { Sparkles, Loader2, Plus, Link2, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -115,7 +116,7 @@ export function MaterialRecommendations({
         setError(null);
 
         const response = await fetch(
-          "/api/knowledge-studio/v2/recommendations/materials",
+          API_KNOWLEDGE_STUDIO.v2RecommendMaterials,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

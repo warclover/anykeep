@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { clientLogger } from "@/lib/client-logger";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type {
   BlueprintType,
   StreamChunk,
@@ -200,7 +201,7 @@ export function useGeneration(
         setStatus("generating");
 
         // 发起 SSE 请求
-        const response = await fetch("/api/knowledge-studio/generate", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.generate, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

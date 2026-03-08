@@ -18,6 +18,7 @@ import {
   type ImportBatch,
   type ImportSessionStatus,
 } from "./import-cache";
+import { API_BATCH_CLASSIFICATION } from "@/lib/constants/api-paths";
 import type {
   BrowserBookmarkImportOptions,
   ImportProgress,
@@ -428,7 +429,7 @@ export class ImportSessionManager {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch("/api/batch-classification/start", {
+        const response = await fetch(API_BATCH_CLASSIFICATION.start, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

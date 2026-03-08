@@ -11,6 +11,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import type {
   SynthesisSSEEvent,
   SynthesisProgressData,
@@ -103,7 +104,7 @@ export function useSynthesisStream(): UseSynthesisStreamResult {
     abortControllerRef.current = abortController;
 
     // 发起 SSE 请求
-    fetch("/api/synthesis/generate", {
+    fetch(API_SYNTHESIS.generate, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -252,7 +253,7 @@ export function useSynthesisStream(): UseSynthesisStreamResult {
       }
 
       // 通知服务端取消
-      const response = await fetch(`/api/synthesis/${reportId}/cancel`, {
+      const response = await fetch(API_SYNTHESIS.cancel(reportId), {
         method: "POST",
       });
 

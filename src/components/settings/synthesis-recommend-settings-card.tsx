@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { Lightbulb, RefreshCw, Trash2 } from "lucide-react";
 import {
   Card,
@@ -57,7 +58,7 @@ export function SynthesisRecommendSettingsCard() {
   // 清除已忽略的主题
   const handleClearDismissed = async () => {
     try {
-      const response = await fetch("/api/synthesis/recommend/preferences", {
+      const response = await fetch(API_SYNTHESIS.recommendPreferences, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

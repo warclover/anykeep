@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import {
   Clock,
   TrendingUp,
@@ -110,7 +111,7 @@ export function BlueprintRecommendations({
         if (hasMaterials) {
           // P1-3: 基于素材的智能推荐
           const response = await fetch(
-            "/api/knowledge-studio/v2/recommendations/blueprints",
+            API_KNOWLEDGE_STUDIO.v2RecommendBlueprints,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -128,7 +129,7 @@ export function BlueprintRecommendations({
         } else {
           // 历史/热门推荐
           const response = await fetch(
-            "/api/knowledge-studio/v2/recommendations/blueprints",
+            API_KNOWLEDGE_STUDIO.v2RecommendBlueprints,
           );
 
           if (!response.ok) {

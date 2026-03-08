@@ -16,6 +16,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { API_CONVERSATIONS } from "@/lib/constants/api-paths";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import { conversationStorage } from "@/lib/storage/conversation-storage";
 
@@ -196,7 +197,7 @@ export function useConversationHistory(): UseConversationHistoryReturn {
 
       try {
         const response = await fetch(
-          `/api/conversations?limit=${PAGE_SIZE}&offset=${offset}`,
+          `${API_CONVERSATIONS.list}?limit=${PAGE_SIZE}&offset=${offset}`,
           {
             signal: abortControllerRef.current.signal,
           },
@@ -254,7 +255,7 @@ export function useConversationHistory(): UseConversationHistoryReturn {
       }));
 
       try {
-        const response = await fetch(`/api/conversations/${id}`);
+        const response = await fetch(API_CONVERSATIONS.detail(id));
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -310,7 +311,7 @@ export function useConversationHistory(): UseConversationHistoryReturn {
     }));
 
     try {
-      const response = await fetch("/api/conversations", {
+      const response = await fetch(API_CONVERSATIONS.list, {
         method: "POST",
       });
 
@@ -361,7 +362,7 @@ export function useConversationHistory(): UseConversationHistoryReturn {
   const deleteConversation = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/conversations/${id}`, {
+        const response = await fetch(API_CONVERSATIONS.detail(id), {
           method: "DELETE",
         });
 

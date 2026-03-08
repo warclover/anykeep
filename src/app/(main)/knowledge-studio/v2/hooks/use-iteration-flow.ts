@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type { PlatformStyle } from "@/lib/knowledge-studio/v2/constants";
 import type { BlueprintOutline } from "@/lib/knowledge-studio/blueprint/types";
 import type { DraftFeedback } from "@/lib/knowledge-studio/iteration";
@@ -55,7 +56,7 @@ export function useIterationFlow({
       try {
         iterateAbortRef.current = new AbortController();
 
-        const response = await fetch("/api/knowledge-studio/v2/iterate", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.v2Iterate, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

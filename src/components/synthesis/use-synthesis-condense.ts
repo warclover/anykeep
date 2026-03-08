@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import {
@@ -47,7 +48,7 @@ export function useSynthesisCondense({
       setCondensedPreview("");
 
       try {
-        const res = await fetch("/api/knowledge-studio/v2/condense", {
+        const res = await fetch(API_KNOWLEDGE_STUDIO.v2Condense, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

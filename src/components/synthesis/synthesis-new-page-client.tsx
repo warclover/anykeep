@@ -19,6 +19,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -277,7 +278,7 @@ export function SynthesisNewPageClient() {
         requestBody.excludedBookmarkIds = excludedIds;
       }
 
-      const response = await fetch("/api/synthesis", {
+      const response = await fetch(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

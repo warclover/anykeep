@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type { Ks2TextFn } from "../utils";
 
 interface UseCondenseFlowParams {
@@ -45,7 +46,7 @@ export function useCondenseFlow({
       try {
         condenseAbortRef.current = new AbortController();
 
-        const response = await fetch("/api/knowledge-studio/v2/condense", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.v2Condense, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -143,7 +144,7 @@ export function useCondenseFlow({
 
     setIsSavingCondensed(true);
     try {
-      const response = await fetch("/api/knowledge-studio/reports", {
+      const response = await fetch(API_KNOWLEDGE_STUDIO.reports, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

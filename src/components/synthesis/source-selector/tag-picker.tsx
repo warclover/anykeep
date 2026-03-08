@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { API_SYNTHESIS, API_TAGS } from "@/lib/constants/api-paths";
 import { Tag, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ export function TagPicker({
     async function loadTags() {
       try {
         // 使用热门标签 API，但获取更多数量
-        const response = await fetch("/api/tags?limit=100");
+        const response = await fetch(`${API_TAGS.list}?limit=100`);
         if (response.ok) {
           const result = await response.json();
           setTags(result.data || []);
@@ -78,7 +79,7 @@ export function TagPicker({
       setIsLoadingPreview(true);
       try {
         const response = await fetch(
-          `/api/synthesis/preview?sourceType=tag&sourceId=${encodeURIComponent(tagToLoad)}&pageSize=1`,
+          `${API_SYNTHESIS.preview}?sourceType=tag&sourceId=${encodeURIComponent(tagToLoad)}&pageSize=1`,
         );
         const result = await response.json();
         setPreviewStats(result.contentStats);

@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import {
   Card,
   CardContent,
@@ -305,7 +306,7 @@ export function BillingPageClient() {
   // 获取账单列表
   const fetchBills = useCallback(async () => {
     try {
-      const res = await fetch("/api/knowledge-studio/billing/bills?limit=10");
+      const res = await fetch(`${API_KNOWLEDGE_STUDIO.billingBills}?limit=10`);
       const json = await res.json();
       if (res.ok) {
         setBills(json.data || []);

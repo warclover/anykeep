@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import {
   createSseJsonLineParser,
   WAITING_MESSAGE_KEYS,
@@ -131,7 +132,7 @@ export function useGenerationFlow({
           answeredAt: new Date(),
         };
 
-        const response = await fetch("/api/knowledge-studio/v2/generate", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.v2Generate, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -353,7 +354,7 @@ export function useGenerationFlow({
         answeredAt: new Date(),
       };
 
-      const response = await fetch("/api/knowledge-studio/v2/outline", {
+      const response = await fetch(API_KNOWLEDGE_STUDIO.v2Outline, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

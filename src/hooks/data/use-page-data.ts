@@ -9,9 +9,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
 import type { Bookmark } from "@/types/supabase";
@@ -19,56 +17,11 @@ import type { UserSettings } from "@/types/user-settings";
 import { DEFAULT_USER_SETTINGS } from "@/types/user-settings";
 import type { FolderWithStats, FolderCategory } from "@/types/domain";
 import { folderKeys, analyticsKeys, settingsKeys } from "@/hooks/queries/keys";
-
-// ==================== 通用类型 ====================
-
-interface DataState<T> {
-  data: T | null;
-  isLoading: boolean;
-  error: string | null;
-  lastFetched: number;
-}
-
-// 本地类型定义（绕过 Supabase 类型推断问题）
-interface _FolderRow {
-  id: number;
-  user_id: string;
-  name: string;
-  parent_id: number | null;
-  is_system: boolean;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  is_archived: boolean | null;
-  is_locked?: boolean | null;
-  folder_group: string | null;
-  sort_order: number | null;
-  system_type: string | null;
-  source?: string | null;
-}
-
-interface _BookmarkCountRow {
-  folder_id: number | null;
-  created_at: string | null;
-}
-
-interface _RecentBookmarkRow {
-  id: number;
-  title: string | null;
-  url: string | null;
-  platform: string | null;
-  created_at: string | null;
-  folders: { name: string } | null;
-}
-
-interface _AnalyticsBookmarkRow {
-  id: number;
-  platform: string | null;
-  folder_id: number | null;
-  created_at: string | null;
-  source_url?: string | null;
-  ai_tags?: string[] | null;
-}
+import {
+  API_ANALYTICS,
+  API_FOLDERS,
+  API_USER,
+} from "@/lib/constants/api-paths";
 
 // ==================== 收藏夹页面数据 ====================
 
@@ -83,7 +36,7 @@ interface FoldersData {
 
 async function fetchFoldersWithStats(): Promise<FoldersData> {
   const response = await fetch(
-    "/api/folders/with-stats?include_recent=true&recent_limit=6",
+    `${API_FOLDERS.withStats}?include_recent=true&recent_limit=6`,
   );
 
   if (!response.ok) {
@@ -134,42 +87,11 @@ export function useFoldersData() {
 
 import type { AnalyticsData } from "@/lib/analytics";
 
-// 保留类型导入供未来使用
-
-const _ANALYTICS_TREND_DAYS = 30;
-
-const _ANALYTICS_TOP_TAGS_COUNT = 15;
-
-/**
- * 创建空的 AnalyticsData 对象（保留供未来使用）
- */
-
-function _createEmptyAnalyticsData(): AnalyticsData {
-  return {
-    stats: {
-      totalBookmarks: 0,
-      contentBookmarks: 0,
-      browserBookmarks: 0,
-      todayCount: 0,
-      weekCount: 0,
-      last30DaysCount: 0,
-      unclassifiedCount: 0,
-      classificationRate: 0,
-    },
-    trendData: [],
-    platformData: [],
-    folderData: [],
-    tagData: [],
-    typeData: [],
-    generatedAt: new Date().toISOString(),
-  };
-}
-
 /**
  * 统计数据 fetcher
  */
 async function fetchAnalyticsStats(): Promise<AnalyticsData> {
-  const response = await fetch("/api/analytics/stats");
+  const response = await fetch(API_ANALYTICS.stats);
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -221,7 +143,7 @@ export function useAnalyticsData() {
  * 用户设置 fetcher
  */
 async function fetchUserSettings(): Promise<UserSettings> {
-  const response = await fetch("/api/user/settings");
+  const response = await fetch(API_USER.settings);
   const result = await response.json();
 
   if (!result.success) {
@@ -263,152 +185,5 @@ export function useSettingsData() {
     refetch: async () => {
       await refetch();
     },
-  };
-}
-
-// ==================== 搜索页面数据 ====================
-
-interface SearchData {
-  results: (Bookmark & { folders?: { name: string } | null })[];
-  hotTags: string[];
-}
-
-/**
- * 搜索页面数据获取 Hook
- */
-export function useSearchData(query: string, aiMode: boolean) {
-  const { user } = useUser();
-  const [state, setState] = useState<DataState<SearchData>>({
-    data: { results: [], hotTags: [] },
-    isLoading: false,
-    error: null,
-    lastFetched: 0,
-  });
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const fetchHotTags = useCallback(async () => {
-    if (!user) return [];
-
-    try {
-      const supabase = createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: bookmarks } = (await (supabase.from("bookmarks") as any)
-        .select("ai_tags")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .not("ai_tags", "is", null)
-        .limit(100)) as {
-        data: { ai_tags: string[] | null }[] | null;
-        error: Error | null;
-      };
-
-      if (!bookmarks) return [];
-
-      const tagCount = new Map<string, number>();
-      bookmarks.forEach((b) => {
-        b.ai_tags?.forEach((tag: string) => {
-          tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
-        });
-      });
-
-      return Array.from(tagCount.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([tag]) => tag);
-    } catch {
-      return [];
-    }
-  }, [user]);
-
-  const search = useCallback(
-    async (searchQuery: string) => {
-      if (!searchQuery.trim() || !user) {
-        setState((prev) => ({
-          ...prev,
-          data: { results: [], hotTags: prev.data?.hotTags || [] },
-          isLoading: false,
-        }));
-        return;
-      }
-
-      // 取消之前的请求
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-      try {
-        const params = new URLSearchParams({
-          q: searchQuery,
-          mode: aiMode ? "ai" : "text",
-        });
-
-        const res = await fetch(`/api/search?${params.toString()}`, {
-          signal: controller.signal,
-        });
-
-        if (!res.ok) throw new Error("搜索失败");
-
-        const result = await res.json();
-
-        setState((prev) => ({
-          data: {
-            results: result.data.bookmarks || [],
-            hotTags: prev.data?.hotTags || [],
-          },
-          isLoading: false,
-          error: null,
-          lastFetched: Date.now(),
-        }));
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: err instanceof Error ? err.message : "搜索失败",
-        }));
-      }
-    },
-    [user, aiMode],
-  );
-
-  // 初始加载热门标签
-  useEffect(() => {
-    fetchHotTags().then((hotTags) => {
-      setState((prev) => {
-        if (!prev.data) return prev;
-        return {
-          ...prev,
-          data: { ...prev.data, hotTags },
-        };
-      });
-    });
-  }, [fetchHotTags]);
-
-  // 搜索
-  useEffect(() => {
-    if (query) {
-      search(query);
-    }
-  }, [query, search]);
-
-  // 组件卸载时清理 AbortController
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, []);
-
-  return {
-    ...state,
-    search,
-    refetch: () => search(query),
   };
 }

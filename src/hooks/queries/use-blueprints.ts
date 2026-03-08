@@ -14,6 +14,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import { blueprintKeys } from "./keys";
 import type { BlueprintTier } from "@/lib/knowledge-studio/blueprint/types";
 
@@ -63,7 +64,7 @@ interface BlueprintListResponse {
  * 获取蓝图列表
  */
 async function fetchBlueprints(): Promise<BlueprintListResponse> {
-  const response = await fetch("/api/knowledge-studio/v2/blueprints");
+  const response = await fetch(API_KNOWLEDGE_STUDIO.v2Blueprints);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

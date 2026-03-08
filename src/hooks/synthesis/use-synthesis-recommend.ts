@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import type {
   RecommendedTopic,
   SynthesisRecommendPreferences,
@@ -83,9 +84,9 @@ export function useSynthesisRecommend(
     try {
       // 使用请求去重器，防止并发重复请求
       const data = await requestDeduplicator.dedupe(
-        "/api/synthesis/recommend",
+        API_SYNTHESIS.recommend,
         async () => {
-          const response = await fetch("/api/synthesis/recommend");
+          const response = await fetch(API_SYNTHESIS.recommend);
           if (!response.ok) {
             throw new Error("Failed to fetch recommendations");
           }
@@ -169,7 +170,7 @@ export function useSynthesisRecommend(
 
     // 更新显示计数
     try {
-      await fetch("/api/synthesis/recommend/shown", {
+      await fetch(API_SYNTHESIS.recommendShown, {
         method: "POST",
       });
     } catch {
@@ -209,7 +210,7 @@ export function useSynthesisRecommend(
 
       if (neverShowAgain && currentRecommend) {
         try {
-          await fetch("/api/synthesis/recommend/dismiss", {
+          await fetch(API_SYNTHESIS.recommendDismiss, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ topicId: currentRecommend.id }),
@@ -248,7 +249,7 @@ export function useSynthesisRecommend(
    */
   const toggleEnabled = useCallback(async (enabled: boolean) => {
     try {
-      const response = await fetch("/api/synthesis/recommend/preferences", {
+      const response = await fetch(API_SYNTHESIS.recommendPreferences, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),

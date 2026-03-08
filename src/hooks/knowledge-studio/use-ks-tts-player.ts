@@ -11,6 +11,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -116,7 +117,7 @@ export function useKSTTSPlayer() {
       abortControllerRef.current = new AbortController();
 
       try {
-        const response = await fetch("/api/knowledge-studio/v2/tts", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.v2Tts, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include", // 确保 cookies 被传递

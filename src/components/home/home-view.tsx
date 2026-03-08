@@ -35,6 +35,7 @@ import { useClassificationPolling } from "@/hooks/ui";
 import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { HomeToolbar } from "./home-toolbar";
 import { HomeContent } from "./home-content";
 import { useSnapshotFeature } from "@/components/snapshot";
@@ -365,7 +366,7 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
 
     setIsCreatingSynthesis(true);
     try {
-      const response = await fetchWithAbort("/api/synthesis", {
+      const response = await fetchWithAbort(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

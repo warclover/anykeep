@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type { MaterialQuality } from "@/lib/knowledge-studio";
 import { getQualityLevel } from "@/lib/knowledge-studio/client";
 import { clientLogger } from "@/lib/client-logger";
@@ -78,7 +79,7 @@ export function useMaterialHealth(): UseMaterialHealthReturn {
       maxRetries = 2,
     ): Promise<void> => {
       try {
-        const response = await fetch("/api/knowledge-studio/materials", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.materials, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bookmarkIds }),

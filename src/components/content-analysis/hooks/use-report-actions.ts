@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import type {
   SynthesisReportSummary,
   SynthesisDepthMode,
@@ -46,7 +47,7 @@ export function useReportActions({
         bookmarkIds: Array.from(selectedIds),
       };
 
-      const response = await fetch("/api/synthesis", {
+      const response = await fetch(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

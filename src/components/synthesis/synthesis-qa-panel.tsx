@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import {
   MessageCircle,
   Send,
@@ -112,7 +113,7 @@ export function SynthesisQAPanel({
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/synthesis/qa", {
+        const response = await fetch(API_SYNTHESIS.qa, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

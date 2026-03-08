@@ -7,6 +7,7 @@
  */
 
 import { useCallback } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 
 /**
  * Usage record parameters
@@ -51,7 +52,7 @@ export function useUsageTracking() {
     ): Promise<void> | void => {
       const doRecord = async (): Promise<void> => {
         try {
-          await fetch("/api/knowledge-studio/v2/usage/record", {
+          await fetch(API_KNOWLEDGE_STUDIO.v2UsageRecord, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -90,7 +91,7 @@ export async function recordBlueprintUsage(
   params: UsageRecordParams,
 ): Promise<void> {
   try {
-    await fetch("/api/knowledge-studio/v2/usage/record", {
+    await fetch(API_KNOWLEDGE_STUDIO.v2UsageRecord, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

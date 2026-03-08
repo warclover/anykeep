@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { useDialogs } from "@/hooks/core";
 // P0-2: 细粒度 Context 订阅（dialog + selection）
 import { useDialog, useSelection } from "@/contexts/home-page";
@@ -125,7 +126,7 @@ export function useHomeDialogs({
 
     setIsCreatingSynthesis(true);
     try {
-      const response = await fetch("/api/synthesis", {
+      const response = await fetch(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

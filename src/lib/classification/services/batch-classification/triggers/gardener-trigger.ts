@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { API_BATCH_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -208,7 +209,7 @@ export class GardenerTriggerService {
     }
 
     // 调用批量分类 API
-    const response = await fetch("/api/batch-classification/start", {
+    const response = await fetch(API_BATCH_CLASSIFICATION.start, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 
 /**
  * 配额信息
@@ -56,7 +57,7 @@ export function useQuota(): UseQuotaReturn {
     setError(null);
 
     try {
-      const response = await fetch("/api/knowledge-studio/quota");
+      const response = await fetch(API_KNOWLEDGE_STUDIO.quota);
 
       if (!response.ok) {
         const errorData = await response.json();

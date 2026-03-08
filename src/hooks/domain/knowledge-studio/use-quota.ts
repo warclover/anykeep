@@ -10,6 +10,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import { quotaKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
@@ -95,7 +96,7 @@ const STALE_TIME = 30 * 1000;
 // ============================================================================
 
 async function quotaFetcher(): Promise<QuotaData> {
-  const response = await fetch("/api/knowledge-studio/quota");
+  const response = await fetch(API_KNOWLEDGE_STUDIO.quota);
 
   if (!response.ok) {
     const error = await response.json();

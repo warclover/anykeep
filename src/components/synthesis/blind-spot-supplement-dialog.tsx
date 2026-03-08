@@ -16,6 +16,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 import {
   Dialog,
   DialogContent,
@@ -135,7 +136,7 @@ export function BlindSpotSupplementDialog({
 
     setIsFetchingMetadata(true);
     try {
-      const response = await fetch("/api/bookmarks/metadata", {
+      const response = await fetch(API_BOOKMARKS.metadata, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: inputUrl }),
@@ -182,7 +183,7 @@ export function BlindSpotSupplementDialog({
 
     setIsCreating(true);
     try {
-      const response = await fetch("/api/bookmarks", {
+      const response = await fetch(API_BOOKMARKS.legacyList, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

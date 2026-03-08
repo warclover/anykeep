@@ -11,6 +11,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type { PlatformStyle } from "@/lib/knowledge-studio/v2/constants";
 
 // ============================================
@@ -150,7 +151,7 @@ export function useAdaptStyle() {
       abortControllerRef.current = new AbortController();
 
       try {
-        const response = await fetch("/api/knowledge-studio/v2/adapt-style", {
+        const response = await fetch(API_KNOWLEDGE_STUDIO.v2AdaptStyle, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { API_FOLDERS, API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { Folder, Loader2, ChevronRight, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,7 +48,7 @@ export function FolderPicker({
   useEffect(() => {
     async function loadFolders() {
       try {
-        const response = await fetch("/api/folders");
+        const response = await fetch(API_FOLDERS.list);
         const result = await response.json();
         if (result.success) {
           setFolders(result.data || []);
@@ -72,7 +73,7 @@ export function FolderPicker({
       setIsLoadingPreview(true);
       try {
         const response = await fetch(
-          `/api/synthesis/preview?sourceType=folder&sourceId=${selectedFolderId}&pageSize=1`,
+          `${API_SYNTHESIS.preview}?sourceType=folder&sourceId=${selectedFolderId}&pageSize=1`,
         );
         const result = await response.json();
         setPreviewStats(result.contentStats);

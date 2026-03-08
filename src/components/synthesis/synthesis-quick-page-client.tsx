@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import type { SynthesisDepthMode, SynthesisOutputStyle } from "@/lib/synthesis";
 import { AdvancedSettingsPanel } from "./advanced-settings-panel";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BOOKMARKS, API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 // 书签类型
 interface BookmarkItem {
@@ -131,7 +132,7 @@ export function SynthesisQuickPageClient() {
           params.append("keyword", searchQuery);
         }
 
-        const response = await fetch(`/api/bookmarks?${params}`);
+        const response = await fetch(`${API_BOOKMARKS.legacyList}?${params}`);
         if (response.ok) {
           const result = await response.json();
           const newBookmarks = result.data?.bookmarks || [];
@@ -205,7 +206,7 @@ export function SynthesisQuickPageClient() {
         bookmarkIds: Array.from(selectedIds),
       };
 
-      const response = await fetch("/api/synthesis", {
+      const response = await fetch(API_SYNTHESIS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

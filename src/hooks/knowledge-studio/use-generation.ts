@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import type {
   BlueprintType,
   StreamChunk,
@@ -112,7 +113,7 @@ export function useGeneration(): UseGenerationReturn {
     setResult(null);
 
     try {
-      const response = await fetch("/api/knowledge-studio/generate", {
+      const response = await fetch(API_KNOWLEDGE_STUDIO.generate, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),

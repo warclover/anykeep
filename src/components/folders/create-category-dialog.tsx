@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
+import { API_FOLDER_CATEGORIES } from "@/lib/constants/api-paths";
 import {
   Dialog,
   DialogContent,
@@ -87,7 +88,7 @@ export function CreateCategoryDialog({
         return;
       }
 
-      const res = await fetchWithAbort("/api/folder-categories", {
+      const res = await fetchWithAbort(API_FOLDER_CATEGORIES.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validation.data),
