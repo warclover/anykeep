@@ -24,7 +24,6 @@ import type {
 } from "./types";
 import { extractReasoning, inferRiskLevel } from "./types";
 import { logger } from "@/lib/logger";
-import { toolEventEmitter } from "./events/tool-event-emitter";
 import { confirmationInterceptor } from "../safety/confirmation-interceptor";
 import { FeatureFlags } from "../config/feature-flags";
 
@@ -171,19 +170,6 @@ export class ToolRegistry {
     }
 
     const startTime = performance.now();
-    const toolCategory = tool.definition.category;
-    const riskLevel = inferRiskLevel(tool.definition);
-    const requiresConfirmation = tool.definition.requiresConfirmation ?? false;
-
-    // 发射工具调用开始事件
-    toolEventEmitter.emitCallStarted({
-      userId: context.userId,
-      toolName: name,
-      toolCategory,
-      requiresConfirmation,
-      riskLevel,
-      params: params as Record<string, unknown> | undefined,
-    });
 
     try {
       // 验证参数
@@ -211,27 +197,13 @@ export class ToolRegistry {
         );
 
         if (interceptResult.intercepted && interceptResult.confirmation) {
-          const executionTimeMs = Math.round(performance.now() - startTime);
-
-          // 发射工具调用拦截事件
-          toolEventEmitter.emitCallCompleted({
-            userId: context.userId,
-            toolName: name,
-            toolCategory,
-            success: true,
-            durationMs: executionTimeMs,
-            resultSummary: `操作需要确认: ${interceptResult.reason || "高风险操作"}`,
-            errorMessage: undefined,
-            errorCode: undefined,
-            retryable: false,
-          });
-
           logger.info(
             {
               toolName: name,
               userId: context.userId,
               confirmationId: interceptResult.confirmation.confirmationId,
               riskLevel: interceptResult.confirmation.riskLevel,
+              durationMs: Math.round(performance.now() - startTime),
             },
             "ToolRegistry: Tool execution intercepted for confirmation",
           );
@@ -255,23 +227,6 @@ export class ToolRegistry {
           executionTimeMs,
         };
       }
-
-      // 发射工具调用完成事件
-      toolEventEmitter.emitCallCompleted({
-        userId: context.userId,
-        toolName: name,
-        toolCategory,
-        success: result.success,
-        durationMs: executionTimeMs,
-        resultSummary: result.success
-          ? this.generateResultSummary(name, result.data)
-          : undefined,
-        errorMessage: result.success ? undefined : result.error,
-        errorCode: result.success ? undefined : result.errorCode,
-        retryable: result.success
-          ? undefined
-          : this.isRetryableError(result.errorCode),
-      });
 
       logger.info(
         {
@@ -298,18 +253,6 @@ export class ToolRegistry {
           "ToolRegistry: Parameter validation failed",
         );
 
-        // 发射工具调用完成事件（验证失败）
-        toolEventEmitter.emitCallCompleted({
-          userId: context.userId,
-          toolName: name,
-          toolCategory,
-          success: false,
-          durationMs: executionTimeMs,
-          errorMessage: `参数验证失败: ${error.issues.map((e) => e.message).join(", ")}`,
-          errorCode: "VALIDATION_ERROR",
-          retryable: false,
-        });
-
         return {
           success: false,
           error: `参数验证失败: ${error.issues.map((e) => e.message).join(", ")}`,
@@ -330,18 +273,6 @@ export class ToolRegistry {
         },
         "ToolRegistry: Tool execution failed",
       );
-
-      // 发射工具调用完成事件（执行失败）
-      toolEventEmitter.emitCallCompleted({
-        userId: context.userId,
-        toolName: name,
-        toolCategory,
-        success: false,
-        durationMs: executionTimeMs,
-        errorMessage,
-        errorCode: "EXECUTION_ERROR",
-        retryable: true,
-      });
 
       return {
         success: false,

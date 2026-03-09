@@ -695,11 +695,6 @@ export const AI_COMPONENTS = {
         TITLE: "最近对话",
         EMPTY: "暂无对话记录",
       },
-      PENDING: {
-        TITLE: "待办事项",
-        EMPTY: "暂无待办事项",
-        COMPLETE: "标记完成",
-      },
       PREFERENCES: {
         TITLE: "学习偏好",
         EMPTY: "暂未学习到偏好",
@@ -711,7 +706,7 @@ export const AI_COMPONENTS = {
       CLEAR_CONFIRM: {
         TITLE: "确认清除记忆？",
         DESCRIPTION:
-          "此操作将删除所有 AI 记忆内容，包括历史摘要、待办事项和学习偏好。此操作不可撤销。",
+          "此操作将删除所有 AI 记忆内容，包括历史摘要和学习偏好。此操作不可撤销。",
         CONFIRM: "确认清除",
       },
     },

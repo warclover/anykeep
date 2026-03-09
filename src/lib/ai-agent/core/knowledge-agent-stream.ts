@@ -17,10 +17,7 @@ import {
   registerDefaultTools,
   getToolsAsVercelTools,
   getToolsForIntentAsVercel,
-  toolRegistry,
 } from "../tools";
-import { capsuleRegistry } from "../tools/capsules";
-import { FeatureFlags } from "../config/feature-flags";
 import { mergeToolSets } from "./ai-sdk-types";
 import { getUserFriendlyError } from "./error-messages";
 import { logger } from "@/lib/logger";
@@ -42,7 +39,6 @@ import { buildDynamicContext, type DynamicContext } from "../context";
 import type { KnowledgeAgentContextBuilder } from "./knowledge-agent-context";
 import { DEFAULT_EXECUTE_OPTIONS } from "./knowledge-agent-executor";
 import { recordToolUsage } from "../preferences";
-import type { IntentType } from "@/lib/shared/types";
 
 const log = logger.child({ namespace: "agent-stream" });
 
@@ -334,44 +330,6 @@ export class KnowledgeAgentStreamExecutor {
             context.onSearchResults?.(info.query, info.resultIds)
         : undefined,
     };
-
-    // 0. 胶囊模式（实验性）
-    if (FeatureFlags.ENABLE_CAPSULE_SYSTEM && context.intentType) {
-      const intentType = context.intentType as IntentType;
-      const capsuleToolIds = capsuleRegistry.getToolIdsForIntent(intentType);
-
-      if (capsuleToolIds.length > 0) {
-        log.info(
-          {
-            intentType,
-            capsuleToolIds: capsuleToolIds.slice(0, 5).join(", "),
-            totalTools: capsuleToolIds.length,
-          },
-          "Using capsule-based tool loading",
-        );
-
-        // 使用胶囊定义的工具 ID 过滤
-        const dataTools = toolRegistry.getToolsByNames(
-          capsuleToolIds,
-          toolContext,
-        );
-
-        // 胶囊模式下也根据意图复杂度决定是否加载 Skills
-        const confidence = context.intentConfidence ?? 0;
-        const isSimpleIntent = SIMPLE_INTENT_TYPES.has(context.intentType);
-        const isHighConfidence = confidence >= SKILLS_CONFIDENCE_THRESHOLD;
-
-        if (isSimpleIntent && isHighConfidence) {
-          return dataTools;
-        }
-
-        const skillTools = getSkillsAsTools(() => ({
-          userId: context.userId,
-          conversationId: context.conversationId,
-        }));
-        return mergeToolSets(skillTools, dataTools);
-      }
-    }
 
     // 1. 首先加载 Data Tools（意图驱动）
     let dataTools;

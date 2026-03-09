@@ -60,9 +60,6 @@ export const AI_METRIC_NAMES = {
   // 缓存
   CACHE_HITS: "ai.cache.hits",
   CACHE_MISSES: "ai.cache.misses",
-  // 胶囊指标 [V4.0 新增]
-  CAPSULE_HITS: "ai.capsule.hits",
-  CAPSULE_TOOL_COUNT: "ai.capsule.tool_count",
 } as const;
 
 // ============================================
@@ -110,9 +107,6 @@ export interface AIMetrics {
   // 缓存
   cacheHits: Counter;
   cacheMisses: Counter;
-  // 胶囊 [V4.0 新增]
-  capsuleHits: Counter;
-  capsuleToolCount: Histogram;
 }
 
 /**
@@ -199,17 +193,6 @@ function createAIMetrics(): AIMetrics {
     cacheMisses: metricsCollector.createCounter(
       AI_METRIC_NAMES.CACHE_MISSES,
       "缓存未命中次数",
-    ),
-    // 胶囊命中 [V4.0 新增]
-    capsuleHits: metricsCollector.createCounter(
-      AI_METRIC_NAMES.CAPSULE_HITS,
-      "胶囊工具加载命中次数",
-    ),
-    // 胶囊工具数量 [V4.0 新增]
-    capsuleToolCount: metricsCollector.createHistogram(
-      AI_METRIC_NAMES.CAPSULE_TOOL_COUNT,
-      "胶囊加载的工具数量",
-      { unit: "tools", buckets: [1, 3, 5, 10, 15, 20, 30] },
     ),
   };
 }
@@ -418,33 +401,4 @@ export function recordL0RouteResult(
   }
 
   metrics.l0Duration.record(durationMs, labels);
-}
-
-// ============================================
-// 胶囊指标 [V4.0 新增]
-// ============================================
-
-/**
- * 记录胶囊工具加载
- *
- * @param capsuleId - 胶囊 ID
- * @param toolCount - 加载的工具数量
- * @param intentType - 意图类型
- */
-export function recordCapsuleLoad(
-  capsuleId: string,
-  toolCount: number,
-  intentType?: string,
-): void {
-  const metrics = getAIMetrics();
-  const labels: Record<string, string> = {
-    capsule_id: capsuleId,
-  };
-
-  if (intentType) {
-    labels[AI_METRIC_LABELS.INTENT_TYPE] = intentType;
-  }
-
-  metrics.capsuleHits.inc(labels);
-  metrics.capsuleToolCount.record(toolCount, labels);
 }

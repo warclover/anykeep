@@ -1209,28 +1209,6 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       },
     ],
   },
-  {
-    name: "ENABLE_CAPSULE_SYSTEM",
-    description: "胶囊系统（意图驱动工具集加载）",
-    defaultValue: true,
-    module: "intent",
-    phase: "stable",
-    addedVersion: "2.9.1",
-    dependencies: ["ENABLE_INTENT_DRIVEN_TOOLS"],
-    integrationPoints: [
-      {
-        file: "lib/ai-agent/core/knowledge-agent.ts",
-        location: "buildToolSet()",
-        type: "execute",
-      },
-      {
-        file: "lib/ai-agent/tools/capsules/capsule-registry.ts",
-        location: "getToolsForIntent()",
-        type: "execute",
-      },
-    ],
-  },
-
   // ===========================================================================
   // Skills v1.1.0 新增 [P1-7 修复 - 2026-01-13]
   // ===========================================================================

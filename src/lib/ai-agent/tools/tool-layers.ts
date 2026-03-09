@@ -31,7 +31,6 @@ export type ToolSetName =
   | "settings_tools"
   // Layer 2: Extended
   | "import_tools"
-  | "plugin_auth_tools"
   | "messages_tools";
 
 // ============================================
@@ -159,8 +158,6 @@ export const ANALYZE_TOOLS: readonly string[] = [
   "get_mastery_stats",
   // 知识图谱（精简后保留主题关联）
   "find_related_by_topic",
-  // 授权统计
-  "get_plugin_auth_stats",
   // 复习队列
   "get_review_queue",
   // 搜索（用于分析场景的搜索）
@@ -221,18 +218,6 @@ export const IMPORT_TOOLS: readonly string[] = [
 ] as const;
 
 /**
- * 插件授权工具集 (4个)
- *
- * 触发条件: 用户提及"授权"、"插件"
- */
-export const PLUGIN_AUTH_TOOLS: readonly string[] = [
-  "list_plugin_authorizations",
-  "revoke_plugin_authorization",
-  "revoke_all_plugin_authorizations",
-  "get_plugin_auth_stats",
-] as const;
-
-/**
  * 消息工具集 (3个)
  *
  * 触发条件: 用户提及"消息"、"通知"
@@ -262,7 +247,6 @@ export const TOOL_SETS: Record<ToolSetName, readonly string[]> = {
   settings_tools: SETTINGS_TOOLS,
   // Layer 2
   import_tools: IMPORT_TOOLS,
-  plugin_auth_tools: PLUGIN_AUTH_TOOLS,
   messages_tools: MESSAGES_TOOLS,
 };
 

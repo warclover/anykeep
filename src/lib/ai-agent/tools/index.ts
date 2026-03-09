@@ -1,55 +1,25 @@
 /**
  * AI Agent Tools 模块导出
  *
- * @version 2.8.0
+ * @version 2.9.0
  * @since 2025-12-23
  *
- * v2.8.0 新增:
- * - 待办事项 Tools: list-pending-tasks, complete-pending-task（P2-3 跨会话待办追踪）
- *
- * v2.7.1 新增:
- * - 修复 registerDefaultTools 重复注册问题（添加标志位）
+ * v2.9.0 精简:
+ * - 移除 pending-tasks, plugin-auth, capsules, events 工具
  *
  * v2.7.0 新增:
  * - 工具分层: tool-layers.ts（Core/Intent/Extended 三层架构）
  * - 意图映射: intent-tool-mapping.ts（意图驱动的智能工具加载）
  * - getToolsForIntentAsVercel: 按意图获取 Vercel AI SDK 格式工具
  *
- * v2.6.0 新增:
- * - 工具调用事件: tool-event-emitter（工具执行事件发射，P2-3）
- *
  * v2.5.0 新增:
  * - Active Recall Tools: generate-flashcards, get-review-queue, submit-review-response, get-mastery-stats, update-review-preferences
  *
  * v2.4.0 新增:
- * - 知识图谱 Tools: get-knowledge-graph（知识图谱数据）, find-related-by-topic（主题关联查找）
- * - 微信文章 Tools: list-wechat-articles（微信文章列表）, get-wechat-article-stats（微信文章统计）
- *
- * v2.3.0 新增:
- * - 插件授权 Tools: list-plugin-authorizations, revoke-plugin-authorization, revoke-all-plugin-authorizations, get-plugin-auth-stats
+ * - 知识图谱 Tools, 微信文章 Tools
  *
  * v2.2.0 新增:
- * - 信任模式 Tools: get-trust-mode（获取信任模式）, recommend-trust-mode（智能推荐信任模式）
- *
- * v2.1.0 新增:
- * - 快照 Tools: compare-snapshots（快照对比）
- *
- * v2.0.0 新增:
- * - 消息 Tools: list-messages, summarize-unread, batch-mark-read
- *
- * v1.9.0 新增:
- * - 工具描述模板: tool-description-templates.ts（增强型描述，提升 LLM 工具选择准确性）
- * - 工具结果增强器: tool-result-enhancer.ts（结果摘要、错误分析、下一步建议）
- *
- * v1.8.0 新增:
- * - 设置: get-user-interests, update-user-interests
- * - 导入: import-bookmarks, import-browser-bookmarks
- *
- * v1.7.0 新增 P1/P2 Tools:
- * - 书签: update-bookmark, batch-delete-bookmarks, create-snapshot
- * - 设置: get-user-settings, get-classification-settings, update-classification-settings
- * - MD 收藏: toggle-md-read, toggle-md-starred, update-md-collection, delete-md-collection, get-md-stats
- * - 智能列表: toggle-smart-list-pin, update-smart-list, delete-smart-list, create-smart-list
+ * - 信任模式 Tools: get-trust-mode, recommend-trust-mode
  */
 
 // 类型定义
@@ -63,9 +33,6 @@ export * from "./tool-description-templates";
 
 // 工具结果增强器（v1.9.0）
 export * from "./tool-result-enhancer";
-
-// 工具调用事件（v2.6.0 P2-3）
-export * from "./events";
 
 // 工具分层（v2.7.0 性能优化）
 export * from "./tool-layers";
@@ -120,17 +87,11 @@ export * from "./snapshot";
 // 信任模式 Tools (新增 v2.2.0)
 export * from "./trust-mode";
 
-// 插件授权 Tools (新增 v2.3.0)
-export * from "./plugin-auth";
-
 // 知识图谱 Tools (新增 v2.4.0)
 export * from "./knowledge-link";
 
 // 微信文章 Tools (新增 v2.4.0)
 export * from "./wechat-article";
-
-// 待办事项 Tools (新增 v2.8.0 P2-3)
-export * from "./pending-tasks";
 
 // 注册默认 Tools
 import { toolRegistry } from "./tool-registry";
@@ -148,10 +109,8 @@ import { importTools } from "./import";
 import { messageTools } from "./messages";
 import { snapshotTools } from "./snapshot";
 import { trustModeTools } from "./trust-mode";
-import { pluginAuthTools } from "./plugin-auth";
 import { knowledgeLinkTools } from "./knowledge-link";
 import { wechatArticleTools } from "./wechat-article";
-import { pendingTasksTools } from "./pending-tasks";
 import { logger } from "@/lib/logger";
 
 /**
@@ -192,14 +151,9 @@ export function registerDefaultTools(): void {
   toolRegistry.registerAll(snapshotTools);
   // 新增 Tools (v2.2.0)
   toolRegistry.registerAll(trustModeTools);
-  // 新增 Tools (v2.3.0)
-  toolRegistry.registerAll(pluginAuthTools);
   // 新增 Tools (v2.4.0)
   toolRegistry.registerAll(knowledgeLinkTools);
   toolRegistry.registerAll(wechatArticleTools);
-  // 新增 Tools (v2.8.0 P2-3)
-  toolRegistry.registerAll(pendingTasksTools);
-
   logger.info(
     { toolCount: toolRegistry.getStats().totalTools },
     "Default tools registered successfully",

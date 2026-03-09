@@ -17,9 +17,7 @@ import {
   registerDefaultTools,
   getToolsAsVercelTools,
   getToolsForIntentAsVercel,
-  toolRegistry,
 } from "../tools";
-import { capsuleRegistry } from "../tools/capsules";
 import { FeatureFlags } from "../config/feature-flags";
 import { mergeToolSets } from "./ai-sdk-types";
 import { getUserFriendlyError } from "./error-messages";
@@ -35,7 +33,6 @@ import type {
 import { extractToolCalls, mapFinishReason } from "./helpers";
 import { buildDynamicContext, type DynamicContext } from "../context";
 import type { KnowledgeAgentContextBuilder } from "./knowledge-agent-context";
-import type { IntentType } from "@/lib/shared/types";
 
 const log = logger.child({ namespace: "agent-executor" });
 
@@ -223,10 +220,9 @@ export class KnowledgeAgentExecutor {
   /**
    * 构建工具集
    *
-   * 支持三种工具加载策略：
-   * 1. 胶囊模式（ENABLE_CAPSULE_SYSTEM）: 使用静态胶囊映射
-   * 2. 意图驱动模式（ENABLE_INTENT_DRIVEN_TOOLS）: 根据意图动态加载
-   * 3. 全量模式: 加载所有工具（默认回退）
+   * 支持两种工具加载策略：
+   * 1. 意图驱动模式（ENABLE_INTENT_DRIVEN_TOOLS）: 根据意图动态加载
+   * 2. 全量模式: 加载所有工具（默认回退）
    */
   private buildTools(context: AgentContext, userInput?: string) {
     const skillTools = getSkillsAsTools(() => ({
@@ -244,31 +240,7 @@ export class KnowledgeAgentExecutor {
         : undefined,
     };
 
-    // 策略1: 胶囊模式（实验性）
-    if (FeatureFlags.ENABLE_CAPSULE_SYSTEM && context.intentType) {
-      const intentType = context.intentType as IntentType;
-      const capsuleToolIds = capsuleRegistry.getToolIdsForIntent(intentType);
-
-      if (capsuleToolIds.length > 0) {
-        log.info(
-          {
-            intentType,
-            capsuleToolIds: capsuleToolIds.slice(0, 5).join(", "),
-            totalTools: capsuleToolIds.length,
-          },
-          "Using capsule-based tool loading",
-        );
-
-        // 使用胶囊定义的工具 ID 过滤
-        const dataTools = toolRegistry.getToolsByNames(
-          capsuleToolIds,
-          toolContext,
-        );
-        return mergeToolSets(skillTools, dataTools);
-      }
-    }
-
-    // 策略2: 意图驱动模式
+    // 意图驱动模式
     if (FeatureFlags.ENABLE_INTENT_DRIVEN_TOOLS && context.intentType) {
       const { tools: dataTools, selectionResult } = getToolsForIntentAsVercel(
         context.intentType,

@@ -786,8 +786,6 @@ export const API_MISC = {
   init: "/api/init",
   /** 图书馆分析 */
   librarianAnalysis: "/api/librarian/analysis",
-  /** 图书馆巡检 */
-  librarianPatrol: "/api/librarian/patrol",
   /** LLM 使用量 */
   llmUsage: "/api/llm-usage",
   /** 指标 */

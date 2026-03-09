@@ -20,7 +20,7 @@ import {
 import { isAdminUser } from "@/lib/auth/admin-check";
 
 interface MaintenanceTask {
-  name: "cleanup-trash" | "validate-all-links";
+  name: "cleanup-trash";
   label: string;
   lastExecutedAt: string | null;
   daysSinceLastExecution: number | null;
@@ -89,11 +89,10 @@ export async function GET(_request: NextRequest) {
     // 类型断言: 手动维护类型文件时需要此断言
     type ProfileMaintenanceType = {
       last_trash_cleanup_at: string | null;
-      last_validation_at: string | null;
     };
     const { data: profile, error: profileError } = (await supabase
       .from("profiles")
-      .select("last_trash_cleanup_at, last_validation_at")
+      .select("last_trash_cleanup_at")
       .eq("id", user.id)
       .single()) as unknown as {
       data: ProfileMaintenanceType | null;
@@ -137,28 +136,8 @@ export async function GET(_request: NextRequest) {
         : `上次清理距今 ${trashCleanupDays} 天，无需执行`,
     };
 
-    // 任务 2: 链接验证
-    const validationDays = calculateDaysSince(
-      profile?.last_validation_at || null,
-    );
-    const needsValidation =
-      validationDays === null || validationDays >= MAINTENANCE_THRESHOLD_DAYS;
-
-    const validationTask: MaintenanceTask = {
-      name: "validate-all-links",
-      label: "链接验证",
-      lastExecutedAt: profile?.last_validation_at || null,
-      daysSinceLastExecution: validationDays,
-      needsExecution: needsValidation,
-      reason: needsValidation
-        ? validationDays === null
-          ? "从未执行过链接验证"
-          : `距离上次验证已过 ${validationDays} 天`
-        : `上次验证距今 ${validationDays} 天，无需执行`,
-    };
-
     // 4. 汇总结果
-    const tasks = [trashCleanupTask, validationTask];
+    const tasks = [trashCleanupTask];
     const needsMaintenance = tasks.some((task) => task.needsExecution);
 
     const response: MaintenanceCheckResponse = {

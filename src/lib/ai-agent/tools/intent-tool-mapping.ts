@@ -155,7 +155,6 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
  */
 export const EXTENDED_TOOL_TRIGGERS: Record<ToolSetName, RegExp> = {
   import_tools: /导入|import|批量添加|从.*导入/i,
-  plugin_auth_tools: /授权|插件|平台.*授权|revoke|撤销授权/i,
   messages_tools: /消息|通知|未读|notification|message/i,
   // Layer 1 工具集不需要关键词触发（由意图映射决定）
   query_tools: /(?!)/,
@@ -323,11 +322,7 @@ export function getToolsForIntentWithDetails(
   // 策略4: 检查 Extended Tools 触发条件
   // ============================================
   if (userInput) {
-    const extendedSets: ToolSetName[] = [
-      "import_tools",
-      "plugin_auth_tools",
-      "messages_tools",
-    ];
+    const extendedSets: ToolSetName[] = ["import_tools", "messages_tools"];
 
     for (const setName of extendedSets) {
       const trigger = EXTENDED_TOOL_TRIGGERS[setName];
@@ -400,11 +395,7 @@ export function shouldLoadExtendedTools(
 ): { setName: ToolSetName; reason: string }[] {
   const result: { setName: ToolSetName; reason: string }[] = [];
 
-  const extendedSets: ToolSetName[] = [
-    "import_tools",
-    "plugin_auth_tools",
-    "messages_tools",
-  ];
+  const extendedSets: ToolSetName[] = ["import_tools", "messages_tools"];
 
   for (const setName of extendedSets) {
     const trigger = EXTENDED_TOOL_TRIGGERS[setName];

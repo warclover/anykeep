@@ -80,18 +80,6 @@ export {
   type SessionSummarizerConfig,
 } from "./session-summarizer";
 
-// PendingTasks 导出（v1.5 新增 - P2-3 待办追踪）
-export {
-  PendingTasksService,
-  getPendingTasksService,
-  resetPendingTasksService,
-  getPendingTasks,
-  completePendingTask,
-  hasPendingTasks,
-  type PendingTask,
-  type PendingTasksConfig,
-} from "./pending-tasks";
-
 // ConversationAttachmentTracker 导出（v1.5 新增 - 附件追踪）
 export {
   conversationAttachmentTracker,

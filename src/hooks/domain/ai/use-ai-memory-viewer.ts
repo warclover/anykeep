@@ -3,8 +3,9 @@
  *
  * 提供加载和管理 AI 跨会话记忆的功能
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2026-01-13
+ * @updated 2026-03-09 - 移除 pending tasks 功能
  */
 
 import { useCallback } from "react";
@@ -22,7 +23,6 @@ interface RecentSummary {
 
 interface AIMemory {
   recentSummaries: RecentSummary[];
-  pendingIntents: string[];
   learnedPreferences: Record<string, string>;
 }
 
@@ -31,8 +31,6 @@ interface UseAIMemoryViewerReturn {
   loadMemory: () => Promise<AIMemory>;
   /** 清除 AI 记忆 */
   clearMemory: () => Promise<void>;
-  /** 完成待办事项 */
-  completePending: (task: string) => Promise<void>;
 }
 
 // ============================================
@@ -62,20 +60,6 @@ async function deleteAIMemory(): Promise<void> {
   }
 }
 
-async function completePendingTask(task: string): Promise<void> {
-  const response = await fetch("/api/ai-memory/pending", {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ task }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to complete pending task");
-  }
-}
-
 // ============================================
 // Hook
 // ============================================
@@ -95,14 +79,9 @@ export function useAIMemoryViewer(): UseAIMemoryViewerReturn {
     await deleteAIMemory();
   }, []);
 
-  const completePending = useCallback(async (task: string): Promise<void> => {
-    await completePendingTask(task);
-  }, []);
-
   return {
     loadMemory,
     clearMemory,
-    completePending,
   };
 }
 

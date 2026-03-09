@@ -47,6 +47,3 @@ export * from "./user-scenario-detector.service";
 
 // V4.0 命名优化引擎
 export * from "./naming-engine.service";
-
-// V4.0 整理大师主动巡检
-export * from "./librarian-patrol.service";

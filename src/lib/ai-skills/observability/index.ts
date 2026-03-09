@@ -75,6 +75,4 @@ export {
   recordCacheAccess,
   // L0 路由指标 [V4.0 新增]
   recordL0RouteResult,
-  // 胶囊指标 [V4.0 新增]
-  recordCapsuleLoad,
 } from "./metrics";

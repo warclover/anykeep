@@ -16,7 +16,6 @@ import { memo, useState, useCallback, useEffect } from "react";
 import {
   Brain,
   Clock,
-  CheckCircle2,
   Lightbulb,
   Trash2,
   ChevronDown,
@@ -66,7 +65,6 @@ interface RecentSummary {
 
 interface AIMemory {
   recentSummaries: RecentSummary[];
-  pendingIntents: string[];
   learnedPreferences: Record<string, string>;
 }
 
@@ -79,8 +77,6 @@ interface AIMemoryViewerProps {
   onLoad?: () => Promise<AIMemory>;
   /** 清除记忆回调 */
   onClear?: () => Promise<void>;
-  /** 完成待办回调 */
-  onCompletePending?: (task: string) => Promise<void>;
 }
 
 // ============================================
@@ -96,11 +92,6 @@ const UI_TEXT = {
     summaries: {
       title: MEMORY_VIEWER.SECTIONS.SUMMARIES.TITLE,
       empty: MEMORY_VIEWER.SECTIONS.SUMMARIES.EMPTY,
-    },
-    pending: {
-      title: MEMORY_VIEWER.SECTIONS.PENDING.TITLE,
-      empty: MEMORY_VIEWER.SECTIONS.PENDING.EMPTY,
-      complete: MEMORY_VIEWER.SECTIONS.PENDING.COMPLETE,
     },
     preferences: {
       title: MEMORY_VIEWER.SECTIONS.PREFERENCES.TITLE,
@@ -156,52 +147,6 @@ const SummaryItem = memo(function SummaryItem({
         </div>
       </div>
       <p className="text-xs text-gray-400 pl-6">{summary.timeAgo}</p>
-    </div>
-  );
-});
-
-/**
- * 待办事项列表项
- */
-const PendingItem = memo(function PendingItem({
-  task,
-  onComplete,
-}: {
-  task: string;
-  onComplete?: () => void;
-}) {
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const handleComplete = useCallback(async () => {
-    if (!onComplete) return;
-    setIsCompleting(true);
-    try {
-      await onComplete();
-    } finally {
-      setIsCompleting(false);
-    }
-  }, [onComplete]);
-
-  return (
-    <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg group">
-      <AlertCircle className="size-4 text-amber-500 flex-shrink-0" />
-      <span className="flex-1 text-sm text-gray-700">{task}</span>
-      {onComplete && (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="opacity-0 group-hover:opacity-100 transition-opacity h-7 text-xs"
-          onClick={handleComplete}
-          disabled={isCompleting}
-        >
-          {isCompleting ? (
-            <RefreshCw className="size-3 animate-spin" />
-          ) : (
-            <CheckCircle2 className="size-3 mr-1" />
-          )}
-          {UI_TEXT.sections.pending.complete}
-        </Button>
-      )}
     </div>
   );
 });
@@ -284,7 +229,6 @@ export const AIMemoryViewer = memo(function AIMemoryViewer({
   defaultExpanded = true,
   onLoad,
   onClear,
-  onCompletePending,
 }: AIMemoryViewerProps) {
   const [memory, setMemory] = useState<AIMemory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -322,7 +266,6 @@ export const AIMemoryViewer = memo(function AIMemoryViewer({
       await onClear();
       setMemory({
         recentSummaries: [],
-        pendingIntents: [],
         learnedPreferences: {},
       });
     } finally {
@@ -330,31 +273,10 @@ export const AIMemoryViewer = memo(function AIMemoryViewer({
     }
   }, [onClear]);
 
-  // 完成待办
-  const handleCompletePending = useCallback(
-    async (task: string) => {
-      if (!onCompletePending) return;
-
-      await onCompletePending(task);
-
-      // 更新本地状态
-      setMemory((prev) =>
-        prev
-          ? {
-              ...prev,
-              pendingIntents: prev.pendingIntents.filter((t) => t !== task),
-            }
-          : null,
-      );
-    },
-    [onCompletePending],
-  );
-
   // 计算是否为空
   const isEmpty =
     memory &&
     memory.recentSummaries.length === 0 &&
-    memory.pendingIntents.length === 0 &&
     Object.keys(memory.learnedPreferences).length === 0;
 
   // 聚合学习偏好（从摘要中提取）
@@ -461,34 +383,6 @@ export const AIMemoryViewer = memo(function AIMemoryViewer({
         {/* 内容区域 */}
         {!isLoading && !error && memory && !isEmpty && (
           <div className="space-y-3">
-            {/* 待办事项 */}
-            <Section
-              title={UI_TEXT.sections.pending.title}
-              count={memory.pendingIntents.length}
-              icon={AlertCircle}
-              defaultOpen={memory.pendingIntents.length > 0}
-            >
-              {memory.pendingIntents.length > 0 ? (
-                <div className="space-y-2">
-                  {memory.pendingIntents.map((task, idx) => (
-                    <PendingItem
-                      key={idx}
-                      task={task}
-                      onComplete={
-                        onCompletePending
-                          ? () => handleCompletePending(task)
-                          : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 py-2">
-                  {UI_TEXT.sections.pending.empty}
-                </p>
-              )}
-            </Section>
-
             {/* 学习偏好 */}
             <Section
               title={UI_TEXT.sections.preferences.title}

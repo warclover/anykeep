@@ -190,22 +190,6 @@ export const BACKFILL_DEFAULTS = {
 } as const;
 
 // ============================================================================
-// 巡检服务配置
-// ============================================================================
-
-/**
- * LibrarianPatrol 默认配置
- */
-export const PATROL_DEFAULTS = {
-  /** 巡检间隔 (ms)，默认 1 小时 */
-  intervalMs: 60 * 60 * 1000,
-  /** 每次巡检最大书签数 */
-  maxBookmarksPerRun: 100,
-  /** 重分类置信度阈值 */
-  reclassifyThreshold: 75,
-} as const;
-
-// ============================================================================
 // 用户场景检测配置
 // ============================================================================
 
@@ -324,11 +308,6 @@ export interface ClassificationConfiguration {
     minConfidence: number;
     maxConcurrency: number;
   };
-  patrol: {
-    intervalMs: number;
-    maxBookmarksPerRun: number;
-    reclassifyThreshold: number;
-  };
   scenarioThresholds: {
     coldStartBookmarkCount: number;
     growthBookmarkCount: number;
@@ -358,7 +337,6 @@ export const DEFAULT_CLASSIFICATION_CONFIG: ClassificationConfiguration = {
   incrementalProfile: INCREMENTAL_PROFILE_DEFAULTS,
   namingEngine: NAMING_ENGINE_DEFAULTS,
   backfill: BACKFILL_DEFAULTS,
-  patrol: PATROL_DEFAULTS,
   scenarioThresholds: SCENARIO_THRESHOLDS_DEFAULTS,
   aiLibrarian: AI_LIBRARIAN_DEFAULTS,
 };

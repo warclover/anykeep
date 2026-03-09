@@ -45,10 +45,6 @@ const SessionSummarySchema = z.object({
     .enum(["positive", "neutral", "negative"])
     .optional()
     .describe("整体用户反馈情绪"),
-  pending_tasks: z
-    .array(z.string())
-    .max(5)
-    .describe('用户提到但未完成的事项，如"下次帮我整理B站收藏"'),
   learned_preferences: z
     .record(z.string(), z.string())
     .optional()
@@ -128,15 +124,7 @@ const SUMMARIZER_PROMPT = `你是一个对话分析专家。分析用户与AI助
 - negative: 用户表示不满、抱怨、失望
 - neutral: 无明显情绪表达
 
-### 5. pending_tasks (重要)
-识别用户提到但**尚未完成**的事项（最多5个）。
-例如：
-- "下次帮我整理B站收藏"
-- "我还想导出这周的收藏"
-- "能不能以后自动分类"
-这些会用于下次会话的主动提醒。
-
-### 6. learned_preferences (可选)
+### 5. learned_preferences (可选)
 记录从对话中学到的用户偏好。
 使用 key-value 格式，例如：
 - preferred_folder: "技术学习"
@@ -146,7 +134,6 @@ const SUMMARIZER_PROMPT = `你是一个对话分析专家。分析用户与AI助
 
 ## 注意事项
 - 如果对话很简短或只是闲聊，返回简单摘要即可
-- pending_tasks 只记录明确提到的未来意图，不要猜测
 - learned_preferences 只记录用户明确表达的偏好`;
 
 // =============================================================================
@@ -175,7 +162,7 @@ const log = logger.child({ module: "SessionSummarizer" });
  *   { role: "assistant", content: "找到 15 篇相关文章..." }
  * ];
  * const summary = await generateSessionSummary(messages);
- * console.log(summary?.pending_tasks);
+ * console.log(summary?.learned_preferences);
  * ```
  */
 export async function generateSessionSummary(
@@ -227,7 +214,6 @@ export async function generateSessionSummary(
       {
         messageCount: messages.length,
         intentCount: result.object.key_intents.length,
-        pendingCount: result.object.pending_tasks.length,
         hasPreferences: !!result.object.learned_preferences,
       },
       "Session summary generated",
@@ -277,7 +263,6 @@ export function generateSimpleSummary(
     key_intents: keyIntents,
     key_actions: keyActions,
     user_feedback: "neutral",
-    pending_tasks: [],
     learned_preferences: undefined,
   };
 }

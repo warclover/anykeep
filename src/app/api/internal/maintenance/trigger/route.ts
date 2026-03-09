@@ -21,7 +21,7 @@ import {
 } from "@/lib/utils/api-response";
 import { isAdminUser } from "@/lib/auth/admin-check";
 
-type MaintenanceTaskName = "cleanup-trash" | "validate-all-links";
+type MaintenanceTaskName = "cleanup-trash";
 
 interface TriggerRequest {
   task: MaintenanceTaskName;
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       return badRequestError("缺少任务名称");
     }
 
-    if (task !== "cleanup-trash" && task !== "validate-all-links") {
+    if (task !== "cleanup-trash") {
       return badRequestError("无效的任务名称");
     }
 
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     return successResponse({
       task,
       result: result.data,
-      message: `任务 ${task === "cleanup-trash" ? "垃圾箱清理" : "链接验证"} 已成功触发`,
+      message: "任务垃圾箱清理已成功触发",
     });
   } catch (error) {
     logger.error(

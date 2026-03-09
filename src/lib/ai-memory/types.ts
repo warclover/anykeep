@@ -292,8 +292,6 @@ export interface PreviousSessionSummary {
     tagNames: string[];
     folderIds: number[];
   };
-  /** 未完成的任务/意图 */
-  pendingTasks?: string[];
   /** 用户偏好洞察（可选） */
   userPreferenceInsights?: string[];
   /** 会话结束时间 */

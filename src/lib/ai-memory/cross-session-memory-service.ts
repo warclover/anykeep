@@ -160,8 +160,6 @@ export class CrossSessionMemoryService {
           conversationId,
           messageCount: state.messages.length,
           useLLM: this.config.enableLLMSummary,
-          hasPendingTasks:
-            summary.pendingTasks && summary.pendingTasks.length > 0,
         },
         "Session summary saved",
       );
@@ -235,7 +233,6 @@ export class CrossSessionMemoryService {
         tagNames,
         folderIds,
       },
-      pendingTasks: llmSummary.pending_tasks,
       userPreferenceInsights: llmSummary.learned_preferences
         ? Object.entries(llmSummary.learned_preferences).map(
             ([k, v]) => `${k}: ${v}`,

@@ -668,15 +668,6 @@ export const FeatureFlags = {
   },
 
   /**
-   * 是否启用胶囊系统
-   * @default true
-   * @description 使用静态胶囊映射作为工具选择策略，基于意图类型动态加载相关工具集
-   */
-  get ENABLE_CAPSULE_SYSTEM(): boolean {
-    return process.env.ENABLE_CAPSULE_SYSTEM !== "false";
-  },
-
-  /**
    * 是否启用规则挖掘
    * @default false
    * @description 从 LLM 兜底案例中自动生成候选规则
@@ -877,7 +868,6 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     ENABLE_FEEDBACK_COLLECTION: FeatureFlags.ENABLE_FEEDBACK_COLLECTION,
     // 架构优化 V4.0 [Phase 1 新增 - 2026-01-12]
     ENABLE_INTENT_DRIVEN_TOOLS: FeatureFlags.ENABLE_INTENT_DRIVEN_TOOLS,
-    ENABLE_CAPSULE_SYSTEM: FeatureFlags.ENABLE_CAPSULE_SYSTEM,
     // Skills v1.1.0 新增 [P1-7 修复 - 2026-01-13]
     ENABLE_FOLDER_RECOMMEND: FeatureFlags.ENABLE_FOLDER_RECOMMEND,
     ENABLE_SEARCH_OPTIMIZE: FeatureFlags.ENABLE_SEARCH_OPTIMIZE,
