@@ -44,7 +44,6 @@ const PROTECTED_PAGES: { path: string; name: string }[] = [
   { path: "/librarian", name: "知识管理" },
   { path: "/ai-hub", name: "AI 中心" },
   { path: "/learning-hub", name: "学习中心" },
-  { path: "/folder-health", name: "文件夹健康" },
   { path: "/link-health", name: "链接健康" },
   { path: "/md-collections", name: "MD 合集" },
   { path: "/synthesis", name: "主题合成" },
@@ -53,8 +52,6 @@ const PROTECTED_PAGES: { path: string; name: string }[] = [
   { path: "/audio-library", name: "音频库" },
   { path: "/rules", name: "规则" },
   { path: "/skills-browser", name: "Skills 浏览" },
-  { path: "/classification-manager", name: "分类管理" },
-  { path: "/health", name: "健康页" },
   { path: "/admin/feedback", name: "管理员反馈" },
 ];
 

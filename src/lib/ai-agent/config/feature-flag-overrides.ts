@@ -11,7 +11,35 @@
  */
 
 import { FeatureFlags } from "./feature-flags";
-import type { AIDebugFeatureFlags } from "@/lib/ai-debug/types";
+
+/**
+ * Feature Flags 覆盖配置类型
+ *
+ * null = 使用环境变量默认值
+ * true/false = 强制覆盖
+ */
+export interface AIDebugFeatureFlags {
+  /** 混合意图分类器 */
+  ENABLE_HYBRID_INTENT_CLASSIFIER: boolean | null;
+  /** LLM 查询改写 */
+  ENABLE_QUERY_REWRITE: boolean | null;
+  /** Rerank 重排序 */
+  ENABLE_RERANK: boolean | null;
+  /** System-Reminder 动态注入 */
+  ENABLE_SYSTEM_REMINDER: boolean | null;
+  /** 情景记忆 Prompt 注入 */
+  ENABLE_MEMORY_PROMPT: boolean | null;
+  /** 工作流对话触发检测 */
+  ENABLE_WORKFLOW_CONVERSATION_TRIGGER: boolean | null;
+  /** RAG 监控 */
+  ENABLE_RAG_MONITORING: boolean | null;
+  /** 引用追踪 */
+  ENABLE_CITATION_TRACKING: boolean | null;
+  /** 在响应中包含路由信息 */
+  INCLUDE_ROUTING_INFO: boolean | null;
+  /** 启用详细调试日志 */
+  DEBUG_MODE: boolean | null;
+}
 
 // ============================================
 // 类型定义

@@ -44,7 +44,6 @@ const PROTECTED_PAGES = [
   { path: "/librarian", name: "知识管理" },
   { path: "/ai-hub", name: "AI 中心" },
   { path: "/learning-hub", name: "学习中心" },
-  { path: "/folder-health", name: "文件夹健康检查" },
   { path: "/link-health", name: "链接健康检测" },
   { path: "/md-collections", name: "Markdown 合集" },
   { path: "/synthesis", name: "主题合成" },
@@ -57,15 +56,6 @@ const PROTECTED_PAGES = [
   { path: "/audio-library", name: "音频库" },
   { path: "/rules", name: "规则" },
   { path: "/skills-browser", name: "Skills 浏览" },
-  { path: "/classification-manager", name: "分类管理" },
-  { path: "/health", name: "健康检查页" },
-];
-
-const DEV_PAGES = [
-  { path: "/ai-test", name: "AI 测试页" },
-  { path: "/dev/classification-trace", name: "分类追踪" },
-  { path: "/dev/api-docs", name: "API 文档" },
-  { path: "/dev/ai-debug", name: "AI 调试" },
 ];
 
 interface PageTestResult {
@@ -213,21 +203,6 @@ test.describe("AnyKeep 全面功能测试", () => {
         console.info(
           `[INFO] ${name}: ${isLoginPage ? "重定向到登录页" : "页面可访问"}`,
         );
-      });
-    }
-  });
-
-  test.describe("3. 开发页面测试", () => {
-    for (const { path, name } of DEV_PAGES) {
-      test(`${name} (${path})`, async ({ page }) => {
-        await page.goto(path, {
-          waitUntil: "domcontentloaded",
-          timeout: TIMEOUTS.pageLoad,
-        });
-
-        // 开发页面可能需要登录或不存在
-        const hasContent = await page.locator("body").isVisible();
-        expect(hasContent).toBe(true);
       });
     }
   });

@@ -20,11 +20,8 @@ import {
   Bell,
   Settings,
   Trash2,
-  BrainCircuit,
-  HeartPulse,
   Sparkles,
   Gauge,
-  Zap,
   Download,
   Upload,
   Share2,
@@ -257,24 +254,9 @@ const devToolsGroup: NavGroupConfig = {
   defaultCollapsed: true,
   items: [
     {
-      name: "nav.classificationManager",
-      href: "/classification-manager",
-      icon: BrainCircuit,
-    },
-    {
       name: "nav.ragDashboard",
       href: "/settings/rag-dashboard",
       icon: Gauge,
-    },
-    {
-      name: "nav.folderHealth",
-      href: "/folder-health",
-      icon: HeartPulse,
-    },
-    {
-      name: "nav.aiDebug",
-      href: "/dev/ai-debug",
-      icon: Zap,
     },
   ],
 };

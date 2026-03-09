@@ -840,16 +840,6 @@ export const API_INTERNAL = {
     /** 更新文件夹画像 */
     updateFolderProfiles: "/api/internal/cron/update-folder-profiles",
   },
-  dev: {
-    /** 处理快照 */
-    processSnapshots: "/api/internal/dev/process-snapshots",
-    /** 重处理快照 */
-    reprocessSnapshot: "/api/internal/dev/reprocess-snapshot",
-    /** 快照调试 */
-    snapshotsDebug: "/api/internal/dev/snapshots-debug",
-    /** 测试微信解析 */
-    testWechatParse: "/api/internal/dev/test-wechat-parse",
-  },
   maintenance: {
     /** 维护检查 */
     check: "/api/internal/maintenance/check",
