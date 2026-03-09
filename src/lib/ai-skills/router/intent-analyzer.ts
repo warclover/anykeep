@@ -446,14 +446,6 @@ const UNIFIED_RULES: IntentRule[] = [
     complexity: "complex",
     weight: 84,
   },
-  // SnapshotCompareSkill - 快照对比分析
-  {
-    pattern: /(快照|版本|页面).*(对比|比较|变化)|对比.*(快照|版本)/,
-    type: "analyze",
-    subType: "snapshot_compare",
-    complexity: "simple",
-    weight: 81,
-  },
 
   // ============================================
   // 查询类（搜索优先 - 从消歧规则合并）

@@ -2,7 +2,6 @@
  * 学习助手客户端组件
  *
  * 聚合学习相关的 AI Skills：
- * - 阅读计划制定 (reading_planner)
  * - 周期报告生成 (periodic_report)
  * - 相关发现 (related_discovery)
  * - 知识提取 (knowledge_extract)
@@ -16,7 +15,6 @@
 
 import { useState } from "react";
 import {
-  Calendar,
   FileText,
   Lightbulb,
   Link2,
@@ -50,7 +48,6 @@ const LEARNING_HUB = {
   },
   ACTIONS: {
     START: "开始",
-    PLAN: "制定计划",
     GENERATE: "生成报告",
     DISCOVER: "发现",
     CREATE: "创建",
@@ -60,17 +57,6 @@ const LEARNING_HUB = {
 
 // 学习相关 Skills 配置
 const LEARNING_SKILLS = [
-  {
-    id: "reading_planner",
-    name: "阅读规划",
-    description: "制定每日或每周的阅读计划，合理安排阅读时间",
-    icon: Calendar,
-    color: "text-green-600",
-    bgColor: "bg-green-50 dark:bg-green-900/20",
-    borderColor: "border-green-200 dark:border-green-800",
-    action: LEARNING_HUB.ACTIONS.PLAN,
-    prompt: "帮我制定阅读计划",
-  },
   {
     id: "periodic_report",
     name: "周期报告",

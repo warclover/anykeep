@@ -695,15 +695,6 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "complex",
     weight: 84,
   },
-  // SnapshotCompareSkill - 快照对比分析
-  {
-    pattern:
-      /(快照|版本|页面).*(对比|比较|变化)|对比.*(快照|版本)|snapshot.*(compare|diff)/i,
-    type: "analyze",
-    subType: "snapshot_compare",
-    complexity: "simple",
-    weight: 81,
-  },
 
   // ============================================
   // 微信文章类（v2.4.0 新增）

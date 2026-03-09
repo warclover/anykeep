@@ -102,18 +102,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     estimatedDurationMs: 2000,
     isOrchestration: false,
   },
-  {
-    id: "snapshot_compare",
-    name: "快照对比",
-    description: "对比书签内容的不同版本快照，检测变化。",
-    category: "utility",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["diff-detection", "version-compare", "change-summary"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 3000,
-    isOrchestration: false,
-  },
 
   // ============================================
   // 编排 Skills
@@ -256,20 +244,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
       { id: "diagnose", name: "诊断问题", description: "分析健康状态" },
       { id: "suggest", name: "生成建议", description: "提供优化方案" },
     ],
-  },
-  {
-    id: "reading_planner",
-    name: "阅读规划助手",
-    description: "根据您的阅读偏好和时间安排，制定个性化阅读计划。",
-    category: "learning",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["reading-plan", "time-management", "priority-scheduling"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 12000,
-    isOrchestration: true,
-    deliverableTypes: ["plan", "calendar"],
-    outputFormats: ["markdown"],
   },
   {
     id: "related_discovery",

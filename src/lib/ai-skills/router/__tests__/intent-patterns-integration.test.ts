@@ -188,26 +188,6 @@ describe("IntentPatterns Integration", () => {
         }
       });
     });
-
-    describe("snapshot_compare related intents", () => {
-      it("should classify snapshot comparison requests correctly", async () => {
-        const inputs = ["对比快照", "比较变化"];
-
-        for (const input of inputs) {
-          const result = await classifier.classify(input);
-          // 应该匹配到 analyze 或 query 类型
-          // "比较变化" 匹配 analyze:discover（发现/推荐/相关/关联）
-          expect(["analyze", "query", "chitchat"]).toContain(result.type);
-        }
-      });
-
-      it("should classify page change queries as analyze", async () => {
-        // "页面有什么变化" 包含 "变化" 会匹配 analyze 规则
-        const result = await classifier.classify("页面有什么变化");
-        // 会匹配到 analyze 类型（因为"变化"匹配分析/洞察规则）
-        expect(["analyze", "query"]).toContain(result.type);
-      });
-    });
   });
 
   // ============================================

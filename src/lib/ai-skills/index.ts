@@ -162,9 +162,6 @@ export {
 // 7. 已注册的 Skills（按需导出）
 // ============================================
 
-// 知识管理
-export { ReadingPlannerSkill } from "./skills/reading-planner";
-
 // 数据处理
 export { DataExportSkill } from "./skills/data-export";
 export { BatchOrganizeSkill } from "./skills/batch-organize";

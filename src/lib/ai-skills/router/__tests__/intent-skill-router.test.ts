@@ -23,16 +23,6 @@ describe("IntentSkillRouter", () => {
   });
 
   describe("route", () => {
-    describe("学习类意图", () => {
-      it("should route 学习路径 to reading_planner via wildcard", () => {
-        const result = router.route("给我制定一个学习路径");
-
-        expect(result.intentType).toBe("learn");
-        expect(result.skillId).toBe("reading_planner");
-        expect(result.mode).toBe("orchestration");
-      });
-    });
-
     describe("整理类意图", () => {
       it("should route 整理 to batch_organize", () => {
         const result = router.route("整理一下我的收藏");

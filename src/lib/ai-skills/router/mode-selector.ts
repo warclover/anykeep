@@ -220,13 +220,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true,
   },
-
-  // P1: 快照对比分析（原子类型 - 但需要路由支持）
-  "analyze:snapshot_compare": {
-    skillId: "snapshot_compare",
-    name: "快照对比分析",
-    enabled: true,
-  },
 };
 
 /**

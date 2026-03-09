@@ -157,15 +157,6 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     complexity: "complex",
     description: "文件夹健康检查",
   },
-  {
-    // SnapshotCompareSkill - 快照对比分析
-    type: "analyze",
-    subType: "snapshot_compare",
-    pattern: "(快照|版本|页面).*(对比|比较|变化)|对比.*(快照|版本)",
-    weight: 81,
-    complexity: "simple",
-    description: "快照对比分析",
-  },
 
   // ============================================
   // 创建类（权重 60-75）

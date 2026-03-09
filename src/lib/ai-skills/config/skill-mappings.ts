@@ -20,28 +20,6 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
  * - 类型通配：learn:*
  */
 export const SKILL_MAPPINGS: SkillMapping[] = [
-  // 学习类 → 编排模式
-  // ============================================
-  {
-    key: "learn:plan",
-    skillId: "reading_planner",
-    name: "阅读计划助手",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 90,
-  },
-  // 学习类通配符兜底
-  {
-    key: "learn:*",
-    skillId: "reading_planner",
-    name: "阅读计划助手",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 50,
-  },
-
   // ============================================
   // 整理类 → 编排模式
   // ============================================
@@ -158,14 +136,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     minComplexity: "complex",
     enabled: true,
     priority: 84,
-  },
-  {
-    key: "analyze:snapshot_compare",
-    skillId: "snapshot_compare",
-    name: "快照对比分析",
-    mode: "atomic",
-    enabled: true,
-    priority: 81,
   },
   // 分析类通配符兜底
   {
@@ -657,9 +627,9 @@ export const SKILL_MAPPINGS_BY_KEY: Map<string, SkillMapping> = new Map(
  *
  * @example
  * ```ts
- * const mapping = getSkillMappingByKey("learn:plan");
+ * const mapping = getSkillMappingByKey("organize:cleanup");
  * if (mapping) {
- *   console.log(mapping.skillId); // "reading_planner"
+ *   console.log(mapping.skillId); // "batch_organize"
  * }
  * ```
  *

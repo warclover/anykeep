@@ -45,7 +45,6 @@ describe("E2E: Skill 路由", () => {
         "folder_recommend",
         "search_optimize",
         "folder_health_check",
-        "snapshot_compare",
       ];
 
       for (const skillId of newSkills) {
@@ -56,12 +55,6 @@ describe("E2E: Skill 路由", () => {
   });
 
   describe("getSkillMappingByKey", () => {
-    it("应该通过 key 找到映射", () => {
-      const mapping = getSkillMappingByKey("learn:plan");
-      expect(mapping).toBeDefined();
-      expect(mapping?.skillId).toBe("reading_planner");
-    });
-
     it("不存在的 key 应该返回 undefined", () => {
       const mapping = getSkillMappingByKey("nonexistent:skill");
       expect(mapping).toBeUndefined();
@@ -163,12 +156,6 @@ describe("E2E: Skill 路由", () => {
       const result = await analyzer.analyze("检查文件夹结构");
 
       expect(result.execution.suggestedSkill).toBe("folder_health_check");
-    });
-
-    it("快照对比: '对比页面变化' → snapshot_compare", async () => {
-      const result = await analyzer.analyze("对比页面变化");
-
-      expect(result.execution.suggestedSkill).toBe("snapshot_compare");
     });
   });
 

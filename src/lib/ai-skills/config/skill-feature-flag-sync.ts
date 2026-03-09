@@ -132,14 +132,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     defaultEnabled: true,
     relatedIntentKeys: ["query:folder_health", "action:folder_health"],
   },
-
-  // 快照对比分析
-  {
-    skillId: "snapshot_compare",
-    featureFlagEnv: "ENABLE_SNAPSHOT_COMPARE",
-    defaultEnabled: true,
-    relatedIntentKeys: ["analyze:snapshot_compare", "query:snapshot_compare"],
-  },
 ];
 
 // ============================================

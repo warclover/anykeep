@@ -25,7 +25,6 @@ import { batchOrganizeSkill } from "./skills/batch-organize";
 import { duplicateCleanupSkill } from "./skills/duplicate-cleanup";
 import { quickDigestSkill } from "./skills/quick-digest";
 import { smartTaggingSkill } from "./skills/smart-tagging";
-import { readingPlannerSkill } from "./skills/reading-planner";
 import { relatedDiscoverySkill } from "./skills/related-discovery";
 import { periodicReportSkill } from "./skills/periodic-report";
 import { shareBundleSkill } from "./skills/share-bundle";
@@ -43,7 +42,7 @@ import { inboxTriageSkill } from "./skills/inbox-triage";
 import { folderRecommendSkill } from "./skills/folder-recommend";
 import { searchOptimizeSkill } from "./skills/search-optimize";
 import { folderHealthCheckSkill } from "./skills/folder-health-check";
-import { snapshotCompareSkill } from "./skills/snapshot-compare";
+
 import { unifiedEngine } from "./engine/unified-engine";
 import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
 import { logger } from "@/lib/logger";
@@ -233,7 +232,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill);
   unifiedEngine.registerOrchestrationSkill(quickDigestSkill);
   unifiedEngine.registerOrchestrationSkill(smartTaggingSkill);
-  unifiedEngine.registerOrchestrationSkill(readingPlannerSkill);
   unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill);
   unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
   unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
@@ -301,12 +299,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_FOLDER_HEALTH_CHECK !== "false") {
     unifiedEngine.registerOrchestrationSkill(folderHealthCheckSkill);
     logger.debug("FolderHealthCheckSkill registered");
-  }
-
-  // P1: SnapshotCompareSkill - 快照对比分析（原子类型）
-  if (process.env.ENABLE_SNAPSHOT_COMPARE !== "false") {
-    skillRegistry.register(snapshotCompareSkill, { enabled: true });
-    logger.debug("SnapshotCompareSkill registered");
   }
 
   // 初始化混合意图分类器（如果启用）

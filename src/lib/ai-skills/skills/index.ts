@@ -92,9 +92,6 @@ export {
   DEFAULT_TAGGING_INPUT,
 } from "./smart-tagging/types";
 
-// ReadingPlannerSkill - 阅读计划（编排 Skill，Phase 2）
-export * from "./reading-planner";
-
 // RelatedDiscoverySkill - 相关发现（编排 Skill，Phase 2）
 export * from "./related-discovery";
 

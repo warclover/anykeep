@@ -1279,21 +1279,6 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
       },
     ],
   },
-  {
-    name: "ENABLE_SNAPSHOT_COMPARE",
-    description: "快照对比分析 Skill",
-    defaultValue: true,
-    module: "core",
-    phase: "stable",
-    addedVersion: "2.10.0",
-    integrationPoints: [
-      {
-        file: "lib/ai-skills/skills/snapshot-compare/snapshot-compare.skill.ts",
-        location: "execute()",
-        type: "execute",
-      },
-    ],
-  },
   // ===========================================================================
   // 智能分类系统 v5.1
   // ===========================================================================
