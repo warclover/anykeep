@@ -91,32 +91,6 @@ describe("ModeSelector", () => {
     });
 
     describe("orchestration mode selection", () => {
-      it("should select orchestration for learn:review with medium complexity", () => {
-        const intent: IntentClassification = {
-          type: "learn",
-          subType: "review",
-          confidence: 0.9,
-          entities: [],
-          requiresMultiStep: true,
-          hasDeliverableExpectation: true,
-          source: "rule",
-        };
-
-        const complexity: ComplexityEvaluation = {
-          level: "medium",
-          score: 55,
-          factors: [],
-          estimatedSteps: 4,
-          estimatedDurationMs: 20000,
-        };
-
-        const result = selector.select(intent, complexity);
-        const suggestedSkill = selector.getSuggestedSkill(intent, complexity);
-
-        expect(result.mode).toBe("orchestration");
-        expect(suggestedSkill).toBe("knowledge_review");
-      });
-
       it("should select orchestration for organize:dedupe with medium complexity", () => {
         const intent: IntentClassification = {
           type: "organize",
@@ -229,7 +203,7 @@ describe("ModeSelector", () => {
       });
 
       it("should use partial mapping when deliverable expected and partial exists", () => {
-        // 禁用 learn:interview，但 learn:review 仍启用
+        // 禁用 learn:interview，但其他 learn 映射仍启用
         const intent: IntentClassification = {
           type: "learn",
           subType: "interview",
@@ -250,7 +224,7 @@ describe("ModeSelector", () => {
 
         const result = selector.select(intent, complexity);
 
-        // 中等复杂度 + 期望交付物 + 有 partial mapping (learn:review) → orchestration
+        // 中等复杂度 + 期望交付物 + 有 partial mapping → orchestration
         expect(result.mode).toBe("orchestration");
       });
     });
@@ -258,8 +232,8 @@ describe("ModeSelector", () => {
     describe("fallback mode", () => {
       it("should provide fallback mode when orchestration selected", () => {
         const intent: IntentClassification = {
-          type: "learn",
-          subType: "review",
+          type: "organize",
+          subType: "dedupe",
           confidence: 0.9,
           entities: [],
           requiresMultiStep: true,
@@ -336,8 +310,8 @@ describe("ModeSelector", () => {
 
     it("should return skill ID for orchestration mode", () => {
       const intent: IntentClassification = {
-        type: "learn",
-        subType: "review",
+        type: "organize",
+        subType: "dedupe",
         confidence: 0.9,
         entities: [],
         requiresMultiStep: true,
@@ -355,7 +329,7 @@ describe("ModeSelector", () => {
 
       const suggestedSkill = selector.getSuggestedSkill(intent, complexity);
 
-      expect(suggestedSkill).toBe("knowledge_review");
+      expect(suggestedSkill).toBe("duplicate_cleanup");
     });
   });
 
@@ -368,17 +342,17 @@ describe("ModeSelector", () => {
     });
 
     it("should be able to enable/disable skills", () => {
-      selector.setSkillEnabled("knowledge_review", false);
+      selector.setSkillEnabled("duplicate_cleanup", false);
 
       const enabledSkills = selector.getEnabledSkills();
-      const hasKnowledgeReview = enabledSkills.some(
-        (s) => s.skillId === "knowledge_review",
+      const hasDuplicateCleanup = enabledSkills.some(
+        (s) => s.skillId === "duplicate_cleanup",
       );
 
-      expect(hasKnowledgeReview).toBe(false);
+      expect(hasDuplicateCleanup).toBe(false);
 
       // Re-enable for other tests
-      selector.setSkillEnabled("knowledge_review", true);
+      selector.setSkillEnabled("duplicate_cleanup", true);
     });
 
     it("should be able to register new skills", () => {

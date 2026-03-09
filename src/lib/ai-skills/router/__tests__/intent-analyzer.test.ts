@@ -150,13 +150,6 @@ describe("IntentAnalyzer", () => {
         expect(result.subType).toBe("review");
       });
 
-      it("应正确分类主动复习启动", async () => {
-        const result = await analyzer.analyze("开始今日复习");
-
-        expect(result.intent).toBe("learn");
-        expect(result.subType).toBe("active_recall_start");
-      });
-
       it("应正确分类面试准备", async () => {
         const result = await analyzer.analyze("准备前端面试");
 
@@ -306,13 +299,6 @@ describe("IntentAnalyzer", () => {
 
       expect(result.execution.mode).toBe("orchestration");
       expect(result.execution.suggestedSkill).toBeDefined();
-    });
-
-    it("复习操作应选择 orchestration 模式并建议 active_recall", async () => {
-      const result = await analyzer.analyze("开始今日复习");
-
-      expect(result.execution.mode).toBe("orchestration");
-      expect(result.execution.suggestedSkill).toBe("active_recall");
     });
 
     it("分享操作应选择正确的模式", async () => {

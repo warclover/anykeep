@@ -31,7 +31,7 @@ describe("Skill Feature Flag Sync", () => {
       // search, batch_organize 等没有独立 Feature Flag
       expect(isSkillEnabledByFeatureFlag("search")).toBe(true);
       expect(isSkillEnabledByFeatureFlag("batch_organize")).toBe(true);
-      expect(isSkillEnabledByFeatureFlag("knowledge_review")).toBe(true);
+      expect(isSkillEnabledByFeatureFlag("data_export")).toBe(true);
     });
 
     it("Feature Flag 未设置时应使用默认值", () => {
@@ -78,14 +78,6 @@ describe("Skill Feature Flag Sync", () => {
 
       expect(isIntentKeyAvailable("create:tts")).toBe(false);
     });
-
-    it("Active Recall 禁用时所有相关意图键应不可用", () => {
-      process.env.ENABLE_ACTIVE_RECALL = "false";
-
-      expect(isIntentKeyAvailable("learn:active_recall_start")).toBe(false);
-      expect(isIntentKeyAvailable("query:mastery_stats")).toBe(false);
-      expect(isIntentKeyAvailable("action:review_preferences")).toBe(false);
-    });
   });
 
   describe("getDisabledIntentKeys", () => {
@@ -107,12 +99,9 @@ describe("Skill Feature Flag Sync", () => {
 
     it("禁用多个 Skill 时应返回所有相关意图键（去重）", () => {
       process.env.ENABLE_TTS_SYNTHESIS = "false";
-      process.env.ENABLE_ACTIVE_RECALL = "false";
 
       const disabledKeys = getDisabledIntentKeys();
       expect(disabledKeys).toContain("create:tts");
-      expect(disabledKeys).toContain("learn:active_recall_start");
-      expect(disabledKeys).toContain("query:mastery_stats");
     });
   });
 

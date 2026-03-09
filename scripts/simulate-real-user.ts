@@ -271,12 +271,6 @@ const scenarios: TestScenario[] = [
         expectedSubType: "insight",
         note: "深度分析",
       },
-      {
-        input: "帮我复习下最近收藏的内容",
-        expectedType: "learn",
-        acceptableSubTypes: ["review", "active_recall_start"],
-        note: "学习复习",
-      },
     ],
   },
   {

@@ -12,7 +12,6 @@
 import React from "react";
 import {
   FolderOpen,
-  BookOpen,
   Trash2,
   Tag,
   Archive,
@@ -46,7 +45,6 @@ export interface ActionButtonProps {
 
 const actionIcons: Record<SuggestedAction["type"], React.ElementType> = {
   organize_topic: FolderOpen,
-  review_unread: BookOpen,
   cleanup_duplicates: Trash2,
   tag_untagged: Tag,
   archive_old: Archive,

@@ -18,7 +18,6 @@ export const PRO_FEATURES = {
   BLUEPRINT_FEYNMAN: "blueprint_feynman",
   CHAT_TO_EDIT: "chat_to_edit",
   CITATION_HOVER_LINK: "citation_hover_link",
-  BRAIN_SYNC_INTEGRATION: "brain_sync_integration",
   OBSIDIAN_EXPORT: "obsidian_export",
   UNLIMITED_SYNTHESIS: "unlimited_synthesis",
 } as const;

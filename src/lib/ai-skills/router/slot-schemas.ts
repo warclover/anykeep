@@ -182,11 +182,6 @@ export const INTENT_SLOT_DEFINITIONS: Record<
   // ============================================
   // 学习类 - 支持 timeRange 时间范围过滤
   // ============================================
-  "learn:review": {
-    required: [],
-    optional: ["scope", "mode", "timeRange"],
-    description: "知识回顾（支持时间范围过滤）",
-  },
   "learn:path": {
     required: [],
     optional: ["topic", "level"],

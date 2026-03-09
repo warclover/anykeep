@@ -78,22 +78,22 @@ describe("RouteLogger", () => {
       const log: RouteDecisionLog = {
         routeId: "route_xyz789",
         timestamp: Date.now(),
-        input: "复习收藏",
+        input: "整理收藏",
         inputLength: 4,
         classification: {
-          intentType: "learn",
-          subType: "review",
-          intentKey: "learn:review",
+          intentType: "organize",
+          subType: "cleanup",
+          intentKey: "organize:cleanup",
           confidence: 0.9,
           complexity: "medium",
-          matchedPattern: "复习",
+          matchedPattern: "整理",
           matchScore: 0.85,
         },
         routing: {
-          skillId: "knowledge_review",
+          skillId: "batch_organize",
           mode: "orchestration",
           isExplicit: false,
-          reason: "learn:review → 知识回顾",
+          reason: "organize:cleanup → 批量整理",
         },
         performance: {
           classificationMs: 8,
@@ -236,7 +236,7 @@ describe("RouteLogger", () => {
 
       routeLogger.logFallback(
         "route_fb001",
-        "knowledge_review",
+        "batch_organize",
         "search",
         "编排执行失败",
       );
@@ -244,7 +244,7 @@ describe("RouteLogger", () => {
       expect(logger.warn).toHaveBeenCalledWith(
         expect.objectContaining({
           routeId: "route_fb001",
-          originalSkillId: "knowledge_review",
+          originalSkillId: "batch_organize",
           fallbackSkillId: "search",
           reason: "编排执行失败",
         }),

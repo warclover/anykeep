@@ -86,7 +86,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   periodic_report: "生成我的学习周报",
   related_discovery: "发现与我收藏相关的内容",
   share_bundle: "创建一个分享包",
-  knowledge_graph_explore: "探索我的知识图谱",
 
   // 编排 Skills - 实用工具
   insight_report: "生成我的收藏洞察报告",

@@ -119,12 +119,6 @@ export const TOOL_GROUPS: ToolGroup[] = [
         icon: "💡",
         description: "提取关键知识点",
       },
-      {
-        id: "review",
-        name: "知识复习",
-        icon: "🎯",
-        description: "生成复习卡片和测试",
-      },
     ],
   },
   {

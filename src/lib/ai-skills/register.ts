@@ -19,7 +19,6 @@ import { skillRegistry } from "./core/skill-registry";
 import { searchSkill } from "./skills/search";
 import { classifySkill } from "./skills/classify";
 import { summarySkill } from "./skills/summary";
-import { knowledgeReviewSkill } from "./skills/knowledge-review";
 import { dataExportSkill } from "./skills/data-export";
 import { insightReportSkill } from "./skills/insight-report";
 import { batchOrganizeSkill } from "./skills/batch-organize";
@@ -43,7 +42,6 @@ import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 import { inboxTriageSkill } from "./skills/inbox-triage";
 import { folderRecommendSkill } from "./skills/folder-recommend";
 import { searchOptimizeSkill } from "./skills/search-optimize";
-// [已移除] knowledgeGraphExploreSkill - 知识图谱精简重构 2026-01-29
 import { folderHealthCheckSkill } from "./skills/folder-health-check";
 import { snapshotCompareSkill } from "./skills/snapshot-compare";
 import { unifiedEngine } from "./engine/unified-engine";
@@ -229,7 +227,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   );
 
   // 注册编排 Skills
-  unifiedEngine.registerOrchestrationSkill(knowledgeReviewSkill);
   unifiedEngine.registerOrchestrationSkill(dataExportSkill);
   unifiedEngine.registerOrchestrationSkill(insightReportSkill);
   unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill);
@@ -306,8 +303,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
     skillRegistry.register(searchOptimizeSkill, { enabled: true });
     logger.debug("SearchOptimizeSkill registered");
   }
-
-  // [已移除] KnowledgeGraphExploreSkill - 知识图谱精简重构 2026-01-29
 
   // P1: FolderHealthCheckSkill - 文件夹健康检查（编排类型）
   if (process.env.ENABLE_FOLDER_HEALTH_CHECK !== "false") {

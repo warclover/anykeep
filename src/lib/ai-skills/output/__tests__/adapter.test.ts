@@ -388,14 +388,14 @@ describe("UnifiedOutputAdapter", () => {
       const chunk = adapter.createRoutingChunk(
         "orchestration",
         "复杂任务需要多步骤处理",
-        "knowledge_review",
-        "review",
+        "batch_organize",
+        "cleanup",
         "complex",
       );
 
       expect(chunk.type).toBe("routing");
       expect((chunk.data as any).mode).toBe("orchestration");
-      expect((chunk.data as any).skill).toBe("knowledge_review");
+      expect((chunk.data as any).skill).toBe("batch_organize");
     });
   });
 

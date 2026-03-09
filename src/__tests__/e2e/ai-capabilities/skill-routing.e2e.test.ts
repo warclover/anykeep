@@ -44,7 +44,6 @@ describe("E2E: Skill 路由", () => {
         "inbox_triage",
         "folder_recommend",
         "search_optimize",
-        "knowledge_graph_explore",
         "folder_health_check",
         "snapshot_compare",
       ];
@@ -58,9 +57,9 @@ describe("E2E: Skill 路由", () => {
 
   describe("getSkillMappingByKey", () => {
     it("应该通过 key 找到映射", () => {
-      const mapping = getSkillMappingByKey("learn:review");
+      const mapping = getSkillMappingByKey("learn:path");
       expect(mapping).toBeDefined();
-      expect(mapping?.skillId).toBe("knowledge_review");
+      expect(mapping?.skillId).toBe("learning_path");
     });
 
     it("不存在的 key 应该返回 undefined", () => {
@@ -160,12 +159,6 @@ describe("E2E: Skill 路由", () => {
       expect(result.execution.suggestedSkill).toBe("search_optimize");
     });
 
-    it("知识图谱: '展示知识图谱' → knowledge_graph_explore", async () => {
-      const result = await analyzer.analyze("展示知识图谱");
-
-      expect(result.execution.suggestedSkill).toBe("knowledge_graph_explore");
-    });
-
     it("文件夹健康检查: '检查文件夹结构' → folder_health_check", async () => {
       const result = await analyzer.analyze("检查文件夹结构");
 
@@ -177,23 +170,6 @@ describe("E2E: Skill 路由", () => {
 
       expect(result.execution.suggestedSkill).toBe("snapshot_compare");
     });
-  });
-
-  describe("知识回顾路由", () => {
-    const reviewQueries = [
-      { input: "帮我复习一下收藏", expectedSkill: "knowledge_review" },
-      { input: "知识回顾", expectedSkill: "knowledge_review" },
-      { input: "生成复习卡片", expectedSkill: "knowledge_review" },
-    ];
-
-    it.each(reviewQueries)(
-      '输入 "$input" 应该路由到 $expectedSkill',
-      async ({ input, expectedSkill }) => {
-        const result = await analyzer.analyze(input);
-
-        expect(result.execution.suggestedSkill).toBe(expectedSkill);
-      },
-    );
   });
 
   describe("洞察报告路由", () => {

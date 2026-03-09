@@ -73,34 +73,6 @@ import { extractTimeRangeFromText } from "@/lib/ai-agent/tools/shared/time-range
  */
 export const DEFAULT_RULES: IntentRule[] = [
   // ============================================
-  // Active Recall 主动复习类（v2.5.0 新增）
-  // ============================================
-  {
-    // 开始复习会话
-    pattern:
-      /开始复习|今日复习|知识同步|脑回路同步|看看要复习什么|有什么要复习/,
-    type: "learn",
-    subType: "active_recall_start",
-    complexity: "complex",
-    weight: 95,
-  },
-  {
-    // 查看复习统计/掌握度
-    pattern: /复习进度|我学了什么|掌握了多少|内化率|记忆曲线|复习统计|掌握度/,
-    type: "query",
-    subType: "mastery_stats",
-    complexity: "simple",
-    weight: 85,
-  },
-  {
-    // 配置复习偏好
-    pattern: /设置复习|复习偏好|调整复习频率|关闭复习|开启复习|复习设置/,
-    type: "action",
-    subType: "review_preferences",
-    complexity: "simple",
-    weight: 82,
-  },
-
   // ============================================
   // 学习类（高优先级，通常需要编排）
   // ============================================
@@ -723,15 +695,6 @@ export const DEFAULT_RULES: IntentRule[] = [
     subType: "search_optimize",
     complexity: "simple",
     weight: 82,
-  },
-  // KnowledgeGraphExploreSkill - 知识图谱探索
-  {
-    pattern:
-      /探索.*图谱|图谱.*探索|知识.*关联|关联.*分析|explore.*(graph|knowledge)/i,
-    type: "analyze",
-    subType: "knowledge_graph_explore",
-    complexity: "complex",
-    weight: 83,
   },
   // FolderHealthCheckSkill - 文件夹健康检查
   {

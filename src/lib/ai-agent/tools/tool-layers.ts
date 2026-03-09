@@ -180,16 +180,12 @@ export const EXPORT_TOOLS: readonly string[] = [
 ] as const;
 
 /**
- * 学习工具集 (6个)
+ * 学习工具集
  *
- * 触发意图: learn:review, learn:path, learn:active_recall_start
+ * 触发意图: learn:path
  */
 export const LEARN_TOOLS: readonly string[] = [
-  "generate_flashcards",
-  "get_review_queue",
-  "submit_review_response",
-  "get_mastery_stats",
-  "update_review_preferences",
+  // [已移除] active_recall 工具 - 精简重构 2026-03-09
   // [已移除] get_knowledge_graph - 知识图谱精简重构 2026-01-29
 ] as const;
 

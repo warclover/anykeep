@@ -271,24 +271,6 @@ const TEST_CASES: TestCase[] = [
   // Learn 学习类
   // ============================================
   {
-    input: "复习一下最近收藏的内容",
-    expectedType: "learn",
-    expectedSubType: "review",
-    category: "learn",
-  },
-  {
-    input: "开始复习",
-    expectedType: "learn",
-    expectedSubType: "active_recall_start",
-    category: "learn",
-  },
-  {
-    input: "今日复习",
-    expectedType: "learn",
-    expectedSubType: "active_recall_start",
-    category: "learn",
-  },
-  {
     input: "帮我准备面试",
     expectedType: "learn",
     expectedSubType: "interview",

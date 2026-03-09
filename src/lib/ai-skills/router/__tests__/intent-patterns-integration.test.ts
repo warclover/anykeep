@@ -177,28 +177,6 @@ describe("IntentPatterns Integration", () => {
       });
     });
 
-    describe("knowledge_graph_explore related intents", () => {
-      it("should classify knowledge graph exploration requests correctly", async () => {
-        const inputs = [
-          "探索知识图谱",
-          "知识关联",
-          // "看看关系网络" 会匹配 chitchat，需要添加专门规则
-        ];
-
-        for (const input of inputs) {
-          const result = await classifier.classify(input);
-          // 应该匹配到 analyze 或 query 类型
-          expect(["analyze", "query"]).toContain(result.type);
-        }
-      });
-
-      it("should handle vague graph mentions as query", async () => {
-        // "看看" 触发 query 意图，符合用户查看/浏览的预期
-        const result = await classifier.classify("看看关系网络");
-        expect(["query", "analyze"]).toContain(result.type);
-      });
-    });
-
     describe("folder_health_check related intents", () => {
       it("should classify folder health check requests correctly", async () => {
         const inputs = ["检查文件夹", "文件夹健康度", "分析文件夹状态"];

@@ -15,9 +15,6 @@ export * from "./classify";
 // SummarySkill - 内容摘要
 export * from "./summary";
 
-// KnowledgeReviewSkill - 知识复习（编排 Skill）
-export * from "./knowledge-review";
-
 // DataExportSkill - 数据导出（编排 Skill）
 export * from "./data-export";
 

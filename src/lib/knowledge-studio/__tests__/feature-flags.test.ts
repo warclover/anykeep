@@ -33,9 +33,6 @@ describe("Knowledge Studio Constants", () => {
       expect(PRO_FEATURES.BLUEPRINT_FEYNMAN).toBe("blueprint_feynman");
       expect(PRO_FEATURES.CHAT_TO_EDIT).toBe("chat_to_edit");
       expect(PRO_FEATURES.CITATION_HOVER_LINK).toBe("citation_hover_link");
-      expect(PRO_FEATURES.BRAIN_SYNC_INTEGRATION).toBe(
-        "brain_sync_integration",
-      );
       expect(PRO_FEATURES.OBSIDIAN_EXPORT).toBe("obsidian_export");
       expect(PRO_FEATURES.UNLIMITED_SYNTHESIS).toBe("unlimited_synthesis");
     });
@@ -225,18 +222,6 @@ describe("Pro Feature Checks", () => {
     it("Pro 用户可以使用 Chat-to-Edit", () => {
       const proUser: UserProfile = { membershipType: "pro" };
       expect(hasProFeature(proUser, "CHAT_TO_EDIT")).toBe(true);
-    });
-  });
-
-  describe("Brain-Sync 整合功能", () => {
-    it("免费用户不能使用 Brain-Sync 整合", () => {
-      const freeUser: UserProfile = { membershipType: "free" };
-      expect(hasProFeature(freeUser, "BRAIN_SYNC_INTEGRATION")).toBe(false);
-    });
-
-    it("Pro 用户可以使用 Brain-Sync 整合", () => {
-      const proUser: UserProfile = { membershipType: "pro" };
-      expect(hasProFeature(proUser, "BRAIN_SYNC_INTEGRATION")).toBe(true);
     });
   });
 

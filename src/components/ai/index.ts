@@ -119,7 +119,6 @@ export {
 } from "./search-results-list";
 
 // 交付物展示组件
-export { ReviewCard } from "./deliverables/review-card";
 export { CleanupPreview } from "./deliverables/cleanup-preview";
 export { DigestView } from "./deliverables/digest-view";
 export {

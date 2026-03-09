@@ -149,23 +149,6 @@ function createDefaultRules(): CascadeRule[] {
       priority: 50,
     },
 
-    // 知识回顾完成后更新学习偏好
-    {
-      id: "knowledge_review_preferences",
-      description: "知识回顾完成后更新学习偏好",
-      triggerSkillId: "knowledge_review",
-      onSuccessOnly: true,
-      actionType: "update_preferences",
-      handler: async (event) => {
-        logger.info(
-          { skillId: event.skillId, userId: event.userId },
-          "CascadeHandler: Updating learning preferences after knowledge_review",
-        );
-      },
-      enabled: true,
-      priority: 50,
-    },
-
     // 智能标签完成后触发分类建议
     {
       id: "smart_tagging_suggest",

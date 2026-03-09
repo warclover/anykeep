@@ -73,22 +73,6 @@ export class SkillMappingRegistry {
   private initializeDefaultMappings(): void {
     const defaults: Record<string, SkillMapping> = {
       // 学习类
-      "learn:review": {
-        key: "learn:review",
-        skillId: "knowledge_review",
-        name: "知识回顾",
-        mode: "orchestration",
-        minComplexity: "medium",
-        enabled: true,
-      },
-      "learn:active_recall_start": {
-        key: "learn:active_recall_start",
-        skillId: "active_recall",
-        name: "主动复习",
-        mode: "orchestration",
-        minComplexity: "medium",
-        enabled: true,
-      },
       // 整理类
       "organize:cleanup": {
         key: "organize:cleanup",

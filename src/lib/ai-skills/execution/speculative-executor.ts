@@ -40,7 +40,7 @@ import type { IntentType } from "../router/types";
  */
 const DEFAULT_STRATEGY_CONFIG: ExecutionStrategyConfig = {
   highConfidenceThreshold: 0.85,
-  mediumConfidenceThreshold: 0.60,
+  mediumConfidenceThreshold: 0.6,
   undoTimeoutMs: 10000, // 10秒
   clarificationTimeoutMs: 30000, // 30秒
 };
@@ -115,8 +115,6 @@ const INTENT_LABELS: Record<string, Record<string, string>> = {
     insight: "数据洞察",
   },
   learn: {
-    active_recall_start: "开始复习",
-    review: "知识回顾",
     path: "学习路径",
   },
   chitchat: {
@@ -170,7 +168,10 @@ export class SpeculativeExecutor {
   async execute(
     intent: IntentWithSlots,
     context: ExecutionContext,
-    executor: (intent: IntentWithSlots, context: ExecutionContext) => Promise<{
+    executor: (
+      intent: IntentWithSlots,
+      context: ExecutionContext,
+    ) => Promise<{
       success: boolean;
       message: string;
       data?: unknown;
@@ -235,7 +236,10 @@ export class SpeculativeExecutor {
   /**
    * 确定执行策略
    */
-  determineStrategy(confidence: number, riskLevel: RiskLevel): ExecutionStrategy {
+  determineStrategy(
+    confidence: number,
+    riskLevel: RiskLevel,
+  ): ExecutionStrategy {
     // 高风险操作必须确认
     if (riskLevel === "high") {
       return "confirm_required";
@@ -282,7 +286,10 @@ export class SpeculativeExecutor {
   private async executeSilently(
     intent: IntentWithSlots,
     context: ExecutionContext,
-    executor: (intent: IntentWithSlots, context: ExecutionContext) => Promise<{
+    executor: (
+      intent: IntentWithSlots,
+      context: ExecutionContext,
+    ) => Promise<{
       success: boolean;
       message: string;
       data?: unknown;
@@ -300,7 +307,10 @@ export class SpeculativeExecutor {
         affectedCount: result.affectedCount,
       };
     } catch (error) {
-      logger.error({ error, intent }, "SpeculativeExecutor: Silent execution failed");
+      logger.error(
+        { error, intent },
+        "SpeculativeExecutor: Silent execution failed",
+      );
       return {
         success: false,
         message: `执行失败：${error instanceof Error ? error.message : "未知错误"}`,
@@ -316,7 +326,10 @@ export class SpeculativeExecutor {
   private async executeWithUndo(
     intent: IntentWithSlots,
     context: ExecutionContext,
-    executor: (intent: IntentWithSlots, context: ExecutionContext) => Promise<{
+    executor: (
+      intent: IntentWithSlots,
+      context: ExecutionContext,
+    ) => Promise<{
       success: boolean;
       message: string;
       data?: unknown;
@@ -345,9 +358,11 @@ export class SpeculativeExecutor {
         description: this.getActionLabel(intent),
         createdAt: new Date(),
         expiresAt: new Date(Date.now() + this.config.strategy.undoTimeoutMs),
-        execute: result.undoExecutor || (async () => {
-          logger.warn({ undoId: undoAction.id }, "No undo executor provided");
-        }),
+        execute:
+          result.undoExecutor ||
+          (async () => {
+            logger.warn({ undoId: undoAction.id }, "No undo executor provided");
+          }),
         snapshot: result.snapshot,
       };
 
@@ -355,7 +370,10 @@ export class SpeculativeExecutor {
       this.pushUndo(undoAction);
 
       // 设置自动清理定时器
-      this.scheduleUndoCleanup(undoAction.id, this.config.strategy.undoTimeoutMs);
+      this.scheduleUndoCleanup(
+        undoAction.id,
+        this.config.strategy.undoTimeoutMs,
+      );
 
       return {
         success: true,
@@ -368,7 +386,10 @@ export class SpeculativeExecutor {
         affectedCount: result.affectedCount,
       };
     } catch (error) {
-      logger.error({ error, intent }, "SpeculativeExecutor: Execution with undo failed");
+      logger.error(
+        { error, intent },
+        "SpeculativeExecutor: Execution with undo failed",
+      );
       return {
         success: false,
         message: `执行失败：${error instanceof Error ? error.message : "未知错误"}`,
@@ -412,9 +433,8 @@ export class SpeculativeExecutor {
       message: "",
       requiresConfirmation: true,
       confirmationMessage: `确定要${actionLabel}吗？`,
-      impactDescription: affectedCount > 0
-        ? `将影响 ${affectedCount} 条书签`
-        : "此操作不可撤销",
+      impactDescription:
+        affectedCount > 0 ? `将影响 ${affectedCount} 条书签` : "此操作不可撤销",
     };
   }
 
@@ -449,7 +469,10 @@ export class SpeculativeExecutor {
 
       if (this.config.debug) {
         logger.debug(
-          { undoId, intent: `${undoAction.intentType}:${undoAction.intentSubType}` },
+          {
+            undoId,
+            intent: `${undoAction.intentType}:${undoAction.intentSubType}`,
+          },
           "SpeculativeExecutor: Undo executed successfully",
         );
       }
@@ -459,7 +482,10 @@ export class SpeculativeExecutor {
         message: `已撤销${undoAction.description}`,
       };
     } catch (error) {
-      logger.error({ error, undoId }, "SpeculativeExecutor: Undo execution failed");
+      logger.error(
+        { error, undoId },
+        "SpeculativeExecutor: Undo execution failed",
+      );
       return {
         success: false,
         message: `撤销失败：${error instanceof Error ? error.message : "未知错误"}`,
@@ -522,7 +548,10 @@ export class SpeculativeExecutor {
     const timer = setTimeout(() => {
       this.removeUndo(undoId);
       if (this.config.debug) {
-        logger.debug({ undoId }, "SpeculativeExecutor: Undo action expired and removed");
+        logger.debug(
+          { undoId },
+          "SpeculativeExecutor: Undo action expired and removed",
+        );
       }
     }, delayMs);
 
@@ -543,7 +572,9 @@ export class SpeculativeExecutor {
   /**
    * 构建澄清选项
    */
-  private buildClarificationOptions(intent: IntentWithSlots): ClarificationOption[] {
+  private buildClarificationOptions(
+    intent: IntentWithSlots,
+  ): ClarificationOption[] {
     const options: ClarificationOption[] = [
       {
         label: this.getIntentLabel(intent.type, intent.subType),

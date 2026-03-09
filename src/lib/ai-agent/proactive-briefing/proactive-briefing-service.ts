@@ -396,29 +396,22 @@ export class ProactiveBriefingService {
       const supabase = await createClient();
 
       // 并行查询多个维度的变化
-      const [newBookmarksResult, untaggedResult, pendingReviewsResult] =
-        await Promise.all([
-          // 新增书签
-          supabase
-            .from("bookmarks")
-            .select("id, title, platform, user_tags, created_at")
-            .eq("user_id", userId)
-            .gte("created_at", since.toISOString())
-            .order("created_at", { ascending: false }),
+      const [newBookmarksResult, untaggedResult] = await Promise.all([
+        // 新增书签
+        supabase
+          .from("bookmarks")
+          .select("id, title, platform, user_tags, created_at")
+          .eq("user_id", userId)
+          .gte("created_at", since.toISOString())
+          .order("created_at", { ascending: false }),
 
-          // 未标签数量
-          supabase
-            .from("bookmarks")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .or("user_tags.is.null,user_tags.eq.{}"),
-
-          // 待复习数量（简化版：统计总数的 10%）
-          supabase
-            .from("bookmarks")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId),
-        ]);
+        // 未标签数量
+        supabase
+          .from("bookmarks")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .or("user_tags.is.null,user_tags.eq.{}"),
+      ]);
 
       const newBookmarks = (newBookmarksResult.data ?? []).map((b) => ({
         id: b.id,
@@ -435,7 +428,6 @@ export class ProactiveBriefingService {
         newBookmarks,
         topicDistribution,
         untaggedCount: untaggedResult.count ?? 0,
-        pendingReviewsCount: Math.ceil((pendingReviewsResult.count ?? 0) * 0.1),
         since,
       };
     } catch (error) {
@@ -448,7 +440,6 @@ export class ProactiveBriefingService {
         newBookmarks: [],
         topicDistribution: [],
         untaggedCount: 0,
-        pendingReviewsCount: 0,
         since,
       };
     }
@@ -562,17 +553,6 @@ export class ProactiveBriefingService {
     }
 
     // 2. 待复习建议
-    if (changes.pendingReviewsCount >= THRESHOLDS.PENDING_REVIEW_THRESHOLD) {
-      suggestions.push({
-        id: generateActionId("review_unread"),
-        type: "review_unread" as ActionType,
-        label: "开始复习",
-        description: `有 ${changes.pendingReviewsCount} 条内容等待复习`,
-        affectedCount: changes.pendingReviewsCount,
-        executeParams: { skillId: "active_recall" },
-      });
-    }
-
     // 3. 主题整理建议（基于洞察）
     const topicInsight = insights.find((i) => i.type === "topic_emergence");
     if (topicInsight) {

@@ -726,15 +726,6 @@ export const FeatureFlags = {
   },
 
   /**
-   * 是否启用知识图谱探索 Skill
-   * @default true
-   * @description 可视化知识关联，发现学习盲区
-   */
-  get ENABLE_KNOWLEDGE_GRAPH_EXPLORE(): boolean {
-    return process.env.ENABLE_KNOWLEDGE_GRAPH_EXPLORE !== "false";
-  },
-
-  /**
    * 是否启用文件夹健康检查 Skill
    * @default true
    * @description 分析文件夹结构，发现问题并优化建议
@@ -890,7 +881,6 @@ export function getAllFeatureFlags(): Record<BooleanFeatureFlagKey, boolean> & {
     // Skills v1.1.0 新增 [P1-7 修复 - 2026-01-13]
     ENABLE_FOLDER_RECOMMEND: FeatureFlags.ENABLE_FOLDER_RECOMMEND,
     ENABLE_SEARCH_OPTIMIZE: FeatureFlags.ENABLE_SEARCH_OPTIMIZE,
-    ENABLE_KNOWLEDGE_GRAPH_EXPLORE: FeatureFlags.ENABLE_KNOWLEDGE_GRAPH_EXPLORE,
     ENABLE_FOLDER_HEALTH_CHECK: FeatureFlags.ENABLE_FOLDER_HEALTH_CHECK,
     ENABLE_SNAPSHOT_COMPARE: FeatureFlags.ENABLE_SNAPSHOT_COMPARE,
     // 智能分类系统 [v5.1 新增 - 2026-01-23]

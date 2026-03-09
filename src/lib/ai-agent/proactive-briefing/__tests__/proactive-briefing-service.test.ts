@@ -409,23 +409,6 @@ describe("ProactiveBriefingService", () => {
       expect(tagAction?.affectedCount).toBe(25);
     });
 
-    it("should suggest review_unread when pending reviews exceed threshold", async () => {
-      const threeDaysAgo = new Date(
-        Date.now() - TIME_CONSTANTS.ONE_DAY_MS * 3,
-      ).toISOString();
-      setupMockQueries({
-        lastVisitAt: threeDaysAgo,
-        totalCount: 100, // 10% = 10 pending reviews
-      });
-
-      const result = await service.generateBriefing(TEST_USER_ID);
-
-      const reviewAction = result?.suggestedActions.find(
-        (a) => a.type === "review_unread",
-      );
-      expect(reviewAction).toBeDefined();
-    });
-
     it("should suggest organize_topic when topic emergence detected", async () => {
       const sevenDaysAgo = new Date(
         Date.now() - TIME_CONSTANTS.ONE_DAY_MS * 7,

@@ -414,22 +414,6 @@ export class PatternDetectionAnalyzer extends BaseAnalyzer {
       });
     }
 
-    // 沉寂主题回顾建议
-    const dormant = patterns.find((p) => p.type === "dormant_topic");
-    if (dormant) {
-      actions.push({
-        id: `action_review_dormant_${Date.now()}`,
-        type: "review_unread",
-        label: "回顾沉寂内容",
-        description: "复习一下之前收藏的内容",
-        affectedCount: dormant.bookmarkIds.length,
-        executeParams: {
-          skillId: "knowledge_review",
-          bookmarkIds: dormant.bookmarkIds,
-        },
-      });
-    }
-
     return actions;
   }
 }

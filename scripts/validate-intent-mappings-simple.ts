@@ -49,7 +49,7 @@ interface ValidationResult {
  * {
  *   pattern: /regex/,
  *   type: "learn",
- *   subType: "active_recall_start",
+ *   subType: "path",
  *   complexity: "complex",
  *   weight: 95,
  * }
@@ -109,9 +109,9 @@ function extractIntentRules(): Array<{ type: string; subType?: string }> {
  *
  * 映射格式（多行）：
  * {
- *   key: "learn:active_recall_start",
- *   skillId: "active_recall",
- *   name: "Brain-Sync 主动复习",
+ *   key: "organize:cleanup",
+ *   skillId: "organize_cleanup",
+ *   name: "智能整理",
  *   mode: "orchestration",
  *   ...
  * }

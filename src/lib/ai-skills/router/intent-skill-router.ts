@@ -106,8 +106,8 @@ const DEFAULT_CONFIG: Required<IntentSkillRouterConfig> = {
  * const router = new IntentSkillRouter();
  *
  * // 自动路由
- * const result = router.route("帮我复习一下收藏");
- * // → { skillId: 'knowledge_review', mode: 'orchestration', ... }
+ * const result = router.route("帮我整理收藏");
+ * // → { skillId: 'batch_organize', mode: 'orchestration', ... }
  *
  * // 显式工具
  * const explicitResult = router.routeExplicit("organize");

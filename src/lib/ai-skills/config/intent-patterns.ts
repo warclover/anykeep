@@ -24,35 +24,6 @@ import type { IntentPattern } from "./types";
  */
 export const INTENT_PATTERNS: IntentPattern[] = [
   // ============================================
-  // Active Recall 主动复习类（权重 90-95，v2.5.0 新增）
-  // ============================================
-  {
-    type: "learn",
-    subType: "active_recall_start",
-    pattern:
-      "开始复习|今日复习|知识同步|脑回路同步|看看要复习什么|有什么要复习",
-    weight: 95,
-    complexity: "complex",
-    description: "开始 Brain-Sync 主动复习会话",
-  },
-  {
-    type: "query",
-    subType: "mastery_stats",
-    pattern: "复习进度|我学了什么|掌握了多少|内化率|记忆曲线|复习统计|掌握度",
-    weight: 85,
-    complexity: "simple",
-    description: "查看复习掌握度统计",
-  },
-  {
-    type: "action",
-    subType: "review_preferences",
-    pattern: "设置复习|复习偏好|调整复习频率|关闭复习|开启复习|复习设置",
-    weight: 82,
-    complexity: "simple",
-    description: "配置复习偏好设置",
-  },
-
-  // ============================================
   // 学习类（权重 80-90）
   // ============================================
   {
@@ -176,15 +147,6 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     weight: 82,
     complexity: "simple",
     description: "搜索优化助手",
-  },
-  {
-    // KnowledgeGraphExploreSkill - 知识图谱探索
-    type: "analyze",
-    subType: "knowledge_graph_explore",
-    pattern: "探索.*图谱|图谱.*探索|知识.*关联|关联.*分析",
-    weight: 83,
-    complexity: "complex",
-    description: "知识图谱探索",
   },
   {
     // FolderHealthCheckSkill - 文件夹健康检查

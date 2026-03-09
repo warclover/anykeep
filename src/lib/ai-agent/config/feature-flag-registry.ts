@@ -1265,21 +1265,6 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     ],
   },
   {
-    name: "ENABLE_KNOWLEDGE_GRAPH_EXPLORE",
-    description: "知识图谱探索 Skill",
-    defaultValue: true,
-    module: "core",
-    phase: "stable",
-    addedVersion: "2.10.0",
-    integrationPoints: [
-      {
-        file: "lib/ai-skills/skills/knowledge-graph-explore/knowledge-graph-explore.skill.ts",
-        location: "execute()",
-        type: "execute",
-      },
-    ],
-  },
-  {
     name: "ENABLE_FOLDER_HEALTH_CHECK",
     description: "文件夹健康检查 Skill",
     defaultValue: true,

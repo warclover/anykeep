@@ -119,26 +119,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
   // 编排 Skills
   // ============================================
   {
-    id: "knowledge_review",
-    name: "知识复习助手",
-    description:
-      "基于艾宾浩斯遗忘曲线分析您的收藏内容，生成科学的复习计划，帮助您更好地记忆和掌握知识。",
-    category: "understanding",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: [
-      "ebbinghaus-analysis",
-      "priority-ranking",
-      "grouped-review",
-      "progress-tracking",
-    ],
-    requiresConfirmation: false,
-    estimatedDurationMs: 15000,
-    isOrchestration: true,
-    deliverableTypes: ["report", "list"],
-    outputFormats: ["markdown", "json"],
-  },
-  {
     id: "data_export",
     name: "数据导出助手",
     description:
@@ -352,25 +332,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     outputFormats: ["markdown"],
   },
   {
-    id: "knowledge_graph_explore",
-    name: "知识图谱探索",
-    description: "可视化分析书签间的知识关联，发现核心节点和知识社区。",
-    category: "learning",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["graph-build", "community-detection", "insight-generation"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 20000,
-    isOrchestration: true,
-    deliverableTypes: ["graph", "report"],
-    outputFormats: ["json", "markdown"],
-    steps: [
-      { id: "build", name: "构建图谱", description: "获取知识关联数据" },
-      { id: "analyze", name: "分析结构", description: "识别核心节点和社区" },
-      { id: "insight", name: "生成洞察", description: "提供学习建议" },
-    ],
-  },
-  {
     id: "knowledge_extract",
     name: "知识提取助手",
     description: "从书签内容中提取关键知识点和概念，构建知识图谱。",
@@ -478,21 +439,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     deliverableTypes: ["report"],
     outputFormats: ["markdown"],
     featureFlag: "ENABLE_CONTENT_CHANGE_MONITOR",
-  },
-  {
-    id: "active_recall",
-    name: "Brain-Sync 复习",
-    description: "基于 SM-2 间隔重复算法的主动复习系统，帮助您内化收藏内容。",
-    category: "learning",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["sm2-algorithm", "spaced-repetition", "mastery-tracking"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 10000,
-    isOrchestration: true,
-    deliverableTypes: ["list", "quiz"],
-    outputFormats: ["markdown", "json"],
-    featureFlag: "ENABLE_ACTIVE_RECALL",
   },
   {
     id: "thematic_synthesis",

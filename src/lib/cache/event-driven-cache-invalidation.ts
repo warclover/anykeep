@@ -297,7 +297,6 @@ class CacheInvalidationService {
         break;
 
       // 知识管理类 Skill
-      case "knowledge_review":
       case "learning_path":
       case "reading_planner":
         // 可能更新复习状态，失效用户偏好缓存

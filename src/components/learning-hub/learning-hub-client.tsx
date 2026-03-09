@@ -5,7 +5,6 @@
  * - 学习路径规划 (learning_path)
  * - 阅读计划制定 (reading_planner)
  * - 周期报告生成 (periodic_report)
- * - 知识复习 (knowledge_review, active_recall)
  * - 相关发现 (related_discovery)
  * - 知识提取 (knowledge_extract)
  * - 分享包创建 (share_bundle)

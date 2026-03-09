@@ -24,24 +24,6 @@ describe("IntentSkillRouter", () => {
 
   describe("route", () => {
     describe("学习类意图", () => {
-      it("should route 复习 to knowledge_review", () => {
-        const result = router.route("帮我复习一下收藏");
-
-        expect(result.intentType).toBe("learn");
-        expect(result.subType).toBe("review");
-        expect(result.skillId).toBe("knowledge_review");
-        expect(result.mode).toBe("orchestration");
-        expect(result.confidence).toBeGreaterThan(0.5);
-      });
-
-      it("should route 回顾 to knowledge_review", () => {
-        const result = router.route("回顾今天的内容");
-
-        expect(result.intentType).toBe("learn");
-        expect(result.subType).toBe("review");
-        expect(result.skillId).toBe("knowledge_review");
-      });
-
       it("should route 学习路径 to learning_path", () => {
         const result = router.route("给我制定一个学习路径");
 
@@ -197,11 +179,6 @@ describe("IntentSkillRouter", () => {
     });
 
     describe("复杂度判断", () => {
-      it("should mark learn:review as complex", () => {
-        const result = router.route("复习一下");
-        expect(result.complexity).toBe("complex");
-      });
-
       it("should mark query:search as simple", () => {
         const result = router.route("搜索Python");
         expect(result.complexity).toBe("simple");
@@ -236,37 +213,6 @@ describe("IntentSkillRouter", () => {
       expect(result).not.toBeNull();
       expect(result?.skillId).toBe("batch_organize");
       expect(result?.mode).toBe("orchestration");
-    });
-
-    it("should skip intent classification", () => {
-      const result = router.routeExplicit("review");
-
-      expect(result).not.toBeNull();
-      expect(result?.skillId).toBe("knowledge_review");
-      expect(result?.reason).toBe("显式工具选择");
-    });
-  });
-
-  describe("用户偏好", () => {
-    it("should apply custom mapping", () => {
-      router.updateUserPreferences({
-        customMappings: {
-          "learn:review": "custom_review_skill",
-        },
-      });
-
-      const result = router.route("复习一下");
-      expect(result.skillId).toBe("custom_review_skill");
-    });
-
-    it("should respect disabled skills", () => {
-      router.updateUserPreferences({
-        disabledSkills: ["knowledge_review"],
-      });
-
-      const result = router.route("复习一下");
-      // 应该使用通配符映射或默认值
-      expect(result.skillId).not.toBe("knowledge_review");
     });
   });
 

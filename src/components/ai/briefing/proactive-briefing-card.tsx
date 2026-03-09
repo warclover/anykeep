@@ -17,7 +17,6 @@ import {
   X,
   ChevronRight,
   Clock,
-  BookOpen,
   TrendingUp,
   Lightbulb,
   AlertCircle,
@@ -92,7 +91,6 @@ const INSIGHT_COLOR_MAP: Record<
 
 const ACTION_ICON_MAP: Record<ActionType, React.ReactNode> = {
   organize_topic: <FolderTree className="size-4" />,
-  review_unread: <BookOpen className="size-4" />,
   cleanup_duplicates: <Trash2 className="size-4" />,
   tag_untagged: <Tag className="size-4" />,
   archive_old: <Archive className="size-4" />,

@@ -14,8 +14,7 @@
 - **Skills Implementation** (`skills/`): 具体技能实现
   - `batch-organize`: 批量整理
   - `insight-report`: 洞察报告
-  - `knowledge-review`: 知识回顾
-  - ... (共 30+ Skills)
+  - ... (共 29+ Skills)
 - **Output Formatters** (`output/formatters/`): 统一输出格式（Markdown, JSON 等）。
 
 ## 关键流程

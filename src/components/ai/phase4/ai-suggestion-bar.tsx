@@ -10,8 +10,6 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { BookOpen } from "lucide-react";
-
 // =============================================================================
 // 类型定义
 // =============================================================================
@@ -42,14 +40,6 @@ const SUGGESTIONS: SuggestionItem[] = [
     input: "继续",
     colorClass:
       "text-pink-600 border-pink-200 hover:bg-pink-50 hover:border-pink-300",
-  },
-  {
-    id: "review",
-    label: "知识复习",
-    input: "帮我制定知识复习计划",
-    icon: BookOpen,
-    colorClass:
-      "text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300",
   },
   {
     id: "search",

@@ -81,34 +81,6 @@ describe("ModeSelector", () => {
       });
     });
 
-    describe("学习类任务", () => {
-      it("learn:review 应该返回 orchestration 模式", () => {
-        const intent = createIntent({
-          type: "learn",
-          subType: "review",
-        });
-        const complexity = createComplexity("medium");
-
-        const result = selector.select(intent, complexity);
-
-        expect(result.mode).toBe("orchestration");
-        expect(result.reason).toContain("知识回顾");
-      });
-
-      it("learn:active_recall_start 应该返回 orchestration 模式", () => {
-        const intent = createIntent({
-          type: "learn",
-          subType: "active_recall_start",
-        });
-        const complexity = createComplexity("medium");
-
-        const result = selector.select(intent, complexity);
-
-        expect(result.mode).toBe("orchestration");
-        expect(result.reason).toContain("主动复习");
-      });
-    });
-
     describe("整理类任务", () => {
       it("organize:cleanup 应该返回 orchestration 模式", () => {
         const intent = createIntent({

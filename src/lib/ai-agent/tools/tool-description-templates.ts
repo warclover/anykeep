@@ -93,13 +93,6 @@ export const TOOL_CATEGORIES = {
   import: ["import_bookmarks", "import_browser_bookmarks"],
   message: ["list_messages", "summarize_unread_messages", "batch_mark_read"],
   snapshot: ["compare_snapshots"],
-  active_recall: [
-    "generate_flashcards",
-    "get_review_queue",
-    "submit_review_response",
-    "get_mastery_stats",
-    "update_review_preferences",
-  ],
 } as const;
 
 // ============================================
@@ -1000,89 +993,6 @@ export const SNAPSHOT_TOOL_DESCRIPTIONS = {
   }),
 };
 
-/**
- * Active Recall 类工具增强描述
- */
-export const ACTIVE_RECALL_TOOL_DESCRIPTIONS = {
-  generate_flashcards: buildToolDescription({
-    core: "为书签内容生成复习问答卡片（Flashcards），用于间隔重复学习。",
-    scenarios: [
-      '"为这个书签生成复习卡片"',
-      '"帮我把这篇文章转成记忆卡"',
-      '"生成5个关于这个收藏的问题"',
-      '"为这个书签创建复习材料"',
-    ],
-    notes: [
-      "书签必须有内容（content 字段）才能生成",
-      "可指定数量 1-10（默认 3）和难度 easy/medium/hard",
-      "生成的卡片会自动保存到复习队列",
-    ],
-    boundaries: ["notFound"],
-  }),
-
-  get_review_queue: buildToolDescription({
-    core: "获取待复习的 Flashcard 队列，按优先级排序。",
-    scenarios: [
-      '"我该复习什么"',
-      '"有哪些待复习的卡片"',
-      '"显示我的复习队列"',
-      '"今天需要复习哪些内容"',
-    ],
-    notes: [
-      "按优先级排序：逾期 > 本周到期 > 难度高",
-      "每个卡片包含：问题、答案、逾期天数、优先级分数",
-      "可筛选逾期/本周到期/即将到期",
-    ],
-    boundaries: ["emptyResult"],
-  }),
-
-  submit_review_response: buildToolDescription({
-    core: "提交 Flashcard 复习反馈，系统会根据 SM-2 算法计算下次复习时间。",
-    scenarios: [
-      '"我记住了这个"',
-      '"这个有点模糊"',
-      '"这个完全忘了"',
-      '"标记为已掌握"',
-    ],
-    notes: [
-      "mastered: 完全掌握，间隔会显著增加",
-      "fuzzy: 模糊记忆，间隔小幅增加",
-      "forgotten: 完全遗忘，重置为第二天复习",
-    ],
-    boundaries: ["notFound"],
-  }),
-
-  get_mastery_stats: buildToolDescription({
-    core: "获取复习掌握度统计报告，了解学习进度。",
-    scenarios: [
-      '"我的复习进度如何"',
-      '"本周复习情况"',
-      '"我掌握了多少知识"',
-      '"复习统计"',
-    ],
-    notes: [
-      "返回总体进度、会话统计、掌握率、连续天数",
-      "可选时间范围：week（本周）、month（本月）、all（全部）",
-    ],
-    boundaries: ["emptyResult"],
-  }),
-
-  update_review_preferences: buildToolDescription({
-    core: "更新主动复习功能的偏好设置。",
-    scenarios: [
-      '"开启主动复习"',
-      '"关闭复习提醒"',
-      '"设置每周复习上限为 20"',
-      '"把复习时间改到晚上 8 点"',
-    ],
-    notes: [
-      "可配置：启用状态、首选时间、每周上限、通知渠道",
-      "首选时间按本地时区计算",
-      "至少需要提供一个参数",
-    ],
-  }),
-};
-
 // ============================================
 // 合并所有描述
 // ============================================
@@ -1102,7 +1012,6 @@ export const ALL_TOOL_DESCRIPTIONS = {
   ...MD_COLLECTION_TOOL_DESCRIPTIONS,
   ...IMPORT_TOOL_DESCRIPTIONS,
   ...SNAPSHOT_TOOL_DESCRIPTIONS,
-  ...ACTIVE_RECALL_TOOL_DESCRIPTIONS,
 } as const;
 
 /**

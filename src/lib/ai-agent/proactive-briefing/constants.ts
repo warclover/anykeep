@@ -110,11 +110,6 @@ export const ACTION_TYPE_CONFIG = {
     icon: "FolderTree",
     skillId: "batch_organize",
   },
-  review_unread: {
-    label: "开始复习",
-    icon: "BookOpen",
-    skillId: "active_recall",
-  },
   cleanup_duplicates: {
     label: "清理重复",
     icon: "Trash2",
@@ -147,8 +142,6 @@ export const ACTION_TYPE_CONFIG = {
 export const THRESHOLDS = {
   /** 未标签数量阈值（超过此值建议标签） */
   UNTAGGED_SUGGESTION_THRESHOLD: 10,
-  /** 待复习数量阈值（超过此值建议复习） */
-  PENDING_REVIEW_THRESHOLD: 5,
   /** 新增书签阈值（超过此值生成主题洞察） */
   NEW_BOOKMARKS_INSIGHT_THRESHOLD: 3,
   /** 主题涌现最小书签数 */

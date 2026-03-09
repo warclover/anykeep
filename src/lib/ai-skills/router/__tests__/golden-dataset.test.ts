@@ -167,21 +167,10 @@ const IMPORTANT_CASES: TestCase[] = [
   { input: "周报", expected: { type: "analyze", subType: "report" } },
   { input: "月度报告", expected: { type: "analyze", subType: "report" } },
 
-  // ========== 学习相关 (8 cases) ==========
-  {
-    input: "开始复习",
-    expected: { type: "learn", subType: "active_recall_start" },
-  },
-  { input: "复习一下知识", expected: { type: "learn", subType: "review" } },
+  // ========== 学习相关 ==========
   { input: "学习路径", expected: { type: "learn", subType: "path" } },
   { input: "制定学习计划", expected: { type: "learn", subType: "path" } },
-  { input: "回顾知识", expected: { type: "learn", subType: "review" } },
-  { input: "知识回顾", expected: { type: "learn", subType: "review" } },
   { input: "规划学习路径", expected: { type: "learn", subType: "path" } },
-  {
-    input: "今日复习",
-    expected: { type: "learn", subType: "active_recall_start" },
-  },
 
   // ========== 带时间范围 (8 cases) ==========
   { input: "最近收藏", expected: { type: "query", subType: "list" } },

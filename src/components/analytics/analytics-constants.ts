@@ -27,7 +27,6 @@ export const FOLDER_COLORS = [
 
 // Skill 名称映射
 const SKILL_NAME_MAP: Record<string, string> = {
-  knowledge_review: "知识回顾",
   data_export: "数据导出",
   insight_report: "洞察报告",
   batch_organize: "智能整理",

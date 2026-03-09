@@ -345,36 +345,6 @@ export const Notify = {
     }),
 
   // ==========================================================================
-  // 复习类
-  // ==========================================================================
-
-  /** 复习提醒 */
-  reviewReminder: (userId: string, count: number): Promise<Notification> =>
-    NotificationService.send({
-      userId,
-      type: "review.reminder",
-      title: "今日复习提醒",
-      body: `有 ${count} 条内容等待复习`,
-      actionUrl: "/brain-sync",
-      actionLabel: "开始复习",
-    }),
-
-  /** 复习完成 */
-  reviewComplete: (
-    userId: string,
-    count: number,
-    streak?: number,
-  ): Promise<Notification> =>
-    NotificationService.send({
-      userId,
-      type: "review.complete",
-      title: "复习完成",
-      body: streak
-        ? `今日复习 ${count} 条，已连续 ${streak} 天`
-        : `今日复习 ${count} 条`,
-    }),
-
-  // ==========================================================================
   // 主题合成类
   // ==========================================================================
 

@@ -101,18 +101,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     relatedIntentKeys: ["action:content_monitor", "query:content_changes"],
   },
 
-  // 主动复习 Brain-Sync
-  {
-    skillId: "active_recall",
-    featureFlagEnv: "ENABLE_ACTIVE_RECALL",
-    defaultEnabled: true,
-    relatedIntentKeys: [
-      "learn:active_recall_start",
-      "query:mastery_stats",
-      "action:review_preferences",
-    ],
-  },
-
   // 主题合成器
   {
     skillId: "thematic_synthesis",
@@ -143,18 +131,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     featureFlagEnv: "ENABLE_SEARCH_OPTIMIZE",
     defaultEnabled: true,
     relatedIntentKeys: ["query:search_optimize"],
-  },
-
-  // 知识图谱探索
-  {
-    skillId: "knowledge_graph_explore",
-    featureFlagEnv: "ENABLE_KNOWLEDGE_GRAPH_EXPLORE",
-    defaultEnabled: true,
-    relatedIntentKeys: [
-      "analyze:knowledge_graph",
-      "query:knowledge_graph",
-      "learn:knowledge_graph",
-    ],
   },
 
   // 文件夹健康检查

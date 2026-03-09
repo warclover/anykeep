@@ -143,7 +143,7 @@ describe("generateActionId", () => {
   });
 
   it("should have proper format with timestamp", () => {
-    const id = generateActionId("review_unread");
+    const id = generateActionId("tag_untagged");
     const parts = id.split("_");
     expect(parts.length).toBeGreaterThanOrEqual(3);
     expect(parts[0]).toBe("action");

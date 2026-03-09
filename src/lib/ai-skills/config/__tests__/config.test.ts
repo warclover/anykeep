@@ -262,9 +262,9 @@ describe("Skill Mappings", () => {
     });
 
     it("should find exact match", () => {
-      const mapping = findMapping(index, "learn", "review");
+      const mapping = findMapping(index, "learn", "path");
       expect(mapping).not.toBeNull();
-      expect(mapping?.skillId).toBe("knowledge_review");
+      expect(mapping?.skillId).toBe("learning_path");
     });
 
     it("should find wildcard match when no exact match", () => {

@@ -130,15 +130,6 @@ const TOOL_MAPPINGS: Record<Exclude<ToolType, "auto">, ToolMapping> = {
     complexity: "medium",
     description: "知识萃取",
   },
-  review: {
-    intentType: "learn",
-    subType: "review",
-    suggestedSkill: "knowledge_review",
-    mode: "orchestration",
-    complexity: "medium",
-    description: "知识回顾",
-  },
-
   // 导出类
   export: {
     intentType: "create",
@@ -378,8 +369,6 @@ export class ExplicitToolRouter {
     switch (mapping.suggestedSkill) {
       case "batch_organize":
         return 6;
-      case "knowledge_review":
-        return 5;
       case "data_export":
         return 4;
       case "insight_report":

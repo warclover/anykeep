@@ -136,9 +136,7 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
   // ============================================
   // 学习类意图
   // ============================================
-  "learn:review": ["learn_tools"],
   "learn:path": ["learn_tools"],
-  "learn:active_recall_start": ["learn_tools"],
   "learn:extract": ["learn_tools"],
   learn: ["learn_tools"], // 通用学习
 

@@ -16,21 +16,12 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
  * 从 mode-selector.ts 的 DEFAULT_SKILL_MAPPINGS 提取
  *
  * 映射键格式：intentType:subType
- * - 精确匹配：learn:review
+ * - 精确匹配：learn:path
  * - 类型通配：learn:*
  */
 export const SKILL_MAPPINGS: SkillMapping[] = [
   // 学习类 → 编排模式
   // ============================================
-  {
-    key: "learn:review",
-    skillId: "knowledge_review",
-    name: "知识回顾助手",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 100,
-  },
   {
     key: "learn:path",
     skillId: "learning_path",
@@ -167,15 +158,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     mode: "atomic",
     enabled: true,
     priority: 82,
-  },
-  {
-    key: "analyze:knowledge_graph_explore",
-    skillId: "knowledge_graph_explore",
-    name: "知识图谱探索",
-    mode: "orchestration",
-    minComplexity: "complex",
-    enabled: true,
-    priority: 83,
   },
   {
     key: "analyze:folder_health_check",
@@ -556,12 +538,6 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     icon: "BarChart2",
   },
   {
-    toolId: "review",
-    skillId: "knowledge_review",
-    mode: "orchestration",
-    icon: "BookOpen",
-  },
-  {
     toolId: "export",
     skillId: "data_export",
     mode: "orchestration",
@@ -694,14 +670,14 @@ export const SKILL_MAPPINGS_BY_KEY: Map<string, SkillMapping> = new Map(
  *
  * 用于直接通过 key 查找映射，不走通配符逻辑
  *
- * @param key - 映射键（如 "learn:review", "query:search"）
+ * @param key - 映射键（如 "learn:path", "query:search"）
  * @returns 映射配置，未找到返回 undefined
  *
  * @example
  * ```ts
- * const mapping = getSkillMappingByKey("learn:review");
+ * const mapping = getSkillMappingByKey("learn:path");
  * if (mapping) {
- *   console.log(mapping.skillId); // "knowledge_review"
+ *   console.log(mapping.skillId); // "learning_path"
  * }
  * ```
  *
@@ -725,7 +701,7 @@ export function getAllSkillMappingKeys(): string[] {
 /**
  * 按 Skill ID 获取所有映射
  *
- * @param skillId - Skill ID（如 "knowledge_review"）
+ * @param skillId - Skill ID（如 "data_export"）
  * @returns 映射到该 Skill 的所有配置
  *
  * @since 2026-01-11

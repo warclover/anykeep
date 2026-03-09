@@ -37,31 +37,7 @@ interface OrchestrationSkillMapping {
  * 默认编排 Skill 映射
  */
 const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
-  // Active Recall 主动复习类（v2.5.0 新增）
-  "learn:active_recall_start": {
-    skillId: "active_recall",
-    name: "Brain-Sync 主动复习",
-    minComplexity: "medium",
-    enabled: true,
-  },
-  "query:mastery_stats": {
-    skillId: "get_mastery_stats",
-    name: "复习掌握度统计",
-    enabled: true,
-  },
-  "action:review_preferences": {
-    skillId: "update_review_preferences",
-    name: "复习偏好设置",
-    enabled: true,
-  },
-
   // 学习类
-  "learn:review": {
-    skillId: "knowledge_review",
-    name: "知识回顾助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
   "learn:interview": {
     skillId: "interview_prep",
     name: "面试准备助手",
@@ -246,14 +222,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   "query:search_optimize": {
     skillId: "search_optimize",
     name: "搜索优化助手",
-    enabled: true,
-  },
-
-  // P1: 知识图谱探索（编排类型）
-  "analyze:knowledge_graph_explore": {
-    skillId: "knowledge_graph_explore",
-    name: "知识图谱探索",
-    minComplexity: "medium",
     enabled: true,
   },
 

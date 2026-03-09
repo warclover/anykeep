@@ -92,7 +92,6 @@ export interface ProactiveInsight {
  */
 export type ActionType =
   | "organize_topic" // 整理主题
-  | "review_unread" // 复习未读
   | "cleanup_duplicates" // 清理重复
   | "tag_untagged" // 标记未标签
   | "archive_old" // 归档旧内容
@@ -143,8 +142,6 @@ export interface OfflineChanges {
   topicDistribution: Array<{ tag: string; count: number }>;
   /** 未标签数量 */
   untaggedCount: number;
-  /** 待复习数量 */
-  pendingReviewsCount: number;
   /** 统计起始时间 */
   since: Date;
 }

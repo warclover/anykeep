@@ -116,7 +116,6 @@ export const COMPLEXITY_TIER_MAPPING: Record<ComplexityLevel, ModelTierId> = {
  * 编排模式的 Skill 通常需要更高层级的模型
  */
 export const SKILL_TIER_MAPPING: Record<string, ModelTierId> = {
-  knowledge_review: "deep", // 知识回顾
   data_export: "standard", // 数据导出
   insight_report: "deep", // 洞察报告
   batch_organize: "deep", // 批量整理

@@ -24,7 +24,6 @@ export type ToolType =
   | "dedupe"
   | "summarize"
   | "extract"
-  | "review"
   | "export"
   | "create"; // 兼容 stub 组件
 

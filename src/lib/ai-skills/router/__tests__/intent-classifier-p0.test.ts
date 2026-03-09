@@ -222,14 +222,10 @@ describe("IntentClassifier - P0 高频场景", () => {
   });
 
   // ============================================
-  // 学习复习类 (3 个 P0)
+  // 学习类 (P0)
   // ============================================
-  describe("学习复习 (P0)", () => {
-    const learnCases = [
-      { input: "开始复习", subType: "active_recall_start" },
-      { input: "帮我制定学习计划", subType: "path" },
-      { input: "复习一下 React 相关的", subType: "review" },
-    ];
+  describe("学习 (P0)", () => {
+    const learnCases = [{ input: "帮我制定学习计划", subType: "path" }];
 
     test.each(learnCases)(
       '应将 "$input" 分类为 learn:$subType',

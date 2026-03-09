@@ -352,7 +352,7 @@ export class LinkHealthCheckAnalyzer extends BaseAnalyzer {
     if (retryCandidates.length > 0) {
       actions.push({
         id: `action_retry_check_${Date.now()}`,
-        type: "review_unread",
+        type: "cleanup_duplicates",
         label: "稍后重新检查",
         description: `${retryCandidates.length} 条链接可能是临时问题`,
         affectedCount: retryCandidates.length,

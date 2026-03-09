@@ -176,39 +176,6 @@ const SKILL_CHAIN_TESTS: SkillChainTest[] = [
     timeout: 30000,
   },
 
-  // 学习类（编排模式）
-  {
-    name: "复习→知识回顾",
-    input: "复习一下收藏的内容",
-    expectedChain: {
-      intentType: "learn",
-      intentSubType: "review",
-      mode: "orchestration",
-      skillId: "knowledge_review",
-    },
-    expectedOutput: {
-      hasText: true,
-      hasProgress: true,
-      hasDeliverable: true,
-    },
-    timeout: 30000,
-  },
-  {
-    name: "主动复习→Brain-Sync",
-    input: "开始今日复习",
-    expectedChain: {
-      intentType: "learn",
-      intentSubType: "active_recall_start",
-      mode: "orchestration",
-      skillId: "active_recall",
-    },
-    expectedOutput: {
-      hasText: true,
-      hasProgress: true,
-    },
-    timeout: 30000,
-  },
-
   // 创建类（编排模式）
   {
     name: "导出→JSON文件",
