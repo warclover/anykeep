@@ -97,14 +97,16 @@ async function loadUserRules(
 /**
  * 加载用户级 Scorer 权重覆盖
  *
- * 当前版本返回默认权重。
- * 后续 Phase 2 实现反馈学习后，将从数据库读取用户级权重。
+ * 从 feedback/weight-store 读取用户自定义权重。
+ * 不存在时返回默认权重。
  */
 async function loadUserWeights(
-  _userId: string,
+  userId: string,
 ): Promise<Record<string, number>> {
-  // TODO: Phase 2 - 从 feedback/weight-store 读取用户自定义权重
-  return { ...CLASSIFICATION_CONFIG.scorerWeights };
+  const { loadUserWeights: loadFromStore } = await import(
+    "../feedback/weight-store"
+  );
+  return loadFromStore(userId);
 }
 
 /**

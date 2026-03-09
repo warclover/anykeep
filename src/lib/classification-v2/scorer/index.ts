@@ -12,3 +12,5 @@ export type { Scorer, Score, Signal, SignalType, ScorerTier } from "../types";
 export { RuleScorer } from "./rule.scorer";
 export { AiTagScorer } from "./ai-tag.scorer";
 export { VectorScorer } from "./vector.scorer";
+export { HistoryScorer } from "./history.scorer";
+export { LlmScorer } from "./llm.scorer";

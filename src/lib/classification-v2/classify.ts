@@ -32,15 +32,16 @@ import { getCached, setCache } from "./infra/cache";
 import { RuleScorer } from "./scorer/rule.scorer";
 import { AiTagScorer } from "./scorer/ai-tag.scorer";
 import { VectorScorer } from "./scorer/vector.scorer";
+import { HistoryScorer } from "./scorer/history.scorer";
+import { LlmScorer } from "./scorer/llm.scorer";
 
 /** 默认 Scorer 注册表 */
 const DEFAULT_SCORERS: Scorer[] = [
   new RuleScorer(),
   new AiTagScorer(),
   new VectorScorer(),
-  // Phase 2 将添加：
-  // new HistoryScorer(),
-  // new LlmScorer(),
+  new HistoryScorer(),
+  new LlmScorer(),
 ];
 
 /** CascadeRanker 单例 */

@@ -13,10 +13,10 @@
 // ============================================================================
 
 export { classify } from "./classify";
-
-// Phase 2 将添加：
-// export { batchClassify } from './batch/batch-classify';
-// export { organizeInbox } from './batch/inbox-organize';
+export { batchClassify } from "./batch/batch-classify";
+export { organizeInbox } from "./batch/inbox-organize";
+export { handleFeedback } from "./feedback/feedback-handler";
+export { logOperation, undoClassification } from "./operation-log";
 
 // ============================================================================
 // 类型导出
@@ -50,6 +50,8 @@ export type {
   // Batch
   BatchClassifyRequest,
   BatchClassifyResult,
+  // Feedback
+  UserScorerWeights,
 } from "./types";
 
 // ============================================================================

@@ -5,3 +5,5 @@
 export { searchSimilarBookmarks } from "./vector-search";
 export type { VectorSearchResult, VectorSearchOptions } from "./vector-search";
 export { getCached, setCache, invalidateCache, clearCache } from "./cache";
+export { callLlm, sanitizeInput } from "./llm";
+export type { LlmRequest, LlmResponse } from "./llm";
