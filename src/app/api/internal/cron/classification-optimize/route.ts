@@ -13,6 +13,10 @@
  *
  * @version 1.0.0
  * @since 2025-12-11
+ *
+ * @todo 迁移到 classification-v2：
+ *   - feedbackLoopService.runPeriodicOptimization → handleFeedback() 批量处理
+ *   - fastPathCacheManager → classification-v2/infra/cache.ts
  */
 
 import { createClient } from "@/lib/supabase/server";

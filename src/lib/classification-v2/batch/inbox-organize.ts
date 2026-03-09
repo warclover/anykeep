@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { CLASSIFICATION_CONFIG } from "../config";
 import { classify } from "../classify";
+import { suggestFolderName } from "../folder-naming/folder-namer";
 import type { ClassifyRequest, ClassifyResult } from "../types";
 
 /** 聚类结果 */
@@ -110,12 +111,30 @@ export async function organizeInbox(userId: string): Promise<OrganizeResult> {
 
     const meetsThreshold = result.confidence >= folderMatchThreshold;
 
+    // 低置信度时：使用 classify 返回的建议名，或为聚类独立生成
+    let newFolderName = result.suggestedFolderName;
+    if (!meetsThreshold && !newFolderName) {
+      try {
+        const clusterTags = cluster.flatMap((b) => b.tags).slice(0, 10);
+        const suggestion = await suggestFolderName(
+          representative.title,
+          clusterTags,
+          representative.summary,
+          userId,
+        );
+        newFolderName =
+          suggestion.name !== "新分类" ? suggestion.name : undefined;
+      } catch {
+        // 命名失败不阻塞
+      }
+    }
+
     enrichedClusters.push({
       bookmarks: cluster,
       suggestedFolderId: meetsThreshold ? result.folderId : null,
       suggestedFolderName: meetsThreshold ? result.folderName : null,
       suggestCreateNew: !meetsThreshold,
-      suggestedNewFolderName: result.suggestedFolderName,
+      suggestedNewFolderName: newFolderName,
       confidence: result.confidence,
     });
   }

@@ -9,6 +9,9 @@
  * @module @/app/api/internal/cron/update-folder-tag-profiles
  * @version 1.0.0
  * @since 2026-01-23
+ *
+ * @todo 迁移到 classification-v2：
+ *   - FolderTagProfilerService → 合并到 classification-v2/context/folder-context.ts 定期刷新
  */
 
 import { NextResponse } from "next/server";

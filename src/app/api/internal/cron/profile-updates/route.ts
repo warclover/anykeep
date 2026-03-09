@@ -9,6 +9,9 @@
  *
  * @version 1.0.0
  * @since 2025-12-22
+ *
+ * @todo 迁移到 classification-v2：
+ *   - profileUpdater.runFullUpdate → 简化为直接 SQL 画像更新
  */
 
 import { NextResponse } from "next/server";

@@ -12,6 +12,12 @@
  * @version 2.0.0 (Phase 1 合并)
  * @since 2025-12-24
  * @updated 2026-03-07 - 迁移到 withAuthMiddleware
+ *
+ * @todo 迁移到 classification-v2：
+ *   - handleAnalyze: 替换 inboxOrganizerService.analyze() → organizeInbox() from v2
+ *     需要适配返回格式（v2 返回 { clusters, unclustered } vs 旧 { inboxCount, suggestions }）
+ *   - POST/DELETE: applySuggestion/rejectSuggestion 需要在 v2 中实现对应接口
+ *   - handleSuggestions/handleStats: 纯 DB 查询，可保持不变
  */
 
 import { NextResponse } from "next/server";

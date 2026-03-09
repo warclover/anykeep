@@ -27,6 +27,7 @@ import { buildBookmarkContext } from "./context/bookmark-context";
 import { buildFolderContexts } from "./context/folder-context";
 import { buildUserContext } from "./context/user-context";
 import { getCached, setCache } from "./infra/cache";
+import { suggestFolderName } from "./folder-naming/folder-namer";
 
 // Scorer 实例（模块级单例）
 import { RuleScorer } from "./scorer/rule.scorer";
@@ -111,11 +112,33 @@ export async function classify(
     const top = rankResult.entries[0];
 
     if (!top || top.mergedScore.value < CLASSIFICATION_CONFIG.action.suggest) {
-      // 低置信度 → inbox
+      // 低置信度 → 尝试建议新文件夹，否则 inbox
       const result = buildInboxResult(traceId, startTime, "置信度不足");
       result.scorerDetails = rankResult.scorerDetails;
       result.timing = rankResult.timing;
       result.candidates = rankResult.entries.map(toCandidate);
+
+      // 尝试生成新文件夹名（旁路，失败不阻塞）
+      try {
+        const suggestion = await suggestFolderName(
+          request.title,
+          request.tags ?? [],
+          request.summary,
+          request.userId,
+        );
+        if (suggestion.name && suggestion.name !== "新分类") {
+          result.action = "suggest_create";
+          result.suggestedFolderName = suggestion.name;
+          result.reason = `建议创建「${suggestion.name}」（${suggestion.reason}）`;
+        }
+      } catch (error) {
+        logger.debug(
+          { traceId, error },
+          "Classification V2: folder naming failed, staying inbox",
+        );
+      }
+
+      result.timing.totalMs = Date.now() - startTime;
       setCache(request.userId, request.bookmarkId, result);
       return result;
     }
