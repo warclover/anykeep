@@ -1,4 +1,4 @@
-export type LedgerType = "financial" | "knowledge";
+export type LedgerType = "financial";
 
 export interface LedgerItem {
   time: string;

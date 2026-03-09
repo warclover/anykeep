@@ -191,7 +191,6 @@ export const monitorKeys = {
  */
 export const quotaKeys = {
   all: ["quota"] as const,
-  knowledgeStudio: () => [...quotaKeys.all, "knowledgeStudio"] as const,
 };
 
 /**
@@ -269,14 +268,6 @@ export const knowledgeLinkKeys = {
     bookmarkId: number,
     params: { limit: number; minStrength: number; types?: string[] },
   ) => [...knowledgeLinkKeys.all, "related", bookmarkId, params] as const,
-};
-
-/**
- * Knowledge Studio Blueprint Query Keys
- */
-export const blueprintKeys = {
-  all: ["blueprints"] as const,
-  list: () => [...blueprintKeys.all, "list"] as const,
 };
 
 /** 综述列表查询过滤参数（用于 queryKey） */

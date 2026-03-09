@@ -128,25 +128,6 @@ test.describe("动态路由 - 无效 ID 降级测试", () => {
     );
   });
 
-  // --- /knowledge-studio/v2/[blueprintId] ---
-
-  test("knowledge-studio/v2/[blueprintId] - 不存在的 ID 应优雅降级", async ({
-    page,
-  }) => {
-    await page.goto("/knowledge-studio/v2/nonexistent-blueprint", {
-      waitUntil: "domcontentloaded",
-      timeout: TIMEOUTS.pageLoad,
-    });
-    await waitForNetworkIdle(page, TIMEOUTS.networkIdle).catch(() => {});
-
-    const body = page.locator("body");
-    await expect(body).toBeVisible({ timeout: TIMEOUTS.elementVisible });
-
-    // 不白屏
-    const text = await body.textContent();
-    expect(text?.length).toBeGreaterThan(0);
-  });
-
   // --- /md-collections/[id] ---
 
   test("md-collections/[id] - 非数字 ID 应返回 404", async ({ page }) => {

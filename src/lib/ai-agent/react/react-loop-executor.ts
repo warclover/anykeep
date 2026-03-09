@@ -38,7 +38,7 @@ import { ReactPromptBuilder, analyzeObservation } from "./react-prompt-builder";
 /**
  * 原子执行器类型
  *
- * 用于注入 KnowledgeAgent 的执行函数
+ * 用于注入 Agent 的执行函数
  */
 export type AtomicExecutor = (
   input: string,

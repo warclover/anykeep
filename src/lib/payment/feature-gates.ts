@@ -16,18 +16,6 @@ export const FEATURE_GATES = {
 
   // AI 高级功能
   synthesis: { free: false, pro: true, pro_plus: true, lifetime: true },
-  "knowledge-studio": {
-    free: false,
-    pro: true,
-    pro_plus: true,
-    lifetime: true,
-  },
-  "knowledge-studio-advanced": {
-    free: false,
-    pro: false,
-    pro_plus: true,
-    lifetime: false,
-  },
   "brain-sync": { free: false, pro: true, pro_plus: true, lifetime: true },
   librarian: { free: false, pro: true, pro_plus: true, lifetime: true },
 
@@ -121,8 +109,6 @@ export type FeatureKey = keyof typeof FEATURE_GATES;
 export const FEATURE_CATEGORIES = {
   ai: [
     "synthesis",
-    "knowledge-studio",
-    "knowledge-studio-advanced",
     "brain-sync",
     "librarian",
     "ai-calls-monthly",
@@ -239,8 +225,6 @@ export function getUpgradeFeatures(
 
 export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   synthesis: "主题合成器",
-  "knowledge-studio": "知识工作室",
-  "knowledge-studio-advanced": "知识工作室高级版",
   "brain-sync": "Brain-Sync 复习",
   librarian: "智能管理员",
   tts: "TTS 语音朗读",

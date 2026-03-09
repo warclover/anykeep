@@ -170,7 +170,7 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     addedVersion: "2.6.0",
     integrationPoints: [
       {
-        file: "lib/ai-agent/core/knowledge-agent-stream.ts",
+        file: "lib/ai-agent/react/react-loop-executor.ts",
         location: "handleToolCall()",
         type: "check",
       },
@@ -523,11 +523,6 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
         file: "lib/ai-agent/react/react-loop-executor.ts",
         location: "executeLoop()",
         type: "execute",
-      },
-      {
-        file: "lib/ai-agent/core/knowledge-agent-stream.ts",
-        location: "streamResponse()",
-        type: "check",
       },
     ],
   },

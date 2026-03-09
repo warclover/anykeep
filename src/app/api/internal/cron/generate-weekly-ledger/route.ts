@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
 import { ledgerService } from "@/lib/ledger/services/ledger.service";
-import { emailService } from "@/lib/email/email.service";
 import pLimit from "p-limit";
 import {
   verifyInternalRequest,
@@ -31,9 +30,7 @@ export async function GET(request: Request) {
 
     const startTime = Date.now();
     let generatedCount = 0;
-    let digestCount = 0;
     const errorCount = 0;
-    let emailSentCount = 0;
 
     // Fetch profiles with settings to check preferences
     // Start with 1000 users limit for MVP safety
@@ -69,94 +66,21 @@ export async function GET(request: Request) {
     const tasks = profiles.map((profile) =>
       limit(async () => {
         const userId = profile.id;
-        const settings = (profile.settings as Record<string, unknown>) || {};
-        const notifications =
-          (settings.notifications as Record<string, unknown>) || {};
 
-        // Track success for this user
-        let financialSuccess = false;
-        let knowledgeSuccess = false;
-
-        // 1. Generate Financial Ledger (Original Logic)
+        // Generate Financial Ledger
         try {
           const report = await ledgerService.generateWeeklyReport(
             userId,
             "financial",
           );
           if (report) {
-            financialSuccess = true;
+            generatedCount++;
           }
         } catch (error) {
           logger.error(
             { error, userId, type: "financial" },
             "Failed to generate financial ledger",
           );
-        }
-
-        // 2. Generate Knowledge Ledger (Weekly Digest)
-        // Check user preference: skip if explicitly set to false
-        const enableWeeklyDigest = notifications?.weeklyDigest !== false;
-
-        if (enableWeeklyDigest) {
-          try {
-            const digest = await ledgerService.generateWeeklyReport(
-              userId,
-              "knowledge",
-            );
-
-            if (digest) {
-              knowledgeSuccess = true;
-              digestCount++;
-
-              // Send Email if status is pending
-              if (digest.emailStatus === "pending") {
-                // Fetch user email
-                const {
-                  data: { user },
-                  error: userError,
-                } = await supabaseAdmin.auth.admin.getUserById(userId);
-
-                if (userError || !user?.email) {
-                  logger.warn(
-                    { userId, error: userError },
-                    "Could not fetch user email for digest",
-                  );
-                } else {
-                  // Send email
-                  const { success, error: sendError } =
-                    await emailService.sendWeeklyDigest(user.email, digest);
-
-                  if (success) {
-                    await ledgerService.markEmailSent(digest.id);
-                    emailSentCount++;
-                  } else {
-                    logger.error(
-                      { userId, error: sendError },
-                      "Failed to send weekly digest email",
-                    );
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            logger.error(
-              { error, userId, type: "knowledge" },
-              "Failed to generate knowledge ledger",
-            );
-          }
-        }
-
-        if (financialSuccess || knowledgeSuccess) {
-          generatedCount++;
-        } else if (
-          !financialSuccess &&
-          enableWeeklyDigest &&
-          !knowledgeSuccess
-        ) {
-          // Only count as error if enabled types failed?
-          // Simplified: just track global error count in catch blocks usually,
-          // but here we catch inside steps.
-          // We'll increment errorCount if ANY generation threw exception previously caught.
         }
       }),
     );
@@ -166,7 +90,7 @@ export async function GET(request: Request) {
     const duration = Date.now() - startTime;
 
     logger.info(
-      { generatedCount, digestCount, emailSentCount, duration },
+      { generatedCount, duration },
       "Weekly ledger generation completed",
     );
 
@@ -174,9 +98,7 @@ export async function GET(request: Request) {
       success: true,
       stats: {
         usersProcessed: profiles.length,
-        generatedFinancial: generatedCount, // Approximate, reusing variable
-        generatedDigests: digestCount,
-        emailsSent: emailSentCount,
+        generatedFinancial: generatedCount,
         errors: errorCount,
         duration,
         timestamp: new Date().toISOString(),

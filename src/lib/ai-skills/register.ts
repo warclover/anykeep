@@ -34,7 +34,7 @@ import { folderRecommendSkill } from "./skills/folder-recommend";
 import { folderHealthCheckSkill } from "./skills/folder-health-check";
 
 import { unifiedEngine } from "./engine/unified-engine";
-import { knowledgeAgent } from "../ai-agent/core/knowledge-agent";
+import { atomicExecuteStream } from "../ai-agent/core/atomic-executor";
 import { logger } from "@/lib/logger";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 // createIntentRouter 暂时保留导入供后续使用
@@ -211,8 +211,8 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   }
 
   // 设置原子执行器
-  unifiedEngine.setAtomicExecutor((input, context) =>
-    knowledgeAgent.executeStream(input, context),
+  unifiedEngine.setAtomicExecutor((input, context, options) =>
+    atomicExecuteStream(input, context, options),
   );
 
   // 注册编排 Skills

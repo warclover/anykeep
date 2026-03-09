@@ -5,13 +5,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { API_KNOWLEDGE_STUDIO } from "@/lib/constants/api-paths";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import {
   CONDENSE_PRESETS,
   type CondensePreset,
-} from "@/lib/knowledge-studio/refinement";
+} from "./synthesis-condense-dialog";
 
 interface UseSynthesisCondenseOptions {
   content: string;
@@ -48,7 +47,7 @@ export function useSynthesisCondense({
       setCondensedPreview("");
 
       try {
-        const res = await fetch(API_KNOWLEDGE_STUDIO.v2Condense, {
+        const res = await fetch("/api/synthesis/condense", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

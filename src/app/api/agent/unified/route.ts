@@ -18,12 +18,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import {
-  KnowledgeAgent,
-  agentMemory,
-  getQuickStats,
-  formatStatsForPrompt,
-} from "@/lib/ai-agent";
+import { getQuickStats, formatStatsForPrompt } from "@/lib/ai-agent";
 import {
   getEpisodicMemoryService,
   isEmptyMemoryContext,
@@ -297,7 +292,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
 
   // 4. 获取用户数据统计
   const quickStats = await getQuickStats(userId);
-  const statsContext = formatStatsForPrompt(quickStats);
+  const _statsContext = formatStatsForPrompt(quickStats);
 
   // 4.5 获取情景记忆（如果启用）
   let episodicMemory = undefined;
@@ -378,26 +373,17 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       userId,
     );
   } else {
-    // 回退到原有 KnowledgeAgent
-    return handleKnowledgeAgent(
-      message,
+    // 统一引擎未就绪，返回 503 错误
+    logger.error(
+      { userId: userId.slice(0, 8) + "..." },
+      "Unified API: Engine not ready",
+    );
+    return NextResponse.json(
       {
-        userId,
-        conversationId,
-        bookmarkIds: allBookmarkIds.length > 0 ? allBookmarkIds : undefined,
-        messageHistory: messageHistory?.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        systemPrompt: statsContext,
-        attachmentContext,
+        success: false,
+        error: "AI 引擎正在初始化，请稍后重试",
       },
-      {
-        streaming: isStream,
-        maxToolRounds: options?.maxToolRounds || 5,
-        temperature: options?.temperature || 0.7,
-      },
-      userId,
+      { status: 503 },
     );
   }
 });
@@ -619,114 +605,5 @@ async function handleUnifiedEngine(
       // 清理请求注册
       registry.unregister(requestId);
     }
-  }
-}
-
-/**
- * 使用原有 KnowledgeAgent 处理请求
- */
-async function handleKnowledgeAgent(
-  message: string,
-  context: {
-    userId: string;
-    conversationId?: string;
-    bookmarkIds?: number[];
-    messageHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-    systemPrompt?: string;
-    attachmentContext?: string;
-  },
-  options: {
-    streaming: boolean;
-    maxToolRounds: number;
-    temperature: number;
-  },
-  userId: string,
-): Promise<NextResponse> {
-  const agent = new KnowledgeAgent({}, agentMemory);
-
-  // 构建完整的 System Prompt（包含附件上下文）
-  let fullSystemPrompt = agent.getConfig().systemPrompt;
-
-  if (context.systemPrompt) {
-    fullSystemPrompt = `${fullSystemPrompt}\n\n${context.systemPrompt}`;
-  }
-
-  if (context.attachmentContext) {
-    fullSystemPrompt = `${fullSystemPrompt}\n\n${context.attachmentContext}`;
-  }
-
-  // 注入统计数据到 System Prompt
-  const agentContext = {
-    userId: context.userId,
-    conversationId: context.conversationId,
-    bookmarkIds: context.bookmarkIds,
-    messageHistory: context.messageHistory,
-    systemPrompt:
-      fullSystemPrompt !== agent.getConfig().systemPrompt
-        ? fullSystemPrompt
-        : undefined,
-  };
-
-  if (options.streaming) {
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        // 创建统一的 SSE 发送函数
-        const sendEvent = createSSESender<unknown>(controller, encoder);
-
-        try {
-          const streamGenerator = agent.executeStream(
-            message,
-            agentContext,
-            options,
-          );
-
-          for await (const chunk of streamGenerator) {
-            sendEvent(chunk);
-          }
-
-          controller.close();
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Agent 执行失败";
-
-          logger.error(
-            {
-              userId: userId.slice(0, 8) + "...",
-              error: errorMessage,
-            },
-            "Unified API: Agent stream error",
-          );
-
-          const errorChunk = {
-            type: "error",
-            error: errorMessage,
-          };
-          sendEvent(errorChunk);
-          controller.close();
-        }
-      },
-    });
-
-    return new NextResponse(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  } else {
-    const result = await agent.execute(message, agentContext, options);
-
-    return NextResponse.json(
-      {
-        success: result.success,
-        data: result,
-      },
-      {
-        status: result.success ? 200 : 500,
-      },
-    );
   }
 }

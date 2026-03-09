@@ -132,13 +132,6 @@ const smartToolsGroup: NavGroupConfig = {
       description: "mobileMenu.contentAnalysis",
     },
     {
-      name: "nav.draftStudio",
-      href: "/knowledge-studio/v2",
-      icon: Sparkles,
-      isPro: true,
-      description: "mobileMenu.aiReportGeneration",
-    },
-    {
       name: "nav.dataCenter",
       href: "/data",
       icon: Database,

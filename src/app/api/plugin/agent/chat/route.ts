@@ -25,11 +25,7 @@ import {
   formatBrowserContextForPrompt,
   detectPlatformFromUrl,
 } from "@/lib/auth/plugin-browser-context";
-import {
-  KnowledgeAgent,
-  type AgentContext,
-  type AgentExecuteResult,
-} from "@/lib/ai-agent";
+import { getUnifiedEngine, type UnifiedStreamChunk } from "@/lib/ai-skills";
 import { logger } from "@/lib/logger";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -138,11 +134,11 @@ async function handleQuickSave(
 
   // 检查是否已存在
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existing } = await (serviceClient.from("bookmarks") as any)
+  const { data: existing } = (await (serviceClient.from("bookmarks") as any)
     .select("id")
     .eq("user_id", userId)
     .eq("url", url)
-    .single() as { data: BookmarkIdRow | null };
+    .single()) as { data: BookmarkIdRow | null };
 
   if (existing) {
     return {
@@ -156,7 +152,9 @@ async function handleQuickSave(
 
   // 创建收藏
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: bookmark, error } = await (serviceClient.from("bookmarks") as any)
+  const { data: bookmark, error } = (await (
+    serviceClient.from("bookmarks") as any
+  )
     .insert({
       user_id: userId,
       url,
@@ -168,7 +166,10 @@ async function handleQuickSave(
       source_name: browserContext.page.siteName || null,
     })
     .select("id")
-    .single() as { data: BookmarkIdRow | null; error: { message: string } | null };
+    .single()) as {
+    data: BookmarkIdRow | null;
+    error: { message: string } | null;
+  };
 
   if (error) {
     logger.error(
@@ -285,21 +286,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. 构建 Agent 上下文
-    const agentContext: AgentContext = {
+    // 5. 使用统一引擎处理请求
+    const unifiedEngine = getUnifiedEngine();
+
+    if (!unifiedEngine.isReady()) {
+      return new Response(
+        JSON.stringify({
+          error: "service_unavailable",
+          message: "AI 引擎正在初始化，请稍后重试",
+        }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    const engineContext = {
       userId: authResult.userId,
       conversationId,
       messageHistory: messageHistory?.map((m) => ({
-        role: m.role,
+        role: m.role as "user" | "assistant",
         content: m.content,
       })),
       systemPrompt: additionalContext || undefined,
     };
 
-    // 6. 初始化 AI Agent
-    const agent = new KnowledgeAgent();
-
-    // 7. 执行并返回响应
+    // 6. 执行并返回响应
     if (isStream) {
       const sseEncoder = createSSEEncoder();
 
@@ -313,42 +323,29 @@ export async function POST(request: NextRequest) {
             };
             controller.enqueue(sseEncoder.encode(initChunk));
 
-            // 调用 Agent
-            const result: AgentExecuteResult = await agent.execute(
+            let finalConversationId = conversationId;
+
+            // 通过统一引擎流式执行
+            for await (const chunk of unifiedEngine.execute(
               message,
-              agentContext,
-              {
-                streaming: false, // Agent 内部不流式，我们在这层处理
-                maxToolRounds: 3,
-                temperature: options?.temperature ?? 0.3,
-              },
-            );
-
-            // 发送响应文本
-            const textChunk: PluginStreamChunk = {
-              type: "text",
-              data: { text: result.content },
-            };
-            controller.enqueue(sseEncoder.encode(textChunk));
-
-            // 如果有工具调用结果，发送操作信息
-            if (result.toolCalls && result.toolCalls.length > 0) {
-              for (const toolCall of result.toolCalls) {
-                const actionChunk: PluginStreamChunk = {
-                  type: "action",
-                  data: {
-                    action: toolCall.toolName,
-                    text: `执行了 ${toolCall.toolName} 操作`,
-                  },
+              engineContext,
+            )) {
+              if (chunk.type === "text" && chunk.data?.text) {
+                const textChunk: PluginStreamChunk = {
+                  type: "text",
+                  data: { text: chunk.data.text },
                 };
-                controller.enqueue(sseEncoder.encode(actionChunk));
+                controller.enqueue(sseEncoder.encode(textChunk));
+              } else if (chunk.type === "done") {
+                finalConversationId =
+                  chunk.data?.conversationId || conversationId;
               }
             }
 
             // 发送完成信号
             const doneChunk: PluginStreamChunk = {
               type: "done",
-              data: { conversationId: result.conversationId || conversationId },
+              data: { conversationId: finalConversationId },
             };
             controller.enqueue(sseEncoder.encode(doneChunk));
             controller.enqueue(sseEncoder.encodeDone());
@@ -378,24 +375,24 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // 非流式响应
-      const result: AgentExecuteResult = await agent.execute(
-        message,
-        agentContext,
-        {
-          streaming: false,
-          maxToolRounds: 3,
-          temperature: options?.temperature ?? 0.3,
-        },
-      );
+      // 非流式响应：收集所有输出
+      const chunks: UnifiedStreamChunk[] = [];
+
+      for await (const chunk of unifiedEngine.execute(message, engineContext)) {
+        chunks.push(chunk);
+      }
+
+      const doneChunk = chunks.find((c) => c.type === "done");
+      const textChunks = chunks
+        .filter((c) => c.type === "text")
+        .map((c) => c.data?.text || "")
+        .join("");
 
       return new Response(
         JSON.stringify({
-          success: result.success,
-          conversationId: result.conversationId || conversationId,
-          content: result.content,
-          toolCalls: result.toolCalls,
-          error: result.error,
+          success: doneChunk?.data?.success ?? true,
+          conversationId: doneChunk?.data?.conversationId || conversationId,
+          content: textChunks,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );

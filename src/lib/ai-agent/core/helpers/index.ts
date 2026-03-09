@@ -1,5 +1,5 @@
 /**
- * KnowledgeAgent 辅助模块导出
+ * AI Agent 辅助模块导出
  *
  * @module ai-agent/core/helpers
  * @version 1.0.0

@@ -1,22 +1,13 @@
 /**
- * KnowledgeAgent 提示语模块导出
+ * AI Agent 提示语模块导出
  *
  * @module ai-agent/core/prompts
- * @version 3.0.0
+ * @version 3.1.0
  * @since 2025-12-25
- * @updated 2025-12-27 添加任务理解层 v2.0 模块
+ * @updated 2026-03-09 移除 knowledge-agent.prompt
  */
 
-// 主 System Prompt
-export {
-  KNOWLEDGE_AGENT_SYSTEM_PROMPT,
-  KNOWLEDGE_AGENT_SYSTEM_PROMPT_V2,
-  REACT_THINKING_PROMPT,
-  TOOL_CALLING_CONVENTION_PROMPT,
-  LEGACY_SYSTEM_PROMPT,
-} from "./knowledge-agent.prompt";
-
-// 响应模板（新增）
+// 响应模板
 export {
   CONFIDENCE_THRESHOLDS,
   RISK_OPERATIONS,

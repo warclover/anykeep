@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { FinancialLedgerGenerator } from "./generators/financial-ledger.generator";
-import { KnowledgeLedgerGenerator } from "./generators/knowledge-ledger.generator";
 import type { LedgerGenerator } from "./ledger.interface";
 import type { LedgerResult, LedgerType } from "../types/ledger.types";
 
@@ -11,7 +10,6 @@ export class LedgerService {
   constructor() {
     this.generators = new Map();
     this.registerGenerator(new FinancialLedgerGenerator());
-    this.registerGenerator(new KnowledgeLedgerGenerator());
   }
 
   private registerGenerator(generator: LedgerGenerator) {

@@ -15,10 +15,31 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  CONDENSE_PRESETS,
-  type CondensePreset,
-} from "@/lib/knowledge-studio/refinement";
+/**
+ * 精简预设类型（从已移除的 knowledge-studio/refinement 内联）
+ */
+export type CondensePreset = "brief" | "standard" | "detailed";
+
+export const CONDENSE_PRESETS: Record<
+  CondensePreset,
+  { label: string; targetWords: number; description: string }
+> = {
+  brief: {
+    label: "极简版",
+    targetWords: 500,
+    description: "保留核心结论，删除所有细节",
+  },
+  standard: {
+    label: "标准版",
+    targetWords: 1500,
+    description: "保留主要论点和关键证据",
+  },
+  detailed: {
+    label: "详细版",
+    targetWords: 3000,
+    description: "保留完整论证，精简冗余表述",
+  },
+};
 
 interface CondenseDialogProps {
   open: boolean;

@@ -46,7 +46,6 @@ const PROTECTED_PAGES: { path: string; name: string }[] = [
   { path: "/link-health", name: "链接健康" },
   { path: "/md-collections", name: "MD 合集" },
   { path: "/synthesis", name: "主题合成" },
-  { path: "/knowledge-studio", name: "知识工坊" },
   { path: "/distribution", name: "分发" },
   { path: "/audio-library", name: "音频库" },
   { path: "/rules", name: "规则" },
@@ -108,9 +107,6 @@ test.describe("逐页巡览 - 子页面与设置子路由", () => {
     { path: "/settings/rag-dashboard", name: "设置 - RAG" },
     { path: "/messages/pending", name: "消息 - 待处理" },
     { path: "/synthesis/new", name: "主题合成 - 新建" },
-    { path: "/knowledge-studio/v2", name: "知识工坊 v2" },
-    { path: "/knowledge-studio/billing", name: "知识工坊 - 计费" },
-    { path: "/knowledge-studio/reports", name: "知识工坊 - 报告" },
   ];
 
   for (const { path, name } of SUB_PAGES) {

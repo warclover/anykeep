@@ -13,7 +13,6 @@ import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
-import type { Database } from "@/types/supabase";
 
 // ============================================================================
 // 类型定义
@@ -65,10 +64,7 @@ export const POST = withAuthMiddleware(
     }
 
     // 获取综述详情
-    type SynthesisReportRow =
-      Database["public"]["Tables"]["synthesis_reports"]["Row"];
-
-    const basicQuery = supabase.from("synthesis_reports") as unknown as {
+    const reportQuery = supabase.from("synthesis_reports") as unknown as {
       select: (columns: string) => {
         eq: (
           column: string,
@@ -79,10 +75,16 @@ export const POST = withAuthMiddleware(
             value: string,
           ) => {
             single: () => Promise<{
-              data: Pick<
-                SynthesisReportRow,
-                "id" | "title" | "content" | "blueprint_type"
-              > | null;
+              data: {
+                id: string;
+                title: string | null;
+                overview: string | null;
+                consensus: unknown;
+                divergence: unknown;
+                blind_spots: unknown;
+                source_count: number | null;
+                depth_mode: string | null;
+              } | null;
               error: { message: string } | null;
             }>;
           };
@@ -90,75 +92,19 @@ export const POST = withAuthMiddleware(
       };
     };
 
-    const { data: basicReport, error: basicError } = await basicQuery
-      .select("id, title, content, blueprint_type")
+    const { data: report, error: reportError } = await reportQuery
+      .select(
+        "id, title, overview, consensus, divergence, blind_spots, source_count, depth_mode",
+      )
       .eq("id", reportId)
       .eq("user_id", userId)
       .single();
 
-    if (basicError || !basicReport) {
+    if (reportError || !report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    // 判断报告类型
-    const isKnowledgeStudioReport = !!basicReport.blueprint_type;
-
-    let synthesisContext: string;
-
-    if (isKnowledgeStudioReport) {
-      synthesisContext = buildKnowledgeStudioContext(
-        {
-          title: basicReport.title,
-          content: basicReport.content,
-        },
-        context,
-      );
-    } else {
-      const fullQuery = supabase.from("synthesis_reports") as unknown as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            eq: (
-              column: string,
-              value: string,
-            ) => {
-              single: () => Promise<{
-                data: {
-                  id: string;
-                  title: string | null;
-                  overview: string | null;
-                  consensus: unknown;
-                  divergence: unknown;
-                  blind_spots: unknown;
-                  source_count: number | null;
-                  depth_mode: string | null;
-                } | null;
-                error: { message: string } | null;
-              }>;
-            };
-          };
-        };
-      };
-
-      const { data: fullReport, error: fullError } = await fullQuery
-        .select(
-          "id, title, overview, consensus, divergence, blind_spots, source_count, depth_mode",
-        )
-        .eq("id", reportId)
-        .eq("user_id", userId)
-        .single();
-
-      if (fullError || !fullReport) {
-        return NextResponse.json(
-          { error: "Report not found" },
-          { status: 404 },
-        );
-      }
-
-      synthesisContext = buildThematicSynthesisContext(fullReport, context);
-    }
+    const synthesisContext = buildThematicSynthesisContext(report, context);
 
     // 生成回答
     const answer = await generateAnswer(question, synthesisContext);
@@ -170,30 +116,6 @@ export const POST = withAuthMiddleware(
 // ============================================================================
 // 辅助函数
 // ============================================================================
-
-/**
- * 构建知识工坊报告上下文
- */
-function buildKnowledgeStudioContext(
-  report: {
-    title: string | null;
-    content: string | null;
-  },
-  additionalContext?: { title?: string; overview?: string },
-): string {
-  const parts: string[] = [];
-
-  parts.push(
-    `## 报告标题\n${report.title || additionalContext?.title || "未命名报告"}`,
-  );
-
-  const content = report.content || additionalContext?.overview;
-  if (content) {
-    parts.push(`## 报告内容\n${content}`);
-  }
-
-  return parts.join("\n\n");
-}
 
 /**
  * 构建主题合成器报告上下文

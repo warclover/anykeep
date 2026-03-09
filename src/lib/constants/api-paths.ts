@@ -488,59 +488,6 @@ export const API_KNOWLEDGE_LINK = {
 // 知识工坊
 // ============================================
 
-export const API_KNOWLEDGE_STUDIO = {
-  // =====================================================
-  // v1 端点
-  // =====================================================
-
-  /** 生成报告 (v1) */
-  generate: "/api/knowledge-studio/generate",
-  /** 报告列表 */
-  reports: "/api/knowledge-studio/reports",
-  /** 报告编辑 */
-  reportEdit: (id: string) => `/api/knowledge-studio/reports/${id}/edit`,
-  /** 配额查询 */
-  quota: "/api/knowledge-studio/quota",
-  /** 素材管理 */
-  materials: "/api/knowledge-studio/materials",
-  /** 使用分析 */
-  analytics: "/api/knowledge-studio/analytics",
-
-  // =====================================================
-  // v2 端点
-  // =====================================================
-
-  /** 浓缩提炼 (v2) */
-  v2Condense: "/api/knowledge-studio/v2/condense",
-  /** 生成报告 (v2) */
-  v2Generate: "/api/knowledge-studio/v2/generate",
-  /** 迭代优化 (v2) */
-  v2Iterate: "/api/knowledge-studio/v2/iterate",
-  /** 大纲生成 (v2) */
-  v2Outline: "/api/knowledge-studio/v2/outline",
-  /** 语音合成 (v2) */
-  v2Tts: "/api/knowledge-studio/v2/tts",
-  /** 风格适配 (v2) */
-  v2AdaptStyle: "/api/knowledge-studio/v2/adapt-style",
-  /** 使用量记录 (v2) */
-  v2UsageRecord: "/api/knowledge-studio/v2/usage/record",
-  /** 蓝图列表 (v2) */
-  v2Blueprints: "/api/knowledge-studio/v2/blueprints",
-  /** 蓝图推荐 (v2) */
-  v2RecommendBlueprints: "/api/knowledge-studio/v2/recommendations/blueprints",
-  /** 素材推荐 (v2) */
-  v2RecommendMaterials: "/api/knowledge-studio/v2/recommendations/materials",
-
-  // =====================================================
-  // 账单
-  // =====================================================
-
-  /** 账单列表 */
-  billingBills: "/api/knowledge-studio/billing/bills",
-  /** 用量统计 */
-  billingUsage: "/api/knowledge-studio/billing/usage",
-} as const;
-
 // ============================================
 // Markdown 收藏
 // ============================================
@@ -880,7 +827,6 @@ export const API_PATHS = {
   folderEvolution: API_FOLDER_EVOLUTION,
   internal: API_INTERNAL,
   knowledgeLink: API_KNOWLEDGE_LINK,
-  knowledgeStudio: API_KNOWLEDGE_STUDIO,
   learning: API_LEARNING,
   mdCollections: API_MD_COLLECTIONS,
   messages: API_MESSAGES,

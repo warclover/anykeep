@@ -181,20 +181,6 @@ export interface SynthesisReport extends SynthesisReportSummary {
   updatedAt: string;
   /** 来源书签详情 */
   sourceBookmarks?: BookmarkSource[];
-  /** 知识工坊蓝图类型（仅 Knowledge Studio 报告） */
-  blueprintType?: string;
-  /** 知识工坊引用列表（仅 Knowledge Studio 报告） */
-  citations?: Array<{
-    bookmarkId: string;
-    title: string;
-    url: string;
-    excerpt?: string;
-    position?: number;
-  }>;
-  /** 知识工坊生成元数据（仅 Knowledge Studio 报告） */
-  generationMetadata?: Record<string, unknown>;
-  /** 版本号（仅 Knowledge Studio 报告） */
-  version?: number;
 }
 
 /**
@@ -678,26 +664,16 @@ export interface SynthesisReportRow {
   id: string;
   user_id: string;
   title: string;
-  source_type: string | null; // SynthesisSourceType 的字符串形式（知识工坊报告可能为 null）
+  source_type: string | null; // SynthesisSourceType 的字符串形式
   source_id: string | null;
   source_bookmark_ids: string[] | null;
-  depth_mode: string | null; // SynthesisDepthMode 的字符串形式（知识工坊报告可能为 null）
+  depth_mode: string | null; // SynthesisDepthMode 的字符串形式
   output_style: string | null; // SynthesisOutputStyle 的字符串形式 [S1]
   overview: string | null;
   consensus: ConsensusPoint[] | null;
   divergence: DivergencePoint[] | null;
   blind_spots: BlindSpot[] | null;
   full_markdown: string | null;
-  content: string | null; // 知识工坊报告的内容（Markdown 格式）
-  blueprint_type: string | null; // 知识工坊蓝图类型
-  citations: Array<{
-    bookmarkId: string;
-    title: string;
-    url: string;
-    excerpt?: string;
-    position?: number;
-  }> | null; // 知识工坊报告的引用
-  generation_metadata: Record<string, unknown> | null; // 知识工坊报告的生成元数据
   embedding: number[] | null;
   status: string; // SynthesisStatus 的字符串形式
   error_message: string | null;
@@ -712,65 +688,6 @@ export interface SynthesisReportRow {
  * 将数据库行转换为 API 响应格式
  */
 export function mapRowToReport(row: SynthesisReportRow): SynthesisReport {
-  // 检测是否是知识工坊报告（有 blueprint_type 或 content 字段）
-  // 注意：知识工坊的表结构可能没有 status 字段，所以需要检查 blueprint_type
-  const isKnowledgeStudioReport = !!(
-    row.blueprint_type ||
-    (row.content && !row.overview && !row.source_type)
-  );
-
-  if (isKnowledgeStudioReport) {
-    // 知识工坊报告：使用 content 作为 fullMarkdown，设置默认的四维结构
-    const content = row.content || row.full_markdown || "";
-
-    // 从 generation_metadata 中获取 source_bookmark_ids
-    // 注意：知识工坊保存的是字符串数组，需要转换为字符串格式以便 API 使用
-    const metadataBookmarkIds = row.generation_metadata?.source_bookmark_ids as
-      | string[]
-      | number[]
-      | undefined;
-    const rawBookmarkIds =
-      row.source_bookmark_ids || metadataBookmarkIds || null;
-    // 确保所有 ID 都是字符串格式（API 期望字符串）
-    const sourceBookmarkIds = rawBookmarkIds
-      ? rawBookmarkIds.map((id) => String(id))
-      : null;
-
-    return {
-      id: row.id,
-      userId: row.user_id,
-      title: row.title,
-      // 知识工坊报告使用 "selection" 作为 sourceType，以便预览 API 能正确查询
-      sourceType: "selection" as SynthesisSourceType,
-      sourceId: row.source_id,
-      sourceBookmarkIds: sourceBookmarkIds,
-      depthMode: (row.depth_mode as SynthesisDepthMode) || "standard",
-      outputStyle: (row.output_style || "narrative") as SynthesisOutputStyle,
-      overview: content, // 将 content 作为 overview 显示
-      consensus: row.consensus || [],
-      divergence: row.divergence || [],
-      blindSpots: row.blind_spots || [],
-      fullMarkdown: content,
-      status: (row.status as SynthesisStatus | undefined) || "completed", // 知识工坊报告默认为 completed（可能没有 status 字段）
-      errorMessage: row.error_message,
-      sourceCount: row.source_count || sourceBookmarkIds?.length || 0,
-      wordCount: row.word_count || content.length || 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      completedAt: row.completed_at || row.created_at, // 如果没有 completed_at，使用 created_at
-      overviewPreview: content.slice(0, OVERVIEW_PREVIEW_MAX_LENGTH),
-      consensusCount: row.consensus?.length || 0,
-      divergenceCount: row.divergence?.length || 0,
-      blindSpotCount: row.blind_spots?.length || 0,
-      // 知识工坊特有字段
-      blueprintType: row.blueprint_type || undefined,
-      citations: row.citations || undefined,
-      generationMetadata: row.generation_metadata || undefined,
-      version: (row as { version?: number }).version || undefined,
-    };
-  }
-
-  // 主题合成器报告：使用原有的映射逻辑
   return {
     id: row.id,
     userId: row.user_id,

@@ -9,7 +9,7 @@
 export * from "./types";
 export * from "./agent-memory";
 export * from "./base-agent";
-export * from "./knowledge-agent";
 export * from "./ai-sdk-types";
 export * from "./error-messages";
 export * from "./confirmation-handler";
+export { atomicExecuteStream } from "./atomic-executor";

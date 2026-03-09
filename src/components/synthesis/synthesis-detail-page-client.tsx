@@ -12,7 +12,6 @@
  * 性能优化 v2.0：
  * - TanStack Query 缓存数据
  * - 组件拆分 + React.memo
- * - 动态导入 ReportEditor
  *
  * @version 2.0.0
  * @since 2025-12-29
@@ -20,7 +19,6 @@
 
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -28,7 +26,6 @@ import { clientLogger } from "@/lib/client-logger";
 import {
   ArrowLeft,
   Share2,
-  Download,
   BookOpen,
   FileText,
   Clock,
@@ -36,15 +33,7 @@ import {
   Highlighter,
   Copy,
   Check,
-  FileCode,
-  FileJson,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,29 +58,6 @@ import {
 import type { HighlightHandlers } from "./sections/types";
 
 import type { HighlightColor } from "@/lib/synthesis/types/highlight";
-import type { SynthesisReport as KSSynthesisReport } from "@/lib/knowledge-studio/client";
-import {
-  downloadKSReport,
-  type KSExportFormat,
-} from "@/lib/knowledge-studio/export";
-
-// 动态导入 ReportEditor（较大组件）
-const ReportEditor = dynamic(
-  () =>
-    import("@/components/knowledge-studio/report-editor").then(
-      (mod) => mod.ReportEditor,
-    ),
-  {
-    loading: () => (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    ),
-    ssr: false,
-  },
-);
-
 interface SynthesisDetailPageClientProps {
   reportId: string;
 }
@@ -221,18 +187,6 @@ export function SynthesisDetailPageClient({
     }
   }, [report?.fullMarkdown]);
 
-  // 判断是否为知识工坊报告
-  const isKnowledgeStudioReport = useMemo(() => {
-    if (!report) return false;
-    return (
-      report.consensusCount === 0 &&
-      report.divergenceCount === 0 &&
-      report.blindSpotCount === 0 &&
-      report.blueprintType &&
-      (report.overview || report.fullMarkdown)
-    );
-  }, [report]);
-
   // Phase 3.2: 字数统计
   const wordCount = useMemo(() => {
     if (!report) return 0;
@@ -241,58 +195,16 @@ export function SynthesisDetailPageClient({
     return content.replace(/\s/g, "").length;
   }, [report]);
 
-  // 转换为 Knowledge Studio 报告类型
-  const ksReport = useMemo((): KSSynthesisReport | null => {
-    if (!report || !isKnowledgeStudioReport) return null;
-
-    return {
-      id: report.id,
-      userId: report.userId,
-      blueprintType: report.blueprintType as KSSynthesisReport["blueprintType"],
-      title: report.title,
-      content: report.overview || report.fullMarkdown || "",
-      citations: (report.citations || []).map((c) => ({
-        bookmarkId: c.bookmarkId,
-        title: c.title,
-        url: c.url,
-        excerpt: c.excerpt || "",
-        position: c.position || 0,
-      })),
-      generationMetadata: {
-        model: (report.generationMetadata?.model as string) || "",
-        tokens: {
-          input: (report.generationMetadata?.tokens_used as number) || 0,
-          output: 0,
-          total: (report.generationMetadata?.tokens_used as number) || 0,
-        },
-        durationMs: (report.generationMetadata?.duration_ms as number) || 0,
-        stagesTiming: {
-          parsing: 0,
-          outline: 0,
-          content: 0,
-          citations: 0,
-          finalizing: 0,
-        },
-      },
-      version: report.version || 1,
-      createdAt: new Date(report.createdAt),
-      updatedAt: new Date(report.updatedAt),
-    };
-  }, [report, isKnowledgeStudioReport]);
-
-  // 处理报告更新
+  // 处理报告内容更新（精简功能使用）
   const handleReportUpdate = useCallback(
     async (newContent: string) => {
       if (!report) return;
       try {
-        const response = await fetch(
-          `/api/knowledge-studio/reports/${report.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: newContent }),
-          },
-        );
+        const response = await fetch(`/api/synthesis/${report.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: newContent }),
+        });
 
         if (!response.ok) {
           throw new Error("更新失败");
@@ -324,24 +236,6 @@ export function SynthesisDetailPageClient({
     wordCount,
     onReportUpdate: handleReportUpdate,
   });
-
-  // 处理导出
-  const handleExport = useCallback(
-    (format: KSExportFormat) => {
-      if (!ksReport) return;
-      try {
-        downloadKSReport(ksReport, format);
-        toast.success(`已导出为 ${format.toUpperCase()} 格式`);
-      } catch (err) {
-        clientLogger.error(
-          { error: err, format, reportId: ksReport.id },
-          "Failed to export report",
-        );
-        toast.error("导出失败，请重试");
-      }
-    },
-    [ksReport],
-  );
 
   if (isLoading) {
     return (
@@ -429,31 +323,6 @@ export function SynthesisDetailPageClient({
                 className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
               />
             )}
-          {/* 导出下拉菜单 */}
-          {report.status === "completed" && ksReport && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Download className="mr-2 h-4 w-4" />
-                  导出
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport("markdown")}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Markdown (.md)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("html")}>
-                  <FileCode className="mr-2 h-4 w-4" />
-                  HTML (.html)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("json")}>
-                  <FileJson className="mr-2 h-4 w-4" />
-                  JSON (.json)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
           {/* 分享按钮 */}
           <Button
             variant="outline"
@@ -532,36 +401,29 @@ export function SynthesisDetailPageClient({
         />
       ) : (
         <>
-          {/* 知识工坊报告 vs 主题合成器报告 */}
-          {isKnowledgeStudioReport && ksReport ? (
-            <div className="space-y-6">
-              <ReportEditor report={ksReport} onUpdate={handleReportUpdate} />
-            </div>
-          ) : (
-            /* 主题合成器报告：显示四维内容 */
-            <div className="space-y-6">
-              {report.overview && (
-                <OverviewSection
-                  content={report.overview}
-                  handlers={highlightHandlers}
-                />
-              )}
-              <ConsensusSection
-                items={report.consensus}
+          {/* 主题合成器报告：显示四维内容 */}
+          <div className="space-y-6">
+            {report.overview && (
+              <OverviewSection
+                content={report.overview}
                 handlers={highlightHandlers}
               />
-              <DivergenceSection
-                items={report.divergence}
-                handlers={highlightHandlers}
-              />
-              <BlindSpotSection
-                items={report.blindSpots}
-                handlers={highlightHandlers}
-                reportId={reportId}
-                onRegenerate={handleRetry}
-              />
-            </div>
-          )}
+            )}
+            <ConsensusSection
+              items={report.consensus}
+              handlers={highlightHandlers}
+            />
+            <DivergenceSection
+              items={report.divergence}
+              handlers={highlightHandlers}
+            />
+            <BlindSpotSection
+              items={report.blindSpots}
+              handlers={highlightHandlers}
+              reportId={reportId}
+              onRegenerate={handleRetry}
+            />
+          </div>
 
           {/* 来源书签面板 */}
           <SourceBookmarksPanel
