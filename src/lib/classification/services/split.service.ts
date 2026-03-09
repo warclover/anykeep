@@ -11,7 +11,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "./operation-log.service";
 import { generateFolderNameFromBookmarks } from "@/lib/ai-generator";
-import { initializeFolderNameProfile } from "../integration";
+import { initializeFolderNameProfile } from "@/lib/folder-profile/manager";
 import { logger } from "@/lib/logger";
 
 // ============================================

@@ -11,7 +11,7 @@
  * @since 2025-12-11
  */
 
-import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
+import { BaseSupabaseService } from "@/lib/shared/base-supabase.service";
 import { TrustModeRepository } from "./trust-mode.repository";
 import {
   getTrustModeConfig,
@@ -126,9 +126,7 @@ export class TrustModeService extends BaseSupabaseService {
     const totalDecisions =
       record.auto_decisions_count + record.user_corrections_count;
     const correctionRate =
-      totalDecisions > 0
-        ? record.user_corrections_count / totalDecisions
-        : 0;
+      totalDecisions > 0 ? record.user_corrections_count / totalDecisions : 0;
 
     return {
       mode: record.trust_mode,
@@ -225,7 +223,8 @@ export class TrustModeService extends BaseSupabaseService {
         shouldAutoExecute: true,
         requiresConfirmation: false,
         lowConfidenceAction: config.classification.lowConfidenceAction,
-        shouldNotify: isNewFolder && config.notification.onFolderSuggestion === true,
+        shouldNotify:
+          isNewFolder && config.notification.onFolderSuggestion === true,
         reason: `Semi-auto mode - confidence ${confidence}% above threshold, auto execute`,
       };
     }

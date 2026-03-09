@@ -22,7 +22,7 @@ import {
   getModelApiKey,
   type EmbeddingModelConfig,
   type EmbeddingModelId,
-} from "@/lib/classification/config/embedding-config";
+} from "@/lib/embedding/embedding-config";
 
 /**
  * 向量嵌入配置（兼容旧接口）
@@ -104,7 +104,7 @@ export async function generateEmbeddingForUser(
   if (options.modelId) {
     // 显式指定模型
     const { EMBEDDING_MODELS } = await import(
-      "@/lib/classification/config/embedding-config"
+      "@/lib/embedding/embedding-config"
     );
     modelConfig = EMBEDDING_MODELS[options.modelId];
   } else if (options.userId) {
@@ -338,7 +338,7 @@ export async function generateEmbeddingsBatchForUser(
 
   if (options.modelId) {
     const { EMBEDDING_MODELS } = await import(
-      "@/lib/classification/config/embedding-config"
+      "@/lib/embedding/embedding-config"
     );
     modelConfig = EMBEDDING_MODELS[options.modelId];
   } else if (options.userId) {
@@ -683,7 +683,7 @@ export {
   isABTestEnabled,
   getEmbeddingConfigInfo,
   EMBEDDING_CONFIG_VERSION,
-} from "@/lib/classification/config/embedding-config";
+} from "@/lib/embedding/embedding-config";
 
 /**
  * V4.2.7: 当前 embedding 模型版本

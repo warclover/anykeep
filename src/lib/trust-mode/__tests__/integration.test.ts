@@ -13,7 +13,7 @@ import { TrustModeService } from "../trust-mode.service";
 import { TrustModeRepository } from "../trust-mode.repository";
 import { confirmationService } from "@/lib/confirmation/confirmation.service";
 import { confirmationRepository } from "@/lib/confirmation/confirmation.repository";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import type { TrustMode, UserTrustModeRecord } from "@/types/trust-mode";
 import type {
   PendingConfirmationRecord,
@@ -30,7 +30,7 @@ jest.mock("@/lib/supabase/server", () => ({
 
 jest.mock("../trust-mode.repository");
 jest.mock("@/lib/confirmation/confirmation.repository");
-jest.mock("@/lib/classification/learning/preference-learner");
+jest.mock("@/lib/classification-learning/preference-learner");
 jest.mock("@/lib/logger", () => ({
   logger: {
     warn: jest.fn(),

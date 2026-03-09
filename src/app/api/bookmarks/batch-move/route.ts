@@ -13,8 +13,8 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { Notify } from "@/lib/notifications/server";
-import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
-import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
+import { updateFolderProfilesOnBookmarkChange } from "@/lib/folder-profile/manager";
+import { triggerMoveLearning } from "@/lib/classification-learning/trigger-move-learning";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**

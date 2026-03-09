@@ -35,7 +35,7 @@ import {
   PromptEngineV4,
 } from "../prompts";
 import { isJsonOutputEnabled } from "../summary.config";
-import { isPromptV4Enabled } from "@/lib/classification/config/ai-summary-config";
+import { isPromptV4Enabled } from "@/lib/summary/config/ai-summary-config";
 import { safeParseJson, detectContentType } from "../summary.types";
 import { isSummaryComplete } from "@/lib/utils/content-extractor";
 

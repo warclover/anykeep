@@ -15,7 +15,7 @@
  */
 
 import type { Database } from "@/types/supabase";
-import { BaseSupabaseService } from "@/lib/classification/services/base-supabase.service";
+import { BaseSupabaseService } from "@/lib/shared/base-supabase.service";
 import { logger } from "@/lib/logger";
 import type {
   SourceProfile,

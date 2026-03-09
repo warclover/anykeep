@@ -20,7 +20,7 @@ import { generatePlaceholderImage } from "@/lib/utils/placeholder-image";
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { PlatformBadge } from "@/components/ui/platform-badge";
-import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
+import { getDisplaySummary } from "@/lib/summary/types/ai-summary";
 import "./bookmark-card-flip.css";
 
 interface FlipBookmarkCardProps {

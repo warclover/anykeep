@@ -9,7 +9,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import { BaseSupabaseService } from "./base-supabase.service";
+import { BaseSupabaseService } from "@/lib/shared/base-supabase.service";
 import { Notify } from "@/lib/notifications/server";
 import type { Json } from "@/types/supabase";
 

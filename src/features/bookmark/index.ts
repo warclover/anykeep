@@ -87,7 +87,7 @@ export { useVisionAnalysis } from "@/hooks/domain/ai/use-vision-analysis";
 // ============================================================================
 
 export type { Bookmark, Platform } from "@/types/supabase";
-export type { ContentType } from "@/lib/classification/content-type-detector";
+export type { ContentType } from "@/lib/summary/content-type-detector";
 
 // ============================================================================
 // Constants - 公共常量

@@ -12,7 +12,7 @@ import { isSummaryComplete } from "@/lib/utils/content-extractor";
 import {
   safeParseJson,
   type StructuredSummary,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 import type { AIGenerateResult } from "../types";
 
 /**

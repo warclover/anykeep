@@ -23,7 +23,7 @@ import {
   isCotEnabled,
   isFewShotEnabled,
   isNegativeConstraintsEnabled,
-} from "@/lib/classification/config/ai-summary-config";
+} from "@/lib/summary/config/ai-summary-config";
 
 // ============================================================================
 // 常量

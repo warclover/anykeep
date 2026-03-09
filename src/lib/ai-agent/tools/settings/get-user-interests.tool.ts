@@ -10,8 +10,8 @@
 import { z } from "zod";
 import type { Tool, ToolResult } from "../types";
 import { createClient } from "@/lib/supabase/server";
-import { ClassificationContainer } from "@/lib/classification/container";
-import { PRESET_INTEREST_DOMAINS } from "@/lib/classification/constants/interest-domains";
+import { createInterestService } from "@/lib/classification/services/interest-factory";
+import { PRESET_INTEREST_DOMAINS } from "@/lib/user-interest/interest-domains";
 import { logger } from "@/lib/logger";
 import type { PresetInterestId } from "@/lib/classification/types";
 
@@ -88,10 +88,8 @@ export const getUserInterestsTool: Tool<
     try {
       const supabase = await createClient();
 
-      // 初始化分类容器
-      ClassificationContainer.initialize(supabase);
-      const interestService =
-        ClassificationContainer.getInstance().getInterestService();
+      // 创建兴趣服务
+      const interestService = createInterestService(supabase);
 
       // 获取用户兴趣配置
       const userInterests = await interestService.getUserInterests(

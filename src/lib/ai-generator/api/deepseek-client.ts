@@ -9,14 +9,14 @@
 
 import { logger } from "@/lib/logger";
 import { aiEnv } from "@/lib/env";
-import type { ContentTypeResult } from "@/lib/classification/content-type-detector";
+import type { ContentTypeResult } from "@/lib/summary/content-type-detector";
 import {
   getPromptConfig,
   buildTypeSpecificPrompt,
   getPromptConfigV2,
   buildTypeSpecificPromptV2,
 } from "@/lib/classification/prompts";
-import { isJsonOutputEnabled } from "@/lib/classification/config/ai-summary-config";
+import { isJsonOutputEnabled } from "@/lib/summary/config/ai-summary-config";
 import type { AIGenerateResult, GenerateWithAIOptions } from "../types";
 import { parseAIResponse, parseAIResponseV2 } from "./response-parser";
 

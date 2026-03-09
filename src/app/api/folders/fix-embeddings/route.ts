@@ -17,7 +17,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { initializeFolderNameProfile } from "@/lib/classification/server";
+import { initializeFolderNameProfile } from "@/lib/folder-profile/manager";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

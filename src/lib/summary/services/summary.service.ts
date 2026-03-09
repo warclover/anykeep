@@ -41,7 +41,7 @@ import {
   getUserSummaryMode,
   getEnhancedModeConfig,
   isMapReduceEnabled,
-} from "@/lib/classification/config/ai-summary-config";
+} from "@/lib/summary/config/ai-summary-config";
 import { MapReduceSummaryStrategy } from "../strategies";
 import { getEntityRepository } from "../repositories/entity.repository";
 import { getSummaryRepository } from "../repositories/summary.repository";

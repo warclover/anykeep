@@ -11,7 +11,7 @@
  * @since 2025-12-11
  */
 
-import { BaseSupabaseService } from "./base-supabase.service";
+import { BaseSupabaseService } from "@/lib/shared/base-supabase.service";
 import { logger } from "@/lib/logger";
 import type { Database } from "@/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";

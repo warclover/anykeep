@@ -17,7 +17,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { operationLogService } from "@/lib/classification/services/operation-log.service";
-import { initializeFolderNameProfile } from "@/lib/classification/integration";
+import { initializeFolderNameProfile } from "@/lib/folder-profile/manager";
 import { logger } from "@/lib/logger";
 import { folderCacheInvalidation } from "@/lib/cache/folder-cache-invalidation";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";

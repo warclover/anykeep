@@ -17,7 +17,7 @@ import {
   smartFetchContent,
   prepareContentForAI,
 } from "@/lib/utils/smart-content-fetcher";
-import { isJinaReaderEnabled } from "@/lib/classification/config/ai-summary-config";
+import { isJinaReaderEnabled } from "@/lib/summary/config/ai-summary-config";
 import {
   generateEmbedding,
   buildEmbeddingText,

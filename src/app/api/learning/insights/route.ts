@@ -10,9 +10,9 @@
 import type { NextRequest } from "next/server";
 import { successResponse } from "@/lib/utils/api-response";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { negativeSampleService } from "@/lib/classification/learning/negative-sample.service";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
-import { feedbackLoopService } from "@/lib/classification/learning/feedback-loop";
+import { negativeSampleService } from "@/lib/classification-learning/negative-sample.service";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
+import { feedbackLoopService } from "@/lib/classification-learning/feedback-loop";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";

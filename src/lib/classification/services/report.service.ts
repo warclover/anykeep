@@ -10,7 +10,7 @@
 
 import { operationLogService } from "./operation-log.service";
 import { logger } from "@/lib/logger";
-import { BaseSupabaseService } from "./base-supabase.service";
+import { BaseSupabaseService } from "@/lib/shared/base-supabase.service";
 import type { ReportSuggestion } from "@/types/domain/synthesis";
 
 // Re-export for backward compatibility

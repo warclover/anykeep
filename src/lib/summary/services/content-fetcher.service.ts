@@ -15,12 +15,12 @@
  */
 
 import { logger } from "@/lib/logger";
-import type { ContentType } from "@/lib/classification/content-type-detector";
-import { detectContentType } from "@/lib/classification/content-type-detector";
+import type { ContentType } from "@/lib/summary/content-type-detector";
+import { detectContentType } from "@/lib/summary/content-type-detector";
 import {
   isEnhancedExtractionEnabled,
   isContentCleaningEnabled,
-} from "@/lib/classification/config/ai-summary-config";
+} from "@/lib/summary/config/ai-summary-config";
 import { getParserRegistry } from "../parsers";
 import { ContentCleanerService } from "./content-cleaner.service";
 

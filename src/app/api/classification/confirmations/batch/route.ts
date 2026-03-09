@@ -13,7 +13,7 @@ import { withAuthMiddleware } from "@/lib/api/middleware";
 import { createClient } from "@/lib/supabase/server";
 import { successResponse, badRequestError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import type { NextRequest } from "next/server";
 
 // 表名常量

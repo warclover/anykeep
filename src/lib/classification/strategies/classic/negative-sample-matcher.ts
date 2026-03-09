@@ -17,7 +17,7 @@ import type { MatchResult, MatcherContext } from "@/lib/classification/types";
 import {
   negativeSampleService,
   type NegativeSampleMatch,
-} from "@/lib/classification/learning/negative-sample.service";
+} from "@/lib/classification-learning/negative-sample.service";
 import { logger } from "@/lib/logger";
 
 // ============================================================================

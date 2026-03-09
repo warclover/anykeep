@@ -23,7 +23,7 @@ import type {
   ContentType as BaseContentType,
 } from "../summary.types";
 import { safeParseJson, detectContentType } from "../summary.types";
-import type { ContentType as EnhancedContentType } from "@/lib/classification/types/ai-summary";
+import type { ContentType as EnhancedContentType } from "@/lib/summary/types/ai-summary";
 
 // 使用增强版内容类型
 type ContentType = EnhancedContentType;
@@ -35,13 +35,13 @@ import {
 import {
   getEnhancedModeConfig,
   type EnhancedModeConfig,
-} from "@/lib/classification/config/ai-summary-config";
+} from "@/lib/summary/config/ai-summary-config";
 import type {
   EnhancedSummary,
   Entity,
   KeyDataItem,
   DifficultyLevel,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 
 /**
  * 增强版响应解析结果

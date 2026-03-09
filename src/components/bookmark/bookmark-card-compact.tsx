@@ -18,7 +18,7 @@ import { BookmarkRatingDisplay } from "@/components/bookmark/bookmark-rating-dis
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
-import type { ContentType } from "@/lib/classification/content-type-detector";
+import type { ContentType } from "@/lib/summary/content-type-detector";
 import type { BookmarkCardViewProps } from "./bookmark-card-types";
 import { BookmarkActionMenu } from "./bookmark-card-action-menu";
 import { BookmarkSelectionCheckbox } from "./bookmark-card-selection-checkbox";

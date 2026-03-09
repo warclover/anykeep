@@ -18,7 +18,7 @@ import { logger } from "@/lib/logger";
 import type { Folder } from "@/types/supabase";
 import { FOLDER } from "@/lib/constants/messages";
 import { FOLDER_LIST_FIELDS } from "@/lib/constants/query-fields";
-import { initializeFolderNameProfile } from "@/lib/classification/server";
+import { initializeFolderNameProfile } from "@/lib/folder-profile/manager";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
 
 /**

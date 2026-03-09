@@ -5,10 +5,10 @@
  * @version 1.0.0
  */
 
-import type { ContentType } from "@/lib/classification/content-type-detector";
+import type { ContentType } from "@/lib/summary/content-type-detector";
 
 // Re-export ContentType for external use
-export type { ContentType } from "@/lib/classification/content-type-detector";
+export type { ContentType } from "@/lib/summary/content-type-detector";
 
 /**
  * AI 生成结果

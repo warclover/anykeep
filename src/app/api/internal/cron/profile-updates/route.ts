@@ -16,7 +16,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { profileUpdater } from "@/lib/classification/learning/profile-updater";
+import { profileUpdater } from "@/lib/classification-learning/profile-updater";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import {

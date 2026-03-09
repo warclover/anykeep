@@ -15,8 +15,8 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createInterestService } from "@/lib/classification/services/interest-factory";
 import {
-  ClassificationContainer,
   PRESET_INTEREST_DOMAINS,
   CUSTOM_INTEREST_LIMITS,
   type PresetInterestId,
@@ -94,8 +94,7 @@ const deleteCustomInterestSchema = z.object({
  */
 export const GET = withAuthMiddleware(async (_request, { userId }) => {
   const supabase = await createClient();
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   const config = await interestService.getUserInterests(userId);
 
@@ -145,8 +144,7 @@ async function handleSetPresetInterests(
 
   const { presetInterests, createFolders } = validation.data;
 
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   if (presetInterests.length > 0) {
     await interestService.setPresetInterests(
@@ -213,8 +211,7 @@ async function handleAddCustomInterest(
     return handleValidationError(validation.error);
   }
 
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   try {
     const interest = await interestService.addCustomInterest(
@@ -247,8 +244,7 @@ async function handleAddCustomInterest(
  */
 export const PUT = withAuthMiddleware(async (_request, { userId }) => {
   const supabase = await createClient();
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   const createdFolders = await interestService.createInitialFolders(userId);
 
@@ -283,8 +279,7 @@ export const PATCH = withAuthMiddleware(async (request, { userId }) => {
 
   const { id, ...updates } = validation.data;
 
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   const interest = await interestService.updateCustomInterest(id, updates);
 
@@ -315,8 +310,7 @@ export const DELETE = withAuthMiddleware(async (request, { userId }) => {
 
   const { customInterestId } = validation.data;
 
-  const container = ClassificationContainer.initialize(supabase);
-  const interestService = container.getInterestService();
+  const interestService = createInterestService(supabase);
 
   await interestService.deleteCustomInterest(customInterestId);
 

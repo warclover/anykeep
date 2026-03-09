@@ -14,7 +14,7 @@ import { logger } from "@/lib/logger";
 import {
   isJinaReaderEnabled,
   getAISummaryConfig,
-} from "@/lib/classification/config/ai-summary-config";
+} from "@/lib/summary/config/ai-summary-config";
 import {
   fetchWithJinaReader,
   cleanMarkdownContent,

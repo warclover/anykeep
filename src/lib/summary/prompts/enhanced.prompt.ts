@@ -7,8 +7,8 @@
  * @since 2025-12-14
  */
 
-import type { ContentType as EnhancedContentType } from "@/lib/classification/types/ai-summary";
-import type { EnhancedModeConfig } from "@/lib/classification/config/ai-summary-config";
+import type { ContentType as EnhancedContentType } from "@/lib/summary/types/ai-summary";
+import type { EnhancedModeConfig } from "@/lib/summary/config/ai-summary-config";
 
 // 使用增强版内容类型（支持更多类型）
 type ContentType = EnhancedContentType;

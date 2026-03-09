@@ -22,15 +22,15 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
-import { profileUpdater } from "@/lib/classification/learning/profile-updater";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
+import { profileUpdater } from "@/lib/classification-learning/profile-updater";
 import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { embeddingABTestService } from "@/lib/classification/services/server";
 import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,
-} from "@/lib/classification/config/embedding-config";
+} from "@/lib/embedding/embedding-config";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { withAuthMiddleware } from "@/lib/api/middleware";

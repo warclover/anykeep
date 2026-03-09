@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { SummaryMode } from "@/lib/classification/types/ai-summary";
+import type { SummaryMode } from "@/lib/summary/types/ai-summary";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================================================

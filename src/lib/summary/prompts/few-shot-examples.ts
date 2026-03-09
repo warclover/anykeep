@@ -8,7 +8,7 @@
  * @since 2026-03-07
  */
 
-import type { StructuredSummary } from "@/lib/classification/types/ai-summary";
+import type { StructuredSummary } from "@/lib/summary/types/ai-summary";
 
 // ============================================================================
 // 类型定义

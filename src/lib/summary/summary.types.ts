@@ -18,13 +18,13 @@ import type {
   EntityType as _EntityType,
   DifficultyLevel as _DifficultyLevel,
   SummaryMode as _SummaryMode,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 
 import type {
   ContentType as _ContentType,
   ContentTypeResult as _ContentTypeResult,
   DetectionInput as _DetectionInput,
-} from "@/lib/classification/content-type-detector";
+} from "@/lib/summary/content-type-detector";
 
 // Re-export types
 export type Sentiment = _Sentiment;
@@ -50,12 +50,12 @@ export {
   structuredToText,
   safeParseJson,
   tryFixJson,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 
 export {
   detectContentType,
   CONTENT_TYPE_LABELS,
-} from "@/lib/classification/content-type-detector";
+} from "@/lib/summary/content-type-detector";
 
 // ============================================================================
 // Provider Types

@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import {
   detectContentType,
   type ContentTypeResult,
-} from "@/lib/classification/content-type-detector";
+} from "@/lib/summary/content-type-detector";
 import {
   getSummaryService,
   isNewSummaryServiceEnabled,

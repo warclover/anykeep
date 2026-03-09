@@ -30,7 +30,7 @@ import { BookmarkRating } from "@/components/bookmark/bookmark-rating";
 import { RelatedBookmarksV2Lazy } from "@/components/bookmark/related-bookmarks-lazy";
 import { UnifiedTagsSection } from "@/components/bookmark/unified-tags-section";
 import { ContentTypeBadge } from "@/components/bookmark/content-type-badge";
-import type { ContentType } from "@/lib/classification/content-type-detector";
+import type { ContentType } from "@/lib/summary/content-type-detector";
 import type { Bookmark, CustomUsageTag, Platform } from "@/types/supabase";
 import { useCustomUsageTags } from "@/hooks/data";
 import { cn } from "@/lib/utils";

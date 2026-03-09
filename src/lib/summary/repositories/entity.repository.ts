@@ -10,7 +10,7 @@
 import { logger } from "@/lib/logger";
 // V4.2.5: 修复 - 使用服务端客户端而非浏览器客户端
 import { createClient } from "@/lib/supabase/server";
-import type { Entity, EntityType } from "@/lib/classification/types/ai-summary";
+import type { Entity, EntityType } from "@/lib/summary/types/ai-summary";
 import type { RpcResult } from "@/lib/supabase/typed-queries";
 
 /**

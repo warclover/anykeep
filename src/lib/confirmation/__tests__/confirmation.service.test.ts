@@ -14,7 +14,7 @@
 
 import { confirmationService } from "../confirmation.service";
 import { confirmationRepository } from "../confirmation.repository";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import type {
   PendingConfirmationRecord,
   ClassificationSuggestion,
@@ -26,7 +26,7 @@ import type {
 // ============================================================================
 
 jest.mock("../confirmation.repository");
-jest.mock("@/lib/classification/learning/preference-learner");
+jest.mock("@/lib/classification-learning/preference-learner");
 jest.mock("@/lib/logger", () => ({
   logger: {
     warn: jest.fn(),

@@ -17,8 +17,8 @@ import {
   negativeSampleService,
   type ExclusionType,
   type CreatedFrom,
-} from "@/lib/classification/learning/negative-sample.service";
-import { learningEventHandler } from "@/lib/classification/learning/learning-event-handler";
+} from "@/lib/classification-learning/negative-sample.service";
+import { learningEventHandler } from "@/lib/classification-learning/learning-event-handler";
 
 /**
  * GET /api/learning/negative

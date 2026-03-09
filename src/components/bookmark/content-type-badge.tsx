@@ -5,8 +5,8 @@
 
 import { cn } from "@/lib/utils";
 import { FileText, BookOpen, Video, Wrench } from "lucide-react";
-import type { ContentType } from "@/lib/classification/content-type-detector";
-import { CONTENT_TYPE_LABELS } from "@/lib/classification/content-type-detector";
+import type { ContentType } from "@/lib/summary/content-type-detector";
+import { CONTENT_TYPE_LABELS } from "@/lib/summary/content-type-detector";
 
 interface ContentTypeBadgeProps {
   type: ContentType;

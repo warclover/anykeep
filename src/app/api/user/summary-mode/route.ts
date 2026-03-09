@@ -17,8 +17,8 @@ import {
   getUserSummaryMode,
   setUserSummaryMode,
   getAISummaryConfig,
-} from "@/lib/classification/config/ai-summary-config";
-import type { SummaryMode } from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/config/ai-summary-config";
+import type { SummaryMode } from "@/lib/summary/types/ai-summary";
 
 // ============================================================================
 // 摘要模式信息

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type {
   StructuredSummary,
   Sentiment,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 
 // =============================================================================
 // 辅助函数

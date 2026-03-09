@@ -30,7 +30,7 @@ import type {
   PendingConfirmationRecord,
   ConfirmationMessageDisplay,
 } from "@/types/confirmation";
-import { preferenceLearner } from "@/lib/classification/learning/preference-learner";
+import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import { logger } from "@/lib/logger";
 import { folderExecutorService, type ExecutionResult } from "@/lib/folder";
 import { BookmarkRepository } from "@/repositories/bookmark.repository";

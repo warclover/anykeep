@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BookmarkService } from "@/services";
 import { withAuthMiddleware, validateBody } from "@/lib/api/middleware";
 import { BatchMoveSchema } from "@/contracts";
-import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
+import { triggerMoveLearning } from "@/lib/classification-learning/trigger-move-learning";
 import { logger } from "@/lib/logger";
 
 /**

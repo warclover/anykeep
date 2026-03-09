@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   parseStructuredSummary,
   isStructuredSummary,
-} from "@/lib/classification/types/ai-summary";
+} from "@/lib/summary/types/ai-summary";
 import { parseSummary, isCoreSection } from "./summary-parser";
 import { StructuredSummaryRenderer } from "./structured-summary-renderer";
 

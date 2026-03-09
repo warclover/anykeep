@@ -19,8 +19,8 @@ import {
 import { logger } from "@/lib/logger";
 import type { BookmarkUpdate } from "@/types/supabase";
 import { BOOKMARK, AUTH } from "@/lib/constants/messages";
-import { updateFolderProfilesOnBookmarkChange } from "@/lib/classification/server";
-import { triggerMoveLearning } from "@/lib/classification/learning/trigger-move-learning";
+import { updateFolderProfilesOnBookmarkChange } from "@/lib/folder-profile/manager";
+import { triggerMoveLearning } from "@/lib/classification-learning/trigger-move-learning";
 import { BOOKMARK_DETAIL_FIELDS } from "@/lib/constants/query-fields";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 // NOTE: 公共类型已提取到 @/types/api-helpers，后续重构时使用

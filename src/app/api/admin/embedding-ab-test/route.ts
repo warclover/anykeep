@@ -18,7 +18,7 @@ import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,
   type EmbeddingModelId,
-} from "@/lib/classification/config/embedding-config";
+} from "@/lib/embedding/embedding-config";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { isAdminUser } from "@/lib/auth/admin-check";
 

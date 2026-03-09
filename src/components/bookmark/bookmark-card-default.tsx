@@ -26,7 +26,7 @@ import { PlatformBadge } from "@/components/ui/platform-badge";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/date-utils";
 import { getPlatformHexColor } from "@/lib/constants/platforms";
-import { getDisplaySummary } from "@/lib/classification/types/ai-summary";
+import { getDisplaySummary } from "@/lib/summary/types/ai-summary";
 import {
   separateUserTagsExtended,
   getUsageTagStyleExtended,

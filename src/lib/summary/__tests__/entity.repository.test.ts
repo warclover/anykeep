@@ -14,7 +14,7 @@ import {
   type EntityRecord,
   type SharedEntityBookmark,
 } from "../repositories/entity.repository";
-import type { Entity } from "@/lib/classification/types/ai-summary";
+import type { Entity } from "@/lib/summary/types/ai-summary";
 
 // ============================================================================
 // Mock Dependencies

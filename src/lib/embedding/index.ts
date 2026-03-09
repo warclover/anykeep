@@ -48,4 +48,4 @@ export type {
 } from "@/lib/utils/embedding-generator";
 
 // Re-export dimension constant for database migrations
-export { EMBEDDING_DIMENSION } from "@/lib/classification/config/embedding-config";
+export { EMBEDDING_DIMENSION } from "@/lib/embedding/embedding-config";
