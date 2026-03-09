@@ -295,11 +295,7 @@ class CacheInvalidationService {
         // 导出不改变数据，无需失效
         break;
 
-      // 知识管理类 Skill
-      case "reading_planner":
-        // 可能更新复习状态，失效用户偏好缓存
-        dataCache.invalidate(`preferences:${userId}`);
-        break;
+      // [已移除] reading_planner case (精简重构 2026-03-09)
 
       // 分析报告类 Skill
       case "insight_report":

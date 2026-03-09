@@ -16,7 +16,6 @@ import {
   Lightbulb,
   AlertCircle,
   RefreshCw,
-  Link,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,7 +46,6 @@ const insightIcons: Record<ProactiveInsight["type"], React.ElementType> = {
   recommendation: Lightbulb,
   knowledge_gap: AlertCircle,
   content_update: RefreshCw,
-  link_health: Link,
 };
 
 const insightColors: Record<
@@ -79,11 +77,6 @@ const insightColors: Record<
     bg: "bg-green-50 dark:bg-green-950/30",
     border: "border-green-200 dark:border-green-800",
   },
-  link_health: {
-    icon: "text-red-600 dark:text-red-400",
-    bg: "bg-red-50 dark:bg-red-950/30",
-    border: "border-red-200 dark:border-red-800",
-  },
 };
 
 const insightLabels: Record<ProactiveInsight["type"], string> = {
@@ -92,7 +85,6 @@ const insightLabels: Record<ProactiveInsight["type"], string> = {
   recommendation: "推荐内容",
   knowledge_gap: "知识盲区",
   content_update: "内容更新",
-  link_health: "链接健康",
 };
 
 // ============================================

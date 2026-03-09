@@ -373,12 +373,6 @@ export function useInsightConfig(type: ProactiveInsight["type"]) {
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
-    link_health: {
-      label: "链接健康",
-      icon: "Link",
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-    },
   };
 
   return configMap[type];

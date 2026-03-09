@@ -78,7 +78,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   folder_health_check: "检查文件夹健康状态",
 
   // 编排 Skills - 学习助手
-  reading_planner: "帮我制定阅读计划",
   periodic_report: "生成我的学习周报",
   related_discovery: "发现与我收藏相关的内容",
   // 编排 Skills - 实用工具

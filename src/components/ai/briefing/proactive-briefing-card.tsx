@@ -20,11 +20,9 @@ import {
   TrendingUp,
   Lightbulb,
   AlertCircle,
-  Link,
   FolderTree,
   Tag,
   Archive,
-  GraduationCap,
   Trash2,
   CheckCheck,
 } from "lucide-react";
@@ -50,7 +48,6 @@ const INSIGHT_ICON_MAP: Record<InsightType, React.ReactNode> = {
   recommendation: <Lightbulb className="size-4" />,
   knowledge_gap: <AlertCircle className="size-4" />,
   content_update: <RefreshCw className="size-4" />,
-  link_health: <Link className="size-4" />,
 };
 
 const INSIGHT_COLOR_MAP: Record<
@@ -82,11 +79,6 @@ const INSIGHT_COLOR_MAP: Record<
     text: "text-green-600",
     border: "border-green-200",
   },
-  link_health: {
-    bg: "bg-red-50",
-    text: "text-red-600",
-    border: "border-red-200",
-  },
 };
 
 const ACTION_ICON_MAP: Record<ActionType, React.ReactNode> = {
@@ -94,7 +86,6 @@ const ACTION_ICON_MAP: Record<ActionType, React.ReactNode> = {
   cleanup_duplicates: <Trash2 className="size-4" />,
   tag_untagged: <Tag className="size-4" />,
   archive_old: <Archive className="size-4" />,
-  start_learning: <GraduationCap className="size-4" />,
 };
 
 // ============================================

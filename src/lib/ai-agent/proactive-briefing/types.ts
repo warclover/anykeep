@@ -60,8 +60,7 @@ export type InsightType =
   | "pattern_detected" // 模式检测
   | "recommendation" // 推荐内容
   | "knowledge_gap" // 知识盲区
-  | "content_update" // 内容更新
-  | "link_health"; // 链接健康
+  | "content_update"; // 内容更新
 
 /**
  * 单条洞察
@@ -94,8 +93,7 @@ export type ActionType =
   | "organize_topic" // 整理主题
   | "cleanup_duplicates" // 清理重复
   | "tag_untagged" // 标记未标签
-  | "archive_old" // 归档旧内容
-  | "start_learning"; // 开始学习
+  | "archive_old"; // 归档旧内容
 
 /**
  * 建议操作

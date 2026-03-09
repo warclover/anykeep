@@ -88,13 +88,6 @@ export const INSIGHT_TYPE_CONFIG = {
     bgColor: "bg-green-50",
     priority: 4,
   },
-  link_health: {
-    label: "链接健康",
-    icon: "Link",
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    priority: 3,
-  },
 } as const;
 
 // =============================================================================
@@ -124,11 +117,6 @@ export const ACTION_TYPE_CONFIG = {
     label: "归档旧内容",
     icon: "Archive",
     skillId: "batch_organize",
-  },
-  start_learning: {
-    label: "开始学习",
-    icon: "GraduationCap",
-    skillId: "reading_planner",
   },
 } as const;
 

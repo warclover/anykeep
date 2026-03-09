@@ -44,12 +44,7 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "complex",
     enabled: false, // P3: 面试准备 Skill 待实现
   },
-  "learn:plan": {
-    skillId: "reading_planner",
-    name: "阅读计划助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
+  // [已移除] learn:plan → reading_planner (精简重构 2026-03-09)
 
   // 整理类
   "organize:cleanup": {

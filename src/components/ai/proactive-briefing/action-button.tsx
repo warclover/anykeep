@@ -10,14 +10,7 @@
 "use client";
 
 import React from "react";
-import {
-  FolderOpen,
-  Trash2,
-  Tag,
-  Archive,
-  GraduationCap,
-  Loader2,
-} from "lucide-react";
+import { FolderOpen, Trash2, Tag, Archive, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SuggestedAction } from "@/lib/ai-agent/proactive-briefing";
@@ -48,7 +41,6 @@ const actionIcons: Record<SuggestedAction["type"], React.ElementType> = {
   cleanup_duplicates: Trash2,
   tag_untagged: Tag,
   archive_old: Archive,
-  start_learning: GraduationCap,
 };
 
 // ============================================

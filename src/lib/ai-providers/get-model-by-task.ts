@@ -38,7 +38,6 @@ export type AITaskType =
 
   // 分析推理类 → deep
   | "insight-analysis" // 洞察分析
-  | "knowledge-review" // 知识回顾
   | "batch-organize" // 批量整理
   | "duplicate-detect" // 重复检测
   | "theme-discovery" // 主题发现
@@ -71,7 +70,6 @@ const TASK_TIER_MAP: Record<AITaskType, ModelTierId> = {
 
   // 分析推理类 → deep (deepseek-reasoner)
   "insight-analysis": "deep",
-  "knowledge-review": "deep",
   "batch-organize": "deep",
   "duplicate-detect": "deep",
   "theme-discovery": "deep",

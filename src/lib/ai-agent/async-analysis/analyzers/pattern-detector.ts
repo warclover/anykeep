@@ -402,12 +402,12 @@ export class PatternDetectionAnalyzer extends BaseAnalyzer {
       const newTopic = (topicShift.metadata as { newTopic: string }).newTopic;
       actions.push({
         id: `action_learn_${Date.now()}`,
-        type: "start_learning",
-        label: `深入学习「${newTopic}」`,
-        description: "生成学习路径和相关推荐",
+        type: "organize_topic",
+        label: `整理「${newTopic}」相关收藏`,
+        description: "整理新兴主题的相关书签",
         affectedCount: topicShift.bookmarkIds.length,
         executeParams: {
-          skillId: "reading_planner",
+          skillId: "batch_organize",
           topic: newTopic,
           bookmarkIds: topicShift.bookmarkIds,
         },
