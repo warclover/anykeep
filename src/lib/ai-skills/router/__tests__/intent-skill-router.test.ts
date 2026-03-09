@@ -60,13 +60,7 @@ describe("IntentSkillRouter", () => {
         expect(result.mode).toBe("orchestration");
       });
 
-      it("should route 周报 to periodic_report", () => {
-        const result = router.route("生成本周报告");
-
-        expect(result.intentType).toBe("analyze");
-        expect(result.subType).toBe("report");
-        expect(result.skillId).toBe("periodic_report");
-      });
+      // [已移除] periodic_report skill (精简重构 2026-03-09)
     });
 
     describe("创建类意图", () => {

@@ -25,7 +25,6 @@ import {
   Download,
   Upload,
   Share2,
-  GraduationCap,
   BrainCog,
 } from "lucide-react";
 import type { PageId } from "@/contexts/navigation-context";
@@ -138,12 +137,6 @@ const smartToolsGroup: NavGroupConfig = {
       icon: Sparkles,
       isPro: true,
       description: "mobileMenu.aiReportGeneration",
-    },
-    {
-      name: "nav.learningHub",
-      href: "/learning-hub",
-      icon: GraduationCap,
-      description: "mobileMenu.aiLearningHub",
     },
     {
       name: "nav.dataCenter",

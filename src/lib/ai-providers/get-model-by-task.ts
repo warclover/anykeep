@@ -41,7 +41,6 @@ export type AITaskType =
   | "batch-organize" // 批量整理
   | "duplicate-detect" // 重复检测
   | "theme-discovery" // 主题发现
-  | "knowledge-extract" // 知识提取
   | "review-planning" // 复习规划
   | "slow-thinking" // 慢思考
 
@@ -73,7 +72,6 @@ const TASK_TIER_MAP: Record<AITaskType, ModelTierId> = {
   "batch-organize": "deep",
   "duplicate-detect": "deep",
   "theme-discovery": "deep",
-  "knowledge-extract": "deep",
   "review-planning": "deep",
   "slow-thinking": "deep",
 

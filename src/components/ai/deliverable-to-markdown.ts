@@ -10,74 +10,6 @@
 
 import type { DeliverableType } from "./types";
 
-// ── 周期报告类型守卫 ──────────────────────────────────────
-
-interface PeriodicReportData {
-  title: string;
-  period: string;
-  periodLabel: string;
-  dateRange: { start: string; end: string };
-  stats: {
-    newBookmarks: number;
-    activeDays: number;
-    dailyAverage: number;
-    estimatedReadingTime: number;
-    mostActiveDay: string;
-    mostActiveHour: number;
-  };
-  comparison?: {
-    currentPeriod: string;
-    previousPeriod: string;
-    bookmarksChange: {
-      current: number;
-      previous: number;
-      changeRate: number;
-      trend: "up" | "down" | "stable";
-    };
-    activityChange?: {
-      current: number;
-      previous: number;
-      changeRate: number;
-      trend: "up" | "down" | "stable";
-    };
-    platformChanges?: Array<{
-      platform: string;
-      current: number;
-      previous: number;
-      changeRate: number;
-    }>;
-  };
-  highlights: Array<{
-    id: number;
-    title: string;
-    url: string;
-    platform: string;
-    summary?: string;
-    reason: string;
-    createdAt: string;
-  }>;
-  insights: Array<{
-    type: string;
-    title: string;
-    description: string;
-    icon: string;
-  }>;
-  summary: string;
-  suggestions: string[];
-  generatedAt: string;
-}
-
-function isPeriodicReport(content: unknown): content is PeriodicReportData {
-  if (typeof content !== "object" || content === null) return false;
-  const obj = content as Record<string, unknown>;
-  return (
-    typeof obj.stats === "object" &&
-    Array.isArray(obj.highlights) &&
-    Array.isArray(obj.insights) &&
-    typeof obj.summary === "string"
-  );
-}
-
 // ── 洞察报告类型守卫 ──────────────────────────────────────
 
 interface InsightReportData {
@@ -96,138 +28,6 @@ function isInsightReport(content: unknown): content is InsightReportData {
     typeof obj.activity === "object" &&
     typeof obj.content === "object"
   );
-}
-
-// ── 周期报告格式化 ─────────────────────────────────────────
-
-const PERIOD_ICONS: Record<string, string> = {
-  daily: "📅",
-  weekly: "📊",
-  monthly: "📈",
-  quarterly: "📉",
-};
-
-function formatPeriodicReport(data: PeriodicReportData): string {
-  const lines: string[] = [];
-  const icon = PERIOD_ICONS[data.period] || "📊";
-
-  // 标题
-  lines.push(`## ${icon} ${data.title}`);
-  lines.push("");
-
-  // 时间范围
-  if (data.dateRange) {
-    lines.push(`> 📅 ${data.dateRange.start} ~ ${data.dateRange.end}`);
-    lines.push("");
-  }
-
-  // 摘要
-  if (data.summary) {
-    lines.push(data.summary);
-    lines.push("");
-  }
-
-  // 统计概览
-  lines.push("### 📊 统计概览");
-  lines.push("");
-  lines.push(`- 新增收藏: **${data.stats.newBookmarks}** 条`);
-  lines.push(`- 活跃天数: **${data.stats.activeDays}** 天`);
-  lines.push(`- 日均收藏: **${data.stats.dailyAverage.toFixed(1)}** 条`);
-  if (data.stats.estimatedReadingTime) {
-    lines.push(`- 预计阅读时长: **${data.stats.estimatedReadingTime}** 分钟`);
-  }
-  if (data.stats.mostActiveDay) {
-    lines.push(`- 最活跃日: **${data.stats.mostActiveDay}**`);
-  }
-  if (data.stats.mostActiveHour !== undefined) {
-    lines.push(`- 最活跃时段: **${data.stats.mostActiveHour}:00**`);
-  }
-  lines.push("");
-
-  // 历史对比
-  if (data.comparison) {
-    lines.push("### 📈 与上期对比");
-    lines.push("");
-    const bc = data.comparison.bookmarksChange;
-    const trendIcon =
-      bc.trend === "up" ? "🔼" : bc.trend === "down" ? "🔽" : "➡️";
-    const sign = bc.changeRate >= 0 ? "+" : "";
-    lines.push(
-      `- 收藏变化: ${trendIcon} ${sign}${bc.changeRate.toFixed(0)}%（本期 ${bc.current} 条 vs 上期 ${bc.previous} 条）`,
-    );
-
-    if (data.comparison.activityChange) {
-      const ac = data.comparison.activityChange;
-      const acIcon =
-        ac.trend === "up" ? "🔼" : ac.trend === "down" ? "🔽" : "➡️";
-      const acSign = ac.changeRate >= 0 ? "+" : "";
-      lines.push(
-        `- 活跃度变化: ${acIcon} ${acSign}${ac.changeRate.toFixed(0)}%（本期 ${ac.current} 天 vs 上期 ${ac.previous} 天）`,
-      );
-    }
-
-    if (
-      data.comparison.platformChanges &&
-      data.comparison.platformChanges.length > 0
-    ) {
-      lines.push("");
-      lines.push("**平台分布变化：**");
-      lines.push("");
-      for (const pc of data.comparison.platformChanges) {
-        const pcSign = pc.changeRate >= 0 ? "+" : "";
-        lines.push(
-          `- ${pc.platform}: ${pc.current} 条（${pcSign}${pc.changeRate.toFixed(0)}%）`,
-        );
-      }
-    }
-    lines.push("");
-  }
-
-  // 亮点推荐
-  if (data.highlights.length > 0) {
-    lines.push("### ✨ 本期亮点");
-    lines.push("");
-    for (const h of data.highlights.slice(0, 5)) {
-      lines.push(`- **${h.title}**`);
-      lines.push(`  ${h.reason}`);
-      if (h.url) {
-        lines.push(`  🔗 [查看原文](${h.url})`);
-      }
-    }
-    lines.push("");
-  }
-
-  // 洞察
-  if (data.insights.length > 0) {
-    lines.push("### 💡 洞察");
-    lines.push("");
-    for (const insight of data.insights.slice(0, 4)) {
-      lines.push(`${insight.icon} **${insight.title}**`);
-      lines.push(`   ${insight.description}`);
-      lines.push("");
-    }
-  }
-
-  // 建议
-  if (data.suggestions && data.suggestions.length > 0) {
-    lines.push("### 🎯 建议");
-    lines.push("");
-    for (const suggestion of data.suggestions) {
-      lines.push(`- ${suggestion}`);
-    }
-    lines.push("");
-  }
-
-  // 生成时间
-  if (data.generatedAt) {
-    const date = new Date(data.generatedAt);
-    lines.push("---");
-    lines.push(
-      `*报告生成于 ${date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}*`,
-    );
-  }
-
-  return lines.join("\n");
 }
 
 // ── 洞察报告格式化 ─────────────────────────────────────────
@@ -336,17 +136,12 @@ export function deliverableToMarkdown(
 
   const skillId = metadata?.skillId as string | undefined;
 
-  // 1. 周期报告
-  if (skillId === "periodic_report" || isPeriodicReport(content)) {
-    return formatPeriodicReport(content as PeriodicReportData);
-  }
-
-  // 2. 洞察���告
+  // 1. 洞察报告
   if (skillId === "insight_report" || isInsightReport(content)) {
     return formatInsightReport(content as InsightReportData);
   }
 
-  // 3. 列表类型
+  // 2. 列表类型
   if (type === "list" && Array.isArray(content)) {
     return content
       .map((item, i) =>
@@ -357,7 +152,7 @@ export function deliverableToMarkdown(
       .join("\n");
   }
 
-  // 4. 通用对象 → 结构化 Markdown
+  // 3. 通用对象 → 结构化 Markdown
   if (typeof content === "object" && content !== null) {
     // 如果对象有 title/summary 等常见字段，优先提取
     const obj = content as Record<string, unknown>;
@@ -385,6 +180,6 @@ export function deliverableToMarkdown(
     return lines.join("\n");
   }
 
-  // 5. fallback
+  // 4. fallback
   return JSON.stringify(content, null, 2);
 }

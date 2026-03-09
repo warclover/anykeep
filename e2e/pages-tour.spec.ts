@@ -43,7 +43,6 @@ const PROTECTED_PAGES: { path: string; name: string }[] = [
   { path: "/notifications", name: "通知" },
   { path: "/librarian", name: "知识管理" },
   { path: "/ai-hub", name: "AI 中心" },
-  { path: "/learning-hub", name: "学习中心" },
   { path: "/link-health", name: "链接健康" },
   { path: "/md-collections", name: "MD 合集" },
   { path: "/synthesis", name: "主题合成" },

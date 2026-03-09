@@ -74,25 +74,12 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   },
 
   // 分析类
-  "analyze:report": {
-    skillId: "periodic_report",
-    name: "周期报告生成",
-    minComplexity: "complex",
-    enabled: true, // 已实现
-  },
   "analyze:insight": {
     skillId: "insight_report",
     name: "收藏洞察分析",
     minComplexity: "medium",
     enabled: true, // 已实现
   },
-  "analyze:discover": {
-    skillId: "related_discovery",
-    name: "相关发现助手",
-    minComplexity: "medium",
-    enabled: true,
-  },
-
   // 创建类
   "create:tts": {
     skillId: "tts_synthesis",

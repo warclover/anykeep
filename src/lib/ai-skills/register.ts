@@ -24,10 +24,6 @@ import { insightReportSkill } from "./skills/insight-report";
 import { batchOrganizeSkill } from "./skills/batch-organize";
 import { duplicateCleanupSkill } from "./skills/duplicate-cleanup";
 import { smartTaggingSkill } from "./skills/smart-tagging";
-import { relatedDiscoverySkill } from "./skills/related-discovery";
-import { periodicReportSkill } from "./skills/periodic-report";
-import { knowledgeExtractSkill } from "./skills/knowledge-extract";
-
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
 
@@ -225,10 +221,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill);
   unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill);
   unifiedEngine.registerOrchestrationSkill(smartTaggingSkill);
-  unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill);
-  unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
-  unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
-
   // TTS 语音朗读（支持 Feature Flag 开关）
   if (process.env.ENABLE_TTS_SYNTHESIS !== "false") {
     unifiedEngine.registerOrchestrationSkill(ttsSynthesisSkill);

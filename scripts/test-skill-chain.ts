@@ -211,22 +211,7 @@ const SKILL_CHAIN_TESTS: SkillChainTest[] = [
   },
 
   // 分析类（编排模式）
-  {
-    name: "报告→周期报告",
-    input: "生成本月收藏报告",
-    expectedChain: {
-      intentType: "analyze",
-      intentSubType: "report",
-      mode: "orchestration",
-      skillId: "periodic_report",
-    },
-    expectedOutput: {
-      hasText: true,
-      hasProgress: true,
-      hasDeliverable: true,
-    },
-    timeout: 60000,
-  },
+  // [已移除] periodic_report 测试用例 (精简重构 2026-03-09)
   {
     name: "洞察→洞察分析",
     input: "分析一下我的收藏趋势",

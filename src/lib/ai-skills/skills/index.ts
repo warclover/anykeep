@@ -89,40 +89,5 @@ export {
   DEFAULT_TAGGING_INPUT,
 } from "./smart-tagging/types";
 
-// RelatedDiscoverySkill - 相关发现（编排 Skill，Phase 2）
-export * from "./related-discovery";
-
-// PeriodicReportSkill - 周期报告（编排 Skill，Phase 3）
-export * from "./periodic-report";
-
-// KnowledgeExtractSkill - 知识萃取（编排 Skill，Phase 3）
-// 注意：包含 SourceInfo 类型，与 related-discovery 有冲突
-export {
-  KnowledgeExtractSkill,
-  knowledgeExtractSkill,
-} from "./knowledge-extract";
-export {
-  KnowledgeExtractor,
-  knowledgeExtractor,
-  ExtractionFormatter,
-  extractionFormatter,
-  formatExtraction,
-} from "./knowledge-extract";
-export type {
-  ExtractionFormat,
-  KnowledgeExtractInput,
-  Citation,
-  KeyPoint,
-  ConceptDefinition,
-  // 重命名冲突类型
-  SourceInfo as KnowledgeExtractSourceInfo,
-  ExtractionMetadata,
-  KnowledgeExtraction,
-  BookmarkContent,
-  RawKeyPointResponse,
-  RawConceptResponse,
-  ExtractionStepData,
-} from "./knowledge-extract/types";
-
 // WechatDigestSkill - 微信阅读摘要（编排 Skill）
 export * from "./wechat-digest";

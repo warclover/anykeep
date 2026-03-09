@@ -74,15 +74,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 分析类 → 编排模式
   // ============================================
   {
-    key: "analyze:report",
-    skillId: "periodic_report",
-    name: "周期报告生成",
-    mode: "orchestration",
-    minComplexity: "complex",
-    enabled: true,
-    priority: 95,
-  },
-  {
     key: "analyze:insight",
     skillId: "insight_report",
     name: "收藏洞察分析",
@@ -90,15 +81,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     minComplexity: "medium",
     enabled: true,
     priority: 90,
-  },
-  {
-    key: "analyze:discover",
-    skillId: "related_discovery",
-    name: "相关发现助手",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 85,
   },
   // ============================================
   // Skills v1.1.0 新增（2025-01-08）
@@ -170,24 +152,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     minComplexity: "simple",
     enabled: true,
     priority: 90,
-  },
-  {
-    key: "create:extract",
-    skillId: "knowledge_extract",
-    name: "知识提取",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 85,
-  },
-  {
-    key: "create:note",
-    skillId: "knowledge_extract",
-    name: "笔记创建",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 80,
   },
   // ============================================
   // 智能列表类 → 原子模式（直接调用 Tools）
@@ -416,12 +380,6 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     skillId: "data_export",
     mode: "orchestration",
     icon: "Download",
-  },
-  {
-    toolId: "report",
-    skillId: "periodic_report",
-    mode: "orchestration",
-    icon: "FileBarChart",
   },
   {
     toolId: "tts",

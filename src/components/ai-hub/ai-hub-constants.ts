@@ -65,9 +65,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   summary: "帮我生成书签摘要",
   folder_recommend: "推荐文件夹结构",
 
-  // 编排 Skills - 理解增强
-  knowledge_extract: "提取我收藏中的关键知识点",
-
   // 编排 Skills - 整理优化
   batch_organize: "智能整理我的书签",
   duplicate_cleanup: "检查并清理重复的书签",
@@ -77,9 +74,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   inbox_triage: "整理收件箱里的未分类书签",
   folder_health_check: "检查文件夹健康状态",
 
-  // 编排 Skills - 学习助手
-  periodic_report: "生成我的学习周报",
-  related_discovery: "发现与我收藏相关的内容",
   // 编排 Skills - 实用工具
   insight_report: "生成我的收藏洞察报告",
   tts_synthesis: "朗读这个书签的内容",

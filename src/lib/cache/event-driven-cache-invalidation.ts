@@ -299,7 +299,6 @@ class CacheInvalidationService {
 
       // 分析报告类 Skill
       case "insight_report":
-      case "periodic_report":
         // 报告生成不改变源数据，无需失效
         break;
 

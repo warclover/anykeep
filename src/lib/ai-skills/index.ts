@@ -170,10 +170,6 @@ export { SmartTaggingSkill } from "./skills/smart-tagging";
 
 // 分析报告
 export { InsightReportSkill } from "./skills/insight-report";
-export { PeriodicReportSkill } from "./skills/periodic-report";
-
-// 内容生成
-export { RelatedDiscoverySkill } from "./skills/related-discovery";
 
 // 工具 Skills
 export { SearchSkill } from "./skills/search";

@@ -63,7 +63,6 @@
     "dataCenter": "导入导出",
     "classificationManager": "分类设置",
     "healthCheck": "健康检测",
-    "learningHub": "学习中心",
     "synthesis": "对比分析",
     "contentAnalysis": "内容分析",
     "draftStudio": "写作助手",
@@ -101,7 +100,6 @@
     "appSettings": "应用设置",
     "deletedContent": "已删除内容",
     "healthDiagnosis": "收藏健康诊断",
-    "aiLearningHub": "AI 学习管理",
     "switchToLightMode": "切换到浅色模式",
     "switchToDarkMode": "切换到深色模式",
     "version": "智能收藏管理",
@@ -115,7 +113,6 @@
   "navGroup": {
     "contentCenter": "内容中心",
     "organizeTools": "整理工具",
-    "learningCenter": "学习中心",
     "insightCenter": "洞察中心",
     "devTools": "开发者工具",
     "myContent": "我的内容",
