@@ -243,45 +243,6 @@ describe("IntentClassifier", () => {
         });
       });
 
-      describe("learn:plan - 阅读计划", () => {
-        it("should classify '阅读计划' as learn:plan", async () => {
-          const result = await classifier.classify("帮我制定阅读计划");
-
-          expect(result.type).toBe("learn");
-          expect(result.subType).toBe("plan");
-        });
-
-        it("should classify '读书计划' as learn:plan", async () => {
-          const result = await classifier.classify("我的读书计划");
-
-          expect(result.type).toBe("learn");
-          expect(result.subType).toBe("plan");
-        });
-
-        it("should classify '每日阅读' as learn:plan", async () => {
-          const result = await classifier.classify("帮我设置每日阅读计划");
-
-          expect(result.type).toBe("learn");
-          expect(result.subType).toBe("plan");
-        });
-      });
-
-      describe("learn:path - 学习路径", () => {
-        it("should classify '学习路径' as learn:path", async () => {
-          const result = await classifier.classify("帮我规划学习路径");
-
-          expect(result.type).toBe("learn");
-          expect(result.subType).toBe("path");
-        });
-
-        it("should classify '学习计划' as learn:path (not reading plan)", async () => {
-          const result = await classifier.classify("帮我制定学习计划");
-
-          expect(result.type).toBe("learn");
-          expect(result.subType).toBe("path");
-        });
-      });
-
       describe("query:link_status - 链接状态检查", () => {
         it("should classify '链接还能用吗' as query:link_status", async () => {
           const result = await classifier.classify("这个链接还能用吗");

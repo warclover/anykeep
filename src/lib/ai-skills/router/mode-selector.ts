@@ -37,15 +37,6 @@ interface OrchestrationSkillMapping {
  * 默认编排 Skill 映射
  */
 const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
-  // 学习类
-  "learn:interview": {
-    skillId: "interview_prep",
-    name: "面试准备助手",
-    minComplexity: "complex",
-    enabled: false, // P3: 面试准备 Skill 待实现
-  },
-  // [已移除] learn:plan → reading_planner (精简重构 2026-03-09)
-
   // 整理类
   "organize:cleanup": {
     skillId: "batch_organize",

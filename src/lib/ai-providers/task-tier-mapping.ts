@@ -75,9 +75,6 @@ export const INTENT_TIER_MAPPING: Record<string, ModelTierId> = {
 
   // 学习类
   "learn:review": "deep", // 知识复习
-  "learn:path": "deep", // 学习路径
-  "learn:interview": "deep", // 面试准备
-  "learn:flashcard": "deep", // 记忆卡片
   learn: "deep", // 学习类兜底
 
   // 整理类

@@ -150,11 +150,11 @@ describe("ModeSelector", () => {
         selector.setSkillEnabled("batch_organize", true);
       });
 
-      it("should fall back to atomic for disabled skill in default mappings", () => {
-        // learn:interview 在默认配置中是禁用的
+      it("should fall back to atomic for unmapped intent", () => {
+        // learn:review 没有对应的编排 Skill 映射
         const intent: IntentClassification = {
           type: "learn",
-          subType: "interview",
+          subType: "review",
           confidence: 0.9,
           entities: [],
           requiresMultiStep: true,
@@ -172,15 +172,15 @@ describe("ModeSelector", () => {
 
         const result = selector.select(intent, complexity);
 
-        // learn:interview 禁用 + 复杂任务 → atomic
+        // learn:review 无编排 Skill + 复杂任务 → atomic
         expect(result.mode).toBe("atomic");
       });
 
       it("should use partial mapping when deliverable expected and partial exists", () => {
-        // 禁用 learn:interview，但其他 learn 映射仍启用
+        // organize:monitor 没有直接映射，但 organize 类型下有其他 partial 映射
         const intent: IntentClassification = {
-          type: "learn",
-          subType: "interview",
+          type: "organize",
+          subType: "monitor",
           confidence: 0.9,
           entities: [],
           requiresMultiStep: true,

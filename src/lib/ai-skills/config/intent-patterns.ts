@@ -34,23 +34,6 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     complexity: "complex",
     description: "知识复习回顾",
   },
-  {
-    type: "learn",
-    subType: "path",
-    pattern: "学习路径|学习计划|怎么学|学习规划|系统学",
-    weight: 85,
-    complexity: "complex",
-    description: "制定学习路径",
-  },
-  {
-    type: "learn",
-    subType: "plan",
-    pattern: "阅读计划|读书计划|每日阅读",
-    weight: 88,
-    complexity: "medium",
-    description: "制定阅读计划",
-  },
-
   // ============================================
   // 整理类（权重 75-88）
   // ============================================

@@ -164,13 +164,15 @@ describe("Skill Mappings", () => {
     });
 
     it("should have orchestration skills for complex intents", () => {
-      const learnReview = SKILL_MAPPINGS.find((m) => m.key === "learn:review");
-      expect(learnReview?.mode).toBe("orchestration");
-
       const organizeCleanup = SKILL_MAPPINGS.find(
         (m) => m.key === "organize:cleanup",
       );
       expect(organizeCleanup?.mode).toBe("orchestration");
+
+      const organizeDedupe = SKILL_MAPPINGS.find(
+        (m) => m.key === "organize:dedupe",
+      );
+      expect(organizeDedupe?.mode).toBe("orchestration");
     });
 
     it("should have atomic skills for simple intents", () => {

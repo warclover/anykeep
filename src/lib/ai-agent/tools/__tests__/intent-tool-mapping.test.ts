@@ -209,7 +209,6 @@ describe("intent-tool-mapping", () => {
       "organize:classify",
       "analyze:report",
       "create:export",
-      "learn:review",
       "chitchat:general",
     ];
 

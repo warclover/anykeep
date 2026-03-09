@@ -74,7 +74,7 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
   "query:stats": [], // 仅用 Core (get_stats 在 Core 中)
   "query:search": [], // 仅用 Core (search_bookmarks 在 Core 中)
   "query:trust_mode": ["settings_tools"],
-  "query:mastery_stats": ["learn_tools"],
+  "query:mastery_stats": [],
   "query:folder": [], // 仅用 Core
   "query:folder_detail": ["query_tools"], // 需要 get_folder_detail
   "query:tag": [], // 仅用 Core (list_tags 在 Core 中)
@@ -92,7 +92,7 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
   "action:create": ["manage_tools"],
   "action:update": ["manage_tools"],
   "action:settings": ["settings_tools"],
-  "action:review_preferences": ["learn_tools"],
+  "action:review_preferences": [],
   "action:archive": ["manage_tools"],
   "action:star": [], // toggle_bookmark_starred 需要添加到 Core
   "action:read": [], // toggle_bookmark_read 需要添加到 Core
@@ -133,13 +133,6 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
   create: ["manage_tools"], // 通用创建
 
   // ============================================
-  // 学习类意图
-  // ============================================
-  "learn:path": ["learn_tools"],
-  "learn:extract": ["learn_tools"],
-  learn: ["learn_tools"], // 通用学习
-
-  // ============================================
   // 闲聊类意图 - 仅用 Core Tools
   // ============================================
   "chitchat:general": [],
@@ -162,7 +155,6 @@ export const EXTENDED_TOOL_TRIGGERS: Record<ToolSetName, RegExp> = {
   organize_tools: /(?!)/,
   analyze_tools: /(?!)/,
   export_tools: /(?!)/,
-  learn_tools: /(?!)/,
   settings_tools: /(?!)/,
 };
 

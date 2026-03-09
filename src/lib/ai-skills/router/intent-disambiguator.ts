@@ -165,8 +165,7 @@ const INTENT_LABELS_I18N: Record<
       discover: "相关发现",
     },
     learn: {
-      path: "学习路径",
-      plan: "阅读计划",
+      review: "知识复习",
     },
     chitchat: {
       greeting: "打招呼",
@@ -216,8 +215,7 @@ const INTENT_LABELS_I18N: Record<
       discover: "Related discoveries",
     },
     learn: {
-      path: "Learning path",
-      plan: "Reading plan",
+      review: "Knowledge review",
     },
     chitchat: {
       greeting: "Greeting",
@@ -262,7 +260,7 @@ const INTENT_DESCRIPTIONS_I18N: Record<
     "create:import": "从浏览器导入书签",
     "analyze:report": "生成收藏统计报告",
     "analyze:insight": "分析您的收藏习惯和洞察",
-    "learn:path": "规划学习路径",
+    "learn:review": "复习巩固知识",
     "chitchat:greeting": "与 AI 助手打招呼",
     "chitchat:help": "获取使用帮助",
     "refine:filter": "筛选当前结果",
@@ -291,7 +289,7 @@ const INTENT_DESCRIPTIONS_I18N: Record<
     "create:import": "Import bookmarks from browser",
     "analyze:report": "Generate bookmark statistics report",
     "analyze:insight": "Analyze your bookmark habits and insights",
-    "learn:path": "Plan your learning path",
+    "learn:review": "Review and consolidate knowledge",
     "chitchat:greeting": "Greet the AI assistant",
     "chitchat:help": "Get usage help",
     "refine:filter": "Filter current results",

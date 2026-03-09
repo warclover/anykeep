@@ -16,8 +16,8 @@ import type { SkillMapping, ExplicitToolMapping, MappingIndex } from "./types";
  * 从 mode-selector.ts 的 DEFAULT_SKILL_MAPPINGS 提取
  *
  * 映射键格式：intentType:subType
- * - 精确匹配：learn:path
- * - 类型通配：learn:*
+ * - 精确匹配：organize:cleanup
+ * - 类型通配：query:*
  */
 export const SKILL_MAPPINGS: SkillMapping[] = [
   // ============================================
@@ -496,7 +496,7 @@ export const SKILL_MAPPINGS_BY_KEY: Map<string, SkillMapping> = new Map(
  *
  * 用于直接通过 key 查找映射，不走通配符逻辑
  *
- * @param key - 映射键（如 "learn:path", "query:search"）
+ * @param key - 映射键（如 "organize:cleanup", "query:search"）
  * @returns 映射配置，未找到返回 undefined
  *
  * @example

@@ -27,7 +27,6 @@ export type ToolSetName =
   | "organize_tools"
   | "analyze_tools"
   | "export_tools"
-  | "learn_tools"
   | "settings_tools"
   // Layer 2: Extended
   | "import_tools"
@@ -177,16 +176,6 @@ export const EXPORT_TOOLS: readonly string[] = [
 ] as const;
 
 /**
- * 学习工具集
- *
- * 触发意图: learn:path
- */
-export const LEARN_TOOLS: readonly string[] = [
-  // [已移除] active_recall 工具 - 精简重构 2026-03-09
-  // [已移除] get_knowledge_graph - 知识图谱精简重构 2026-01-29
-] as const;
-
-/**
  * 设置工具集 (8个)
  *
  * 触发意图: action:settings, query:trust_mode
@@ -243,7 +232,6 @@ export const TOOL_SETS: Record<ToolSetName, readonly string[]> = {
   organize_tools: ORGANIZE_TOOLS,
   analyze_tools: ANALYZE_TOOLS,
   export_tools: EXPORT_TOOLS,
-  learn_tools: LEARN_TOOLS,
   settings_tools: SETTINGS_TOOLS,
   // Layer 2
   import_tools: IMPORT_TOOLS,
