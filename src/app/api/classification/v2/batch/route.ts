@@ -6,13 +6,14 @@
  * 合并原有端点：
  * - /api/classification/v5/classify-batch
  *
- * @version 2.0.0
+ * @version 3.0.0
  * @since 2026-01-24 Phase 3
+ * @updated 2026-03-09 Phase 5: 直接调用 classification-v2
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getClassificationFacade } from "@/lib/classification/facade";
+import { batchClassify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
@@ -70,44 +71,31 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     "Classification v2 batch: Starting",
   );
 
-  // 3. 构建分类请求列表
-  const classificationRequests = bookmarks.map((bookmark) => ({
-    userId,
-    bookmarkId: bookmark.bookmarkId,
-    title: bookmark.title,
-    url: bookmark.url ?? "",
-    description: bookmark.description,
-    summary: bookmark.summary,
-    tags: bookmark.tags,
-  }));
-
-  // 4. 获取分类门面并执行批量分类
-  const facade = getClassificationFacade();
-  const results = await facade.classifyBatch(classificationRequests);
+  // 3. 构建分类请求并调用 classification-v2
+  const batchResult = await batchClassify({
+    requests: bookmarks.map((bookmark) => ({
+      bookmarkId: bookmark.bookmarkId,
+      title: bookmark.title,
+      url: bookmark.url,
+      summary: bookmark.summary,
+      tags: bookmark.tags,
+      userId,
+    })),
+  });
 
   const latencyMs = Date.now() - startTime;
 
-  // 5. 构建结果映射（保持请求顺序）
-  const resultMap = new Map(
-    results.map((result, index) => [
-      classificationRequests[index].bookmarkId,
-      result,
-    ]),
-  );
+  // 4. 构建有序结果
+  const orderedResults = batchResult.results.map((result, index) => ({
+    bookmarkId: bookmarks[index].bookmarkId,
+    folderId: result.folderId,
+    folderName: result.folderName,
+    confidence: result.confidence,
+    action: result.action,
+    reason: result.reason,
+  }));
 
-  const orderedResults = bookmarks.map((bookmark) => {
-    const result = resultMap.get(bookmark.bookmarkId);
-    return {
-      bookmarkId: bookmark.bookmarkId,
-      folderId: result?.folderId ?? null,
-      folderName: result?.folderName ?? null,
-      confidence: result?.confidence ?? 0,
-      action: result?.action ?? "inbox",
-      reason: result?.reason,
-    };
-  });
-
-  // 6. 统计信息
+  // 5. 统计信息
   const summary = {
     total: orderedResults.length,
     classified: orderedResults.filter((r) => r.action === "classify").length,
@@ -128,7 +116,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     "Classification v2 batch: Completed",
   );
 
-  // 7. 返回统一格式的结果
+  // 6. 返回统一格式的结果
   return NextResponse.json({
     success: true,
     data: {

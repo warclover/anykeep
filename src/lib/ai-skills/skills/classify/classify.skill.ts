@@ -3,13 +3,12 @@
  *
  * 功能：
  * - 根据书签内容智能推荐文件夹
- * - 支持向量匹配、标签增强、AI 选择
- * - 冷启动时使用名称匹配
- * - 支持 v5.0 三层分类架构（L0+T0+T1）
+ * - 支持多 Scorer 融合评分（向量、历史、规则、LLM）
+ * - CascadeRanker 三级提前终止
  *
- * @version 1.1.0 - 集成 v5.0 分类系统
+ * @version 2.0.0 - 直接调用 classification-v2
  * @since 2025-12-22
- * @updated 2026-01-19
+ * @updated 2026-03-09 Phase 5
  */
 
 import { z } from "zod";
@@ -21,8 +20,7 @@ import type {
   ClassifyCandidateFolder,
 } from "./types";
 import type { ClassificationAction } from "@/lib/classification/types/classification";
-import { createClient } from "@/lib/supabase/server";
-import { createClassificationFacade } from "@/lib/classification/facade";
+import { classify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
 
 /**
@@ -100,7 +98,7 @@ export class ClassifySkill extends BaseSkill<
     description:
       "根据书签的标题、摘要和标签，智能推荐最合适的文件夹。支持向量匹配、标签增强和AI辅助选择。当没有合适的文件夹时，会建议创建新文件夹。",
     category: "organizing",
-    version: "1.1.0",
+    version: "2.0.0",
     author: "AnyKeep",
     capabilities: [
       "vector-matching",
@@ -124,38 +122,27 @@ export class ClassifySkill extends BaseSkill<
     input: ClassifySkillInput,
     context: SkillContext,
   ): Promise<ClassifySkillOutput> {
-    const { title, summary, tags, url, enableAI = true, bookmarkId } = input;
+    const { title, summary, tags, url, bookmarkId } = input;
 
     logger.info(
       {
         skillId: this.metadata.id,
         userId: context.userId,
         title: title.substring(0, 30),
-        enableAI,
         bookmarkId,
         traceId: context.traceId,
       },
       "ClassifySkill: Starting classification",
     );
 
-    // 创建 Supabase 客户端
-    const supabase = await createClient();
-
-    // 使用 ClassificationFacade
-    const facade = createClassificationFacade(supabase, {
-      featureFlags: {
-        enableAISelection: enableAI,
-        enableAICreate: enableAI,
-      },
-    });
-
-    const result = await facade.classify({
-      userId: context.userId,
+    // 直接调用 classification-v2 新系统
+    const result = await classify({
       bookmarkId: bookmarkId ? String(bookmarkId) : "",
       title,
       summary,
       tags,
       url,
+      userId: context.userId,
     });
 
     logger.info(
@@ -166,16 +153,23 @@ export class ClassifySkill extends BaseSkill<
         folderName: result.folderName,
         confidence: result.confidence,
         action: result.action,
-        usedT1: result.usedT1,
-        executionTime: result.totalLatencyMs,
+        earlyExitTier: result.timing.earlyExitTier,
+        totalMs: result.timing.totalMs,
         traceId: context.traceId,
       },
       "ClassifySkill: Classification completed",
     );
 
     // 转换候选文件夹格式
-    // 注意: Facade 目前不返回候选列表，如果需要此功能需要在 Facade 层扩展
-    const candidates: ClassifyCandidateFolder[] = [];
+    const candidates: ClassifyCandidateFolder[] = result.candidates.map(
+      (c) => ({
+        folderId: c.folderId,
+        folderName: c.folderName,
+        score: Math.round(c.mergedScore * 100),
+        matchType: "profile" as const,
+        topTags: [],
+      }),
+    );
 
     // 判断是否需要用户确认
     const requiresConfirmation = this.shouldRequireConfirmation({
@@ -192,7 +186,8 @@ export class ClassifySkill extends BaseSkill<
       reason: result.reason || "",
       candidates,
       requiresConfirmation,
-      matchType: result.usedT1 ? "ai_select" : "profile", // 近似映射
+      matchType:
+        result.timing.earlyExitTier === undefined ? "ai_select" : "profile",
     };
   }
 

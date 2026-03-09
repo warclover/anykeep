@@ -7,13 +7,14 @@
  * - /api/classification/classify
  * - /api/classification/v5/classify
  *
- * @version 2.0.0
+ * @version 3.0.0
  * @since 2026-01-24 Phase 3
+ * @updated 2026-03-09 Phase 5: 直接调用 classification-v2
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getClassificationFacade } from "@/lib/classification/facade";
+import { classify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
@@ -32,7 +33,7 @@ const classifySchema = z.object({
   tags: z.array(z.string()).max(20).optional().default([]),
   content: z.string().max(10000).optional(),
 
-  // 模式控制
+  // 模式控制（保留兼容性，新系统 CascadeRanker 天然支持快速返回）
   optimistic: z.boolean().optional().default(false),
   quick: z.boolean().optional().default(false),
 });
@@ -59,39 +60,17 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     );
   }
 
-  const {
+  const { bookmarkId, title, url, summary, tags } = validation.data;
+
+  // 3. 直接调用 classification-v2 新系统
+  const result = await classify({
     bookmarkId,
     title,
-    url,
-    description,
+    url: url ?? undefined,
     summary,
     tags,
-    optimistic,
-    quick,
-  } = validation.data;
-
-  // 3. 获取分类门面并执行分类
-  const facade = getClassificationFacade();
-
-  const classificationRequest = {
     userId,
-    bookmarkId,
-    title,
-    url: url ?? "",
-    description,
-    summary,
-    tags,
-  };
-
-  let result;
-
-  if (quick || optimistic) {
-    // 快速模式：仅 T0，用于 Optimistic UI
-    result = await facade.classifyQuick(classificationRequest);
-  } else {
-    // 标准模式：完整 L0→T0→T1 流程
-    result = await facade.classify(classificationRequest);
-  }
+  });
 
   const latencyMs = Date.now() - startTime;
 
@@ -104,7 +83,6 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       confidence: result.confidence,
       action: result.action,
       latencyMs,
-      mode: quick || optimistic ? "quick" : "standard",
     },
     "Classification v2 completed",
   );
@@ -118,13 +96,13 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
       confidence: result.confidence,
       action: result.action,
       reason: result.reason,
-      suggestionId: result.suggestionId,
       // 延迟信息
       latency: {
         total: latencyMs,
+        ...result.timing.tierMs,
       },
-      // T1 相关（如果有）
-      usedT1: result.usedT1,
+      // Tier 信息
+      earlyExitTier: result.timing.earlyExitTier,
     },
   });
 });

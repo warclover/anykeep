@@ -1,6 +1,8 @@
 /**
  * 智能分类 v5.0 - Shadow Sorting Confirm API
  * POST /api/classification/v5/shadow/confirm
+ *
+ * @deprecated 旧分类系统 V5 功能，classification-v2 不使用。计划在后续版本删除。
  */
 
 import { NextResponse } from "next/server";

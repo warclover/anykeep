@@ -3,6 +3,7 @@
  *
  * GET /api/classification/v5/gardener/report
  *
+ * @deprecated 旧分类系统 V5 功能，classification-v2 不使用。计划在后续版本删除。
  * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 

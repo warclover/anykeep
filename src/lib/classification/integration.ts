@@ -118,7 +118,7 @@ const classifyBookmarkInputSchema = z.object({
 /**
  * Process bookmark classification
  *
- * Phase 4: 委托到 classification-v2 兼容层
+ * Phase 5: 委托到 classification-v2 新系统
  * 旧实现保留在 _classifyBookmarkV2Legacy 中作为 fallback
  */
 export async function classifyBookmarkV2(
@@ -136,10 +136,21 @@ export async function classifyBookmarkV2(
   suggestionId?: number;
 }> {
   try {
-    const { classifyBookmarkV2: classifyV2New } = await import(
-      "../classification-v2/compat/integration-adapter"
-    );
-    return await classifyV2New(bookmarkId, title, summary, tags, userId);
+    const { classify } = await import("@/lib/classification-v2");
+    const result = await classify({
+      bookmarkId: String(bookmarkId),
+      title,
+      summary: summary ?? undefined,
+      tags,
+      userId,
+    });
+    return {
+      classified: result.action === "classify",
+      folderId: result.folderId,
+      folderName: result.folderName,
+      confidence: result.confidence,
+      action: result.action as ClassificationResult["action"],
+    };
   } catch (error) {
     logger.error(
       { bookmarkId, userId, error },

@@ -4,6 +4,7 @@
 
 | 日期       | 版本  | 变更内容                                                                                                                                                      |
 | ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-03-09 | 3.1.0 | **分类系统 v2 Phase 5 清理**：移除 compat/ 兼容层、迁移外部调用者到 classification-v2、清理 V5 旧路由（删除 t1-result/rollout，归档 gardener/entropy/shadow） |
 | 2026-02-17 | 3.0.0 | **知识工坊 v2.0 简化重构**：单页流程（10+步→3步）、Smart Default、渐进披露、结果页操作简化、移除版本管理 → [实施总结](./docs/草稿工坊简化方案实施总结0217.md) |
 | 2026-01-25 | 2.9.2 | 文档更新：生成 AI 模块架构图，创建 ai-agent/ai-skills/workflow 模块文档                                                                                       |
 | 2026-01-12 | 2.9.1 | 文档更新：AI 架构图补充 Workflow 模式（三模态执行架构）、��增 workflow-system.md 架构文档                                                                     |
@@ -95,12 +96,14 @@ graph TD
 
 ## 模块索引
 
-| 模块路径                                           | 职责                                           | 状态    |
-| -------------------------------------------------- | ---------------------------------------------- | ------- |
-| [.spec-workflow](./.spec-workflow/CLAUDE.md)       | 规范工作流模板系统，提供需求/设计/任务文档模板 | 已配置  |
-| [src/lib/ai-agent](./src/lib/ai-agent/CLAUDE.md)   | AI Agent 核心：Context、Tools、Feature Flags   | 🟢 活跃 |
-| [src/lib/ai-skills](./src/lib/ai-skills/CLAUDE.md) | AI Skills 系统：编排引擎、Router、Skill 实现   | 🟢 活跃 |
-| [src/lib/workflow](./src/lib/workflow/CLAUDE.md)   | Workflow 系统：自动化流程、触发器、状态管理    | 🟢 活跃 |
+| 模块路径                                                     | 职责                                               | 状态    |
+| ------------------------------------------------------------ | -------------------------------------------------- | ------- |
+| [.spec-workflow](./.spec-workflow/CLAUDE.md)                 | 规范工作流模板系统，提供需求/设计/任务文档模板     | 已配置  |
+| [src/lib/ai-agent](./src/lib/ai-agent/CLAUDE.md)             | AI Agent 核心：Context、Tools、Feature Flags       | 🟢 活跃 |
+| [src/lib/ai-skills](./src/lib/ai-skills/CLAUDE.md)           | AI Skills 系统：编排引擎、Router、Skill 实现       | 🟢 活跃 |
+| [src/lib/workflow](./src/lib/workflow/CLAUDE.md)             | Workflow 系统：自动化流程、触发器、状态管理        | 🟢 活跃 |
+| [src/lib/classification-v2](./src/lib/classification-v2/)    | 分类系统 v2：Scorer + CascadeRanker + 反馈循环     | 🟢 活跃 |
+| [src/lib/classification](./src/lib/classification/CLAUDE.md) | 旧分类系统：非分类功能仍在使用（摘要配置、学习等） | 🟡 遗留 |
 
 ---
 

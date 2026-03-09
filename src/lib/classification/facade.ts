@@ -178,30 +178,21 @@ export class ClassificationFacade implements IClassificationFacade {
 }
 
 // ============================================================================
-// Phase 4: 重定向到 classification-v2 兼容层
+// 工厂函数（旧系统保留，供未迁移的调用者使用）
 // ============================================================================
 
-import type { ClassificationFacade as V2Facade } from "../classification-v2/compat/facade-adapter";
-import {
-  getClassificationFacade as getV2Facade,
-  createClassificationFacade as createV2Facade,
-} from "../classification-v2/compat/facade-adapter";
-
-// 使用新系统兼容层的类型（运行时透明）
-type AnyFacade = ClassificationFacade | InstanceType<typeof V2Facade>;
-
-let facadeInstance: AnyFacade | null = null;
+let facadeInstance: ClassificationFacade | null = null;
 
 /**
  * 获取分类门面单例
  *
- * Phase 4: 委托到 classification-v2 兼容层
+ * @deprecated 使用 classify() from '@/lib/classification-v2' 代替
  */
 export function getClassificationFacade(
-  _config?: ClassificationFacadeConfig,
-): AnyFacade {
+  config?: ClassificationFacadeConfig,
+): ClassificationFacade {
   if (!facadeInstance) {
-    facadeInstance = getV2Facade();
+    facadeInstance = new ClassificationFacade(config);
   }
   return facadeInstance;
 }
@@ -216,14 +207,13 @@ export function resetClassificationFacade(): void {
 /**
  * 创建包含完整依赖注入的分类门面
  *
- * Phase 4: 委托到 classification-v2 兼容层（supabase 参数忽略）
+ * @deprecated 使用 classify() from '@/lib/classification-v2' 代替
  */
 export function createClassificationFacade(
   _supabase?: unknown,
-
-  _config?: ClassificationFacadeConfig,
-): AnyFacade {
-  return createV2Facade();
+  config?: ClassificationFacadeConfig,
+): ClassificationFacade {
+  return new ClassificationFacade(config);
 }
 
 // ============================================================================

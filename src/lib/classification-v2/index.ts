@@ -55,31 +55,6 @@ export type {
 } from "./types";
 
 // ============================================================================
-// 兼容层导出（过渡期，最终删除）
-// ============================================================================
-
-export {
-  getClassificationFacade,
-  createClassificationFacade,
-  ClassificationFacade,
-} from "./compat/facade-adapter";
-
-export { classifyBookmarkV2 } from "./compat/integration-adapter";
-
-export {
-  ClassificationContainer,
-  getClassificationContainer,
-} from "./compat/container-adapter";
-
-export type {
-  ClassificationResult,
-  ClassificationRequest,
-  ClassificationAction,
-  ClassificationScores,
-  LegacyIntegrationResult,
-} from "./compat/type-mapping";
-
-// ============================================================================
 // 配置导出（供外部模块读取阈值）
 // ============================================================================
 

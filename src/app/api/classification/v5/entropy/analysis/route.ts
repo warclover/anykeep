@@ -7,6 +7,7 @@
  * - 识别高熵文件夹
  * - 生成熵减少建议
  *
+ * @deprecated 旧分类系统 V5 功能，classification-v2 不使用。计划在后续版本删除。
  * @updated 2026-03-07 - 迁移到 withAuthMiddleware
  */
 
