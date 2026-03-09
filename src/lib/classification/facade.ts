@@ -178,24 +178,30 @@ export class ClassificationFacade implements IClassificationFacade {
 }
 
 // ============================================================================
-// 单例和便捷函数
+// Phase 4: 重定向到 classification-v2 兼容层
 // ============================================================================
 
-let facadeInstance: ClassificationFacade | null = null;
+import type { ClassificationFacade as V2Facade } from "../classification-v2/compat/facade-adapter";
+import {
+  getClassificationFacade as getV2Facade,
+  createClassificationFacade as createV2Facade,
+} from "../classification-v2/compat/facade-adapter";
+
+// 使用新系统兼容层的类型（运行时透明）
+type AnyFacade = ClassificationFacade | InstanceType<typeof V2Facade>;
+
+let facadeInstance: AnyFacade | null = null;
 
 /**
  * 获取分类门面单例
+ *
+ * Phase 4: 委托到 classification-v2 兼容层
  */
 export function getClassificationFacade(
-  config?: ClassificationFacadeConfig,
-): ClassificationFacade {
-  // Support creating a new instance if config is provided (e.g. for testing or specific context)
-  if (config) {
-    return new ClassificationFacade(config);
-  }
-
+  _config?: ClassificationFacadeConfig,
+): AnyFacade {
   if (!facadeInstance) {
-    facadeInstance = new ClassificationFacade(config);
+    facadeInstance = getV2Facade();
   }
   return facadeInstance;
 }
@@ -207,25 +213,17 @@ export function resetClassificationFacade(): void {
   facadeInstance = null;
 }
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { EnhancedContainer } from "./infrastructure/container";
-import { registerAllServices } from "./infrastructure/container/registrations";
-
 /**
  * 创建包含完整依赖注入的分类门面
- * (Request-scoped factory)
+ *
+ * Phase 4: 委托到 classification-v2 兼容层（supabase 参数忽略）
  */
 export function createClassificationFacade(
-  supabase: SupabaseClient,
-  config?: ClassificationFacadeConfig,
-): ClassificationFacade {
-  const container = new EnhancedContainer({ supabase });
-  registerAllServices(container);
+  _supabase?: unknown,
 
-  return new ClassificationFacade({
-    ...config,
-    container,
-  });
+  _config?: ClassificationFacadeConfig,
+): AnyFacade {
+  return createV2Facade();
 }
 
 // ============================================================================

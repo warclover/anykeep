@@ -116,10 +116,44 @@ const classifyBookmarkInputSchema = z.object({
 });
 
 /**
- * Process bookmark classification using V2 system
- * Replaces the legacy processAIFolderRecommendation function
+ * Process bookmark classification
+ *
+ * Phase 4: 委托到 classification-v2 兼容层
+ * 旧实现保留在 _classifyBookmarkV2Legacy 中作为 fallback
  */
 export async function classifyBookmarkV2(
+  bookmarkId: number,
+  title: string,
+  summary: string | null,
+  tags: string[],
+  userId: string,
+): Promise<{
+  classified: boolean;
+  folderId: number | null;
+  folderName: string | null;
+  confidence: number;
+  action: ClassificationResult["action"];
+  suggestionId?: number;
+}> {
+  try {
+    const { classifyBookmarkV2: classifyV2New } = await import(
+      "../classification-v2/compat/integration-adapter"
+    );
+    return await classifyV2New(bookmarkId, title, summary, tags, userId);
+  } catch (error) {
+    logger.error(
+      { bookmarkId, userId, error },
+      "Classification V2 new system failed, falling back to legacy",
+    );
+    return _classifyBookmarkV2Legacy(bookmarkId, title, summary, tags, userId);
+  }
+}
+
+/**
+ * 旧系统 classifyBookmarkV2 实现（Phase 4 fallback）
+ * @internal
+ */
+async function _classifyBookmarkV2Legacy(
   bookmarkId: number,
   title: string,
   summary: string | null,
