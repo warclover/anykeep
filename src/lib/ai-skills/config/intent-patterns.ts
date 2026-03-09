@@ -140,15 +140,6 @@ export const INTENT_PATTERNS: IntentPattern[] = [
     description: "文件夹智能推荐",
   },
   {
-    // SearchOptimizeSkill - 搜索优化助手
-    type: "query",
-    subType: "search_optimize",
-    pattern: "优化.*搜索|搜索.*优化|(改进|提高).*搜索|搜索.*建议",
-    weight: 82,
-    complexity: "simple",
-    description: "搜索优化助手",
-  },
-  {
     // FolderHealthCheckSkill - 文件夹健康检查
     type: "analyze",
     subType: "folder_health_check",

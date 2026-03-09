@@ -64,7 +64,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   classify: "帮我分类这些书签",
   summary: "帮我生成书签摘要",
   folder_recommend: "推荐文件夹结构",
-  search_optimize: "优化我的搜索词",
 
   // 编排 Skills - 理解增强
   quick_digest: "快速摘要我的收藏",

@@ -121,14 +121,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     priority: 85,
   },
   {
-    key: "query:search_optimize",
-    skillId: "search_optimize",
-    name: "搜索优化助手",
-    mode: "atomic",
-    enabled: true,
-    priority: 82,
-  },
-  {
     key: "analyze:folder_health_check",
     skillId: "folder_health_check",
     name: "文件夹健康检查",

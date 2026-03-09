@@ -40,7 +40,6 @@ import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 // Skills v1.1.0 新增（2025-01-08）
 import { inboxTriageSkill } from "./skills/inbox-triage";
 import { folderRecommendSkill } from "./skills/folder-recommend";
-import { searchOptimizeSkill } from "./skills/search-optimize";
 import { folderHealthCheckSkill } from "./skills/folder-health-check";
 
 import { unifiedEngine } from "./engine/unified-engine";
@@ -287,12 +286,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_FOLDER_RECOMMEND !== "false") {
     skillRegistry.register(folderRecommendSkill, { enabled: true });
     logger.debug("FolderRecommendSkill registered");
-  }
-
-  // P0: SearchOptimizeSkill - 搜索优化助手（原子类型）
-  if (process.env.ENABLE_SEARCH_OPTIMIZE !== "false") {
-    skillRegistry.register(searchOptimizeSkill, { enabled: true });
-    logger.debug("SearchOptimizeSkill registered");
   }
 
   // P1: FolderHealthCheckSkill - 文件夹健康检查（编排类型）

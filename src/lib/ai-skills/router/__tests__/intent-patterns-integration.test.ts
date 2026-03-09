@@ -165,18 +165,6 @@ describe("IntentPatterns Integration", () => {
       });
     });
 
-    describe("search_optimize related intents", () => {
-      it("should classify search optimization requests correctly", async () => {
-        const inputs = ["优化搜索", "搜索建议", "更好的搜索方式"];
-
-        for (const input of inputs) {
-          const result = await classifier.classify(input);
-          // 应该匹配到 query 类型
-          expect(["query", "chitchat"]).toContain(result.type);
-        }
-      });
-    });
-
     describe("folder_health_check related intents", () => {
       it("should classify folder health check requests correctly", async () => {
         const inputs = ["检查文件夹", "文件夹健康度", "分析文件夹状态"];

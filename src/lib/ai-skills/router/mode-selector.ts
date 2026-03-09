@@ -206,13 +206,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     enabled: true,
   },
 
-  // P0: 搜索优化助手（原子类型 - 但需要路由支持）
-  "query:search_optimize": {
-    skillId: "search_optimize",
-    name: "搜索优化助手",
-    enabled: true,
-  },
-
   // P1: 文件夹健康检查（编排类型）
   "analyze:folder_health_check": {
     skillId: "folder_health_check",

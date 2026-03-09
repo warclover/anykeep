@@ -117,14 +117,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     relatedIntentKeys: ["query:folder_recommend", "action:folder_recommend"],
   },
 
-  // 搜索优化助手
-  {
-    skillId: "search_optimize",
-    featureFlagEnv: "ENABLE_SEARCH_OPTIMIZE",
-    defaultEnabled: true,
-    relatedIntentKeys: ["query:search_optimize"],
-  },
-
   // 文件夹健康检查
   {
     skillId: "folder_health_check",

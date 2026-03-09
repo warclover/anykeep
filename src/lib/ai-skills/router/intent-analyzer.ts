@@ -430,14 +430,6 @@ const UNIFIED_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 85,
   },
-  // SearchOptimizeSkill - 搜索优化助手
-  {
-    pattern: /优化.*搜索|搜索.*优化|(改进|提高).*搜索|搜索.*建议/,
-    type: "query",
-    subType: "search_optimize",
-    complexity: "simple",
-    weight: 82,
-  },
   // FolderHealthCheckSkill - 文件夹健康检查
   {
     pattern: /文件夹.*(健康|检查|诊断)|(健康|检查|诊断).*文件夹/,

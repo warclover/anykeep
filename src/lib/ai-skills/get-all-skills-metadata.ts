@@ -90,18 +90,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     estimatedDurationMs: 3000,
     isOrchestration: false,
   },
-  {
-    id: "search_optimize",
-    name: "搜索优化助手",
-    description: "分析搜索词并提供优化建议，提升搜索效果。",
-    category: "utility",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["query-analysis", "search-suggestion", "query-optimization"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 2000,
-    isOrchestration: false,
-  },
 
   // ============================================
   // 编排 Skills

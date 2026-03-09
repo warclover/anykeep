@@ -39,11 +39,10 @@ describe("E2E: Skill 路由", () => {
       expect(uniqueKeys.size).toBe(keys.length);
     });
 
-    it("应该包含 6 个新 Skills", () => {
+    it("应该包含核心 Skills", () => {
       const newSkills = [
         "inbox_triage",
         "folder_recommend",
-        "search_optimize",
         "folder_health_check",
       ];
 
@@ -144,12 +143,6 @@ describe("E2E: Skill 路由", () => {
       const result = await analyzer.analyze("这个放哪个文件夹好");
 
       expect(result.execution.suggestedSkill).toBe("folder_recommend");
-    });
-
-    it("搜索优化: '怎么搜索更好' → search_optimize", async () => {
-      const result = await analyzer.analyze("怎么搜索更好");
-
-      expect(result.execution.suggestedSkill).toBe("search_optimize");
     });
 
     it("文件夹健康检查: '检查文件夹结构' → folder_health_check", async () => {
