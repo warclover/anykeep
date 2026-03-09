@@ -284,16 +284,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 80,
   },
-  // P1-5 新增：收件箱摘要查询
-  {
-    key: "query:inbox",
-    skillId: "inbox_digest",
-    name: "收件箱摘要",
-    mode: "orchestration",
-    minComplexity: "simple",
-    enabled: true,
-    priority: 78,
-  },
   {
     key: "query:list",
     skillId: "search",
@@ -333,16 +323,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 注意：delete/move/tag/archive 等基础操作不再单独映射，
   // 统一由 action:* 通配符处理，AI Agent 直接调用对应 Tools
   // ============================================
-  // P1-5 新增：链接健康检测
-  {
-    key: "action:link_health",
-    skillId: "link_health_check",
-    name: "链接健康检测",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 75,
-  },
   // P1-5 新增：分类操作（单独映射，与 organize:classify 区分）
   {
     key: "action:classify",

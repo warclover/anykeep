@@ -35,7 +35,6 @@ describe("AsyncAnalysisService", () => {
       taskTimeoutMs: 5000,
       enableTopicClustering: true,
       enablePatternDetection: true,
-      enableLinkHealthCheck: true,
     });
   });
 

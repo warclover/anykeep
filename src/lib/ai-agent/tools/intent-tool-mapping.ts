@@ -116,7 +116,6 @@ export const INTENT_TOOL_MAPPING: Record<string, ToolSetName[]> = {
   "analyze:report": ["analyze_tools"],
   "analyze:insight": ["analyze_tools"],
   "analyze:wechat": ["analyze_tools", "query_tools"],
-  "analyze:inbox_digest": ["analyze_tools", "messages_tools"],
   "analyze:periodic": ["analyze_tools"],
   analyze: ["analyze_tools"], // 通用分析
 

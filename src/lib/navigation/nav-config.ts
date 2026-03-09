@@ -28,7 +28,6 @@ import {
   Download,
   Upload,
   Share2,
-  LinkIcon,
   GraduationCap,
   BrainCog,
 } from "lucide-react";
@@ -174,13 +173,6 @@ const smartToolsGroup: NavGroupConfig = {
       href: "/distribution",
       icon: Share2,
       description: "mobileMenu.distributionCenter",
-      visibility: "mobile",
-    },
-    {
-      name: "mobileMenu.linkHealthCheck",
-      href: "/link-health",
-      icon: LinkIcon,
-      description: "mobileMenu.linkHealthCheck",
       visibility: "mobile",
     },
   ],

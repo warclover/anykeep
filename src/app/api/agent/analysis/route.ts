@@ -30,7 +30,6 @@ import { withAuthMiddleware } from "@/lib/api/middleware";
 const SUPPORTED_ANALYSIS_TYPES = [
   "topic_clustering",
   "pattern_detection",
-  "link_health_check",
 ] as const;
 
 // =============================================================================

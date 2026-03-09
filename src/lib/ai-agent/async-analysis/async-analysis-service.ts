@@ -9,11 +9,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import {
-  TopicClusteringAnalyzer,
-  PatternDetectionAnalyzer,
-  LinkHealthCheckAnalyzer,
-} from "./analyzers";
+import { TopicClusteringAnalyzer, PatternDetectionAnalyzer } from "./analyzers";
 import type { LazyTrigger } from "./scheduler";
 import { createLazyTrigger } from "./scheduler";
 import {
@@ -72,10 +68,6 @@ export class AsyncAnalysisService {
     if (this.config.enablePatternDetection) {
       this.registerAnalyzer(new PatternDetectionAnalyzer());
     }
-    if (this.config.enableLinkHealthCheck) {
-      this.registerAnalyzer(new LinkHealthCheckAnalyzer());
-    }
-
     logger.info(
       {
         module: "AsyncAnalysis",

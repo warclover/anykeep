@@ -53,7 +53,7 @@ export const SKILL_PAGE_MAP: Record<string, string> = {
   thematic_synthesis: "/synthesis",
   data_export: "/export",
   batch_organize: "/batch",
-  link_health_check: "/link-health",
+
   insight_report: "/analytics",
 };
 
@@ -72,7 +72,7 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   batch_organize: "智能整理我的书签",
   duplicate_cleanup: "检查并清理重复的书签",
   smart_tagging: "自动为书签添加标签",
-  link_health_check: "检查书签链接是否有效",
+
   data_export: "导出我的书签数据",
   inbox_triage: "整理收件箱里的未分类书签",
   folder_health_check: "检查文件夹健康状态",
@@ -85,8 +85,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   insight_report: "生成我的收藏洞察报告",
   tts_synthesis: "朗读这个书签的内容",
   wechat_digest: "生成微信文章摘要",
-
-  inbox_digest: "整理我的收件箱",
 
   thematic_synthesis: "合成一个主题报告",
 };

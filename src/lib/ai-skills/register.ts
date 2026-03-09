@@ -27,11 +27,9 @@ import { smartTaggingSkill } from "./skills/smart-tagging";
 import { relatedDiscoverySkill } from "./skills/related-discovery";
 import { periodicReportSkill } from "./skills/periodic-report";
 import { knowledgeExtractSkill } from "./skills/knowledge-extract";
-import { linkHealthCheckSkill } from "./skills/link-health-check";
+
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
-
-import { inboxDigestSkill } from "./skills/inbox-digest";
 
 import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 // Skills v1.1.0 新增（2025-01-08）
@@ -231,12 +229,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
   unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
 
-  // 链接健康检测（支持 Feature Flag 开关）
-  if (process.env.ENABLE_LINK_HEALTH_CHECK !== "false") {
-    unifiedEngine.registerOrchestrationSkill(linkHealthCheckSkill);
-    logger.debug("LinkHealthCheckSkill registered");
-  }
-
   // TTS 语音朗读（支持 Feature Flag 开关）
   if (process.env.ENABLE_TTS_SYNTHESIS !== "false") {
     unifiedEngine.registerOrchestrationSkill(ttsSynthesisSkill);
@@ -247,12 +239,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_WECHAT_DIGEST !== "false") {
     unifiedEngine.registerOrchestrationSkill(wechatDigestSkill);
     logger.debug("WechatDigestSkill registered");
-  }
-
-  // 收件箱摘要（支持 Feature Flag 开关）
-  if (process.env.ENABLE_INBOX_DIGEST !== "false") {
-    unifiedEngine.registerOrchestrationSkill(inboxDigestSkill);
-    logger.debug("InboxDigestSkill registered");
   }
 
   // 主题合成器（支持 Feature Flag 开关）

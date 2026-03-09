@@ -26,11 +26,8 @@ export const DEFAULT_ASYNC_ANALYSIS_CONFIG: AsyncAnalysisConfig = {
   taskTimeoutMs: 60_000, // 1 分钟
   defaultMaxRetries: 2,
   retryDelayMs: 5_000, // 5 秒
-  linkCheckConcurrency: 5,
-  linkCheckTimeoutMs: 10_000, // 10 秒
   enableTopicClustering: true,
   enablePatternDetection: true,
-  enableLinkHealthCheck: true,
 };
 
 /**
@@ -51,12 +48,11 @@ export const DEFAULT_LAZY_TRIGGER_CONFIG: LazyTriggerConfig = {
  * 任务类型的默认优先级
  */
 export const TASK_TYPE_PRIORITY: Record<AnalysisTaskType, number> = {
-  link_health_check: 1, // 最高优先级
-  global_insight_update: 2,
-  duplicate_detection: 3,
-  topic_clustering: 4,
-  pattern_detection: 5,
-  content_enrichment: 6, // 最低优先级
+  global_insight_update: 1,
+  duplicate_detection: 2,
+  topic_clustering: 3,
+  pattern_detection: 4,
+  content_enrichment: 5, // 最低优先级
 };
 
 // =============================================================================
@@ -69,18 +65,8 @@ export const TASK_TYPE_PRIORITY: Record<AnalysisTaskType, number> = {
 export const TRIGGER_DEFAULT_TASKS: Record<TaskTrigger, AnalysisTaskType[]> = {
   post_collection: ["content_enrichment", "duplicate_detection"],
   post_interaction: ["global_insight_update"],
-  on_visit: [
-    "topic_clustering",
-    "pattern_detection",
-    "link_health_check",
-    "global_insight_update",
-  ],
-  scheduled: [
-    "topic_clustering",
-    "pattern_detection",
-    "link_health_check",
-    "global_insight_update",
-  ],
+  on_visit: ["topic_clustering", "pattern_detection", "global_insight_update"],
+  scheduled: ["topic_clustering", "pattern_detection", "global_insight_update"],
   manual: [], // 手动触发需要明确指定
 };
 
@@ -94,7 +80,7 @@ export const TRIGGER_DEFAULT_TASKS: Record<TaskTrigger, AnalysisTaskType[]> = {
 export const TASK_TYPE_DESCRIPTION: Record<AnalysisTaskType, string> = {
   topic_clustering: "主题聚类分析",
   pattern_detection: "行为模式检测",
-  link_health_check: "链接健康检查",
+
   global_insight_update: "全局洞察更新",
   duplicate_detection: "重复内容检测",
   content_enrichment: "内容增强处理",
@@ -130,18 +116,4 @@ export const PATTERN_DETECTION_THRESHOLDS = {
   SPIKE_THRESHOLD_MULTIPLIER: 2.0,
   /** 沉寂主题阈值（天） */
   DORMANT_TOPIC_DAYS: 30,
-};
-
-/**
- * 链接健康检查阈值
- */
-export const LINK_HEALTH_THRESHOLDS = {
-  /** 重试间隔（毫秒） */
-  RETRY_INTERVAL_MS: 1000,
-  /** 最大重试次数 */
-  MAX_RETRIES: 2,
-  /** 批量检查大小 */
-  BATCH_SIZE: 10,
-  /** 检查间隔（毫秒） */
-  CHECK_INTERVAL_MS: 500,
 };

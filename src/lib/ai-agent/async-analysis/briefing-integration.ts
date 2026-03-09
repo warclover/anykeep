@@ -120,12 +120,7 @@ export class AsyncAnalysisBriefingIntegration {
       userId,
       "pattern_detection",
     );
-    const linkResults = this.analysisService.getUserResults(
-      userId,
-      "link_health_check",
-    );
-
-    for (const result of [...topicResults, ...patternResults, ...linkResults]) {
+    for (const result of [...topicResults, ...patternResults]) {
       insights.push(...result.insights);
     }
 
@@ -149,7 +144,6 @@ export class AsyncAnalysisBriefingIntegration {
     const results = [
       ...this.analysisService.getUserResults(userId, "topic_clustering"),
       ...this.analysisService.getUserResults(userId, "pattern_detection"),
-      ...this.analysisService.getUserResults(userId, "link_health_check"),
     ];
 
     for (const result of results) {
@@ -200,7 +194,7 @@ export class AsyncAnalysisBriefingIntegration {
    */
   async triggerAnalysis(
     userId: string,
-    types?: ("topic_clustering" | "pattern_detection" | "link_health_check")[],
+    types?: ("topic_clustering" | "pattern_detection")[],
   ): Promise<string[]> {
     return this.analysisService.scheduleAnalysis(userId, {
       trigger: "manual",

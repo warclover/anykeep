@@ -388,15 +388,6 @@ const UNIFIED_RULES: IntentRule[] = [
     complexity: "medium",
     weight: 88,
   },
-  {
-    pattern:
-      /消息.{0,3}(摘要|总结|概览|统计)|收件箱.{0,3}(摘要|总结|报告)|未读.{0,3}(摘要|总结)|通知.{0,3}(摘要|总结)/,
-    type: "analyze",
-    subType: "inbox_digest",
-    complexity: "medium",
-    weight: 87,
-  },
-
   // ============================================
   // 创建类
   // ============================================

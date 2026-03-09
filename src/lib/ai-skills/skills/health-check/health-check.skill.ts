@@ -21,7 +21,6 @@ import { z } from "zod";
 
 // 复用现有检测器
 // TODO(@backlog): 集成现有检测器进行实时检测
-// import { linkHealthCheckSkill } from "../link-health-check/link-health-check.skill";
 // import { duplicateCleanupSkill } from "../duplicate-cleanup/duplicate-cleanup.skill";
 import { staleContentDetector } from "./detectors/stale-detector";
 

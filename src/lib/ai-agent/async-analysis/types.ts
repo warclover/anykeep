@@ -20,7 +20,6 @@ import type { ProactiveInsight, SuggestedAction } from "../proactive-briefing";
 export type AnalysisTaskType =
   | "topic_clustering" // 主题聚类
   | "pattern_detection" // 模式检测
-  | "link_health_check" // 链接健康检查
   | "global_insight_update" // 全局洞察更新
   | "duplicate_detection" // 重复检测
   | "content_enrichment"; // 内容增强
@@ -232,54 +231,6 @@ export type PatternType =
   | "complementary"; // 互补内容
 
 // =============================================================================
-// 链接健康检查相关类型
-// =============================================================================
-
-/**
- * 链接健康检查结果
- */
-export interface LinkHealthCheckResult {
-  /** 检查的书签数量 */
-  totalChecked: number;
-  /** 健康链接数量 */
-  healthyCount: number;
-  /** 问题链接列表 */
-  issues: LinkHealthIssue[];
-  /** 检查时间戳 */
-  checkedAt: string;
-}
-
-/**
- * 链接健康问题
- */
-export interface LinkHealthIssue {
-  /** 书签 ID */
-  bookmarkId: number;
-  /** 原始 URL */
-  url: string;
-  /** 问题类型 */
-  issueType: LinkIssueType;
-  /** HTTP 状态码 */
-  statusCode?: number;
-  /** 错误信息 */
-  errorMessage?: string;
-  /** 建议操作 */
-  suggestedAction: "archive" | "update" | "delete" | "retry";
-}
-
-/**
- * 链接问题类型
- */
-export type LinkIssueType =
-  | "not_found" // 404
-  | "server_error" // 5xx
-  | "timeout" // 超时
-  | "ssl_error" // SSL 错误
-  | "redirect_loop" // 重定向循环
-  | "content_changed" // 内容显著变化
-  | "paywall"; // 付费墙
-
-// =============================================================================
 // 服务配置
 // =============================================================================
 
@@ -297,16 +248,10 @@ export interface AsyncAnalysisConfig {
   defaultMaxRetries: number;
   /** 重试延迟（毫秒） */
   retryDelayMs: number;
-  /** 链接检查并发数 */
-  linkCheckConcurrency: number;
-  /** 链接检查超时（毫秒） */
-  linkCheckTimeoutMs: number;
   /** 是否启用主题聚类 */
   enableTopicClustering: boolean;
   /** 是否启用模式检测 */
   enablePatternDetection: boolean;
-  /** 是否启用链接健康检查 */
-  enableLinkHealthCheck: boolean;
 }
 
 /**

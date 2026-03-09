@@ -7,7 +7,6 @@
 import {
   TopicClusteringAnalyzer,
   PatternDetectionAnalyzer,
-  LinkHealthCheckAnalyzer,
 } from "../analyzers";
 import type { AsyncAnalysisTask } from "../types";
 
@@ -106,55 +105,12 @@ describe("PatternDetectionAnalyzer", () => {
   });
 });
 
-describe("LinkHealthCheckAnalyzer", () => {
-  let analyzer: LinkHealthCheckAnalyzer;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    analyzer = new LinkHealthCheckAnalyzer();
-    (global.fetch as jest.Mock).mockReset();
-  });
-
-  describe("type", () => {
-    it("should have correct type", () => {
-      expect(analyzer.type).toBe("link_health_check");
-    });
-  });
-
-  describe("canExecute", () => {
-    it("should return true by default", async () => {
-      const task = createMockTask("link_health_check");
-      const canExecute = await analyzer.canExecute(task);
-      expect(canExecute).toBe(true);
-    });
-  });
-
-  describe("analyze", () => {
-    it("should return empty result when no bookmarks to check", async () => {
-      const task = createMockTask("link_health_check");
-      const result = await analyzer.analyze(task);
-
-      expect(result.data).toEqual({
-        totalChecked: 0,
-        healthyCount: 0,
-        issues: [],
-      });
-    });
-
-    it("should not throw on analysis", async () => {
-      const task = createMockTask("link_health_check");
-
-      await expect(analyzer.analyze(task)).resolves.not.toThrow();
-    });
-  });
-});
-
 // =============================================================================
 // Test Helpers
 // =============================================================================
 
 function createMockTask(
-  type: "topic_clustering" | "pattern_detection" | "link_health_check",
+  type: "topic_clustering" | "pattern_detection",
 ): AsyncAnalysisTask {
   return {
     id: `task_${Date.now()}`,

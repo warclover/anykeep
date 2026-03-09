@@ -53,14 +53,6 @@ export interface SkillAvailability {
  * 未列出的 Skill 默认启用
  */
 export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
-  // 链接健康检测
-  {
-    skillId: "link_health_check",
-    featureFlagEnv: "ENABLE_LINK_HEALTH_CHECK",
-    defaultEnabled: true,
-    relatedIntentKeys: ["action:link_health", "query:link_health"],
-  },
-
   // TTS 语音朗读
   {
     skillId: "tts_synthesis",
@@ -75,14 +67,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     featureFlagEnv: "ENABLE_WECHAT_DIGEST",
     defaultEnabled: true,
     relatedIntentKeys: ["create:wechat_digest", "query:wechat_digest"],
-  },
-
-  // 收件箱摘要
-  {
-    skillId: "inbox_digest",
-    featureFlagEnv: "ENABLE_INBOX_DIGEST",
-    defaultEnabled: true,
-    relatedIntentKeys: ["query:inbox_digest"],
   },
 
   // 主题合成器

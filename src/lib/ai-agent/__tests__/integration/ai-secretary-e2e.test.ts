@@ -492,7 +492,6 @@ describe("AI Secretary E2E Integration Tests", () => {
         taskTimeoutMs: 30000,
         enableTopicClustering: false,
         enablePatternDetection: false,
-        enableLinkHealthCheck: false,
       });
 
       const userId = "test-user-ff";
@@ -514,7 +513,6 @@ describe("AI Secretary E2E Integration Tests", () => {
         taskTimeoutMs: 30000,
         enableTopicClustering: true,
         enablePatternDetection: false,
-        enableLinkHealthCheck: false,
       });
 
       const userId = "test-user-specific";

@@ -2,11 +2,10 @@
  * AI 通用报告内容渲染组件
  *
  * 作为报告类型交付物的 fallback 渲染器
- * 适用于 batch_organize, duplicate_cleanup, smart_tagging,
- * reading_planner, inbox_digest 等 Skills
+ * 适用于 batch_organize, duplicate_cleanup, smart_tagging 等 Skills
  *
  * 提取常见字段（summary/report, stats, suggestions）进行可视化
- * 支持嵌套数据结构（如 InboxDigestSkill 的 data.overview/data.suggestions）
+ * 支持嵌套数据结构（如 data.overview/data.suggestions）
  *
  * @version 1.1.0
  * @since 2025-12-27

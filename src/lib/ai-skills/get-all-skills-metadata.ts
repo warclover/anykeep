@@ -266,21 +266,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     outputFormats: ["markdown", "json"],
   },
   {
-    id: "link_health_check",
-    name: "链接健康检测",
-    description: "检测书签链接的有效性，发现失效链接并提供修复建议。",
-    category: "utility",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["link-validation", "health-report", "fix-suggestion"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 20000,
-    isOrchestration: true,
-    deliverableTypes: ["report"],
-    outputFormats: ["markdown"],
-    featureFlag: "ENABLE_LINK_HEALTH_CHECK",
-  },
-  {
     id: "tts_synthesis",
     name: "语音朗读助手",
     description:
@@ -312,21 +297,6 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     featureFlag: "ENABLE_WECHAT_DIGEST",
   },
 
-  {
-    id: "inbox_digest",
-    name: "收件箱摘要",
-    description: "生成未读内容和通知的摘要报告，帮助您快速了解待处理事项。",
-    category: "utility",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: ["inbox-summary", "notification-digest", "priority-sorting"],
-    requiresConfirmation: false,
-    estimatedDurationMs: 8000,
-    isOrchestration: true,
-    deliverableTypes: ["report"],
-    outputFormats: ["markdown"],
-    featureFlag: "ENABLE_INBOX_DIGEST",
-  },
   {
     id: "thematic_synthesis",
     name: "主题合成器",

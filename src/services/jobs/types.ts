@@ -165,14 +165,6 @@ export interface ContentFetchPayload {
 }
 
 /**
- * Link Health Check 任务载荷
- */
-export interface LinkHealthCheckPayload {
-  bookmarkIds: number[];
-  checkTimeout?: number;
-}
-
-/**
  * Batch Classification 任务载荷
  */
 export interface BatchClassificationPayload {

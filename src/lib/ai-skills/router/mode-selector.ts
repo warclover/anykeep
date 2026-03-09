@@ -77,12 +77,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true,
   },
-  "organize:expire": {
-    skillId: "link_health_check",
-    name: "链接健康检测",
-    minComplexity: "medium",
-    enabled: true, // 已实现
-  },
 
   // 分析类
   "analyze:report": {
@@ -123,13 +117,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
-  "analyze:inbox_digest": {
-    skillId: "inbox_digest",
-    name: "收件箱摘要",
-    minComplexity: "medium",
-    enabled: true, // 已实现
-  },
-
   // 综述类（v2.8.0 新增 - 主题合成器）
   "create:synthesis": {
     skillId: "thematic_synthesis",
@@ -178,13 +165,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   "query:folder_recommend": {
     skillId: "folder_recommend",
     name: "文件夹智能推荐",
-    enabled: true,
-  },
-
-  // Phase 1 新增：链接状态检查（query 类型）
-  "query:link_status": {
-    skillId: "link_health_check",
-    name: "链接状态检查",
     enabled: true,
   },
 

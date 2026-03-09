@@ -20,7 +20,6 @@ export type {
   JobQueueEvents,
   EmbeddingGenerationPayload,
   ContentFetchPayload,
-  LinkHealthCheckPayload,
   BatchClassificationPayload,
   ExportGenerationPayload,
   SynthesisReportPayload,

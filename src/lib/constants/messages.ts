@@ -430,89 +430,6 @@ export const MONITOR = {
 } as const;
 
 /**
- * 链接健康检测相关文案
- */
-export const LINK_HEALTH = {
-  // 页面
-  TITLE: "链接健康检测",
-  DESCRIPTION: "检测收藏链接的可访问性，发现失效链接并提供修复建议",
-
-  // 检测范围
-  SCOPE_LABEL: "检测范围",
-  FOLDER_LABEL: "选择文件夹",
-  SCOPE_ALL: "全部书签",
-  SCOPE_FOLDER: "指定文件夹",
-  SELECT_FOLDER: "选择文件夹",
-
-  // 操作按钮
-  START: "开始检测",
-  STOP: "停止检测",
-  REFRESH: "刷新",
-
-  // 空状态
-  EMPTY_TITLE: "尚未运行检测",
-  EMPTY_DESCRIPTION: "选择检测范围后点击「开始检测」按钮",
-
-  // 统计标签
-  STATS: {
-    TOTAL: "已检测",
-    HEALTHY: "健康",
-    SLOW: "缓慢",
-    REDIRECT: "已重定向",
-    FAILED: "失效",
-  },
-
-  // 状态标签
-  STATUS: {
-    UNKNOWN: "未知",
-    HEALTHY: "健康",
-    SLOW: "缓慢",
-    REDIRECT: "重定向",
-    FAILED: "失效",
-    IGNORED: "已忽略",
-    CHECKED: "已检测",
-  },
-
-  // 修复选项
-  FIX_OPTIONS: {
-    DELETE: {
-      LABEL: "删除书签",
-      DESCRIPTION: "永久删除此书签",
-    },
-    ARCHIVE: {
-      LABEL: "归档书签",
-      DESCRIPTION: "移至归档文件夹，保留记录",
-    },
-    UPDATE: {
-      LABEL: "更新链接",
-      DESCRIPTION: "替换为新的有效链接",
-    },
-    IGNORE: {
-      LABEL: "忽略问题",
-      DESCRIPTION: "标记为已忽略，下次检测跳过",
-    },
-  },
-
-  // 进度
-  PROGRESS: {
-    INITIALIZING: "初始化...",
-    CHECKING: "正在检测...",
-    COMPLETED: "完成",
-    CANCELLED: "已取消",
-    SUBMITTING: "处理中...",
-    CONFIRM_FIX: "确认修复",
-  },
-
-  // 结果提示
-  COMPLETE_SUCCESS: "链接健康检测完成",
-  FIX_SUCCESS: "修复成功",
-  FIX_ERROR: "修复操作失败",
-  NO_FOLDER_SELECTED: "请选择要检测的文件夹",
-  STREAM_ERROR: "无法读取响应流",
-  CANCELLED: "检测已取消",
-} as const;
-
-/**
  * TTS 语音朗读相关文案
  */
 export const TTS = {
@@ -824,7 +741,6 @@ export const MESSAGES = {
   CLASSIFICATION,
   MD_COLLECTION,
   MONITOR,
-  LINK_HEALTH,
   TTS,
   MD_READER,
   KS_QUOTA,
