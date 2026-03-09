@@ -297,16 +297,6 @@ export const DEFAULT_RULES: IntentRule[] = [
     complexity: "simple",
     weight: 85,
   },
-  {
-    // B站字幕提取规则 - 需要明确包含字幕相关词汇
-    // 修复 NLU-11: 避免"找B站收藏"被误识别为字幕提取
-    pattern:
-      /B站.{0,3}(字幕|文字稿|转文字)|bilibili.{0,3}(字幕|文字稿|转文字)|视频.{0,3}(字幕|文字稿)|提取.{0,3}字幕/i,
-    type: "create",
-    subType: "bilibili_transcript",
-    complexity: "medium",
-    weight: 86,
-  },
 
   // --------------------------------------------
   // Phase 2: Digest 意图增强规则 (2026-01-09)

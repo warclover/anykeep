@@ -400,14 +400,7 @@ const UNIFIED_RULES: IntentRule[] = [
   // ============================================
   // 创建类
   // ============================================
-  {
-    pattern:
-      /B站.{0,3}(字幕|文字稿|转文字)|bilibili.{0,3}(字幕|文字稿|转文字)|视频.{0,3}(字幕|文字稿)|提取.{0,3}字幕/i,
-    type: "create",
-    subType: "bilibili_transcript",
-    complexity: "medium",
-    weight: 86,
-  },
+
   {
     pattern: /(?<!阅)读|朗读|播放.{0,3}摘要|听|语音|念|tts/i,
     type: "create",

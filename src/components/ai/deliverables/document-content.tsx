@@ -7,10 +7,7 @@ import { AIMarkdown } from "../ai-markdown";
 import { clientLogger } from "@/lib/client-logger";
 import { ExtractionResultCard } from "./extraction-result-card";
 import { WechatDigestView, isWechatDigestOutput } from "./wechat-digest-view";
-import {
-  BilibiliTranscriptView,
-  isBilibiliTranscriptOutput,
-} from "./bilibili-transcript-view";
+
 import type {
   KnowledgeExtraction,
   ExtractionFormat,
@@ -95,14 +92,6 @@ export const DocumentContent = memo(function DocumentContent({
   // 如果是微信阅读摘要，使用专门的组件渲染
   if (isWechatDigest && isWechatDigestOutput(content)) {
     return <WechatDigestView data={content} />;
-  }
-
-  // 检测是否为 bilibili_transcript skill 的交付物
-  const isBilibiliTranscript = metadata?.skillId === "bilibili_transcript";
-
-  // 如果是B站字幕提取，使用专门的组件渲染
-  if (isBilibiliTranscript && isBilibiliTranscriptOutput(content)) {
-    return <BilibiliTranscriptView data={content} />;
   }
 
   const textContent =

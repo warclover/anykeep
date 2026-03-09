@@ -91,7 +91,7 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   insight_report: "生成我的收藏洞察报告",
   tts_synthesis: "朗读这个书签的内容",
   wechat_digest: "生成微信文章摘要",
-  bilibili_transcript: "提取 B 站视频字幕",
+
   inbox_digest: "整理我的收件箱",
   content_change_monitor: "监控这个页面的内容变化",
   thematic_synthesis: "合成一个主题报告",

@@ -218,16 +218,7 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 88,
   },
-  // P1-5 新增：B站字幕提取
-  {
-    key: "create:bilibili",
-    skillId: "bilibili_transcript",
-    name: "B站字幕提取",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 85,
-  },
+
   // P1-5 新增：微信阅读摘要
   {
     key: "create:wechat",

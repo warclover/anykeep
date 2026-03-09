@@ -34,7 +34,7 @@ import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
-import { bilibiliTranscriptSkill } from "./skills/bilibili-transcript";
+
 import { inboxDigestSkill } from "./skills/inbox-digest";
 import { contentChangeMonitorSkill } from "./skills/content-change-monitor";
 import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
@@ -256,12 +256,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_WECHAT_DIGEST !== "false") {
     unifiedEngine.registerOrchestrationSkill(wechatDigestSkill);
     logger.debug("WechatDigestSkill registered");
-  }
-
-  // B站字幕提取（支持 Feature Flag 开关）
-  if (process.env.ENABLE_BILIBILI_TRANSCRIPT !== "false") {
-    unifiedEngine.registerOrchestrationSkill(bilibiliTranscriptSkill);
-    logger.debug("BilibiliTranscriptSkill registered");
   }
 
   // 收件箱摘要（支持 Feature Flag 开关）

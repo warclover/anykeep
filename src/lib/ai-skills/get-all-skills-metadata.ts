@@ -391,25 +391,7 @@ export const ALL_SKILLS_METADATA: ExtendedSkillMetadata[] = [
     outputFormats: ["markdown"],
     featureFlag: "ENABLE_WECHAT_DIGEST",
   },
-  {
-    id: "bilibili_transcript",
-    name: "B站字幕提取",
-    description: "提取 B 站视频的字幕内容，生成文字稿和摘要。",
-    category: "understanding",
-    version: "1.0.0",
-    author: "AnyKeep",
-    capabilities: [
-      "subtitle-extraction",
-      "transcript-generation",
-      "video-summary",
-    ],
-    requiresConfirmation: false,
-    estimatedDurationMs: 15000,
-    isOrchestration: true,
-    deliverableTypes: ["report"],
-    outputFormats: ["markdown", "text"],
-    featureFlag: "ENABLE_BILIBILI_TRANSCRIPT",
-  },
+
   {
     id: "inbox_digest",
     name: "收件箱摘要",

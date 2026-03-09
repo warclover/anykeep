@@ -153,12 +153,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
-  "create:bilibili_transcript": {
-    skillId: "bilibili_transcript",
-    name: "B站字幕提取",
-    minComplexity: "medium",
-    enabled: true, // 已实现
-  },
 
   // 综述类（v2.8.0 新增 - 主题合成器）
   "create:synthesis": {

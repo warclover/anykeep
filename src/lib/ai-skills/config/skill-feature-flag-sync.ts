@@ -77,14 +77,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     relatedIntentKeys: ["create:wechat_digest", "query:wechat_digest"],
   },
 
-  // B站字幕提取
-  {
-    skillId: "bilibili_transcript",
-    featureFlagEnv: "ENABLE_BILIBILI_TRANSCRIPT",
-    defaultEnabled: true,
-    relatedIntentKeys: ["create:bilibili_transcript", "query:bilibili"],
-  },
-
   // 收件箱摘要
   {
     skillId: "inbox_digest",
