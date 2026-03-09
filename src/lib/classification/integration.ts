@@ -119,7 +119,8 @@ const classifyBookmarkInputSchema = z.object({
  * Process bookmark classification
  *
  * Phase 5: 委托到 classification-v2 新系统
- * 旧实现保留在 _classifyBookmarkV2Legacy 中作为 fallback
+ * v2 classify() 是纯评分函数，副作用（移动书签、创建建议等）在此处执行。
+ * 旧实现保留在 _classifyBookmarkV2Legacy 中作为 fallback。
  */
 export async function classifyBookmarkV2(
   bookmarkId: number,
@@ -137,20 +138,61 @@ export async function classifyBookmarkV2(
 }> {
   try {
     const { classify } = await import("@/lib/classification-v2");
-    const result = await classify({
+    const v2Result = await classify({
       bookmarkId: String(bookmarkId),
       title,
       summary: summary ?? undefined,
       tags,
       userId,
     });
-    return {
-      classified: result.action === "classify",
-      folderId: result.folderId,
-      folderName: result.folderName,
-      confidence: result.confidence,
-      action: result.action as ClassificationResult["action"],
+
+    // v2 confidence 范围 0-1，旧系统使用 0-100 百分比
+    const confidencePercent = Math.round(v2Result.confidence * 100);
+
+    logger.info(
+      {
+        bookmarkId,
+        userId,
+        v2Action: v2Result.action,
+        v2Confidence: v2Result.confidence,
+        confidencePercent,
+        folderId: v2Result.folderId,
+        folderName: v2Result.folderName,
+      },
+      "Classification V2 new: Result received",
+    );
+
+    // 映射 v2 action 到旧系统 action
+    const actionMap: Record<string, string> = {
+      classify: "classify",
+      suggest: "suggest",
+      suggest_create: "suggest_new",
+      inbox: "inbox",
     };
+
+    const mappedResult: ClassificationResult = {
+      folderId: v2Result.folderId,
+      folderName:
+        v2Result.folderName ??
+        ("suggestedFolderName" in v2Result
+          ? (v2Result as { suggestedFolderName?: string }).suggestedFolderName
+          : "") ??
+        "",
+      confidence: confidencePercent,
+      reason: v2Result.reason ?? "",
+      action: (actionMap[v2Result.action] ??
+        v2Result.action) as ClassificationResult["action"],
+      scores: { vectorScore: 0, historyScore: 0, aiScore: 0 },
+    };
+
+    // 应用副作用：移动书签、创建建议、更新状态
+    return await _applyClassificationResult(
+      bookmarkId,
+      title,
+      tags,
+      userId,
+      mappedResult,
+    );
   } catch (error) {
     logger.error(
       { bookmarkId, userId, error },
@@ -158,6 +200,517 @@ export async function classifyBookmarkV2(
     );
     return _classifyBookmarkV2Legacy(bookmarkId, title, summary, tags, userId);
   }
+}
+
+/**
+ * 应用分类结果的副作用
+ *
+ * 根据分类结果执行：移动书签、创建确认建议、更新分类状态、更新文件夹 Profile。
+ * 从 _classifyBookmarkV2Legacy 中提取，供新旧两条路径复用。
+ *
+ * @internal
+ */
+async function _applyClassificationResult(
+  bookmarkId: number,
+  title: string,
+  tags: string[],
+  userId: string,
+  result: ClassificationResult,
+): Promise<{
+  classified: boolean;
+  folderId: number | null;
+  folderName: string | null;
+  confidence: number;
+  action: ClassificationResult["action"];
+  suggestionId?: number;
+}> {
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+
+  // --- classify / suggest 到已有文件夹 ---
+  if (
+    (result.action === "classify" || result.action === "suggest") &&
+    result.folderId
+  ) {
+    const trustMode = await trustModeService.getUserTrustMode(userId);
+
+    // 判断是否自动分类
+    const shouldAutoClassify =
+      (result.confidence >= AUTO_CLASSIFY_THRESHOLD &&
+        trustMode !== "manual") ||
+      (trustMode === "full_auto" && result.confidence >= SUGGEST_THRESHOLD);
+
+    if (shouldAutoClassify) {
+      // 移动书签到目标文件夹
+      const { error: moveError } = await supabase
+        .from("bookmarks")
+        .update({
+          folder_id: result.folderId,
+          pending_cluster: false,
+          pending_since: null,
+          cluster_id: null,
+          cluster_confidence: null,
+        })
+        .eq("id", bookmarkId)
+        .eq("user_id", userId);
+
+      if (moveError) {
+        logger.error(
+          { error: moveError, bookmarkId, folderId: result.folderId },
+          "Classification V2: Failed to move bookmark",
+        );
+        return {
+          classified: false,
+          folderId: null,
+          folderName: null,
+          confidence: result.confidence,
+          action: CLASSIFICATION_STATUS.INBOX,
+        };
+      }
+
+      logger.info(
+        {
+          bookmarkId,
+          folderId: result.folderId,
+          folderName: result.folderName,
+          confidence: result.confidence,
+          trustMode,
+        },
+        "Classification V2: Auto-classified",
+      );
+
+      // 通知
+      await MessageService.notifyClassificationComplete(
+        userId,
+        bookmarkId,
+        result.folderName || "未知文件夹",
+        result.confidence,
+        true,
+      ).catch((err) => {
+        logger.warn({ error: err }, "Failed to create classification message");
+      });
+
+      // 更新分类状态
+      await updateBookmarkClassificationStatus(
+        supabase,
+        bookmarkId,
+        userId,
+        CLASSIFICATION_STATUS.CLASSIFIED,
+        {
+          folder_id: result.folderId,
+          folder_name: result.folderName,
+          confidence: result.confidence,
+          method: trustMode === "full_auto" ? "full-auto" : "auto-classify",
+          action: "select_existing",
+          reason: result.reason,
+        },
+      );
+
+      // 同步更新文件夹 Profile
+      try {
+        await updateFolderProfile(result.folderId, userId);
+      } catch (profileErr) {
+        logger.warn(
+          {
+            error:
+              profileErr instanceof Error
+                ? profileErr.message
+                : String(profileErr),
+            folderId: result.folderId,
+          },
+          "Classification V2: Folder profile update failed (non-blocking)",
+        );
+      }
+
+      return {
+        classified: true,
+        folderId: result.folderId,
+        folderName: result.folderName,
+        confidence: result.confidence,
+        action: "classify",
+      };
+    }
+
+    // 非自动分类：创建确认建议
+    const { data: suggestion, error: suggestionError } = await supabase
+      .from("classification_suggestions")
+      .insert({
+        user_id: userId,
+        bookmark_id: bookmarkId,
+        suggested_folder_id: result.folderId,
+        suggested_folder_name: result.folderName,
+        suggest_new_folder: false,
+        confidence: result.confidence,
+        reason: result.reason,
+        status: "pending",
+        batch_id: crypto.randomUUID(),
+      })
+      .select("id")
+      .single();
+
+    if (!suggestionError && suggestion) {
+      logger.info(
+        {
+          bookmarkId,
+          suggestionId: suggestion.id,
+          folderId: result.folderId,
+          confidence: result.confidence,
+          trustMode,
+        },
+        "Classification V2: Saved suggestion",
+      );
+
+      // 非 full_auto 模式下创建待确认记录
+      if (trustMode !== "full_auto") {
+        const { data: bookmarkData } = await supabase
+          .from("bookmarks")
+          .select("url")
+          .eq("id", bookmarkId)
+          .single();
+
+        const confirmationSuggestion: ClassificationSuggestion = {
+          folderId: result.folderId,
+          folderName: result.folderName,
+          confidence: Math.round(result.confidence),
+          reason: result.reason || "基于内容相似度匹配",
+          alternatives: [],
+        };
+
+        await confirmationService
+          .createClassificationConfirmation({
+            userId,
+            bookmarkId,
+            bookmarkTitle: title,
+            bookmarkUrl: bookmarkData?.url || "",
+            suggestion: confirmationSuggestion,
+          })
+          .catch((err) => {
+            logger.warn(
+              { error: err },
+              "Failed to create classification confirmation",
+            );
+          });
+      }
+
+      await updateBookmarkClassificationStatus(
+        supabase,
+        bookmarkId,
+        userId,
+        CLASSIFICATION_STATUS.SUGGESTED,
+        {
+          folder_id: result.folderId,
+          folder_name: result.folderName,
+          confidence: result.confidence,
+          method: "suggestion",
+          action: "select_existing",
+          reason: result.reason,
+        },
+      );
+
+      // 清除 pending_cluster 状态
+      await supabase
+        .from("bookmarks")
+        .update({ pending_cluster: false, pending_since: null })
+        .eq("id", bookmarkId)
+        .eq("user_id", userId);
+
+      return {
+        classified: false,
+        folderId: result.folderId,
+        folderName: result.folderName,
+        confidence: result.confidence,
+        action: "classify",
+        suggestionId: suggestion.id,
+      };
+    }
+  }
+
+  // --- suggest_new：建议创建新文件夹 ---
+  if (result.action === "suggest_new" && result.folderName) {
+    const trustMode = await trustModeService.getUserTrustMode(userId);
+
+    // 检查每日创建限制
+    const today = new Date().toISOString().split("T")[0];
+    const { count: todayCount } = await supabase
+      .from("folders")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", `${today}T00:00:00Z`)
+      .lt("created_at", `${today}T23:59:59Z`);
+
+    if ((todayCount || 0) >= FOLDER_LIMITS.MAX_AUTO_CREATE_PER_DAY) {
+      logger.warn(
+        { userId, todayCount },
+        "Classification V2: Daily folder creation limit reached",
+      );
+      // 保存为建议
+      const { data: suggestion } = await supabase
+        .from("classification_suggestions")
+        .insert({
+          user_id: userId,
+          bookmark_id: bookmarkId,
+          suggested_folder_id: null,
+          suggested_folder_name: result.folderName,
+          suggest_new_folder: true,
+          confidence: result.confidence,
+          reason: result.reason || "Suggest creating new folder",
+          status: "pending",
+          batch_id: crypto.randomUUID(),
+        })
+        .select("id")
+        .single();
+
+      if (suggestion) {
+        await updateBookmarkClassificationStatus(
+          supabase,
+          bookmarkId,
+          userId,
+          CLASSIFICATION_STATUS.SUGGESTED,
+          {
+            folder_id: null,
+            folder_name: result.folderName,
+            confidence: result.confidence,
+            method: "limit-reached",
+            action: "suggest_new",
+            reason: "每日文件夹创建数量已达上限",
+          },
+        );
+        return {
+          classified: false,
+          folderId: null,
+          folderName: result.folderName,
+          confidence: result.confidence,
+          action: "suggest_new",
+          suggestionId: suggestion.id,
+        };
+      }
+    }
+
+    // 高置信度自动创建文件夹
+    if (
+      result.confidence >= AUTO_CLASSIFY_THRESHOLD &&
+      trustMode !== "manual"
+    ) {
+      // 去重检查
+      const { AutoCreateEvaluatorService } = await import(
+        "./services/advanced/auto-create-evaluator.service"
+      );
+      const evaluator = new AutoCreateEvaluatorService(supabase);
+      const evaluation = await evaluator.evaluate(
+        userId,
+        result.folderName,
+        result.confidence,
+        tags,
+      );
+
+      if (!evaluation.shouldCreate && evaluation.similarFolder) {
+        // 归入已有文件夹
+        const existingFolderId = evaluation.similarFolder.id;
+        const existingFolderName = evaluation.similarFolder.name;
+
+        const { error: dedupMoveError } = await supabase
+          .from("bookmarks")
+          .update({
+            folder_id: existingFolderId,
+            pending_cluster: false,
+            pending_since: null,
+            cluster_id: null,
+            cluster_confidence: null,
+          })
+          .eq("id", bookmarkId)
+          .eq("user_id", userId);
+
+        if (!dedupMoveError) {
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            CLASSIFICATION_STATUS.CLASSIFIED,
+            {
+              folder_id: existingFolderId,
+              folder_name: existingFolderName,
+              confidence: result.confidence,
+              method: "dedup-recent",
+              action: "suggest_new",
+              reason: evaluation.rejectReason || "归入近期同主题文件夹",
+            },
+          );
+
+          updateFolderProfile(existingFolderId, userId).catch((err) => {
+            logger.warn(
+              { error: err, folderId: existingFolderId },
+              "Classification V2: Folder profile update failed after dedup",
+            );
+          });
+
+          return {
+            classified: true,
+            folderId: existingFolderId,
+            folderName: existingFolderName,
+            confidence: result.confidence,
+            action: "suggest_new",
+          };
+        }
+      }
+
+      // 创建新文件夹
+      const folderNameToCreate =
+        evaluation.recommendedName || result.folderName;
+      const { data: newFolder, error: createError } = await supabase
+        .from("folders")
+        .insert({ user_id: userId, name: folderNameToCreate, sort_order: 0 })
+        .select("id")
+        .single();
+
+      if (!createError && newFolder) {
+        try {
+          await initializeFolderNameProfile(
+            newFolder.id,
+            folderNameToCreate,
+            userId,
+          );
+        } catch (profileErr: unknown) {
+          logger.warn(
+            { error: profileErr, folderId: newFolder.id },
+            "Classification V2: initializeFolderNameProfile failed",
+          );
+        }
+
+        const { error: moveError } = await supabase
+          .from("bookmarks")
+          .update({
+            folder_id: newFolder.id,
+            pending_cluster: false,
+            pending_since: null,
+            cluster_id: null,
+            cluster_confidence: null,
+          })
+          .eq("id", bookmarkId)
+          .eq("user_id", userId);
+
+        if (!moveError) {
+          logger.info(
+            {
+              bookmarkId,
+              folderId: newFolder.id,
+              folderName: folderNameToCreate,
+              confidence: result.confidence,
+            },
+            "Classification V2: Created new folder and classified",
+          );
+
+          await updateBookmarkClassificationStatus(
+            supabase,
+            bookmarkId,
+            userId,
+            CLASSIFICATION_STATUS.CLASSIFIED,
+            {
+              folder_id: newFolder.id,
+              folder_name: folderNameToCreate,
+              confidence: result.confidence,
+              method: "auto-create",
+              action: "suggest_new",
+              reason: "创建新文件夹并归类",
+            },
+          );
+
+          return {
+            classified: true,
+            folderId: newFolder.id,
+            folderName: folderNameToCreate,
+            confidence: result.confidence,
+            action: "suggest_new",
+          };
+        }
+      }
+    }
+
+    // 中等置信度：保存建议
+    if (result.confidence >= SUGGEST_THRESHOLD) {
+      const { data: suggestion } = await supabase
+        .from("classification_suggestions")
+        .insert({
+          user_id: userId,
+          bookmark_id: bookmarkId,
+          suggested_folder_id: null,
+          suggested_folder_name: result.folderName,
+          suggest_new_folder: true,
+          confidence: result.confidence,
+          reason: result.reason || "Suggest creating new folder",
+          status: "pending",
+          batch_id: crypto.randomUUID(),
+        })
+        .select("id")
+        .single();
+
+      if (suggestion) {
+        await updateBookmarkClassificationStatus(
+          supabase,
+          bookmarkId,
+          userId,
+          CLASSIFICATION_STATUS.SUGGESTED,
+          {
+            folder_id: null,
+            folder_name: result.folderName,
+            confidence: result.confidence,
+            method: "suggestion-new",
+            action: "suggest_new",
+            reason: result.reason || "建议创建新文件夹",
+          },
+        );
+
+        await supabase
+          .from("bookmarks")
+          .update({ pending_cluster: false, pending_since: null })
+          .eq("id", bookmarkId)
+          .eq("user_id", userId);
+
+        return {
+          classified: false,
+          folderId: null,
+          folderName: result.folderName,
+          confidence: result.confidence,
+          action: "suggest_new",
+          suggestionId: suggestion.id,
+        };
+      }
+    }
+  }
+
+  // --- inbox：低置信度，留在收件箱 ---
+  logger.info(
+    { bookmarkId, confidence: result.confidence, action: result.action },
+    "Classification V2: Staying in inbox",
+  );
+
+  await supabase
+    .from("bookmarks")
+    .update({ pending_cluster: true, pending_since: new Date().toISOString() })
+    .eq("id", bookmarkId)
+    .eq("user_id", userId);
+
+  await updateBookmarkClassificationStatus(
+    supabase,
+    bookmarkId,
+    userId,
+    CLASSIFICATION_STATUS.INBOX,
+    {
+      folder_id: null,
+      folder_name: "待整理",
+      confidence: result.confidence,
+      method: "inbox-fallback",
+      action: "inbox",
+      reason: `置信度 ${result.confidence}% 低于阈值`,
+    },
+  );
+
+  return {
+    classified: false,
+    folderId: null,
+    folderName: null,
+    confidence: result.confidence,
+    action: CLASSIFICATION_STATUS.INBOX,
+  };
 }
 
 /**
