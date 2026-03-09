@@ -47,7 +47,6 @@ export const CAREER_CHANGER_CONFIG: PersonaConfig = {
 
   intentBoosts: {
     skill_gap: 1.8,
-    learning_path: 1.7,
     resource_integrate: 1.6,
     find_related: 1.5,
     theme_organize: 1.4,

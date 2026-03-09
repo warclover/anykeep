@@ -297,7 +297,6 @@ class CacheInvalidationService {
         break;
 
       // 知识管理类 Skill
-      case "learning_path":
       case "reading_planner":
         // 可能更新复习状态，失效用户偏好缓存
         dataCache.invalidate(`preferences:${userId}`);

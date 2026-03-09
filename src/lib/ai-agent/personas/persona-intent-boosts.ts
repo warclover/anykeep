@@ -51,7 +51,6 @@ export type PersonaIntentSubType =
   | "error_analysis" // 错题分析
   | "progress_track" // 进度追踪
   | "review_remind" // 复习提醒
-  | "learning_path" // 学习路径
   // Phase 2 新增 - UX 研究类
   | "insight_organize" // 洞察整理
   | "pattern_library" // 模式库检索
@@ -119,7 +118,6 @@ export const PHASE2_NEW_INTENT_BOOSTS: Partial<
     error_analysis: 1.7, // 错题分析
     progress_track: 1.5, // 进度追踪
     review_remind: 1.4, // 复习提醒
-    learning_path: 1.3, // 学习路径
   },
 
   ux_researcher: {

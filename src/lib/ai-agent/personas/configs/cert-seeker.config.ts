@@ -42,7 +42,6 @@ export const CERT_SEEKER_CONFIG: PersonaConfig = {
     error_analysis: 1.7,
     progress_track: 1.5,
     review_remind: 1.4,
-    learning_path: 1.3,
   },
 
   promptKey: "growth.cert_seeker",

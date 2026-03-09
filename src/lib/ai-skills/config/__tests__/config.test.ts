@@ -261,10 +261,10 @@ describe("Skill Mappings", () => {
       index = getMappingIndex();
     });
 
-    it("should find exact match", () => {
+    it("should find wildcard match for learn:path", () => {
       const mapping = findMapping(index, "learn", "path");
       expect(mapping).not.toBeNull();
-      expect(mapping?.skillId).toBe("learning_path");
+      expect(mapping?.skillId).toBe("reading_planner");
     });
 
     it("should find wildcard match when no exact match", () => {

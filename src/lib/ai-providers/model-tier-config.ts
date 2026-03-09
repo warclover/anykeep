@@ -159,13 +159,11 @@ export const MODEL_TIER_CONFIG: Record<ModelTierId, TierConfig> = {
     },
     applicableTasks: [
       "insight_analysis", // 洞察分析
-      "learning_path", // 学习路径
       "complex_reasoning", // 复杂推理
       "batch_organize", // 批量整理
       "analyze:insight", // 分析洞察
       "analyze:report", // 分析报告
       "learn:review", // 知识复习
-      "learn:path", // 学习路径
       "organize:cleanup", // 整理清理
       "organize:classify", // 整理分类
     ],

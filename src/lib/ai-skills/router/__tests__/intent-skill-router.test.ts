@@ -24,12 +24,11 @@ describe("IntentSkillRouter", () => {
 
   describe("route", () => {
     describe("学习类意图", () => {
-      it("should route 学习路径 to learning_path", () => {
+      it("should route 学习路径 to reading_planner via wildcard", () => {
         const result = router.route("给我制定一个学习路径");
 
         expect(result.intentType).toBe("learn");
-        expect(result.subType).toBe("path");
-        expect(result.skillId).toBe("learning_path");
+        expect(result.skillId).toBe("reading_planner");
         expect(result.mode).toBe("orchestration");
       });
     });

@@ -104,9 +104,6 @@ export * from "./periodic-report";
 // ShareBundleSkill - 分享包（编排 Skill，Phase 3）
 export * from "./share-bundle";
 
-// LearningPathSkill - 学习路径（编排 Skill，Phase 3）
-export * from "./learning-path";
-
 // KnowledgeExtractSkill - 知识萃取（编排 Skill，Phase 3）
 // 注意：包含 SourceInfo 类型，与 related-discovery 有冲突
 export {

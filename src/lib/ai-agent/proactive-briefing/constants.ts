@@ -128,7 +128,7 @@ export const ACTION_TYPE_CONFIG = {
   start_learning: {
     label: "开始学习",
     icon: "GraduationCap",
-    skillId: "learning_path",
+    skillId: "reading_planner",
   },
 } as const;
 

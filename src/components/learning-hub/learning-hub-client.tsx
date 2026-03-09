@@ -2,7 +2,6 @@
  * 学习助手客户端组件
  *
  * 聚合学习相关的 AI Skills：
- * - 学习路径规划 (learning_path)
  * - 阅读计划制定 (reading_planner)
  * - 周期报告生成 (periodic_report)
  * - 相关发现 (related_discovery)
@@ -17,7 +16,6 @@
 
 import { useState } from "react";
 import {
-  BookOpen,
   Calendar,
   FileText,
   Lightbulb,
@@ -62,17 +60,6 @@ const LEARNING_HUB = {
 
 // 学习相关 Skills 配置
 const LEARNING_SKILLS = [
-  {
-    id: "learning_path",
-    name: "学习路径",
-    description: "AI 为你规划系统化的学习路径，根据收藏内容推荐学习顺序",
-    icon: BookOpen,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-900/20",
-    borderColor: "border-blue-200 dark:border-blue-800",
-    action: LEARNING_HUB.ACTIONS.START,
-    prompt: "为我规划一个学习路径",
-  },
   {
     id: "reading_planner",
     name: "阅读规划",

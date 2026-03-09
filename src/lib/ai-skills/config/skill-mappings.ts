@@ -23,15 +23,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 学习类 → 编排模式
   // ============================================
   {
-    key: "learn:path",
-    skillId: "learning_path",
-    name: "学习路径规划",
-    mode: "orchestration",
-    minComplexity: "complex",
-    enabled: true,
-    priority: 100,
-  },
-  {
     key: "learn:plan",
     skillId: "reading_planner",
     name: "阅读计划助手",
@@ -43,8 +34,8 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
   // 学习类通配符兜底
   {
     key: "learn:*",
-    skillId: "learning_path",
-    name: "学习路径规划",
+    skillId: "reading_planner",
+    name: "阅读计划助手",
     mode: "orchestration",
     minComplexity: "medium",
     enabled: true,
@@ -666,9 +657,9 @@ export const SKILL_MAPPINGS_BY_KEY: Map<string, SkillMapping> = new Map(
  *
  * @example
  * ```ts
- * const mapping = getSkillMappingByKey("learn:path");
+ * const mapping = getSkillMappingByKey("learn:plan");
  * if (mapping) {
- *   console.log(mapping.skillId); // "learning_path"
+ *   console.log(mapping.skillId); // "reading_planner"
  * }
  * ```
  *

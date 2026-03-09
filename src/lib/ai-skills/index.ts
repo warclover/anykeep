@@ -163,7 +163,6 @@ export {
 // ============================================
 
 // 知识管理
-export { LearningPathSkill } from "./skills/learning-path";
 export { ReadingPlannerSkill } from "./skills/reading-planner";
 
 // 数据处理

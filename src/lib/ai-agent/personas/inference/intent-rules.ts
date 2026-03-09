@@ -722,17 +722,6 @@ export const CAREER_CHANGER_INTENT_RULES: PersonaIntentRule[] = [
     priority: 90,
   },
   {
-    id: "changer-path",
-    personas: ["career_changer"],
-    pattern: /路径|规划|计划|怎么转|入门/,
-    intentType: "organize",
-    intentSubtype: "learning_path",
-    confidenceBoost: 1.6,
-    contextHint: "制定分阶段学习计划",
-    responseStyle: "detailed",
-    priority: 88,
-  },
-  {
     id: "changer-industry",
     personas: ["career_changer"],
     pattern: /行业|领域|赛道|方向|前景/,

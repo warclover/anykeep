@@ -407,7 +407,7 @@ export class PatternDetectionAnalyzer extends BaseAnalyzer {
         description: "生成学习路径和相关推荐",
         affectedCount: topicShift.bookmarkIds.length,
         executeParams: {
-          skillId: "learning_path",
+          skillId: "reading_planner",
           topic: newTopic,
           bookmarkIds: topicShift.bookmarkIds,
         },

@@ -3,7 +3,7 @@
  *
  * 作为报告类型交付物的 fallback 渲染器
  * 适用于 batch_organize, duplicate_cleanup, smart_tagging,
- * learning_path, quick_digest, reading_planner, inbox_digest 等 Skills
+ * quick_digest, reading_planner, inbox_digest 等 Skills
  *
  * 提取常见字段（summary/report, stats, suggestions）进行可视化
  * 支持嵌套数据结构（如 InboxDigestSkill 的 data.overview/data.suggestions）

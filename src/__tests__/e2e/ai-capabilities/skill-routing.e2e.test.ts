@@ -57,9 +57,9 @@ describe("E2E: Skill 路由", () => {
 
   describe("getSkillMappingByKey", () => {
     it("应该通过 key 找到映射", () => {
-      const mapping = getSkillMappingByKey("learn:path");
+      const mapping = getSkillMappingByKey("learn:plan");
       expect(mapping).toBeDefined();
-      expect(mapping?.skillId).toBe("learning_path");
+      expect(mapping?.skillId).toBe("reading_planner");
     });
 
     it("不存在的 key 应该返回 undefined", () => {

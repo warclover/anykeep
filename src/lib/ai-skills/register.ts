@@ -29,7 +29,7 @@ import { readingPlannerSkill } from "./skills/reading-planner";
 import { relatedDiscoverySkill } from "./skills/related-discovery";
 import { periodicReportSkill } from "./skills/periodic-report";
 import { shareBundleSkill } from "./skills/share-bundle";
-import { learningPathSkill } from "./skills/learning-path";
+
 import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
@@ -237,7 +237,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill);
   unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
   unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
-  unifiedEngine.registerOrchestrationSkill(learningPathSkill);
   unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
 
   // 链接健康检测（支持 Feature Flag 开关）
