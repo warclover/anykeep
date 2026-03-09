@@ -195,21 +195,6 @@ const SKILL_CHAIN_TESTS: SkillChainTest[] = [
     timeout: 30000,
   },
   {
-    name: "摘要→快速摘要",
-    input: "给这篇文章生成摘要",
-    expectedChain: {
-      intentType: "create",
-      intentSubType: "digest",
-      mode: "orchestration",
-      skillId: "quick_digest",
-    },
-    expectedOutput: {
-      hasText: true,
-      hasProgress: true,
-    },
-    timeout: 30000,
-  },
-  {
     name: "语音→TTS合成",
     input: "朗读这个书签",
     expectedChain: {

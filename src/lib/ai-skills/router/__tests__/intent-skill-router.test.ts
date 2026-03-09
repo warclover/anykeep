@@ -70,14 +70,6 @@ describe("IntentSkillRouter", () => {
     });
 
     describe("创建类意图", () => {
-      it("should route 摘要 to quick_digest", () => {
-        const result = router.route("生成这些内容的摘要");
-
-        expect(result.intentType).toBe("create");
-        expect(result.subType).toBe("digest");
-        expect(result.skillId).toBe("quick_digest");
-      });
-
       it("should route 导出 to data_export", () => {
         const result = router.route("导出我的收藏");
 

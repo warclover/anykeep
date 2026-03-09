@@ -23,19 +23,16 @@ import { dataExportSkill } from "./skills/data-export";
 import { insightReportSkill } from "./skills/insight-report";
 import { batchOrganizeSkill } from "./skills/batch-organize";
 import { duplicateCleanupSkill } from "./skills/duplicate-cleanup";
-import { quickDigestSkill } from "./skills/quick-digest";
 import { smartTaggingSkill } from "./skills/smart-tagging";
 import { relatedDiscoverySkill } from "./skills/related-discovery";
 import { periodicReportSkill } from "./skills/periodic-report";
-import { shareBundleSkill } from "./skills/share-bundle";
-
 import { knowledgeExtractSkill } from "./skills/knowledge-extract";
 import { linkHealthCheckSkill } from "./skills/link-health-check";
 import { ttsSynthesisSkill } from "./skills/tts-synthesis";
 import { wechatDigestSkill } from "./skills/wechat-digest";
 
 import { inboxDigestSkill } from "./skills/inbox-digest";
-import { contentChangeMonitorSkill } from "./skills/content-change-monitor";
+
 import { ThematicSynthesisSkill } from "./skills/thematic-synthesis";
 // Skills v1.1.0 新增（2025-01-08）
 import { inboxTriageSkill } from "./skills/inbox-triage";
@@ -229,11 +226,9 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   unifiedEngine.registerOrchestrationSkill(insightReportSkill);
   unifiedEngine.registerOrchestrationSkill(batchOrganizeSkill);
   unifiedEngine.registerOrchestrationSkill(duplicateCleanupSkill);
-  unifiedEngine.registerOrchestrationSkill(quickDigestSkill);
   unifiedEngine.registerOrchestrationSkill(smartTaggingSkill);
   unifiedEngine.registerOrchestrationSkill(relatedDiscoverySkill);
   unifiedEngine.registerOrchestrationSkill(periodicReportSkill);
-  unifiedEngine.registerOrchestrationSkill(shareBundleSkill);
   unifiedEngine.registerOrchestrationSkill(knowledgeExtractSkill);
 
   // 链接健康检测（支持 Feature Flag 开关）
@@ -258,12 +253,6 @@ async function doInitializeUnifiedEngine(): Promise<void> {
   if (process.env.ENABLE_INBOX_DIGEST !== "false") {
     unifiedEngine.registerOrchestrationSkill(inboxDigestSkill);
     logger.debug("InboxDigestSkill registered");
-  }
-
-  // 内容变更监控（支持 Feature Flag 开关）
-  if (process.env.ENABLE_CONTENT_CHANGE_MONITOR !== "false") {
-    unifiedEngine.registerOrchestrationSkill(contentChangeMonitorSkill);
-    logger.debug("ContentChangeMonitorSkill registered");
   }
 
   // 主题合成器（支持 Feature Flag 开关）

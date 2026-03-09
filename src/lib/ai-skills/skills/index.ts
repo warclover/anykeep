@@ -66,9 +66,6 @@ export {
 } from "./duplicate-cleanup/types";
 export { UrlNormalizer } from "./duplicate-cleanup/url-normalizer";
 
-// QuickDigestSkill - 快速摘要（编排 Skill，Phase 2）
-export * from "./quick-digest";
-
 // SmartTaggingSkill - 智能标签（编排 Skill，Phase 2）
 // 注意：包含 TagSuggestion 类型，与 batch-organize 有冲突
 export { SmartTaggingSkill, smartTaggingSkill } from "./smart-tagging";
@@ -97,9 +94,6 @@ export * from "./related-discovery";
 
 // PeriodicReportSkill - 周期报告（编排 Skill，Phase 3）
 export * from "./periodic-report";
-
-// ShareBundleSkill - 分享包（编排 Skill，Phase 3）
-export * from "./share-bundle";
 
 // KnowledgeExtractSkill - 知识萃取（编排 Skill，Phase 3）
 // 注意：包含 SourceInfo 类型，与 related-discovery 有冲突

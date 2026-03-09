@@ -152,26 +152,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 90,
   },
-  {
-    key: "create:digest",
-    skillId: "quick_digest",
-    name: "快速摘要生成",
-    mode: "orchestration",
-    minComplexity: "simple",
-    enabled: true,
-    priority: 90,
-  },
-  // P1-5 新增：summary 与 digest 同义映射
-  {
-    key: "create:summary",
-    skillId: "quick_digest",
-    name: "内容摘要生成",
-    mode: "orchestration",
-    minComplexity: "simple",
-    enabled: true,
-    priority: 88,
-  },
-
   // P1-5 新增：微信阅读摘要
   {
     key: "create:wechat",
@@ -192,15 +172,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     priority: 90,
   },
   {
-    key: "create:share",
-    skillId: "share_bundle",
-    name: "分享包生成",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 85,
-  },
-  {
     key: "create:extract",
     skillId: "knowledge_extract",
     name: "知识提取",
@@ -218,17 +189,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 80,
   },
-  // 创建类通配符兜底
-  {
-    key: "create:*",
-    skillId: "quick_digest",
-    name: "创建内容",
-    mode: "orchestration",
-    minComplexity: "simple",
-    enabled: true,
-    priority: 40,
-  },
-
   // ============================================
   // 智能列表类 → 原子模式（直接调用 Tools）
   // ============================================
@@ -383,16 +343,6 @@ export const SKILL_MAPPINGS: SkillMapping[] = [
     enabled: true,
     priority: 75,
   },
-  // P1-5 新增：内容变更监控
-  {
-    key: "action:content_monitor",
-    skillId: "content_change_monitor",
-    name: "内容变更监控",
-    mode: "orchestration",
-    minComplexity: "medium",
-    enabled: true,
-    priority: 72,
-  },
   // P1-5 新增：分类操作（单独映射，与 organize:classify 区分）
   {
     key: "action:classify",
@@ -486,12 +436,6 @@ export const EXPLICIT_TOOL_MAPPINGS: ExplicitToolMapping[] = [
     skillId: "data_export",
     mode: "orchestration",
     icon: "Download",
-  },
-  {
-    toolId: "summarize",
-    skillId: "quick_digest",
-    mode: "orchestration",
-    icon: "FileText",
   },
   {
     toolId: "report",

@@ -292,7 +292,6 @@ class CacheInvalidationService {
 
       // 数据导出类 Skill（不需要失效缓存）
       case "data_export":
-      case "share_bundle":
         // 导出不改变数据，无需失效
         break;
 

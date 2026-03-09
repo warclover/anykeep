@@ -120,7 +120,6 @@ export {
 
 // 交付物展示组件
 export { CleanupPreview } from "./deliverables/cleanup-preview";
-export { DigestView } from "./deliverables/digest-view";
 export {
   MindmapViewer,
   convertDigestToMindmap,

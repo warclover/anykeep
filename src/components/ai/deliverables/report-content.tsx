@@ -59,6 +59,6 @@ export const ReportContent = memo(function ReportContent({
 
   // 其他所有报告类型使用通用报告渲染器
   // 包括：batch_organize, duplicate_cleanup, smart_tagging,
-  // quick_digest, reading_planner 等
+  // reading_planner 等
   return <AIGenericReportContent content={content} />;
 });

@@ -7,15 +7,10 @@
  * @since 2026-01-30
  */
 
-import { QUICK_DIGEST_CONFIG } from "@/lib/ai-skills/skills/quick-digest/types";
-
 /**
  * 停用词集合（中英文）
  */
 const STOP_WORDS = new Set([
-  ...QUICK_DIGEST_CONFIG.STOP_WORDS_ZH,
-  ...QUICK_DIGEST_CONFIG.STOP_WORDS_EN,
-  // 额外的通用停用词
   "的",
   "了",
   "是",

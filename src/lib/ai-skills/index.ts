@@ -173,8 +173,6 @@ export { InsightReportSkill } from "./skills/insight-report";
 export { PeriodicReportSkill } from "./skills/periodic-report";
 
 // 内容生成
-export { QuickDigestSkill } from "./skills/quick-digest";
-export { ShareBundleSkill } from "./skills/share-bundle";
 export { RelatedDiscoverySkill } from "./skills/related-discovery";
 
 // 工具 Skills

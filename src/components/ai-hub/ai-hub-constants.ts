@@ -66,7 +66,6 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   folder_recommend: "推荐文件夹结构",
 
   // 编排 Skills - 理解增强
-  quick_digest: "快速摘要我的收藏",
   knowledge_extract: "提取我收藏中的关键知识点",
 
   // 编排 Skills - 整理优化
@@ -82,15 +81,13 @@ export const SKILL_TRIGGER_PROMPTS: Record<string, string> = {
   reading_planner: "帮我制定阅读计划",
   periodic_report: "生成我的学习周报",
   related_discovery: "发现与我收藏相关的内容",
-  share_bundle: "创建一个分享包",
-
   // 编排 Skills - 实用工具
   insight_report: "生成我的收藏洞察报告",
   tts_synthesis: "朗读这个书签的内容",
   wechat_digest: "生成微信文章摘要",
 
   inbox_digest: "整理我的收件箱",
-  content_change_monitor: "监控这个页面的内容变化",
+
   thematic_synthesis: "合成一个主题报告",
 };
 

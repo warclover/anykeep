@@ -5,7 +5,6 @@
  * - 周期报告生成 (periodic_report)
  * - 相关发现 (related_discovery)
  * - 知识提取 (knowledge_extract)
- * - 分享包创建 (share_bundle)
  *
  * @version 1.0.0
  * @since 2026-01-08
@@ -18,7 +17,6 @@ import {
   FileText,
   Lightbulb,
   Link2,
-  Share2,
   Brain,
   ArrowLeft,
   BookMarked,
@@ -89,17 +87,6 @@ const LEARNING_SKILLS = [
     borderColor: "border-cyan-200 dark:border-cyan-800",
     action: LEARNING_HUB.ACTIONS.DISCOVER,
     prompt: "发现与我收藏相关的内容",
-  },
-  {
-    id: "share_bundle",
-    name: "分享包",
-    description: "打包收藏内容分享给同事或朋友",
-    icon: Share2,
-    color: "text-pink-600",
-    bgColor: "bg-pink-50 dark:bg-pink-900/20",
-    borderColor: "border-pink-200 dark:border-pink-800",
-    action: LEARNING_HUB.ACTIONS.CREATE,
-    prompt: "创建一个分享包",
   },
 ];
 

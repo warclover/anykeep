@@ -8,7 +8,6 @@
  * @updated 2025-12-25 - 添加 ExtractionResultCard
  */
 
-export { DigestView, default as DigestViewDefault } from "./digest-view";
 export {
   CleanupPreview,
   default as CleanupPreviewDefault,

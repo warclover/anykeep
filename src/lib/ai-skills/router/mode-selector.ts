@@ -83,12 +83,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
     minComplexity: "medium",
     enabled: true, // 已实现
   },
-  "organize:monitor": {
-    skillId: "content_change_monitor",
-    name: "内容变更监控",
-    minComplexity: "simple",
-    enabled: true, // 已实现
-  },
 
   // 分析类
   "analyze:report": {
@@ -111,18 +105,6 @@ const DEFAULT_SKILL_MAPPINGS: Record<string, OrchestrationSkillMapping> = {
   },
 
   // 创建类
-  "create:digest": {
-    skillId: "quick_digest",
-    name: "快速摘要生成",
-    minComplexity: "simple",
-    enabled: true,
-  },
-  "create:share": {
-    skillId: "share_bundle",
-    name: "分享包生成",
-    minComplexity: "medium",
-    enabled: true, // 已实现
-  },
   "create:tts": {
     skillId: "tts_synthesis",
     name: "语音朗读助手",

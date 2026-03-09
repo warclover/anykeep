@@ -85,14 +85,6 @@ export const SKILL_FEATURE_FLAG_MAPPINGS: SkillFeatureFlagMapping[] = [
     relatedIntentKeys: ["query:inbox_digest"],
   },
 
-  // 内容变更监控
-  {
-    skillId: "content_change_monitor",
-    featureFlagEnv: "ENABLE_CONTENT_CHANGE_MONITOR",
-    defaultEnabled: true,
-    relatedIntentKeys: ["action:content_monitor", "query:content_changes"],
-  },
-
   // 主题合成器
   {
     skillId: "thematic_synthesis",

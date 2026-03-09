@@ -116,32 +116,6 @@ describe("ModeSelector", () => {
         expect(result.mode).toBe("orchestration");
         expect(suggestedSkill).toBe("duplicate_cleanup");
       });
-
-      it("should select orchestration for create:digest with medium complexity", () => {
-        const intent: IntentClassification = {
-          type: "create",
-          subType: "digest",
-          confidence: 0.9,
-          entities: [],
-          requiresMultiStep: true,
-          hasDeliverableExpectation: true,
-          source: "rule",
-        };
-
-        const complexity: ComplexityEvaluation = {
-          level: "medium",
-          score: 45,
-          factors: [],
-          estimatedSteps: 3,
-          estimatedDurationMs: 10000,
-        };
-
-        const result = selector.select(intent, complexity);
-        const suggestedSkill = selector.getSuggestedSkill(intent, complexity);
-
-        expect(result.mode).toBe("orchestration");
-        expect(suggestedSkill).toBe("quick_digest");
-      });
     });
 
     describe("disabled skill handling", () => {
