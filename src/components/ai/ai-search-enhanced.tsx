@@ -152,26 +152,11 @@ export function AISearchEnhanced({
   /**
    * 处理反馈
    */
-  const handleFeedback = useCallback(
-    async (type: "helpful" | "not-helpful") => {
-      setFeedback(type);
-      // 发送反馈到后端（异步，不阻塞 UI）
-      try {
-        await fetch("/api/feedback/search-insight", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query,
-            feedbackType: type,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch {
-        // 反馈发送失败不影响用户体验，静默处理
-      }
-    },
-    [query],
-  );
+  const handleFeedback = useCallback((type: "helpful" | "not-helpful") => {
+    setFeedback(type);
+    // TODO: 搜索洞察反馈端点尚未实现
+    // 当前仅记录本地状态，后续可接入 /api/ai/feedback 或新建专用端点
+  }, []);
 
   // 不显示条件
   if (!query.trim()) {

@@ -70,6 +70,8 @@ const ranker = new CascadeRanker();
  */
 export async function classify(
   request: ClassifyRequest,
+  /** 自定义 Scorers，默认使用全量注册表。测试时可注入 mock 实现。 */
+  scorers: Scorer[] = DEFAULT_SCORERS,
 ): Promise<ClassifyResult> {
   const traceId = generateTraceId();
   const startTime = Date.now();
@@ -102,7 +104,7 @@ export async function classify(
 
     // 4. 执行 CascadeRanker
     const rankResult = await ranker.rank(
-      DEFAULT_SCORERS,
+      scorers,
       bookmarkCtx,
       folderCtxs,
       userCtx,
@@ -132,6 +134,7 @@ export async function classify(
           result.reason = `建议创建「${suggestion.name}」（${suggestion.reason}）`;
         }
       } catch (error) {
+        // 文件夹命名是旁路增强，失败不阻塞主分类流程，降级为 inbox
         logger.debug(
           { traceId, error },
           "Classification V2: folder naming failed, staying inbox",

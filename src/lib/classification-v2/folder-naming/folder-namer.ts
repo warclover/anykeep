@@ -23,9 +23,9 @@ import {
   FOLDER_NAMING_RULES,
   FORBIDDEN_NAMES,
   FILLER_SUFFIXES,
-  VAGUE_WORDS,
   CHINESE_STOP_WORDS,
   isForbiddenName,
+  isVagueWord,
   isContextualWord,
   calculateEffectiveLength,
 } from "../constants";
@@ -75,6 +75,7 @@ export async function suggestFolderName(
     // 5. LLM 返回不合格，回退到本地策略
     return fallbackNaming(title, tags, existingNames);
   } catch (error) {
+    // LLM 调用失败时降级为本地命名策略，不阻塞分类流程
     logger.warn({ error, title }, "FolderNamer: LLM failed, using fallback");
     return fallbackNaming(title, tags, []);
   }
@@ -92,14 +93,20 @@ function buildNamingPrompt(
 ): string {
   const parts: string[] = [];
 
-  parts.push(`书签标题：${sanitizeInput(title, 200)}`);
+  parts.push(
+    `书签标题：${sanitizeInput(title, CLASSIFICATION_CONFIG.llm.titleMaxLen)}`,
+  );
 
   if (tags.length > 0) {
-    parts.push(`标签：${tags.slice(0, 10).join("、")}`);
+    parts.push(
+      `标签：${tags.slice(0, CLASSIFICATION_CONFIG.llm.maxTags).join("、")}`,
+    );
   }
 
   if (summary) {
-    parts.push(`摘要：${sanitizeInput(summary, 200)}`);
+    parts.push(
+      `摘要：${sanitizeInput(summary, CLASSIFICATION_CONFIG.llm.summaryMaxLen)}`,
+    );
   }
 
   if (existingNames.length > 0) {
@@ -139,7 +146,7 @@ function cleanFolderName(raw: string, existingNames: string[]): string | null {
   if (isContextualWord(name)) return null;
 
   // 验证过度概括词
-  if ((VAGUE_WORDS as readonly string[]).includes(name)) return null;
+  if (isVagueWord(name)) return null;
 
   // 长度检查
   const { maxLength } = CLASSIFICATION_CONFIG.folderNaming;
@@ -195,7 +202,7 @@ function fallbackNaming(
       t.length >= 2 &&
       !FORBIDDEN_NAMES.has(t) &&
       !CHINESE_STOP_WORDS.has(t) &&
-      !(VAGUE_WORDS as readonly string[]).includes(t) &&
+      !isVagueWord(t) &&
       !existingSet.has(t.toLowerCase())
     ) {
       return { name: t, reason: "从标签提取" };
@@ -236,9 +243,7 @@ function extractKeywords(title: string): string[] {
 
   return candidates.filter(
     (w) =>
-      !CHINESE_STOP_WORDS.has(w) &&
-      !FORBIDDEN_NAMES.has(w) &&
-      !(VAGUE_WORDS as readonly string[]).includes(w),
+      !CHINESE_STOP_WORDS.has(w) && !FORBIDDEN_NAMES.has(w) && !isVagueWord(w),
   );
 }
 

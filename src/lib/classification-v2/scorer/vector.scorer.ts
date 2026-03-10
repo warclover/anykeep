@@ -20,7 +20,34 @@ import type {
   UserContext,
 } from "../types";
 import { CLASSIFICATION_CONFIG } from "../config";
-import { searchSimilarBookmarks } from "../infra/vector-search";
+import { searchSimilarFolderProfiles } from "../infra/vector-search";
+
+// ============================================================================
+// Scorer 内部常量
+// ============================================================================
+
+/** 每次额外匹配带来的分数增益 */
+const MATCH_BONUS_PER_HIT = 0.05;
+/** 匹配数量增益上限 */
+const MATCH_BONUS_CAP = 0.15;
+/** 高置信度：多条匹配时 */
+const CONFIDENCE_HIGH = 0.8;
+/** 低置信度：少量匹配时 */
+const CONFIDENCE_LOW = 0.5;
+
+// 关键词增强权重
+/** 标题包含文件夹名时的增益 */
+const KEYWORD_BOOST_TITLE_MATCH = 0.3;
+/** 标签与文件夹名精确匹配的增益 */
+const KEYWORD_BOOST_TAG_EXACT = 0.4;
+/** 标签与文件夹名部分匹配的增益 */
+const KEYWORD_BOOST_TAG_PARTIAL = 0.2;
+/** 文件夹关键词与标签交集时每个匹配的增益 */
+const KEYWORD_BOOST_PER_KW_HIT = 0.15;
+/** 关键词交集最大计数 */
+const KEYWORD_HIT_CAP = 3;
+/** 关键词增强总上限 */
+const KEYWORD_BOOST_MAX = 0.5;
 
 /** 文件夹聚合结果（内部） */
 interface FolderAggregation {
@@ -28,7 +55,6 @@ interface FolderAggregation {
   totalSimilarity: number;
   matchCount: number;
   topSimilarity: number;
-  matchedTitles: string[];
 }
 
 export class VectorScorer implements Scorer {
@@ -44,14 +70,13 @@ export class VectorScorer implements Scorer {
     const results = new Map<number, Score>();
     const candidateIds = new Set(candidates.map((c) => c.id));
 
-    // 1. 向量搜索
-    const similar = await searchSimilarBookmarks(
+    // 1. 向量搜索（搜索相似的文件夹画像）
+    const similar = await searchSimilarFolderProfiles(
       userCtx.userId,
       bookmark.embedding,
       {
         limit: CLASSIFICATION_CONFIG.vector.searchLimit,
         threshold: CLASSIFICATION_CONFIG.vector.similarityThreshold,
-        excludeBookmarkId: bookmark.bookmarkId,
       },
     );
 
@@ -61,7 +86,6 @@ export class VectorScorer implements Scorer {
     const folderAgg = new Map<number, FolderAggregation>();
 
     for (const item of similar) {
-      if (item.folderId === null) continue;
       if (!candidateIds.has(item.folderId)) continue;
 
       const agg = folderAgg.get(item.folderId) ?? {
@@ -69,15 +93,11 @@ export class VectorScorer implements Scorer {
         totalSimilarity: 0,
         matchCount: 0,
         topSimilarity: 0,
-        matchedTitles: [],
       };
 
       agg.totalSimilarity += item.similarity;
       agg.matchCount += 1;
       agg.topSimilarity = Math.max(agg.topSimilarity, item.similarity);
-      if (agg.matchedTitles.length < 3) {
-        agg.matchedTitles.push(item.bookmarkTitle);
-      }
 
       folderAgg.set(item.folderId, agg);
     }
@@ -93,7 +113,10 @@ export class VectorScorer implements Scorer {
       let baseScore = agg.totalSimilarity / agg.matchCount;
 
       // 匹配数量越多，置信度越高
-      const matchBonus = Math.min(agg.matchCount * 0.05, 0.15);
+      const matchBonus = Math.min(
+        agg.matchCount * MATCH_BONUS_PER_HIT,
+        MATCH_BONUS_CAP,
+      );
       baseScore = Math.min(baseScore + matchBonus, 1.0);
 
       // 4. 关键词增强
@@ -104,8 +127,8 @@ export class VectorScorer implements Scorer {
       const confidence =
         agg.matchCount >=
         CLASSIFICATION_CONFIG.vector.minMatchesForHighConfidence
-          ? 0.8
-          : 0.5;
+          ? CONFIDENCE_HIGH
+          : CONFIDENCE_LOW;
 
       const reasons: string[] = [];
       reasons.push(
@@ -153,20 +176,20 @@ function computeKeywordBoost(
 
   // 标题包含文件夹名
   if (bookmark.normalizedTitle.includes(folder.normalizedName)) {
-    boost += 0.3;
+    boost += KEYWORD_BOOST_TITLE_MATCH;
   }
 
   // 标签与文件夹名精确匹配
   for (const tag of bookmark.normalizedTags) {
     if (tag === folder.normalizedName) {
-      boost += 0.4;
+      boost += KEYWORD_BOOST_TAG_EXACT;
       break; // 只加一次
     }
     if (
       tag.includes(folder.normalizedName) ||
       folder.normalizedName.includes(tag)
     ) {
-      boost += 0.2;
+      boost += KEYWORD_BOOST_TAG_PARTIAL;
       break;
     }
   }
@@ -176,9 +199,10 @@ function computeKeywordBoost(
     const folderKws = new Set(folder.keywords.map((k) => k.toLowerCase()));
     const matched = bookmark.normalizedTags.filter((t) => folderKws.has(t));
     if (matched.length > 0) {
-      boost += 0.15 * Math.min(matched.length, 3);
+      boost +=
+        KEYWORD_BOOST_PER_KW_HIT * Math.min(matched.length, KEYWORD_HIT_CAP);
     }
   }
 
-  return Math.min(boost, 0.5); // 上限 50%
+  return Math.min(boost, KEYWORD_BOOST_MAX);
 }

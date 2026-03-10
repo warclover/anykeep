@@ -20,7 +20,7 @@ export interface UserClassificationRule {
   type: RuleType;
   pattern: string;
   patternType: PatternType;
-  targetFolderId: number;
+  targetFolderId: number | null;
   targetFolderName: string;
   priority: number;
   isActive: boolean;

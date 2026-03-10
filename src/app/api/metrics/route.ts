@@ -13,6 +13,11 @@ import { logger } from "@/lib/logger";
 
 /**
  * 验证请求权限
+ *
+ * 安全策略：
+ * - 开发环境：允许所有访问
+ * - 生产环境：仅允许 Bearer Token 认证（METRICS_SECRET）
+ *   不使用 IP 白名单，因为 X-Forwarded-For 可被客户端伪造
  */
 function isAuthorized(request: NextRequest): boolean {
   // 开发环境允许访问
@@ -20,35 +25,15 @@ function isAuthorized(request: NextRequest): boolean {
     return true;
   }
 
-  // 生产环境需要 Bearer Token 或内部访问
-  const authHeader = request.headers.get("authorization");
+  // 生产环境必须配置 METRICS_SECRET
   const metricsSecret = process.env.METRICS_SECRET;
-
-  // 如果设置了 METRICS_SECRET，则需要验证
-  if (metricsSecret) {
-    if (authHeader === `Bearer ${metricsSecret}`) {
-      return true;
-    }
+  if (!metricsSecret) {
+    logger.error("[Metrics] METRICS_SECRET not configured, rejecting request");
+    return false; // fail-safe：未配置密钥时拒绝所有请求
   }
 
-  // 允许来自 localhost 或内部网络的请求
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const clientIp = forwardedFor?.split(",")[0]?.trim() || realIp || "";
-
-  // 允许本地访问
-  if (
-    clientIp === "127.0.0.1" ||
-    clientIp === "::1" ||
-    clientIp.startsWith("10.") ||
-    clientIp.startsWith("172.") ||
-    clientIp.startsWith("192.168.")
-  ) {
-    return true;
-  }
-
-  // fail-safe：未配置 METRICS_SECRET 且不是内部访问时默认拒绝
-  return false;
+  const authHeader = request.headers.get("authorization");
+  return authHeader === `Bearer ${metricsSecret}`;
 }
 
 export async function GET(request: NextRequest) {

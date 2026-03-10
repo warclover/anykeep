@@ -14,6 +14,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { extractDomain } from "./utils";
 
 // ============================================================================
 // 类型定义
@@ -55,14 +56,6 @@ function normalizeUrl(url: string): string {
     return `${host}${path}`.toLowerCase();
   } catch {
     return url.toLowerCase().trim();
-  }
-}
-
-function extractDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return "";
   }
 }
 
@@ -138,7 +131,7 @@ export class CorrectionCacheService {
       return {
         folderId: exact.folderId,
         folderName: exact.folderName,
-        confidence: 100,
+        confidence: 1.0, // 归一化 0-1 范围
       };
     }
 
@@ -231,8 +224,9 @@ export class CorrectionCacheService {
       }
     }
 
-    const confidence = Math.min(95, Math.round((topCount / total) * 100));
-    return confidence >= 60
+    // 归一化 0-1 范围，上限 0.95（相似匹配不给满分）
+    const confidence = Math.min(0.95, topCount / total);
+    return confidence >= 0.6
       ? { folderId: topId, folderName: topName, confidence }
       : null;
   }

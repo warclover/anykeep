@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { UserContext, UserRule, UserStage } from "../types";
 import { CLASSIFICATION_CONFIG } from "../config";
+import { loadUserWeights as loadFromWeightStore } from "../feedback/weight-store";
 
 /**
  * 构建用户上下文
@@ -103,10 +104,7 @@ async function loadUserRules(
 async function loadUserWeights(
   userId: string,
 ): Promise<Record<string, number>> {
-  const { loadUserWeights: loadFromStore } = await import(
-    "../feedback/weight-store"
-  );
-  return loadFromStore(userId);
+  return loadFromWeightStore(userId);
 }
 
 /**

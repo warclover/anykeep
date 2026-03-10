@@ -6,6 +6,7 @@
 "use client";
 
 import { useState } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -79,7 +80,7 @@ export default function RegisterPage() {
         description: "请查收验证邮件",
       });
     } catch (error) {
-      console.error("[Register] Error:", error);
+      clientLogger.error({ error }, "[Register] Error");
       toast.error("注册失败", {
         description: "请稍后重试",
       });

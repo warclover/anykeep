@@ -272,8 +272,8 @@ describe("CascadeRanker", () => {
 
       const ruleDetail = result.scorerDetails.find((d) => d.scorer === "rule");
       expect(ruleDetail).toBeDefined();
-      expect(ruleDetail!.executed).toBe(false);
-      expect(ruleDetail!.skippedReason).toContain("shouldRun");
+      expect(ruleDetail?.executed).toBe(false);
+      expect(ruleDetail?.skippedReason).toContain("shouldRun");
     });
   });
 
@@ -313,7 +313,7 @@ describe("CascadeRanker", () => {
         (d) => d.scorer === "buggy",
       );
       expect(buggyDetail).toBeDefined();
-      expect(buggyDetail!.skippedReason).toContain("Error");
+      expect(buggyDetail?.skippedReason).toContain("Error");
     });
   });
 

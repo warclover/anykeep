@@ -368,7 +368,7 @@ ${params.bookmarkUrl ? `书签URL：${params.bookmarkUrl}` : ""}
       type: data.type as RuleType,
       pattern: data.pattern,
       patternType: data.pattern_type as PatternType,
-      targetFolderId: data.target_folder_id ?? 0,
+      targetFolderId: data.target_folder_id ?? null,
       targetFolderName: data.target_folder_name,
       priority: data.priority ?? 0,
       isActive: data.is_active ?? true,

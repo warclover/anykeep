@@ -69,6 +69,7 @@ jest.mock("@/lib/supabase/server", () => ({
 
 // Mock infra/vector-search
 jest.mock("../../infra/vector-search", () => ({
+  searchSimilarFolderProfiles: jest.fn().mockResolvedValue([]),
   searchSimilarBookmarks: jest.fn().mockResolvedValue([]),
 }));
 
@@ -118,7 +119,7 @@ jest.mock("../../context/user-context", () => ({
 }));
 
 import { buildFolderContexts } from "../../context/folder-context";
-import { searchSimilarBookmarks } from "../../infra/vector-search";
+import { searchSimilarFolderProfiles } from "../../infra/vector-search";
 import { callLlm } from "../../infra/llm";
 import { getCached, setCache } from "../../infra/cache";
 import { suggestFolderName } from "../../folder-naming/folder-namer";
@@ -128,8 +129,8 @@ jest.mock("../../context/folder-context");
 const mockBuildFolderContexts = buildFolderContexts as jest.MockedFunction<
   typeof buildFolderContexts
 >;
-const mockSearch = searchSimilarBookmarks as jest.MockedFunction<
-  typeof searchSimilarBookmarks
+const mockSearch = searchSimilarFolderProfiles as jest.MockedFunction<
+  typeof searchSimilarFolderProfiles
 >;
 const mockCallLlm = callLlm as jest.MockedFunction<typeof callLlm>;
 const mockGetCached = getCached as jest.MockedFunction<typeof getCached>;

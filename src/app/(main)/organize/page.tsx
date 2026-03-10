@@ -14,6 +14,7 @@ import { OrganizePageClient } from "@/components/organize/organize-page-client";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUserIdWithFallback } from "@/lib/server/auth";
+import { logger } from "@/lib/logger";
 
 export const metadata: Metadata = {
   title: "整理 - AnyKeep",
@@ -47,13 +48,13 @@ async function getFolders(): Promise<FolderOption[]> {
       .order("name");
 
     if (error) {
-      console.error("Failed to fetch folders:", error.message);
+      logger.error({ error: error.message }, "Failed to fetch folders");
       return [];
     }
 
     return (folders as FolderOption[]) || [];
   } catch (error) {
-    console.error("Failed to fetch folders:", error);
+    logger.error({ error }, "Failed to fetch folders");
     return [];
   }
 }

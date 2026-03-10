@@ -6,11 +6,12 @@
 
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { NotificationPriority } from "@/lib/notifications";
+import { notificationKeys } from "@/hooks/queries/keys";
 
 // ============================================
 // 类型定义
@@ -135,7 +136,7 @@ export function useMessageNotification(
       clearTimeout(debounceTimerRef.current);
     }
     debounceTimerRef.current = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     }, debounceMs);
   }, [queryClient, debounceMs]);
 
@@ -143,7 +144,7 @@ export function useMessageNotification(
    * 刷新通知列表
    */
   const refreshNotificationList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: notificationKeys.all });
   }, [queryClient]);
 
   /**
@@ -299,6 +300,15 @@ export function useMessageNotification(
       refreshNotificationList,
     ],
   );
+
+  // 组件卸载时清理去抖定时器，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // 便捷方法
   const success = useCallback((title: string, description?: string) => {

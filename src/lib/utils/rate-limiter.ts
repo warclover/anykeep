@@ -69,6 +69,8 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   snapshots: { windowMs: 60_000, maxRequests: 60 },
   // 内容监控：每分钟 20 次
   monitors: { windowMs: 60_000, maxRequests: 20 },
+  // TTS 语音合成：每分钟 10 次（第三方 API 成本）
+  tts: { windowMs: 60_000, maxRequests: 10, useDistributed: true },
   // 高风险操作：每小时 2 次（账户删除、数据导出等不可逆操作）- 使用分布式存储
   dangerous: { windowMs: 3600_000, maxRequests: 2, useDistributed: true },
 };
@@ -354,6 +356,9 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
   if (pathname.includes("/batch")) {
     return RATE_LIMIT_CONFIGS.batch;
   }
+
+  // TTS 语音合成（第三方 API 成本）
+  if (pathname.includes("/tts")) return RATE_LIMIT_CONFIGS.tts;
 
   // AI 端点：具体端点优先匹配（更严格的独立限制）
   if (pathname.includes("/summary/generate"))

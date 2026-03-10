@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
@@ -12,7 +13,10 @@ export default function MainError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[MainLayout] Page error:", error);
+    clientLogger.error(
+      { error: error.message, digest: error.digest },
+      "[MainLayout] Page error",
+    );
   }, [error]);
 
   return (

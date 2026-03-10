@@ -12,18 +12,37 @@ export function ServiceWorkerRegister() {
   useEffect(() => {
     // 仅在生产环境和支持 Service Worker 的浏览器中注册
     if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      process.env.NODE_ENV === "production"
+      typeof window === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      process.env.NODE_ENV !== "production"
     ) {
-      registerServiceWorker();
+      return;
     }
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    registerServiceWorker().then((registration) => {
+      if (!registration) return;
+      // 定期检查更新（每小时）
+      intervalId = setInterval(
+        () => {
+          registration.update();
+        },
+        60 * 60 * 1000,
+      );
+    });
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
   return null;
 }
 
-async function registerServiceWorker() {
+async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   try {
     const registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
@@ -47,22 +66,14 @@ async function registerServiceWorker() {
         ) {
           // 新版本可用，可以提示用户刷新
           clientLogger.info({}, "[PWA] New version available");
-
-          // 可以在这里显示更新提示
-          // 例如：showUpdateToast()
         }
       });
     });
 
-    // 定期检查更新（每小时）
-    setInterval(
-      () => {
-        registration.update();
-      },
-      60 * 60 * 1000,
-    );
+    return registration;
   } catch (error) {
     clientLogger.error({ error }, "[PWA] Service Worker registration failed");
+    return null;
   }
 }
 

@@ -6,6 +6,7 @@
 "use client";
 
 import { useState } from "react";
+import { clientLogger } from "@/lib/client-logger";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -57,7 +58,7 @@ export default function ForgotPasswordPage() {
         description: "请查收密码重置邮件",
       });
     } catch (error) {
-      console.error("[ForgotPassword] Error:", error);
+      clientLogger.error({ error }, "[ForgotPassword] Error");
       toast.error("发送失败", {
         description: "请稍后重试",
       });

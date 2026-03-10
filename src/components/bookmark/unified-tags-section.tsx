@@ -15,6 +15,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-media-query";
 import {
   Plus,
   Loader2,
@@ -94,16 +95,7 @@ export function UnifiedTagsSection({
   const originalTagsRef = useRef<string[]>(initialSelectedTags);
 
   // 响应式检测（仅用于 AI 标签折叠）
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const isMobile = useIsMobile();
 
   const aiVisibleCount = isMobile
     ? AI_VISIBLE_COUNT.mobile

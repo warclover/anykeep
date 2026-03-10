@@ -18,6 +18,7 @@ import type {
   FolderContext,
   UserContext,
 } from "../types";
+import { extractDomain } from "../infra/utils";
 import { CLASSIFICATION_CONFIG } from "../config";
 
 export class RuleScorer implements Scorer {
@@ -115,10 +116,3 @@ export class RuleScorer implements Scorer {
 /**
  * 从 URL 提取域名
  */
-function extractDomain(url: string): string | null {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}

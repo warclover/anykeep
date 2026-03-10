@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
 import { getTTSService, getTTSCacheService, TTS_ERROR_CODES } from "@/lib/tts";
 import type {
@@ -154,6 +155,33 @@ export const POST = withAuthMiddleware(
   async (request: NextRequest, { userId }) => {
     const startTime = Date.now();
     const timings: Record<string, number> = {};
+
+    // 1. 速率限制（TTS 调用产生第三方 API 费用，需要限制频率）
+    const rateLimitResult = checkRateLimit(userId, "/api/tts");
+    if (!rateLimitResult.allowed) {
+      logger.warn(
+        { userId, resetMs: rateLimitResult.resetMs },
+        "TTS rate limited",
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "语音合成请求过于频繁，请稍后再试",
+          },
+          retryAfter: Math.ceil(rateLimitResult.resetMs / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+            "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
+    }
 
     // 2. 解析和验证请求体
     const parseStart = Date.now();

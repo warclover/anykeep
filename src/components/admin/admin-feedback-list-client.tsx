@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { UserFeedback } from "@/types/user-feedback";
 import {
@@ -62,10 +62,18 @@ export function AdminFeedbackListClient({
     }
   }, [filters]);
 
+  // 跳过首次渲染（initialFeedbacks 已提供数据），filter 变化时自动重新获取
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    // 触发重新获取
-    setTimeout(() => fetchFeedbacks(), 0);
   };
 
   return (

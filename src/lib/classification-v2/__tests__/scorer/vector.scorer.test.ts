@@ -9,13 +9,13 @@ import type { BookmarkContext, FolderContext, UserContext } from "../../types";
 
 // Mock vector-search
 jest.mock("../../infra/vector-search", () => ({
-  searchSimilarBookmarks: jest.fn(),
+  searchSimilarFolderProfiles: jest.fn(),
 }));
 
-import { searchSimilarBookmarks } from "../../infra/vector-search";
+import { searchSimilarFolderProfiles } from "../../infra/vector-search";
 
-const mockSearch = searchSimilarBookmarks as jest.MockedFunction<
-  typeof searchSimilarBookmarks
+const mockSearch = searchSimilarFolderProfiles as jest.MockedFunction<
+  typeof searchSimilarFolderProfiles
 >;
 
 // ============================================================================
@@ -89,22 +89,19 @@ describe("VectorScorer", () => {
     it("多条相似书签在同一文件夹 → 高分 + 高置信度", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "React 教程",
+          profileId: "profile_100",
           folderId: 1,
           folderName: "React",
           similarity: 0.85,
         },
         {
-          bookmarkId: 101,
-          bookmarkTitle: "React 进阶",
+          profileId: "profile_101",
           folderId: 1,
           folderName: "React",
           similarity: 0.8,
         },
         {
-          bookmarkId: 102,
-          bookmarkTitle: "React Hooks",
+          profileId: "profile_102",
           folderId: 1,
           folderName: "React",
           similarity: 0.75,
@@ -130,8 +127,7 @@ describe("VectorScorer", () => {
     it("仅 1 条低相似度 → 低置信度", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "Python 教程",
+          profileId: "profile_100",
           folderId: 2,
           folderName: "Python",
           similarity: 0.4,
@@ -168,8 +164,7 @@ describe("VectorScorer", () => {
     it("相似书签的 folderId 不在候选列表 → 被过滤", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "Vue 教程",
+          profileId: "profile_100",
           folderId: 99, // 不在候选中
           folderName: "Vue",
           similarity: 0.9,
@@ -187,13 +182,12 @@ describe("VectorScorer", () => {
       expect(results.size).toBe(0);
     });
 
-    it("folderId 为 null 的结果被过滤", async () => {
+    it("folderId 不在候选列表中 → 被过滤", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "inbox 书签",
-          folderId: null,
-          folderName: null,
+          profileId: "profile_100",
+          folderId: 999, // 不在候选列表中
+          folderName: "Unknown",
           similarity: 0.9,
         },
       ]);
@@ -212,8 +206,7 @@ describe("VectorScorer", () => {
     it("标题包含文件夹名 → 分数增强", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "React 教程",
+          profileId: "profile_100",
           folderId: 1,
           folderName: "React",
           similarity: 0.5,
@@ -242,15 +235,13 @@ describe("VectorScorer", () => {
     it("相似书签分布在多个文件夹 → 各自独立评分", async () => {
       mockSearch.mockResolvedValue([
         {
-          bookmarkId: 100,
-          bookmarkTitle: "React 入门",
+          profileId: "profile_100",
           folderId: 1,
           folderName: "React",
           similarity: 0.8,
         },
         {
-          bookmarkId: 101,
-          bookmarkTitle: "Vue 入门",
+          profileId: "profile_101",
           folderId: 2,
           folderName: "Vue",
           similarity: 0.6,

@@ -193,21 +193,20 @@ export function WebVitalsReporter({
 
   // 页面卸载时上报
   useEffect(() => {
-    const handleUnload = () => {
-      flushMetrics();
-    };
-
-    window.addEventListener("visibilitychange", () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         flushMetrics();
       }
-    });
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
       if (flushTimer.current) {
         clearTimeout(flushTimer.current);
       }
-      handleUnload();
+      flushMetrics();
     };
   }, [flushMetrics]);
 

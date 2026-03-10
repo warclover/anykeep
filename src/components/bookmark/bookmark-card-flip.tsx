@@ -7,7 +7,8 @@
 
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, memo } from "react";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw, ExternalLink, FileText, Check } from "lucide-react";
@@ -50,17 +51,7 @@ export const FlipBookmarkCard = memo(function FlipBookmarkCard({
 }: FlipBookmarkCardProps) {
   const router = useRouter();
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // 检测是否为移动设备
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const isMobile = useIsMobile();
 
   // 生成封面图
   const coverImage =

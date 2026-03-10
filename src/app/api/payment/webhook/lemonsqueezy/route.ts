@@ -89,12 +89,19 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
 
   const secret = PAYMENT_CONFIG.lemonsqueezy.webhookSecret;
   if (!secret) {
-    logger.info("[LS Webhook] No webhook secret configured");
-    return true; // 开发环境跳过验证
+    logger.error(
+      "[LS Webhook] LEMONSQUEEZY_WEBHOOK_SECRET not configured, rejecting request",
+    );
+    return false; // fail-safe：未配置密钥时拒绝所有请求
   }
 
   const hmac = crypto.createHmac("sha256", secret);
   const digest = hmac.update(rawBody).digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  } catch {
+    // Buffer 长度不一致时 timingSafeEqual 会抛异常
+    return false;
+  }
 }
