@@ -68,14 +68,19 @@ export function useBookmarkMove(
         }
 
         const result = await response.json();
-        const movedCount = result.data?.movedCount ?? bookmarkIds.length;
-        const folderName = result.data?.folderName ?? "目标文件夹";
+        const affected = result.data?.affected ?? 0;
+
+        // affected = 0 表示实际未移动任何记录（RLS 拦截、数据不存在等）
+        if (affected === 0) {
+          toast.warning("未移动任何收藏，请重试");
+          return false;
+        }
 
         // 刷新相关的 TanStack Query 缓存（统一失效机制）
         invalidateBookmarkCaches(queryClient);
 
-        toast.success(`已移动 ${movedCount} 条收藏到「${folderName}」`);
-        options.onSuccess?.(movedCount, folderName);
+        toast.success(`已移动 ${affected} 条收藏到目标文件夹`);
+        options.onSuccess?.(affected, result.data?.folderName ?? "目标文件夹");
 
         return true;
       } catch (error) {
