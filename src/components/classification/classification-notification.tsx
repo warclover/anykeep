@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw } from "lucide-react";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 /**
  * 分类响应数据结构
@@ -198,7 +199,7 @@ export async function handleClassificationNotification(
 export async function acceptClassificationSuggestion(
   suggestionId: number,
 ): Promise<void> {
-  const response = await fetch("/api/bookmarks/suggestions", {
+  const response = await fetch(API_BOOKMARKS.suggestions, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -221,7 +222,7 @@ export async function acceptClassificationSuggestion(
 export async function rejectClassificationSuggestion(
   suggestionId: number,
 ): Promise<void> {
-  const response = await fetch("/api/bookmarks/suggestions", {
+  const response = await fetch(API_BOOKMARKS.suggestions, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

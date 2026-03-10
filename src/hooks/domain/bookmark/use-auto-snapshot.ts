@@ -26,6 +26,7 @@ import {
 } from "@/lib/feature-flags";
 import type { SnapshotType } from "@/lib/snapshot/snapshot.types";
 import type { Platform } from "@/types/supabase";
+import { API_SNAPSHOTS, API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -70,7 +71,7 @@ async function checkSnapshotQuota(): Promise<{
   message?: string;
 }> {
   try {
-    const response = await fetch("/api/snapshots/quota");
+    const response = await fetch(API_SNAPSHOTS.quota);
     if (!response.ok) {
       return { canCreate: false, message: "无法检查配额" };
     }
@@ -107,7 +108,7 @@ async function createSnapshotWithSource(
   triggerTag?: string,
 ): Promise<{ success: boolean; snapshotId?: number; error?: string }> {
   try {
-    const response = await fetch("/api/snapshots", {
+    const response = await fetch(API_SNAPSHOTS.list, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -161,7 +162,7 @@ async function createWechatSnapshot(
   bookmarkId: number,
 ): Promise<{ success: boolean; snapshotId?: number; error?: string }> {
   try {
-    const response = await fetch("/api/wechat-article/create", {
+    const response = await fetch(API_WECHAT_ARTICLE.create, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

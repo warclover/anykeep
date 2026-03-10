@@ -28,6 +28,7 @@ import {
   DATE_GROUP_LABELS,
 } from "@/lib/notifications/notification.types";
 import { startOfDay, subDays } from "date-fns";
+import { notificationKeys } from "@/hooks/queries/keys";
 
 // ============================================================================
 // Supabase Client 单例（模块级缓存，避免每次渲染创建）
@@ -216,7 +217,7 @@ export function useNotifications(
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["notifications", { status, priority, limit }],
+    queryKey: notificationKeys.list({ status, priority, limit }),
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("user_notifications")
@@ -276,7 +277,7 @@ export function useNotifications(
     // 乐观更新
     onMutate: async (id) => {
       // 取消正在进行的请求，避免覆盖乐观更新
-      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
 
       // 保存旧数据用于回滚
       const previousData = queryClient.getQueryData([
@@ -319,7 +320,7 @@ export function useNotifications(
     },
     onSettled: () => {
       // 防抖刷新：仅刷新计数，通知列表依赖乐观更新
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     },
   });
 
@@ -335,7 +336,7 @@ export function useNotifications(
     },
     // 乐观更新
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
 
       const previousData = queryClient.getQueryData([
         "notifications",
@@ -375,7 +376,7 @@ export function useNotifications(
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     },
   });
 
@@ -389,8 +390,8 @@ export function useNotifications(
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     },
   });
 
@@ -404,8 +405,8 @@ export function useNotifications(
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     },
   });
 
@@ -444,7 +445,7 @@ export function useNotificationCounts(): {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["notification-counts"],
+    queryKey: notificationKeys.counts(),
     // 🔧 修复 #5: 使用 RPC 函数在数据库端聚合，避免传输大量数据
     queryFn: async () => {
       const {
@@ -498,7 +499,7 @@ export function useNotificationCounts(): {
     },
     isLoading,
     refresh: () => {
-      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.counts() });
     },
   };
 }
@@ -515,7 +516,7 @@ export function useNotification(id: string | null): {
   const supabase = getSupabaseClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["notification", id],
+    queryKey: notificationKeys.detail(id!),
     queryFn: async () => {
       if (!id) return null;
 

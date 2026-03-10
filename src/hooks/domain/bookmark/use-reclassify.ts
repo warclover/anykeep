@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import type { ClassificationSuggestion, Bookmark } from "@/types/supabase";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 // 缓存配置
 const CACHE_KEY_CHECK = "anykeep-reclassify-check";
@@ -176,7 +177,7 @@ export function useReclassify(): UseReclassifyReturn {
 
     try {
       const response = await fetch(
-        "/api/reclassify/suggestions?status=pending",
+        `${API_MISC.reclassifySuggestions}?status=pending`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -217,7 +218,7 @@ export function useReclassify(): UseReclassifyReturn {
 
     setIsChecking(true);
     try {
-      const response = await fetch("/api/reclassify/check");
+      const response = await fetch(API_MISC.reclassifyCheck);
       if (response.ok) {
         const data = await response.json();
         setCheckResult(data.data);
@@ -238,7 +239,7 @@ export function useReclassify(): UseReclassifyReturn {
     async (forceRun = false) => {
       setIsRunning(true);
       try {
-        const response = await fetch("/api/reclassify", {
+        const response = await fetch(API_MISC.reclassify, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ forceRun }),
@@ -286,7 +287,7 @@ export function useReclassify(): UseReclassifyReturn {
 
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/reclassify/suggestions", {
+        const response = await fetch(API_MISC.reclassifySuggestions, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "accept", suggestionIds: ids }),
@@ -321,7 +322,7 @@ export function useReclassify(): UseReclassifyReturn {
 
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/reclassify/suggestions", {
+        const response = await fetch(API_MISC.reclassifySuggestions, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "reject", suggestionIds: ids }),
@@ -352,7 +353,7 @@ export function useReclassify(): UseReclassifyReturn {
   const acceptAllSuggestions = useCallback(async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch("/api/reclassify/suggestions", {
+      const response = await fetch(API_MISC.reclassifySuggestions, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "accept_all" }),
@@ -385,7 +386,7 @@ export function useReclassify(): UseReclassifyReturn {
   const rejectAllSuggestions = useCallback(async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch("/api/reclassify/suggestions", {
+      const response = await fetch(API_MISC.reclassifySuggestions, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject_all" }),

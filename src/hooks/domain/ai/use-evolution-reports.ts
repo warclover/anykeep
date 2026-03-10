@@ -13,6 +13,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_FOLDER_EVOLUTION } from "@/lib/constants/api-paths";
 import type { ReportSuggestion } from "@/types/supabase";
 
 // Re-export for backward compatibility
@@ -100,7 +101,7 @@ export function useEvolutionReports(
     try {
       setError(null);
       const response = await fetch(
-        `/api/folder-evolution/reports?limit=${limit}`,
+        `${API_FOLDER_EVOLUTION.reports}?limit=${limit}`,
       );
 
       if (!response.ok) {
@@ -133,7 +134,7 @@ export function useEvolutionReports(
       try {
         setError(null);
         const response = await fetch(
-          `/api/folder-evolution/reports?month=${month}`,
+          `${API_FOLDER_EVOLUTION.reports}?month=${month}`,
         );
 
         if (!response.ok) {
@@ -164,7 +165,7 @@ export function useEvolutionReports(
     ): Promise<MonthlyReport | null> => {
       setIsGenerating(true);
       try {
-        const response = await fetch("/api/folder-evolution/reports", {
+        const response = await fetch(API_FOLDER_EVOLUTION.reports, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ month, forceRegenerate }),

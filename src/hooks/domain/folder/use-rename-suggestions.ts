@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_FOLDER_EVOLUTION } from "@/lib/constants/api-paths";
 
 interface RenameSuggestion {
   folderId: number;
@@ -51,7 +52,7 @@ export function useRenameSuggestions(
       if (folderId) params.set("folderId", String(folderId));
       params.set("limit", String(limit));
 
-      const url = `/api/folder-evolution/rename?${params.toString()}`;
+      const url = `${API_FOLDER_EVOLUTION.rename}?${params.toString()}`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -78,7 +79,7 @@ export function useRenameSuggestions(
     async (targetFolderId: number, newName: string): Promise<RenameResult> => {
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/folder-evolution/rename", {
+        const response = await fetch(API_FOLDER_EVOLUTION.rename, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

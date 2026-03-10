@@ -8,7 +8,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
-import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import {
+  API_CLASSIFICATION,
+  API_FOLDER_EVOLUTION,
+} from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -104,7 +107,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
     ): Promise<boolean> => {
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/folder-evolution/confirm-merge", {
+        const response = await fetch(API_FOLDER_EVOLUTION.confirmMerge, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -145,7 +148,7 @@ export function useFolderHealth(options: UseFolderHealthOptions = {}) {
     ): Promise<boolean> => {
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/folder-evolution/confirm-split", {
+        const response = await fetch(API_FOLDER_EVOLUTION.confirmSplit, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

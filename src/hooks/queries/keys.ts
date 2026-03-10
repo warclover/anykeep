@@ -371,3 +371,33 @@ export const mdCollectionKeys = {
 export const settingsKeys = {
   all: ["user-settings"] as const,
 };
+
+/**
+ * Folder Quota Query Keys (文件夹配额)
+ */
+export const folderQuotaKeys = {
+  all: ["folder-quota"] as const,
+};
+
+/**
+ * Folder Heat Query Keys (文件夹热度)
+ */
+export const folderHeatKeys = {
+  all: ["folder-heats"] as const,
+};
+
+/**
+ * Notification Query Keys (通知)
+ */
+export const notificationKeys = {
+  all: ["notifications"] as const,
+  /** 带过滤条件的通知列表 */
+  list: (filters: { status?: string; priority?: string[]; limit?: number }) =>
+    [...notificationKeys.all, filters] as const,
+  /** 未读计数 */
+  counts: () => ["notification-counts"] as const,
+  /** 未读计数（首页用） */
+  count: () => ["notification-count"] as const,
+  /** 单条通知详情 */
+  detail: (id: string) => ["notification", id] as const,
+};

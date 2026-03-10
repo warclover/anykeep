@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { useProcessingPoller } from "@/hooks/ui";
-import { customTagKeys } from "@/hooks/queries/keys";
+import { customTagKeys, notificationKeys } from "@/hooks/queries/keys";
 import type { NotificationCounts } from "@/hooks/domain/notification/use-notification-count";
 import { getPageSizeByView } from "../constants";
 import type { ViewMode, BookmarkWithFolder } from "../types";
@@ -165,9 +165,9 @@ export function HomeDataProvider({
     };
 
     // 仅在缓存为空时填充，避免覆盖 Realtime 更新的新数据
-    const existing = queryClient.getQueryData(["notification-count"]);
+    const existing = queryClient.getQueryData(notificationKeys.count());
     if (existing === undefined) {
-      queryClient.setQueryData(["notification-count"], counts);
+      queryClient.setQueryData(notificationKeys.count(), counts);
     }
   }, [shouldUseInitData, isInitDataLoading, initUnreadCount, queryClient]);
 

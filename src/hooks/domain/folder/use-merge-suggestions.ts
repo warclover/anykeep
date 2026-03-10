@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_FOLDER_EVOLUTION } from "@/lib/constants/api-paths";
 
 interface FolderForMerge {
   id: number;
@@ -48,7 +49,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
     try {
       setError(null);
       const response = await fetch(
-        `/api/folder-evolution/merge?minSimilarity=${minSimilarity}`,
+        `${API_FOLDER_EVOLUTION.merge}?minSimilarity=${minSimilarity}`,
       );
 
       if (!response.ok) {
@@ -79,7 +80,7 @@ export function useMergeSuggestions(options: UseMergeSuggestionsOptions = {}) {
     ): Promise<MergeResult> => {
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/folder-evolution/merge", {
+        const response = await fetch(API_FOLDER_EVOLUTION.merge, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

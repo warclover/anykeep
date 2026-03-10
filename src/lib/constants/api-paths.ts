@@ -445,6 +445,21 @@ export const API_FOLDERS = {
   suggestions: "/api/folders/suggestions",
   /** 文件夹统计（含最近书签） */
   withStats: "/api/folders/with-stats",
+
+  // =====================================================
+  // v1 API 路径（推荐用于前端 hooks）
+  // =====================================================
+
+  /** 文件夹列表/创建 (v1) */
+  v1List: "/api/v1/folders",
+  /** 文件夹详情/更新/删除 (v1) */
+  v1Detail: (id: number) => `/api/v1/folders/${id}`,
+  /** 文件夹路径/面包屑 (v1) */
+  v1Path: (id: number) => `/api/v1/folders/${id}/path`,
+  /** 文件夹移动 (v1) */
+  v1Move: (id: number) => `/api/v1/folders/${id}/move`,
+  /** 批量排序 (v1) */
+  v1BatchSort: "/api/v1/folders/batch-sort",
 } as const;
 
 // ============================================
@@ -458,6 +473,8 @@ export const API_FOLDER_EVOLUTION = {
   confirmSplit: "/api/folder-evolution/confirm-split",
   /** 演化历史 */
   history: "/api/folder-evolution/history",
+  /** 合并（获取建议 GET / 执行合并 POST） */
+  merge: "/api/folder-evolution/merge",
   /** 合并建议 */
   mergeSuggestions: "/api/folder-evolution/merge-suggestions",
   /** 重命名 */
@@ -466,6 +483,8 @@ export const API_FOLDER_EVOLUTION = {
   reports: "/api/folder-evolution/reports",
   /** 快照详情 */
   snapshot: (id: string) => `/api/folder-evolution/snapshot/${id}`,
+  /** 拆分（获取建议 GET / 执行拆分 POST） */
+  split: "/api/folder-evolution/split",
   /** 拆分建议 */
   splitSuggestions: "/api/folder-evolution/split-suggestions",
   /** 撤销 */

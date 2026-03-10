@@ -20,6 +20,7 @@ import type {
   MoveFolderInput,
 } from "@/contracts";
 import type { Folder } from "@/types/supabase";
+import { API_FOLDERS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 内部类型定义（适配 API 响应）
@@ -62,8 +63,8 @@ async function fetchFolders(
 
   // 使用 v1 API
   const url = params.toString()
-    ? `/api/v1/folders?${params}`
-    : "/api/v1/folders";
+    ? `${API_FOLDERS.v1List}?${params}`
+    : API_FOLDERS.v1List;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -90,7 +91,7 @@ async function fetchFolders(
  */
 async function fetchFolderTree(): Promise<InternalFolderTreeResponse> {
   // 使用 v1 API
-  const response = await fetch("/api/v1/folders?view=tree");
+  const response = await fetch(`${API_FOLDERS.v1List}?view=tree`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -117,7 +118,7 @@ async function fetchFolderTree(): Promise<InternalFolderTreeResponse> {
  */
 async function fetchFolder(id: number): Promise<FolderWithCountResponse> {
   // 使用 v1 API
-  const response = await fetch(`/api/v1/folders/${id}`);
+  const response = await fetch(API_FOLDERS.v1Detail(id));
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -133,7 +134,7 @@ async function fetchFolder(id: number): Promise<FolderWithCountResponse> {
  */
 async function fetchFolderPath(id: number): Promise<Folder[]> {
   // 使用 v1 API
-  const response = await fetch(`/api/v1/folders/${id}/path`);
+  const response = await fetch(API_FOLDERS.v1Path(id));
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -218,7 +219,7 @@ export function useCreateFolder() {
   return useMutation({
     mutationFn: async (data: CreateFolderInput) => {
       // 使用 v1 API
-      const response = await fetch("/api/v1/folders", {
+      const response = await fetch(API_FOLDERS.v1List, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -253,7 +254,7 @@ export function useUpdateFolder() {
       data: UpdateFolderInput;
     }) => {
       // 使用 v1 API
-      const response = await fetch(`/api/v1/folders/${id}`, {
+      const response = await fetch(API_FOLDERS.v1Detail(id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -285,7 +286,7 @@ export function useDeleteFolder() {
   return useMutation({
     mutationFn: async (id: number) => {
       // 使用 v1 API
-      const response = await fetch(`/api/v1/folders/${id}`, {
+      const response = await fetch(API_FOLDERS.v1Detail(id), {
         method: "DELETE",
       });
 
@@ -358,7 +359,7 @@ export function useMoveFolder() {
   return useMutation({
     mutationFn: async (data: MoveFolderInput & { id: number }) => {
       // 使用 v1 API
-      const response = await fetch(`/api/v1/folders/${data.id}/move`, {
+      const response = await fetch(API_FOLDERS.v1Move(data.id), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetParentId: data.targetParentId }),
@@ -389,7 +390,7 @@ export function useBatchSortFolders() {
       items: Array<{ id: number; sortOrder: number }>;
     }) => {
       // 使用 v1 API (转换参数格式)
-      const response = await fetch("/api/v1/folders/batch-sort", {
+      const response = await fetch(API_FOLDERS.v1BatchSort, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderings: data.items }),

@@ -6,6 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { UnifiedQuotaResult } from "@/lib/folder-quota";
+import { folderQuotaKeys } from "@/hooks/queries/keys";
 
 async function fetchFolderQuota(): Promise<UnifiedQuotaResult> {
   const response = await fetch("/api/folders/quota");
@@ -22,7 +23,7 @@ async function fetchFolderQuota(): Promise<UnifiedQuotaResult> {
  */
 export function useFolderQuota() {
   return useQuery({
-    queryKey: ["folder-quota"],
+    queryKey: folderQuotaKeys.all,
     queryFn: fetchFolderQuota,
     staleTime: 60 * 1000, // 1 分钟内不重新请求
     refetchOnWindowFocus: false,

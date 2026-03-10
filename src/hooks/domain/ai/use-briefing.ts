@@ -18,6 +18,7 @@ import type {
 } from "@/lib/ai-agent/proactive-briefing";
 import { requestDeduplicator } from "@/lib/utils/request-deduplicator";
 import { clientLogger } from "@/lib/client-logger";
+import { API_AGENT } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -137,7 +138,7 @@ export function useBriefing(
     }));
 
     try {
-      const url = "/api/agent/briefing";
+      const url = API_AGENT.briefing;
 
       // 使用请求去重器，防止并发重复请求（仅 GET 请求去重���
       const result = isRefresh
@@ -146,7 +147,7 @@ export function useBriefing(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "refresh" }),
           }).then((r) => r.json())
-        : await requestDeduplicator.dedupe("/api/agent/briefing", async () => {
+        : await requestDeduplicator.dedupe(API_AGENT.briefing, async () => {
             const response = await fetch(url);
             if (!response.ok) {
               const errorData = await response.json();
@@ -193,7 +194,7 @@ export function useBriefing(
    */
   const markRead = useCallback(async (insightId: string) => {
     try {
-      const response = await fetch("/api/agent/briefing", {
+      const response = await fetch(API_AGENT.briefing, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "markRead", insightId }),
@@ -232,7 +233,7 @@ export function useBriefing(
    */
   const markAllRead = useCallback(async () => {
     try {
-      const response = await fetch("/api/agent/briefing", {
+      const response = await fetch(API_AGENT.briefing, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "markAllRead" }),
@@ -274,7 +275,7 @@ export function useBriefing(
    */
   const dismiss = useCallback(async (insightId: string) => {
     try {
-      const response = await fetch("/api/agent/briefing", {
+      const response = await fetch(API_AGENT.briefing, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "dismiss", insightId }),

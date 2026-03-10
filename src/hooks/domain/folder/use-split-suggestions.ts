@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_FOLDER_EVOLUTION } from "@/lib/constants/api-paths";
 
 interface SubCluster {
   suggestedName: string;
@@ -50,8 +51,8 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
     try {
       setError(null);
       const url = folderId
-        ? `/api/folder-evolution/split?folderId=${folderId}`
-        : "/api/folder-evolution/split";
+        ? `${API_FOLDER_EVOLUTION.split}?folderId=${folderId}`
+        : API_FOLDER_EVOLUTION.split;
 
       const response = await fetch(url);
 
@@ -82,7 +83,7 @@ export function useSplitSuggestions(options: UseSplitSuggestionsOptions = {}) {
     ): Promise<SplitResult> => {
       setIsProcessing(true);
       try {
-        const response = await fetch("/api/folder-evolution/split", {
+        const response = await fetch(API_FOLDER_EVOLUTION.split, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

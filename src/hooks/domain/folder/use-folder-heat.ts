@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
+import { folderHeatKeys } from "@/hooks/queries/keys";
 
 // ==================== 类型定义 ====================
 
@@ -104,7 +105,7 @@ export function useFolderHeat(
   const { enabled = true } = options;
 
   const { data, error, isLoading, refetch } = useQuery<FolderHeat[], Error>({
-    queryKey: ["folder-heats"],
+    queryKey: folderHeatKeys.all,
     queryFn: fetchFolderHeats,
     enabled,
     staleTime: STALE_TIME,
