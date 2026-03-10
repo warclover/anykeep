@@ -136,7 +136,7 @@ async function loadFolderCount(
     .from("folders")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("is_deleted", false);
+    .is("deleted_at", null);
 
   return count ?? 0;
 }

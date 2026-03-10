@@ -215,8 +215,8 @@ export class CascadeRanker {
       }
     }
 
-    // 归一化分数
-    normalizeMergedScores(accumulated);
+    // 归一化分数（传入权重以按实际贡献 Scorer 归一化）
+    normalizeMergedScores(accumulated, weights);
 
     // 构建最终排序结果
     const topK = getTopK(accumulated, this.config.topK);

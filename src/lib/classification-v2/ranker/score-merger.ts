@@ -111,24 +111,54 @@ function computeDiscriminationBonus(scores: Map<number, Score>): number {
 /**
  * 归一化融合分数到 0-1 范围
  *
- * 由于是多个 Scorer 的加权叠加，原始 value 可能超过 1。
- * 在最终输出前调用此函数归一化。
+ * 核心问题：加权叠加时，如果只有 2/5 个 Scorer 产出分数，
+ * 即使它们都给出满分，加权和也只有两者权重之和（如 0.35），
+ * 远低于 action 阈值（0.6/0.85）。
+ *
+ * 修复：按每个文件夹**实际参与评分的 Scorer 权重总和**归一化，
+ * 使得分数反映"在已评分维度上的平均表现"，而非"在所有维度上的绝对总和"。
+ *
+ * @param accumulated - 融合后的分数 Map
+ * @param scorerWeights - 各 Scorer 的权重 Map（用于计算实际贡献权重）
  */
 export function normalizeMergedScores(
   accumulated: Map<number, MergedScore>,
+  scorerWeights?: Map<string, number>,
 ): Map<number, MergedScore> {
-  const maxValue = Math.max(
-    ...Array.from(accumulated.values()).map((s) => s.value),
-    0.001, // 避免除以 0
-  );
+  if (accumulated.size === 0) return accumulated;
 
-  if (maxValue <= 1.0) return accumulated;
+  if (scorerWeights && scorerWeights.size > 0) {
+    // 按实际贡献 Scorer 的权重总和归一化（每个文件夹独立计算）
+    for (const [folderId, score] of accumulated) {
+      const contributingWeightSum = Object.keys(score.breakdown).reduce(
+        (sum, scorerName) => sum + (scorerWeights.get(scorerName) ?? 0),
+        0,
+      );
 
-  for (const [folderId, score] of accumulated) {
-    accumulated.set(folderId, {
-      ...score,
-      value: score.value / maxValue,
-    });
+      if (contributingWeightSum > 0 && contributingWeightSum < 1.0) {
+        // 归一化：将加权和除以实际贡献权重，映射回 0-1
+        const normalized = Math.min(score.value / contributingWeightSum, 1.0);
+        accumulated.set(folderId, { ...score, value: normalized });
+      } else if (score.value > 1.0) {
+        // 超过 1.0 时裁剪
+        accumulated.set(folderId, { ...score, value: 1.0 });
+      }
+    }
+  } else {
+    // 回退：仅在超过 1.0 时做最大值归一化
+    const maxValue = Math.max(
+      ...Array.from(accumulated.values()).map((s) => s.value),
+      0.001,
+    );
+
+    if (maxValue > 1.0) {
+      for (const [folderId, score] of accumulated) {
+        accumulated.set(folderId, {
+          ...score,
+          value: score.value / maxValue,
+        });
+      }
+    }
   }
 
   return accumulated;

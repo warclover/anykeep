@@ -20,12 +20,12 @@ export async function buildFolderContexts(
 ): Promise<FolderContext[]> {
   const supabase = await createClient();
 
-  // 1. 获取文件夹列表
+  // 1. 获取文件夹列表（folders 表使用 deleted_at 软删除，非 is_deleted 布尔列）
   const { data: folders, error: foldersError } = await supabase
     .from("folders")
     .select("id, name")
     .eq("user_id", userId)
-    .eq("is_deleted", false)
+    .is("deleted_at", null)
     .order("name");
 
   if (foldersError || !folders?.length) return [];
