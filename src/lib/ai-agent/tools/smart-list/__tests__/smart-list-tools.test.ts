@@ -21,16 +21,17 @@ const mockSmartList = {
   id: 1,
   name: "未读技术文章",
   description: "筛选未读的技术类文章",
-  filter_config: {
-    is_read: false,
-    platforms: ["juejin", "github"],
-  },
-  sort_config: {
-    field: "created_at",
-    order: "desc",
-  },
+  icon: "📋",
+  color: "default",
+  filters: {},
+  sort_by: "created_desc",
+  view_mode: "inherit",
   is_pinned: false,
-  item_count: 15,
+  is_preset: false,
+  sort_order: 1,
+  bookmark_count: 15,
+  user_id: "test-user-id",
+  deleted_at: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
@@ -40,82 +41,109 @@ const mockBookmark = {
   title: "React 性能优化",
   url: "https://example.com/react",
   platform: "juejin",
+  description: "React performance tips",
+  ai_summary: "Summary",
+  ai_tags: ["react"],
+  user_tags: ["frontend"],
+  rating: 4,
   is_read: false,
+  is_starred: false,
+  created_at: new Date().toISOString(),
 };
 
-// Mock 结果存储
-let mockSelectResult: { data: unknown; error: unknown; count?: number } = {
+// ============================================
+// Chainable mock builder for Supabase queries
+// ============================================
+
+// Per-call result control
+// Queue-based: if queue has items, shift from queue; otherwise use default.
+let smartListSelectDefault: { data: unknown; error: unknown } = {
   data: mockSmartList,
   error: null,
 };
-let mockUpdateResult: { error: unknown } = { error: null };
-let mockInsertResult: { data: unknown; error: unknown } = {
-  data: mockSmartList,
+let smartListSelectQueue: { data: unknown; error: unknown }[] = [];
+let smartListInsertResult: { data: unknown; error: unknown } = {
+  data: { id: 1, name: "未读技术文章", filters: {} },
   error: null,
 };
-let _mockDeleteResult: { error: unknown } = { error: null };
+let bookmarkQueryResult: { data: unknown; error: unknown; count?: number } = {
+  data: [mockBookmark],
+  error: null,
+  count: 15,
+};
 
-// Mock Supabase client
+function getSmartListSelectResult(): { data: unknown; error: unknown } {
+  if (smartListSelectQueue.length > 0) {
+    return smartListSelectQueue.shift()!;
+  }
+  return smartListSelectDefault;
+}
+
+/**
+ * Creates a chainable Proxy mock that supports arbitrary method chaining.
+ * Accessing `.then` makes it resolve as a promise with the given result.
+ * `.single()` also returns a promise directly.
+ */
+function createChainMock(
+  result: () => { data: unknown; error: unknown; count?: number },
+): unknown {
+  const makeChain = (): unknown => {
+    return new Proxy(
+      {},
+      {
+        get(_target, prop) {
+          if (prop === "then") {
+            const r = result();
+            return (
+              resolve: (v: unknown) => void,
+              reject: (e: unknown) => void,
+            ) => Promise.resolve(r).then(resolve, reject);
+          }
+          if (prop === "single") {
+            return jest.fn(() => Promise.resolve(result()));
+          }
+          // All other methods return a new chainable proxy
+          return jest.fn((..._args: unknown[]) => makeChain());
+        },
+      },
+    );
+  };
+  return makeChain();
+}
+
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() =>
     Promise.resolve({
       from: jest.fn((table: string) => {
         if (table === "smart_lists") {
           return {
-            select: jest.fn(() => ({
-              eq: jest.fn(() => ({
-                is: jest.fn(() => ({
-                  order: jest.fn(() =>
-                    Promise.resolve({
-                      data: [mockSmartList],
-                      error: null,
-                    }),
-                  ),
-                  single: jest.fn(() => Promise.resolve(mockSelectResult)),
-                })),
-                single: jest.fn(() => Promise.resolve(mockSelectResult)),
-              })),
-            })),
+            // SELECT path - fully chainable, resolves via queue or default
+            select: jest.fn((..._args: unknown[]) =>
+              createChainMock(() => getSmartListSelectResult()),
+            ),
+            // INSERT path
             insert: jest.fn(() => ({
               select: jest.fn(() => ({
-                single: jest.fn(() => Promise.resolve(mockInsertResult)),
+                single: jest.fn(() => Promise.resolve(smartListInsertResult)),
               })),
             })),
-            update: jest.fn(() => ({
-              eq: jest.fn(() => ({
-                eq: jest.fn(() => Promise.resolve(mockUpdateResult)),
-              })),
-            })),
-            delete: jest.fn(() => ({
-              eq: jest.fn(() => ({
-                eq: jest.fn(() => Promise.resolve({ error: null })),
-              })),
-            })),
+            // UPDATE path - fully chainable, resolves to { error: null }
+            update: jest.fn(() =>
+              createChainMock(() => ({ data: null, error: null })),
+            ),
+            // DELETE path - fully chainable, resolves to { error: null }
+            delete: jest.fn(() =>
+              createChainMock(() => ({ data: null, error: null })),
+            ),
           };
         }
         if (table === "bookmarks") {
-          return {
-            select: jest.fn(() => ({
-              eq: jest.fn(() => ({
-                is: jest.fn(() => ({
-                  order: jest.fn(() => ({
-                    range: jest.fn(() =>
-                      Promise.resolve({
-                        data: [mockBookmark],
-                        error: null,
-                        count: 15,
-                      }),
-                    ),
-                  })),
-                })),
-              })),
-            })),
-          };
+          return createChainMock(() => bookmarkQueryResult);
         }
         return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => Promise.resolve({ data: [], error: null })),
-          })),
+          select: jest.fn(() =>
+            createChainMock(() => ({ data: [], error: null })),
+          ),
         };
       }),
       rpc: jest.fn((funcName: string) => {
@@ -126,6 +154,20 @@ jest.mock("@/lib/supabase/server", () => ({
       }),
     }),
   ),
+}));
+
+// Mock toSmartListClient for listSmartListsTool
+jest.mock("@/types/smart-list", () => ({
+  toSmartListClient: jest.fn((list: Record<string, unknown>) => ({
+    id: list.id,
+    name: list.name,
+    icon: list.icon || "📋",
+    color: list.color || "default",
+    description: list.description || "",
+    isPreset: list.is_preset || false,
+    isPinned: list.is_pinned || false,
+    bookmarkCount: list.bookmark_count || 0,
+  })),
 }));
 
 // Mock logger
@@ -145,10 +187,17 @@ describe("Smart List Tools", () => {
   };
 
   beforeEach(() => {
-    mockSelectResult = { data: mockSmartList, error: null };
-    mockUpdateResult = { error: null };
-    mockInsertResult = { data: mockSmartList, error: null };
-    _mockDeleteResult = { error: null };
+    smartListSelectDefault = { data: mockSmartList, error: null };
+    smartListSelectQueue = [];
+    smartListInsertResult = {
+      data: { id: 1, name: "未读技术文章", filters: {} },
+      error: null,
+    };
+    bookmarkQueryResult = {
+      data: [mockBookmark],
+      error: null,
+      count: 15,
+    };
     jest.clearAllMocks();
   });
 
@@ -171,8 +220,13 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should list smart lists", async () => {
+      it("should list smart lists", async () => {
+        // listSmartLists awaits the query chain (not .single()) so data should be an array
+        smartListSelectDefault = {
+          data: [mockSmartList],
+          error: null,
+        };
+
         const result = await listSmartListsTool.execute(
           { includePresets: false, pinnedOnly: false },
           mockContext,
@@ -183,7 +237,12 @@ describe("Smart List Tools", () => {
         expect(result.data).toBeDefined();
       });
 
-      it.skip("should filter by pinned status", async () => {
+      it("should filter by pinned status", async () => {
+        smartListSelectDefault = {
+          data: [mockSmartList],
+          error: null,
+        };
+
         const result = await listSmartListsTool.execute(
           { includePresets: false, pinnedOnly: true },
           mockContext,
@@ -211,8 +270,7 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should get items from smart list", async () => {
+      it("should get items from smart list", async () => {
         const result = await getSmartListItemsTool.execute(
           { smartListId: 1, limit: 10, offset: 0 },
           mockContext,
@@ -221,7 +279,7 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should respect page and limit params", async () => {
+      it("should respect page and limit params", async () => {
         const result = await getSmartListItemsTool.execute(
           { smartListId: 1, limit: 10, offset: 10 },
           mockContext,
@@ -230,8 +288,11 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should return error if list not found", async () => {
-        mockSelectResult = { data: null, error: { message: "Not found" } };
+      it("should return error if list not found", async () => {
+        smartListSelectDefault = {
+          data: null,
+          error: { message: "Not found" },
+        };
 
         const result = await getSmartListItemsTool.execute(
           { smartListId: 999, limit: 10, offset: 0 },
@@ -260,8 +321,7 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 RPC mock 的测试
-      it.skip("should get smart list count", async () => {
+      it("should get smart list count", async () => {
         const result = await getSmartListCountTool.execute(
           { smartListId: 1 },
           mockContext,
@@ -270,8 +330,11 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should return error if list not found", async () => {
-        mockSelectResult = { data: null, error: { message: "Not found" } };
+      it("should return error if list not found", async () => {
+        smartListSelectDefault = {
+          data: null,
+          error: { message: "Not found" },
+        };
 
         const result = await getSmartListCountTool.execute(
           { smartListId: 999 },
@@ -306,9 +369,8 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 select→update mock 链的测试
-      it.skip("should toggle pin status from false to true", async () => {
-        mockSelectResult = {
+      it("should toggle pin status from false to true", async () => {
+        smartListSelectDefault = {
           data: { ...mockSmartList, is_pinned: false },
           error: null,
         };
@@ -323,8 +385,8 @@ describe("Smart List Tools", () => {
         expect(result.data.isPinned).toBe(true);
       });
 
-      it.skip("should toggle pin status from true to false", async () => {
-        mockSelectResult = {
+      it("should toggle pin status from true to false", async () => {
+        smartListSelectDefault = {
           data: { ...mockSmartList, is_pinned: true },
           error: null,
         };
@@ -339,8 +401,8 @@ describe("Smart List Tools", () => {
         expect(result.data.isPinned).toBe(false);
       });
 
-      it.skip("should set explicit pin status when provided", async () => {
-        mockSelectResult = {
+      it("should set explicit pin status when provided", async () => {
+        smartListSelectDefault = {
           data: { ...mockSmartList, is_pinned: false },
           error: null,
         };
@@ -355,8 +417,11 @@ describe("Smart List Tools", () => {
         expect(result.data.isPinned).toBe(true);
       });
 
-      it.skip("should return error if list not found", async () => {
-        mockSelectResult = { data: null, error: { message: "Not found" } };
+      it("should return error if list not found", async () => {
+        smartListSelectDefault = {
+          data: null,
+          error: { message: "Not found" },
+        };
 
         const result = await toggleSmartListPinTool.execute(
           { smartListId: 999 },
@@ -383,8 +448,13 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should update smart list name", async () => {
+      it("should update smart list name", async () => {
+        // Queue: 1st → existence check (found), 2nd → name-duplicate check (not found)
+        smartListSelectQueue = [
+          { data: mockSmartList, error: null },
+          { data: null, error: null },
+        ];
+
         const result = await updateSmartListTool.execute(
           { smartListId: 1, name: "New Name" },
           mockContext,
@@ -393,7 +463,7 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should update smart list description", async () => {
+      it("should update smart list description", async () => {
         const result = await updateSmartListTool.execute(
           { smartListId: 1, description: "New description" },
           mockContext,
@@ -402,8 +472,11 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should return error if list not found", async () => {
-        mockSelectResult = { data: null, error: { message: "Not found" } };
+      it("should return error if list not found", async () => {
+        smartListSelectDefault = {
+          data: null,
+          error: { message: "Not found" },
+        };
 
         const result = await updateSmartListTool.execute(
           { smartListId: 999, name: "New Name" },
@@ -459,8 +532,15 @@ describe("Smart List Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should create smart list with name", async () => {
+      it("should create smart list with name", async () => {
+        // Name check and max order queries both use select path -> smartListSelectDefault
+        // data: null means name doesn't exist (good) and maxOrderData is null (sort_order defaults to 1)
+        smartListSelectDefault = { data: null, error: null };
+        smartListInsertResult = {
+          data: { id: 2, name: "New Smart List", filters: {} },
+          error: null,
+        };
+
         const result = await createSmartListTool.execute(
           {
             name: "New Smart List",
@@ -476,7 +556,13 @@ describe("Smart List Tools", () => {
         expect(result.success).toBe(true);
       });
 
-      it.skip("should create smart list with filter config", async () => {
+      it("should create smart list with filter config", async () => {
+        smartListSelectDefault = { data: null, error: null };
+        smartListInsertResult = {
+          data: { id: 3, name: "Filtered List", filters: { isRead: false } },
+          error: null,
+        };
+
         const result = await createSmartListTool.execute(
           {
             name: "Filtered List",

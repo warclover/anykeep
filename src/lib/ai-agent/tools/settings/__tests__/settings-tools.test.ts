@@ -47,6 +47,111 @@ let mockSelectResult: { data: unknown; error: unknown } = {
 };
 let mockUpdateResult: { error: unknown } = { error: null };
 
+// Mock effective config for trustModeService
+const mockEffectiveConfig = {
+  mode: "semi_auto" as const,
+  config: {
+    classification: {
+      autoClassify: true,
+      requireConfirmation: true,
+      confirmationThreshold: 70,
+      lowConfidenceAction: "ask_user",
+    },
+    folderManagement: {
+      autoCreate: true,
+      autoMerge: false,
+      autoSplit: false,
+      autoRename: false,
+      dailyCreateLimit: 5,
+    },
+    learning: {
+      learnFromManualMoves: true,
+      learnFromDeletions: false,
+    },
+    notification: {
+      onClassification: true,
+      onFolderCreate: true,
+      onFolderSuggestion: false,
+      onMajorReorganization: false,
+    },
+  },
+  stats: {
+    autoDecisions: 42,
+    userCorrections: 3,
+    pendingConfirmations: 2,
+    correctionRate: 0.07,
+  },
+};
+
+// Mock trustModeService
+const mockGetEffectiveConfig = jest.fn(() =>
+  Promise.resolve({ ...mockEffectiveConfig }),
+);
+const mockUpdateOverrides = jest.fn(() => Promise.resolve());
+const mockUpdateTrustMode = jest.fn(() => Promise.resolve());
+
+jest.mock("@/lib/trust-mode/trust-mode.service", () => ({
+  trustModeService: {
+    getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
+    updateOverrides: (...args: unknown[]) => mockUpdateOverrides(...args),
+    updateTrustMode: (...args: unknown[]) => mockUpdateTrustMode(...args),
+  },
+}));
+
+// Mock interestService
+const mockGetUserInterests = jest.fn(() =>
+  Promise.resolve({
+    presetInterests: ["tech_frontend", "tech_ai"],
+    customInterests: [],
+  }),
+);
+const mockSetPresetInterests = jest.fn(() => Promise.resolve());
+
+jest.mock("@/lib/interests", () => ({
+  createInterestService: jest.fn(() => ({
+    getUserInterests: (...args: unknown[]) => mockGetUserInterests(...args),
+    setPresetInterests: (...args: unknown[]) => mockSetPresetInterests(...args),
+  })),
+}));
+
+// Mock interest domains
+jest.mock("@/lib/user-interest/interest-domains", () => ({
+  PRESET_INTEREST_DOMAINS: {
+    tech_frontend: {
+      name: "前端开发",
+      icon: "💻",
+      category: "tech",
+      keywords: ["React", "Vue"],
+    },
+    tech_ai: {
+      name: "AI/机器学习",
+      icon: "🤖",
+      category: "tech",
+      keywords: ["LLM", "ML"],
+    },
+    design_ui: {
+      name: "UI/UX设计",
+      icon: "🎨",
+      category: "design",
+      keywords: ["Figma"],
+    },
+  },
+  getAllPresetInterestIds: jest.fn(() => [
+    "tech_frontend",
+    "tech_backend",
+    "tech_ai",
+    "tech_mobile",
+    "design_ui",
+    "design_graphic",
+    "product",
+    "marketing",
+    "reading",
+    "investment",
+    "lifestyle",
+    "learning",
+  ]),
+}));
+
 // Mock Supabase client
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(() =>
@@ -115,6 +220,8 @@ describe("Settings Tools", () => {
     mockSelectResult = { data: mockUserSettings, error: null };
     mockUpdateResult = { error: null };
     jest.clearAllMocks();
+    // Reset mockGetEffectiveConfig to return default config
+    mockGetEffectiveConfig.mockResolvedValue({ ...mockEffectiveConfig });
   });
 
   // ============================================
@@ -136,15 +243,18 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should get user settings", async () => {
+      it("should get user settings", async () => {
         const result = await getUserSettingsTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.trustMode.mode).toBe("semi_auto");
+          expect(result.data.classification.autoClassify).toBe(true);
+        }
       });
 
-      it.skip("should return error if settings not found", async () => {
-        mockSelectResult = { data: null, error: { message: "Not found" } };
+      it("should return error if settings not found", async () => {
+        mockGetEffectiveConfig.mockRejectedValueOnce(new Error("Not found"));
 
         const result = await getUserSettingsTool.execute({}, mockContext);
 
@@ -170,14 +280,17 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 RPC mock 的测试
-      it.skip("should get classification settings", async () => {
+      it("should get classification settings", async () => {
         const result = await getClassificationSettingsTool.execute(
           {},
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.mode).toBe("semi_auto");
+          expect(result.data.classification.autoClassify).toBe(true);
+        }
       });
     });
   });
@@ -201,32 +314,51 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 RPC mock 的测试
-      it.skip("should update learnFromManualMoves setting", async () => {
+      it("should update learnFromManualMoves setting", async () => {
         const result = await updateClassificationSettingsTool.execute(
           { learnFromManualMoves: false },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        expect(mockUpdateOverrides).toHaveBeenCalledWith(
+          "test-user-id",
+          expect.objectContaining({
+            learning: expect.objectContaining({
+              learnFromManualMoves: false,
+            }),
+          }),
+        );
       });
 
-      it.skip("should update learnFromDeletions setting", async () => {
+      it("should update learnFromDeletions setting", async () => {
         const result = await updateClassificationSettingsTool.execute(
           { learnFromDeletions: true },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        expect(mockUpdateOverrides).toHaveBeenCalledWith(
+          "test-user-id",
+          expect.objectContaining({
+            learning: expect.objectContaining({
+              learnFromDeletions: true,
+            }),
+          }),
+        );
       });
 
-      it.skip("should update confirmationThreshold", async () => {
+      it("should update confirmationThreshold", async () => {
         const result = await updateClassificationSettingsTool.execute(
-          { confirmationThreshold: 0.8 },
+          { confirmationThreshold: 80 },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.updated).toContain("confirmationThreshold");
+          expect(result.data.newValues.confirmationThreshold).toBe(80);
+        }
       });
     });
   });
@@ -246,11 +378,14 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 RPC mock 的测试
-      it.skip("should get user interests", async () => {
+      it("should get user interests", async () => {
         const result = await getUserInterestsTool.execute({}, mockContext);
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.presetInterests).toHaveLength(2);
+          expect(result.data.summary.presetCount).toBe(2);
+        }
       });
     });
   });
@@ -272,26 +407,29 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 RPC mock 的测试
-      it.skip("should add interest", async () => {
+      it("should add interest", async () => {
         const result = await updateUserInterestsTool.execute(
           { action: "add", presetInterests: ["tech_frontend"] },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        expect(mockSetPresetInterests).toHaveBeenCalled();
       });
 
-      it.skip("should remove interest", async () => {
+      it("should remove interest", async () => {
         const result = await updateUserInterestsTool.execute(
           { action: "remove", presetInterests: ["tech_frontend"] },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.removed).toContain("tech_frontend");
+        }
       });
 
-      it.skip("should replace all interests", async () => {
+      it("should replace all interests", async () => {
         const result = await updateUserInterestsTool.execute(
           {
             action: "replace",
@@ -301,6 +439,11 @@ describe("Settings Tools", () => {
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.currentInterests).toEqual(
+            expect.arrayContaining(["tech_frontend", "design_ui"]),
+          );
+        }
       });
     });
   });
@@ -324,32 +467,50 @@ describe("Settings Tools", () => {
     });
 
     describe("execute", () => {
-      // 跳过需要复杂 mock 链的测试
-      it.skip("should update trust mode to manual", async () => {
+      it("should update trust mode to manual", async () => {
         const result = await updateTrustModeTool.execute(
           { mode: "manual" },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.currentMode).toBe("manual");
+          expect(result.data.previousMode).toBe("semi_auto");
+        }
+        expect(mockUpdateTrustMode).toHaveBeenCalledWith(
+          "test-user-id",
+          "manual",
+        );
       });
 
-      it.skip("should update trust mode to semi_auto", async () => {
+      it("should update trust mode to semi_auto", async () => {
+        // Current mode is semi_auto, so it should return "already in this mode"
         const result = await updateTrustModeTool.execute(
           { mode: "semi_auto" },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.currentMode).toBe("semi_auto");
+        }
       });
 
-      it.skip("should update trust mode to full_auto", async () => {
+      it("should update trust mode to full_auto", async () => {
         const result = await updateTrustModeTool.execute(
           { mode: "full_auto" },
           mockContext,
         );
 
         expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.currentMode).toBe("full_auto");
+        }
+        expect(mockUpdateTrustMode).toHaveBeenCalledWith(
+          "test-user-id",
+          "full_auto",
+        );
       });
     });
   });

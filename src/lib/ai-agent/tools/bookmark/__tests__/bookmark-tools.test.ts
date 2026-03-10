@@ -14,6 +14,7 @@ import { createBookmarkTool } from "../create-bookmark.tool";
 import { updateBookmarkTool } from "../update-bookmark.tool";
 import { batchDeleteBookmarksTool } from "../batch-delete-bookmarks.tool";
 import { createSnapshotTool } from "../create-snapshot.tool";
+import { createClient } from "@/lib/supabase/server";
 import type { ToolContext } from "../../types";
 
 // Mock 书签数据
@@ -88,6 +89,21 @@ jest.mock("@/lib/supabase/server", () => ({
       })),
     }),
   ),
+}));
+
+// Mock snapshot service
+jest.mock("@/lib/snapshot/snapshot.service", () => ({
+  snapshotService: {
+    canCreateSnapshot: jest.fn(() => Promise.resolve(true)),
+    getActiveSnapshot: jest.fn(() => Promise.resolve(null)),
+    createSnapshot: jest.fn(() =>
+      Promise.resolve({
+        snapshotId: 1,
+        jobId: "job-123",
+        estimatedWaitTime: 30,
+      }),
+    ),
+  },
 }));
 
 // Mock logger
@@ -296,19 +312,63 @@ describe("Bookmark Tools", () => {
         expect(result.data.url).toBeDefined();
       });
 
-      // Note: This test requires more sophisticated mock for folder query chain
-      // Skipping for now as the core create functionality is tested above
-      it.skip("should create bookmark with full data", async () => {
-        mockSelectResult = { data: null, error: null };
-        mockInsertResult = {
-          data: {
-            id: 2,
-            title: "New Bookmark",
-            url: "https://example.com/new",
-            folder_id: 1,
-          },
-          error: null,
+      it("should create bookmark with full data", async () => {
+        // Need table-aware mock: bookmarks query returns null (no duplicate),
+        // folders query returns folder data
+        const mockInsertData = {
+          id: 2,
+          title: "New Bookmark",
+          url: "https://example.com/new",
+          folder_id: 1,
         };
+
+        const makeSingleChain = (result: {
+          data: unknown;
+          error: unknown;
+        }) => ({
+          single: jest.fn(() => Promise.resolve(result)),
+        });
+
+        const mockedCreateClient = jest.mocked(createClient);
+        mockedCreateClient.mockResolvedValueOnce({
+          from: jest.fn((table: string) => {
+            if (table === "bookmarks") {
+              return {
+                select: jest.fn(() => ({
+                  eq: jest.fn(() => ({
+                    eq: jest.fn(() => ({
+                      is: jest.fn(() =>
+                        makeSingleChain({ data: null, error: null }),
+                      ),
+                    })),
+                  })),
+                })),
+                insert: jest.fn(() => ({
+                  select: jest.fn(() =>
+                    makeSingleChain({ data: mockInsertData, error: null }),
+                  ),
+                })),
+              };
+            }
+            if (table === "folders") {
+              return {
+                select: jest.fn(() => ({
+                  eq: jest.fn(() => ({
+                    eq: jest.fn(() => ({
+                      is: jest.fn(() =>
+                        makeSingleChain({
+                          data: { id: 1, name: "Test Folder" },
+                          error: null,
+                        }),
+                      ),
+                    })),
+                  })),
+                })),
+              };
+            }
+            return {};
+          }),
+        } as never);
 
         const result = await createBookmarkTool.execute(
           {
@@ -323,6 +383,9 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
+        expect(result.data.folderId).toBe(1);
+        expect(result.data.folderName).toBe("Test Folder");
       });
 
       it("should detect duplicate URL", async () => {
@@ -470,14 +533,49 @@ describe("Bookmark Tools", () => {
     });
 
     describe("execute", () => {
-      // Note: This test requires confirmation flow mock
-      it.skip("should batch delete bookmarks", async () => {
+      it("should batch delete bookmarks", async () => {
+        // Provide confirmed: true to skip confirmation flow
+        const confirmedContext: ToolContext = {
+          ...mockContext,
+          confirmed: true,
+        };
+
+        // Mock: select→in→eq→is returns bookmark list, update→in→eq returns success
+        const mockedCreateClient = jest.mocked(createClient);
+        mockedCreateClient.mockResolvedValueOnce({
+          from: jest.fn(() => ({
+            select: jest.fn(() => ({
+              in: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  is: jest.fn(() =>
+                    Promise.resolve({
+                      data: [
+                        { id: 1, title: "B1" },
+                        { id: 2, title: "B2" },
+                        { id: 3, title: "B3" },
+                      ],
+                      error: null,
+                    }),
+                  ),
+                })),
+              })),
+            })),
+            update: jest.fn(() => ({
+              in: jest.fn(() => ({
+                eq: jest.fn(() => Promise.resolve({ error: null, count: 3 })),
+              })),
+            })),
+          })),
+        } as never);
+
         const result = await batchDeleteBookmarksTool.execute(
           { bookmarkIds: [1, 2, 3], permanent: false },
-          mockContext,
+          confirmedContext,
         );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
+        expect(result.data.deletedCount).toBe(3);
       });
 
       it("should have valid parameters schema", () => {
@@ -506,13 +604,13 @@ describe("Bookmark Tools", () => {
     });
 
     describe("execute", () => {
-      // Note: This test requires external snapshot service mock
-      it.skip("should create snapshot for bookmark", async () => {
-        mockInsertResult = {
+      it("should create snapshot for bookmark", async () => {
+        // Supabase mock returns bookmark data for ownership check
+        mockSelectResult = {
           data: {
             id: 1,
-            bookmark_id: 1,
-            snapshot_url: "https://web.archive.org/...",
+            title: "Test Bookmark",
+            url: "https://example.com/test",
           },
           error: null,
         };
@@ -523,6 +621,10 @@ describe("Bookmark Tools", () => {
         );
 
         expect(result.success).toBe(true);
+        if (!result.success) return;
+        expect(result.data.snapshotId).toBe(1);
+        expect(result.data.jobId).toBe("job-123");
+        expect(result.data.status).toBe("pending");
       });
 
       it("should have valid parameters schema", () => {
