@@ -386,7 +386,7 @@ export class FolderRepository extends BaseRepository<
   async archive(id: number): Promise<boolean> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({ is_archived: true })
+      .update({ is_archived: true }, { count: "exact" })
       .eq("id", id)
       .eq("user_id", this.userId);
 
@@ -404,7 +404,7 @@ export class FolderRepository extends BaseRepository<
   async unarchive(id: number): Promise<boolean> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({ is_archived: false })
+      .update({ is_archived: false }, { count: "exact" })
       .eq("id", id)
       .eq("user_id", this.userId);
 

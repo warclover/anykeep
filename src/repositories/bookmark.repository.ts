@@ -302,10 +302,13 @@ export class BookmarkRepository extends BaseRepository<
   async moveToTrash(id: number): Promise<boolean> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_in_trash: true,
-        trashed_at: new Date().toISOString(),
-      })
+      .update(
+        {
+          is_in_trash: true,
+          trashed_at: new Date().toISOString(),
+        },
+        { count: "exact" },
+      )
       .eq("id", id)
       .eq("user_id", this.userId);
 
@@ -323,10 +326,13 @@ export class BookmarkRepository extends BaseRepository<
   async restoreFromTrash(id: number): Promise<boolean> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_in_trash: false,
-        trashed_at: null,
-      })
+      .update(
+        {
+          is_in_trash: false,
+          trashed_at: null,
+        },
+        { count: "exact" },
+      )
       .eq("id", id)
       .eq("user_id", this.userId)
       .eq("is_in_trash", true);
@@ -403,10 +409,13 @@ export class BookmarkRepository extends BaseRepository<
     // 乐观锁：添加 is_starred 条件，确保状态未被并发修改
     const { data, error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_starred: newIsStarred,
-        starred_at: newIsStarred ? new Date().toISOString() : null,
-      })
+      .update(
+        {
+          is_starred: newIsStarred,
+          starred_at: newIsStarred ? new Date().toISOString() : null,
+        },
+        { count: "exact" },
+      )
       .eq("id", id)
       .eq("user_id", this.userId)
       .eq("is_starred", currentIsStarred) // 乐观锁条件
@@ -445,10 +454,13 @@ export class BookmarkRepository extends BaseRepository<
   async markAsRead(id: number): Promise<boolean> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_read: true,
-        read_at: new Date().toISOString(),
-      })
+      .update(
+        {
+          is_read: true,
+          read_at: new Date().toISOString(),
+        },
+        { count: "exact" },
+      )
       .eq("id", id)
       .eq("user_id", this.userId);
 
@@ -469,7 +481,7 @@ export class BookmarkRepository extends BaseRepository<
   ): Promise<number> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({ folder_id: folderId })
+      .update({ folder_id: folderId }, { count: "exact" })
       .in("id", ids)
       .eq("user_id", this.userId);
 
@@ -532,10 +544,13 @@ export class BookmarkRepository extends BaseRepository<
   async batchRestoreFromTrash(ids: number[]): Promise<number> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_in_trash: false,
-        trashed_at: null,
-      })
+      .update(
+        {
+          is_in_trash: false,
+          trashed_at: null,
+        },
+        { count: "exact" },
+      )
       .in("id", ids)
       .eq("user_id", this.userId)
       .eq("is_in_trash", true)
@@ -555,10 +570,13 @@ export class BookmarkRepository extends BaseRepository<
   async batchMoveToTrash(ids: number[]): Promise<number> {
     const { error, count } = await this.supabase
       .from(this.tableName)
-      .update({
-        is_in_trash: true,
-        trashed_at: new Date().toISOString(),
-      })
+      .update(
+        {
+          is_in_trash: true,
+          trashed_at: new Date().toISOString(),
+        },
+        { count: "exact" },
+      )
       .in("id", ids)
       .eq("user_id", this.userId)
       .is("deleted_at", null);

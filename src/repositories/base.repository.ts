@@ -138,7 +138,7 @@ export abstract class BaseRepository<
    */
   async delete(id: number): Promise<boolean> {
     const { error, count } = await this.table
-      .delete()
+      .delete({ count: "exact" })
       .eq("id", id)
       .eq("user_id", this.userId);
 
@@ -155,7 +155,7 @@ export abstract class BaseRepository<
    */
   async softDelete(id: number): Promise<boolean> {
     const { error, count } = await this.table
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: new Date().toISOString() }, { count: "exact" })
       .eq("id", id)
       .eq("user_id", this.userId);
 
@@ -172,7 +172,7 @@ export abstract class BaseRepository<
    */
   async batchUpdate(ids: number[], data: TUpdate): Promise<number> {
     const { error, count } = await this.table
-      .update(data)
+      .update(data, { count: "exact" })
       .in("id", ids)
       .eq("user_id", this.userId);
 

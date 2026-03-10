@@ -383,10 +383,13 @@ export class ConfirmationRepository extends BaseSupabaseService {
 
     const { error, count } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
-      .update({
-        status,
-        resolved_at: new Date().toISOString(),
-      })
+      .update(
+        {
+          status,
+          resolved_at: new Date().toISOString(),
+        },
+        { count: "exact" },
+      )
       .in("id", ids);
 
     if (error) {
@@ -424,7 +427,7 @@ export class ConfirmationRepository extends BaseSupabaseService {
 
     const { error, count } = await supabase
       .from(PENDING_CONFIRMATIONS_TABLE)
-      .delete()
+      .delete({ count: "exact" })
       .eq("user_id", userId);
 
     if (error) {
