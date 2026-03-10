@@ -255,7 +255,7 @@ export class MatcherAgreementEvaluator {
 
     for (const result of results) {
       const weight = this.config.useWeights
-        ? result.weight ?? this.config.defaultWeight
+        ? (result.weight ?? this.config.defaultWeight)
         : 1;
 
       const existing = folderScores.get(result.folderId) || {
@@ -311,7 +311,7 @@ export class MatcherAgreementEvaluator {
 
     for (const result of results) {
       const weight = this.config.useWeights
-        ? result.weight ?? this.config.defaultWeight
+        ? (result.weight ?? this.config.defaultWeight)
         : 1;
 
       totalWeight += weight;
@@ -378,7 +378,7 @@ export class MatcherAgreementEvaluator {
 
     for (const result of results) {
       const weight = this.config.useWeights
-        ? result.weight ?? this.config.defaultWeight
+        ? (result.weight ?? this.config.defaultWeight)
         : 1;
 
       totalWeight += weight;
@@ -398,13 +398,14 @@ export class MatcherAgreementEvaluator {
   ): MatcherAnalysis[] {
     const totalWeight = results.reduce(
       (sum, r) =>
-        sum + (this.config.useWeights ? r.weight ?? this.config.defaultWeight : 1),
+        sum +
+        (this.config.useWeights ? (r.weight ?? this.config.defaultWeight) : 1),
       0,
     );
 
     return results.map((result) => {
       const weight = this.config.useWeights
-        ? result.weight ?? this.config.defaultWeight
+        ? (result.weight ?? this.config.defaultWeight)
         : 1;
 
       return {
