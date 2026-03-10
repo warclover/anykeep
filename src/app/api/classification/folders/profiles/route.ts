@@ -18,7 +18,7 @@ import {
   notFoundError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { FolderProfileRepository } from "@/lib/classification/repositories";
+import { FolderProfileRepository } from "@/lib/folder/profile";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**

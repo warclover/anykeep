@@ -13,7 +13,7 @@ import {
   badRequestError,
   safeParseJson,
 } from "@/lib/utils/api-response";
-import { splitService } from "@/lib/classification/services/split.service";
+import { splitService } from "@/lib/folder-evolution";
 import { logger } from "@/lib/logger";
 
 /**

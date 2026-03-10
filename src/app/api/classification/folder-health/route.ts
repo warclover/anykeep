@@ -14,8 +14,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   FolderProfileRepository,
   SuggestionRepository,
-} from "@/lib/classification/repositories";
-import { FolderHealthService } from "@/lib/classification/services";
+} from "@/lib/folder/profile";
+import { FolderHealthService } from "@/lib/folder/health";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**

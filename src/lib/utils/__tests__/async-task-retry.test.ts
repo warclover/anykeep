@@ -30,14 +30,14 @@ jest.mock("@/lib/logger", () => ({
 }));
 
 // Mock jobQueueService
-jest.mock("@/lib/classification/services/job-queue.service", () => ({
+jest.mock("@/lib/job-queue", () => ({
   jobQueueService: {
     enqueue: jest.fn(),
   },
 }));
 
 // Import mock after jest.mock to get the mocked version
-import { jobQueueService } from "@/lib/classification/services/job-queue.service";
+import { jobQueueService } from "@/lib/job-queue";
 const mockEnqueue = jobQueueService.enqueue as jest.Mock;
 
 // ============================================================================

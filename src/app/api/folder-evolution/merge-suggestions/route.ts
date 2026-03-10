@@ -10,7 +10,7 @@ import {
   badRequestError,
   safeParseInt,
 } from "@/lib/utils/api-response";
-import { mergeService } from "@/lib/classification/services/merge.service";
+import { mergeService } from "@/lib/folder-evolution";
 
 /**
  * GET /api/folder-evolution/merge-suggestions

@@ -16,7 +16,7 @@ import {
   getAllPresetInterestIds,
 } from "@/lib/user-interest/interest-domains";
 import { logger } from "@/lib/logger";
-import type { PresetInterestId } from "@/lib/classification/types";
+import type { PresetInterestId } from "@/lib/interest-profile/types";
 
 // ============================================
 // 参数和结果类型定义

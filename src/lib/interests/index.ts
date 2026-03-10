@@ -15,6 +15,9 @@
 export { createInterestService } from "@/lib/classification/services/interest-factory";
 export { InterestService } from "@/lib/classification/services/interest.service";
 
+// 兴趣画像服务 — 从已独立的模块导出
+export { InterestProfileService } from "@/lib/interest-profile";
+
 // 预设兴趣域 — 直接从已独立的模块导出
 export {
   PRESET_INTEREST_DOMAINS,
@@ -23,3 +26,6 @@ export {
   getSuggestedFolders,
   getKeywordsForInterests,
 } from "@/lib/user-interest/interest-domains";
+
+// 兴趣相关常量 — 从旧分类模块桥接
+export { CUSTOM_INTEREST_LIMITS } from "@/lib/classification/constants/limits";

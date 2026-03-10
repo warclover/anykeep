@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
 import type { Json } from "@/types/supabase";
-import { reportService } from "@/lib/classification/services/report.service";
+import { reportService } from "@/lib/folder-evolution";
 import {
   initSupabaseAdmin,
   getSupabaseAdmin,

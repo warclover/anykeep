@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createInterestService } from "@/lib/interests";
 import { PRESET_INTEREST_DOMAINS } from "@/lib/user-interest/interest-domains";
 import { logger } from "@/lib/logger";
-import type { PresetInterestId } from "@/lib/classification/types";
+import type { PresetInterestId } from "@/lib/interest-profile/types";
 
 // ============================================
 // 参数和结果类型定义

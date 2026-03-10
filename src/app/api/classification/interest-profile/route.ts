@@ -16,7 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { InterestProfileService } from "@/lib/classification/services";
+import { InterestProfileService } from "@/lib/interests";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { withAuthMiddleware } from "@/lib/api/middleware";

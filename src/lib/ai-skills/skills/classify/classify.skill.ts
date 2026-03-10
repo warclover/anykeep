@@ -19,7 +19,7 @@ import type {
   ClassifySkillOutput,
   ClassifyCandidateFolder,
 } from "./types";
-import type { ClassificationAction } from "@/lib/classification/types/classification";
+import type { ClassificationAction } from "@/lib/classification-v2/types/legacy-compat";
 import { classify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
 

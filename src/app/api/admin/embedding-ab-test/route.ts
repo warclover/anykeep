@@ -13,7 +13,7 @@ import {
   badRequestError,
   forbiddenError,
 } from "@/lib/utils/api-response";
-import { embeddingABTestService } from "@/lib/classification/services/embedding-ab-test.service";
+import { embeddingABTestService } from "@/lib/embedding-ab-test";
 import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,

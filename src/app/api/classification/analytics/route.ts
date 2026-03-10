@@ -26,7 +26,7 @@ import { preferenceLearner } from "@/lib/classification-learning/preference-lear
 import { profileUpdater } from "@/lib/classification-learning/profile-updater";
 import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
-import { embeddingABTestService } from "@/lib/classification/services/server";
+import { embeddingABTestService } from "@/lib/embedding-ab-test";
 import {
   getEmbeddingConfig,
   getEmbeddingConfigInfo,

@@ -17,11 +17,9 @@ import {
   TagPreMatcher,
   type CachedFolder,
   type PreMatchResult,
-} from "@/lib/classification/client/tag-pre-matcher";
-import {
   FolderCacheSyncService,
   type SyncResult,
-} from "@/lib/classification/client/folder-cache-sync";
+} from "@/lib/classification-client";
 import { clientLogger } from "@/lib/client-logger";
 
 /**

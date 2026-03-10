@@ -16,11 +16,9 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createInterestService } from "@/lib/interests";
-import {
-  PRESET_INTEREST_DOMAINS,
-  CUSTOM_INTEREST_LIMITS,
-  type PresetInterestId,
-} from "@/lib/classification";
+import { PRESET_INTEREST_DOMAINS } from "@/lib/user-interest/interest-domains";
+import type { PresetInterestId } from "@/lib/interest-profile/types";
+import { CUSTOM_INTEREST_LIMITS } from "@/lib/interests";
 import {
   successResponse,
   handleValidationError,

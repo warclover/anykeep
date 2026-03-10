@@ -11,11 +11,11 @@
 
 import { logger } from "@/lib/logger";
 import { generateWithAI } from "../api/deepseek-client";
-import { FOLDER_NAMING_RULES } from "@/lib/classification/constants/naming-rules";
 import {
+  FOLDER_NAMING_RULES,
   sanitizeFolderName,
   generateFallbackName,
-} from "@/lib/classification/utils/folder-name-sanitizer";
+} from "@/lib/folder-naming";
 import type {
   GenerateFolderNameRequest,
   GenerateFolderNameResult,

@@ -14,7 +14,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getConfigCenter } from "@/lib/classification/services/advanced";
+import { getConfigCenter } from "@/lib/classification-config";
 import { z } from "zod";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { forbiddenError } from "@/lib/utils/api-response";

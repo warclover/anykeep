@@ -12,7 +12,7 @@ import {
   handleValidationError,
   internalError,
 } from "@/lib/utils/api-response";
-import { reportService } from "@/lib/classification/services/report.service";
+import { reportService } from "@/lib/folder-evolution";
 import { logger } from "@/lib/logger";
 
 /**

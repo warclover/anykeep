@@ -36,10 +36,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   UNIVERSAL_CATEGORIES,
   CATEGORY_GROUP_NAMES,
+  MATCHER_STRATEGY_CONFIG,
   type CategoryGroup,
   type UniversalCategory,
-} from "@/lib/classification/constants/universal-categories";
-import { MATCHER_STRATEGY_CONFIG } from "@/lib/classification/constants/limits";
+} from "@/lib/classification-constants";
 
 // ============================================
 // 类型定义

@@ -11,7 +11,7 @@
 
 import { logger } from "@/lib/logger";
 import { eventBus } from "@/lib/shared/event-bus";
-import { JobQueueService } from "@/lib/classification/services/job-queue.service";
+import { JobQueueService } from "@/lib/job-queue";
 import type {
   SummaryCompletedEvent,
   TagsGeneratedEvent,

@@ -20,10 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X } from "lucide-react";
-import {
-  CUSTOM_INTEREST_LIMITS,
-  type CustomInterestInput,
-} from "@/lib/classification";
+import { CUSTOM_INTEREST_LIMITS } from "@/lib/interests";
+import type { CustomInterestInput } from "@/lib/interest-profile/types";
 import { clientLogger } from "@/lib/client-logger";
 
 // 可选的 emoji 图标

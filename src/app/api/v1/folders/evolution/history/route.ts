@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { operationLogService } from "@/lib/classification/services/server";
+import { operationLogService } from "@/lib/operation-log";
 import type { OperationSnapshotAction } from "@/types/supabase";
 
 // 查询参数 Schema

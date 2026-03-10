@@ -10,3 +10,4 @@
  */
 
 export { FolderProfileRepository } from "@/lib/classification/repositories/folder-profile.repository";
+export { SuggestionRepository } from "@/lib/classification/repositories/suggestion.repository";

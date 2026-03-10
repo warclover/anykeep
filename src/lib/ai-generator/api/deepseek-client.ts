@@ -15,7 +15,7 @@ import {
   buildTypeSpecificPrompt,
   getPromptConfigV2,
   buildTypeSpecificPromptV2,
-} from "@/lib/classification/prompts";
+} from "@/lib/prompts";
 import { isJsonOutputEnabled } from "@/lib/summary/config/ai-summary-config";
 import type { AIGenerateResult, GenerateWithAIOptions } from "../types";
 import { parseAIResponse, parseAIResponseV2 } from "./response-parser";

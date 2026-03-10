@@ -26,7 +26,7 @@ import { recommendFolder } from "@/lib/ai-generator";
 import {
   classifyBookmarkV2,
   shouldUseV2Classification,
-} from "@/lib/classification/server";
+} from "@/lib/classification-integration";
 import { logger } from "@/lib/logger";
 import type { BookmarkUpdate, Platform } from "@/types/supabase";
 import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
@@ -178,7 +178,7 @@ export async function generateBookmarkEmbedding(
     // Embedding 生成成功后，更新 folder profile（如果书签在文件夹中）
     if (folderId) {
       const { updateFolderProfilesOnBookmarkChange } = await import(
-        "@/lib/classification/server"
+        "@/lib/classification-integration"
       );
       updateFolderProfilesOnBookmarkChange([], folderId, userId).catch(
         (err) => {

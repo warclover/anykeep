@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { mergeService } from "@/lib/classification/services/merge.service";
+import { mergeService } from "@/lib/folder-evolution";
 
 // 请求体 Schema
 const MergeRequestSchema = z.object({

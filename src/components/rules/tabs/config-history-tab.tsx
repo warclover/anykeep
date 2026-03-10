@@ -50,7 +50,7 @@ import {
   CLASSIFICATION_WEIGHTS,
   CLASSIFICATION_THRESHOLDS,
   MATCHER_STRATEGY_CONFIG,
-} from "@/lib/classification/constants/limits";
+} from "@/lib/classification-constants";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================

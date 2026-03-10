@@ -7,7 +7,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { renameService } from "@/lib/classification/services/rename.service";
+import { renameService } from "@/lib/folder-evolution";
 import { safeParseJson, safeParseInt } from "@/lib/utils/api-response";
 
 /**

@@ -10,7 +10,7 @@ import {
   badRequestError,
   safeParseInt,
 } from "@/lib/utils/api-response";
-import { splitService } from "@/lib/classification/services/split.service";
+import { splitService } from "@/lib/folder-evolution";
 
 /**
  * GET /api/folder-evolution/split-suggestions

@@ -17,7 +17,7 @@ import { FolderHealthService } from "@/lib/folder/health";
 import {
   FolderProfileRepository,
   SuggestionRepository,
-} from "@/lib/classification/repositories";
+} from "@/lib/folder/profile";
 import { createClient } from "@/lib/supabase/server";
 import {
   FOLDER_HEALTH_STEPS,

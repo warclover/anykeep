@@ -9,7 +9,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { UnifiedQuotaService } from "@/lib/classification/strategies/modern/crystal/quota";
+import { UnifiedQuotaService } from "@/lib/folder-quota";
 
 export const GET = withAuthMiddleware(
   async (_request: NextRequest, { userId }) => {

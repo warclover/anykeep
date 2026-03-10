@@ -17,7 +17,7 @@
 import { NextResponse } from "next/server";
 import { initSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { logger } from "@/lib/logger";
-import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
+import { FolderTagProfilerService } from "@/lib/folder-tag-profiler";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 import {
   verifyInternalRequest,

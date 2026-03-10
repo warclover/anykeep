@@ -9,8 +9,11 @@
  */
 
 import { logger } from "@/lib/logger";
-import { jobQueueService } from "@/lib/classification/services/job-queue.service";
-import type { JobQueueType, Json } from "@/lib/classification/types";
+import { jobQueueService } from "@/lib/job-queue";
+import type {
+  JobQueueType,
+  Json,
+} from "@/lib/classification-v2/types/legacy-compat";
 
 /**
  * 异步任务配置

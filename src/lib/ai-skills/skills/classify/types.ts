@@ -5,7 +5,7 @@
  * @since 2025-12-22
  */
 
-import type { ClassificationAction } from "@/lib/classification/types/classification";
+import type { ClassificationAction } from "@/lib/classification-v2/types/legacy-compat";
 
 /**
  * 分类输入参数

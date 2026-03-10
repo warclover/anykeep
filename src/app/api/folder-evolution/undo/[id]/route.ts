@@ -6,7 +6,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { operationLogService } from "@/lib/classification/services/server";
+import { operationLogService } from "@/lib/operation-log";
 
 export const POST = withAuthMiddleware<{ id: string }>(
   async (_request: NextRequest, { userId, params }) => {

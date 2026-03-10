@@ -9,7 +9,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { tagGraphService } from "@/lib/classification/services/tag-graph.service";
+import { tagGraphService } from "@/lib/tag-graph";
 
 /**
  * GET /api/tags/[tag]/related

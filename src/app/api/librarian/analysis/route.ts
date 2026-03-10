@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { successResponse, notFoundError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { createAILibrarianService } from "@/lib/classification/services/advanced";
+import { createAILibrarianService } from "@/lib/ai-librarian";
 
 // ============================================================================
 // API 处理器

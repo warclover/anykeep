@@ -10,8 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { mergeService } from "@/lib/classification/services/merge.service";
-import { splitService } from "@/lib/classification/services/split.service";
+import { mergeService, splitService } from "@/lib/folder-evolution";
 
 // 查询参数 Schema
 const QuerySchema = z.object({

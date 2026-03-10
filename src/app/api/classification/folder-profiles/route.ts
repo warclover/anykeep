@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
+import { FolderTagProfilerService } from "@/lib/folder-tag-profiler";
 import { createLogger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 

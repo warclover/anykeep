@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { splitService } from "@/lib/classification/services/split.service";
+import { splitService } from "@/lib/folder-evolution";
 
 // 请求体 Schema
 const SplitRequestSchema = z.object({

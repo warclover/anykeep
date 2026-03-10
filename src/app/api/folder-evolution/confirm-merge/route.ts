@@ -13,7 +13,7 @@ import {
   badRequestError,
   safeParseJson,
 } from "@/lib/utils/api-response";
-import { mergeService } from "@/lib/classification/services/merge.service";
+import { mergeService } from "@/lib/folder-evolution";
 import { logger } from "@/lib/logger";
 
 /**

@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import type { Json } from "@/types/supabase";
-import { getCorrectionCache } from "@/lib/classification/services/advanced";
+import { getCorrectionCache } from "@/lib/classification-v2/infra";
 
 // 反馈类型
 const FEEDBACK_TYPES = [
@@ -64,9 +64,14 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
   // 类型断言: 手动维护类型文件时需要此断言
   type FeedbackRow = { feedback_type: string };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: feedbacks, error: fetchError } = await (supabase.from("classification_feedback") as any)
+  const { data: feedbacks, error: fetchError } = (await (
+    supabase.from("classification_feedback") as any
+  )
     .select("feedback_type")
-    .eq("user_id", userId) as { data: FeedbackRow[] | null; error: { message: string } | null };
+    .eq("user_id", userId)) as {
+    data: FeedbackRow[] | null;
+    error: { message: string } | null;
+  };
 
   if (fetchError) {
     logger.error(
@@ -169,7 +174,9 @@ export const POST = withAuthMiddleware(
     // 类型断言: 手动维护类型文件时需要此断言
     type FeedbackInsertRow = { id: number };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: feedback, error: createError } = await (supabase.from("classification_feedback") as any)
+    const { data: feedback, error: createError } = (await (
+      supabase.from("classification_feedback") as any
+    )
       .insert({
         user_id: userId,
         feedback_type: feedbackType as
@@ -188,7 +195,10 @@ export const POST = withAuthMiddleware(
         folder_id: suggestedCorrectFolderId || originalFolderId || null,
       })
       .select("id")
-      .single() as { data: FeedbackInsertRow | null; error: { message: string } | null };
+      .single()) as {
+      data: FeedbackInsertRow | null;
+      error: { message: string } | null;
+    };
 
     if (createError || !feedback) {
       logger.error(

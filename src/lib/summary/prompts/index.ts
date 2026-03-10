@@ -10,7 +10,7 @@
  * @since 2025-12-12
  */
 
-// Re-export from existing classification prompts
+// Re-export from prompts bridge module
 export {
   // V1 Prompts (纯文本)
   getPromptConfig,
@@ -18,14 +18,14 @@ export {
   // V2 Prompts (JSON 结构化)
   getPromptConfigV2,
   buildTypeSpecificPromptV2,
-} from "@/lib/classification/prompts";
+} from "@/lib/prompts";
 
 // Re-export prompt types
 export type {
   TypePromptConfig as PromptConfig,
   TypePromptConfigV2,
   SummaryLengthConfig,
-} from "@/lib/classification/prompts";
+} from "@/lib/prompts";
 
 // ============================================================================
 // Prompt Constants

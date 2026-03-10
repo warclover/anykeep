@@ -10,7 +10,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import { operationLogService } from "@/lib/classification/services/server";
+import { operationLogService } from "@/lib/operation-log";
 
 interface RouteParams {
   id: string;
