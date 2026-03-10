@@ -183,7 +183,7 @@ export function RelatedBookmarksV2({
   className,
   defaultExpanded = true,
   limit = 5,
-  minStrength = 0.3,
+  minStrength = 0.5,
   types,
 }: RelatedBookmarksV2Props) {
   const router = useRouter();
@@ -288,8 +288,8 @@ export function RelatedBookmarksV2({
             </div>
           ) : related.length === 0 ? (
             // 空状态
-            <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
-              暂无知识关联
+            <div className="text-center py-4 text-sm text-gray-400 dark:text-gray-500">
+              没有关联知识
             </div>
           ) : (
             // 相关书签列表

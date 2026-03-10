@@ -154,7 +154,7 @@ export class LinkRepository implements ILinkRepository {
     const { data, error } = await this.supabase.rpc("get_bookmark_links", {
       p_bookmark_id: bookmarkId,
       p_user_id: filter?.userId,
-      p_min_strength: filter?.minStrength || 0.3,
+      p_min_strength: filter?.minStrength || 0.5,
       p_link_types: (filter?.linkTypes as unknown as string[]) || undefined,
       p_limit: filter?.limit || 20,
     });
@@ -212,7 +212,7 @@ export class LinkRepository implements ILinkRepository {
       p_bookmark_id: bookmarkId,
       p_user_id: userId,
       p_limit: options?.limit || 10,
-      p_min_strength: options?.minStrength || 0.3,
+      p_min_strength: options?.minStrength || 0.5,
       p_link_types: (options?.types as unknown as string[]) || null,
     };
 

@@ -101,7 +101,7 @@ export const GET = withAuthMiddleware<{ bookmarkId: string }>(
     const limit = Math.min(parseInt(searchParams.get("limit") || "10", 10), 50);
     const minStrength = Math.max(
       0,
-      Math.min(1, parseFloat(searchParams.get("minStrength") || "0.3")),
+      Math.min(1, parseFloat(searchParams.get("minStrength") || "0.5")),
     );
     const typesParam = searchParams.get("types");
     const types = typesParam

@@ -182,7 +182,7 @@ export class LinkService implements ILinkService {
   ): Promise<RelatedBookmark[]> {
     return this.linkRepo.getRelatedBookmarks(bookmarkId, userId, {
       limit: options?.limit || 10,
-      minStrength: options?.minStrength || 0.3,
+      minStrength: options?.minStrength || 0.5,
       types: options?.types,
     });
   }
@@ -196,7 +196,7 @@ export class LinkService implements ILinkService {
   ): Promise<KnowledgeLink[]> {
     return this.linkRepo.getBookmarkLinks(bookmarkId, {
       userId,
-      minStrength: 0.3,
+      minStrength: 0.5,
       limit: 20,
     });
   }
@@ -531,7 +531,7 @@ export class LinkService implements ILinkService {
     }
 
     // 过滤低质量关联
-    return Array.from(linkMap.values()).filter((link) => link.strength >= 0.3);
+    return Array.from(linkMap.values()).filter((link) => link.strength >= 0.5);
   }
 
   /**
