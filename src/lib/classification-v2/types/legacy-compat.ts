@@ -70,14 +70,8 @@ export type EnqueueJobArgs = Functions["enqueue_job"]["Args"];
 // 业务枚举 & 类型别名
 // ============================================================================
 
-/** 操作快照动作类型 */
-export type OperationSnapshotAction =
-  | "create"
-  | "split"
-  | "merge"
-  | "rename"
-  | "move"
-  | "delete";
+/** 操作快照动作类型（从权威源 supabase.ts 导入） */
+export type { OperationSnapshotAction } from "@/types/supabase";
 
 /** 任务队列类型 */
 export type JobQueueType =

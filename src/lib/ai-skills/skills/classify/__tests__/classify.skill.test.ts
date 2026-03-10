@@ -10,10 +10,11 @@ import { ClassifySkill, classifySkill } from "../classify.skill";
 import type { SkillContext } from "../../../core/types";
 
 // Mock classification-v2 的 classify 返回值
+// 注意：v2 的 confidence 为 0~1 浮点数，skill 层会转换为 0~100
 const mockClassifyResult = {
   folderId: 1,
   folderName: "技术文章",
-  confidence: 85,
+  confidence: 0.85,
   action: "classify" as const,
   reason: "内容与技术文章高度匹配",
   candidates: [
@@ -234,7 +235,7 @@ describe("ClassifySkill", () => {
 
       expect(result.success).toBe(true);
       if (!result.success) return;
-      // 高置信度（85%）不需要确认
+      // v2 返回 0.85 → 转换为 85% → 高于 70% 阈值 → 不需要确认
       expect(result.data.requiresConfirmation).toBe(false);
     });
   });
@@ -246,65 +247,79 @@ describe("ClassifySkill", () => {
     });
   });
 
-  describe("v5.0 confidence conversion", () => {
+  describe("v2 confidence conversion", () => {
     const mockContext: SkillContext = {
       userId: "test-user-id",
       traceId: "test-trace-id",
     };
 
-    it("should convert v5.0 confidence (0-1) to percentage (0-100)", async () => {
-      // Mock v5.0 返回 0.85 (85%)
+    // 引入 classify mock 以便在每个场景中独立设置
+    const { classify } = jest.requireMock("@/lib/classification-v2") as {
+      classify: jest.Mock;
+    };
+
+    it("should convert v2 confidence (0-1) to percentage (0-100)", async () => {
+      // v2 返回 0.85 → skill 输出 85
       const input = { title: "React 入门教程" };
       const result = await skill.execute(input, mockContext);
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      // 验证转换后的值在合理范围
-      expect(result.data.confidence).toBeGreaterThanOrEqual(60);
-      expect(result.data.confidence).toBeLessThanOrEqual(100);
-
-      // 验证不会溢出（如果错误地二次转换）
-      expect(result.data.confidence).toBeLessThan(101);
+      expect(result.data.confidence).toBe(85);
     });
 
-    it("should handle low confidence (< 60%) correctly", async () => {
-      // 测试低置信度场景
+    it("should handle low confidence correctly", async () => {
+      classify.mockResolvedValueOnce({
+        ...mockClassifyResult,
+        confidence: 0.3,
+        action: "inbox",
+        folderId: null,
+        folderName: null,
+      });
+
       const input = { title: "未知内容" };
       const result = await skill.execute(input, mockContext);
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      // 低置信度应该在 0-60 范围
-      expect(result.data.confidence).toBeGreaterThanOrEqual(0);
-      expect(result.data.confidence).toBeLessThanOrEqual(100);
+      expect(result.data.confidence).toBe(30);
+      expect(result.data.requiresConfirmation).toBe(true);
     });
 
     it("should handle high confidence (>= 80%) correctly", async () => {
-      // 测试高置信度场景
+      classify.mockResolvedValueOnce({
+        ...mockClassifyResult,
+        confidence: 0.92,
+        action: "classify",
+      });
+
       const input = { title: "React 入门教程" };
       const result = await skill.execute(input, mockContext);
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      // 高置信度应该触发自动分类
-      if (result.data.confidence >= 80) {
-        expect(result.data.action).toBe("classify");
-      }
+      expect(result.data.confidence).toBe(92);
+      expect(result.data.action).toBe("classify");
+      expect(result.data.requiresConfirmation).toBe(false);
     });
 
     it("should never return confidence > 100 (overflow detection)", async () => {
-      // 回归测试：检测置信度溢出问题（提交 af01e072 修复的问题）
+      // 即使 v2 返回满分 1.0，转换后也不超过 100
+      classify.mockResolvedValueOnce({
+        ...mockClassifyResult,
+        confidence: 1.0,
+      });
+
       const input = { title: "React 入门教程" };
       const result = await skill.execute(input, mockContext);
 
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      // 关键断言：置信度不应该超过 100
-      expect(result.data.confidence).toBeLessThanOrEqual(100);
+      expect(result.data.confidence).toBe(100);
       expect(result.data.confidence).not.toBeGreaterThan(100);
     });
   });

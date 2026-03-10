@@ -283,14 +283,49 @@ describe("classify()", () => {
   });
 
   describe("结果缓存", () => {
-    it("新分类结果写入缓存", async () => {
+    it("有文件夹的分类结果写入缓存", async () => {
+      mockBuildFolderContexts.mockResolvedValue([
+        {
+          id: 1,
+          name: "React",
+          normalizedName: "react",
+          aliases: [],
+          coreTags: ["react"],
+          relatedTags: [],
+          sampleTitles: ["React 入门"],
+          keywords: ["react"],
+          bookmarkCount: 10,
+        },
+      ]);
+      mockSearch.mockResolvedValue([
+        {
+          bookmarkId: 100,
+          bookmarkTitle: "React 教程",
+          folderId: 1,
+          folderName: "React",
+          similarity: 0.9,
+        },
+      ]);
+
+      await classify(BASE_REQUEST);
+
+      expect(_mockSetCache).toHaveBeenCalledWith(
+        BASE_REQUEST.userId,
+        BASE_REQUEST.bookmarkId,
+        expect.objectContaining({
+          action: expect.any(String),
+          traceId: expect.stringMatching(/^clf2_/),
+        }),
+      );
+    });
+
+    it("无文件夹 inbox 结果不写入缓存", async () => {
       mockBuildFolderContexts.mockResolvedValue([]);
 
       await classify(BASE_REQUEST);
 
-      // inbox 结果也应被缓存
-      // 注意：无文件夹时 setCache 不一定被调用（取决于实现），
-      // 但有文件夹时一定会被调用
+      // inbox 路径（无文件夹）不调用 setCache
+      expect(_mockSetCache).not.toHaveBeenCalled();
     });
   });
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus } from "lucide-react";
 import type { UserClassificationRule } from "@/lib/classification-v2/services/chat-to-rule.types";
+import { API_CLASSIFICATION_V2 } from "@/lib/constants/api-paths";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +46,7 @@ export const RuleList = memo(function RuleList({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/classification/v5/rules?activeOnly=${activeOnly}`,
+        `${API_CLASSIFICATION_V2.rules}?activeOnly=${activeOnly}`,
       );
       const result = await response.json();
 
@@ -74,11 +75,14 @@ export const RuleList = memo(function RuleList({
   const handleToggleActive = useCallback(
     async (ruleId: number, isActive: boolean) => {
       try {
-        const response = await fetch(`/api/classification/v5/rules/${ruleId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive }),
-        });
+        const response = await fetch(
+          `${API_CLASSIFICATION_V2.ruleDetail(ruleId)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isActive }),
+          },
+        );
 
         const result = await response.json();
 
@@ -112,11 +116,14 @@ export const RuleList = memo(function RuleList({
   const handleSaveEdit = useCallback(
     async (ruleId: number, updates: RuleUpdateData) => {
       try {
-        const response = await fetch(`/api/classification/v5/rules/${ruleId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
-        });
+        const response = await fetch(
+          `${API_CLASSIFICATION_V2.ruleDetail(ruleId)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          },
+        );
 
         const result = await response.json();
 
@@ -153,7 +160,7 @@ export const RuleList = memo(function RuleList({
 
     try {
       const response = await fetch(
-        `/api/classification/v5/rules/${deletingRuleId}`,
+        `${API_CLASSIFICATION_V2.ruleDetail(deletingRuleId)}`,
         {
           method: "DELETE",
         },

@@ -171,9 +171,12 @@ export class ClassifySkill extends BaseSkill<
       }),
     );
 
+    // v2 返回 0~1 浮点数，输出 schema 期望 0~100 整数
+    const confidencePercent = Math.round(result.confidence * 100);
+
     // 判断是否需要用户确认
     const requiresConfirmation = this.shouldRequireConfirmation({
-      confidence: result.confidence,
+      confidence: confidencePercent,
       action: result.action,
       folderId: result.folderId,
     });
@@ -181,7 +184,7 @@ export class ClassifySkill extends BaseSkill<
     return {
       folderId: result.folderId,
       folderName: result.folderName || "",
-      confidence: result.confidence,
+      confidence: confidencePercent,
       action: result.action as ClassificationAction,
       reason: result.reason || "",
       candidates,

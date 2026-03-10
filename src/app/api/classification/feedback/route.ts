@@ -126,6 +126,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
         | "confidence_too_high"
         | "confidence_too_low"
         | "helpful"
+        | "reject"
+        | "confirm"
         | "other",
       suggestion_id: suggestionId || null,
       organization_suggestion_id: organizationSuggestionId || null,
@@ -270,8 +272,9 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
   });
 
   const total = feedbacks?.length || 0;
-  const positiveCount = stats.helpful;
-  const negativeCount = total - positiveCount;
+  // 统一统计口径（与 v1 一致）：helpful + confirm 为正向，wrong_folder + reject 为负向
+  const positiveCount = stats.helpful + stats.confirm;
+  const negativeCount = stats.wrong_folder + stats.reject;
 
   // 3. 返回统计
   return successResponse({

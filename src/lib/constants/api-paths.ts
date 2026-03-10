@@ -282,8 +282,8 @@ export const API_CLASSIFICATION = {
   // 其他端点
   // =====================================================
 
-  /** 执行分类（redirect: v5 → 308 → v2） */
-  classify: "/api/classification/v5/classify",
+  /** 执行分类（v2 引擎） */
+  classify: "/api/classification/v2/classify",
   /** 执行分类 - 旧版（redirect: → 308 → v2） */
   classifyLegacy: "/api/classification/classify",
   /**
@@ -358,6 +358,21 @@ export const API_CLASSIFICATION = {
    * 重定向到 /api/classification/debug?type=trace
    */
   trace: "/api/classification/trace",
+} as const;
+
+// ============================================
+// 分类系统 v2
+// ============================================
+
+export const API_CLASSIFICATION_V2 = {
+  /** v2 规则列表/创建 */
+  rules: "/api/classification/v2/rules",
+  /** v2 规则详情/更新/删除 */
+  ruleDetail: (id: number) => `/api/classification/v2/rules/${id}`,
+  /** v2 规则测试 */
+  rulesTest: "/api/classification/v2/rules/test",
+  /** v2 反馈 */
+  feedback: "/api/classification/v2/feedback",
 } as const;
 
 // ============================================
@@ -804,6 +819,7 @@ export const API_PATHS = {
   bookmarks: API_BOOKMARKS,
   browserBookmark: API_BROWSER_BOOKMARK,
   classification: API_CLASSIFICATION,
+  classificationV2: API_CLASSIFICATION_V2,
   confirmations: API_CONFIRMATIONS,
   conversations: API_CONVERSATIONS,
   folderCategories: API_FOLDER_CATEGORIES,

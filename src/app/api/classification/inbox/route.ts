@@ -351,7 +351,7 @@ async function handleStats(userId: string) {
       .is("deleted_at", null);
 
     if (fallbackError) {
-      return NextResponse.json({ error: "获取统计失败" }, { status: 500 });
+      return internalError("获取聚类统计失败");
     }
 
     const bookmarks = (fallbackData || []) as Array<

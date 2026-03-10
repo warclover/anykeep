@@ -449,24 +449,33 @@ export class BatchClassificationCoordinator {
     let deletedFolders = 0;
 
     if (snapshot?.bookmarkStates) {
-      // 批量更新书签的 folder_id（优化 N+1）
-      const bookmarkUpdates = Object.entries(snapshot.bookmarkStates);
-      const BATCH_SIZE = 100;
+      // 按目标 folder_id 分组，每组一条 UPDATE ... WHERE id IN (...)
+      const byFolder = new Map<number | null, number[]>();
+      for (const [bookmarkId, state] of Object.entries(
+        snapshot.bookmarkStates,
+      )) {
+        const key = state.folder_id;
+        const arr = byFolder.get(key);
+        if (arr) {
+          arr.push(parseInt(bookmarkId));
+        } else {
+          byFolder.set(key, [parseInt(bookmarkId)]);
+        }
+      }
 
-      for (let i = 0; i < bookmarkUpdates.length; i += BATCH_SIZE) {
-        const batch = bookmarkUpdates.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map(([bookmarkId, state]) =>
-            this.supabase
-              .from("bookmarks")
-              .update({
-                folder_id: state.folder_id,
-                classification_status: "pending",
-              })
-              .eq("id", parseInt(bookmarkId)),
-          ),
-        );
-        restoredBookmarks += batch.length;
+      for (const [folderId, ids] of byFolder) {
+        const { error } = await this.supabase
+          .from("bookmarks")
+          .update({
+            folder_id: folderId,
+            classification_status: "pending",
+          })
+          .in("id", ids);
+
+        if (error) {
+          throw new Error(`Failed to restore bookmarks: ${error.message}`);
+        }
+        restoredBookmarks += ids.length;
       }
     }
 
@@ -773,9 +782,14 @@ export class BatchClassificationCoordinator {
       ),
     );
 
+    // 预建索引：clusterId → MappingResult（消除 O(n²) find）
+    const mappingByClusterId = new Map(
+      mappingResults.map((m) => [m.clusterId, m]),
+    );
+
     // 构建聚类插入数据
     const clusterInserts = clusters.map((cluster, index) => {
-      const mapping = mappingResults.find((m) => m.clusterId === cluster.id);
+      const mapping = mappingByClusterId.get(cluster.id);
       const nameResult = nameResults[index];
       return {
         import_batch_id: transaction.batch_id,
@@ -816,10 +830,11 @@ export class BatchClassificationCoordinator {
       representative_type: string | null;
     }> = [];
 
+    // 预建索引：cluster_index → BatchCluster（消除 O(n²) find）
+    const clusterByIndex = new Map(clusters.map((c) => [c.index, c]));
+
     for (const insertedCluster of insertedClusters) {
-      const originalCluster = clusters.find(
-        (c) => c.index === insertedCluster.cluster_index,
-      );
+      const originalCluster = clusterByIndex.get(insertedCluster.cluster_index);
       if (!originalCluster) continue;
 
       const members = originalCluster.memberIds.map((bookmarkId) => ({
@@ -847,71 +862,6 @@ export class BatchClassificationCoordinator {
       const batch = allMembers.slice(i, i + MEMBER_BATCH_SIZE);
       await this.supabase.from("import_cluster_members").insert(batch);
     }
-  }
-
-  /**
-   * 保存聚类结果（保留用于兼容）
-   */
-  private async saveClusterResult(
-    transactionId: string,
-    cluster: BatchCluster,
-    mapping: MappingResult | undefined,
-    nameResult: { name: string; confidence: number },
-    bookmarkMap: Map<number, BookmarkWithEmbedding>,
-    userId: string,
-  ): Promise<void> {
-    // 获取 batch_id
-    const { data: transaction } = await this.supabase
-      .from("batch_import_transactions")
-      .select("batch_id")
-      .eq("id", transactionId)
-      .single();
-
-    // 插入聚类记录
-    const { data: clusterData } = await this.supabase
-      .from("import_clusters")
-      .insert({
-        import_batch_id: transaction?.batch_id,
-        user_id: userId,
-        cluster_index: cluster.index,
-        centroid: JSON.stringify(cluster.centroid),
-        cohesion: cluster.cohesion,
-        member_count: cluster.memberIds.length,
-        suggested_name: nameResult.name,
-        suggested_name_confidence: nameResult.confidence,
-        suggested_folder_id: mapping?.targetFolderId,
-        match_confidence: mapping?.confidence || 0,
-        match_type:
-          mapping?.action === "MERGE"
-            ? "exact"
-            : mapping?.action === "SUGGEST_MERGE"
-              ? "fuzzy"
-              : "create_new",
-        conflict_type: mapping?.conflictType || "none",
-        status: "pending",
-      })
-      .select("id")
-      .single();
-
-    if (!clusterData) return;
-
-    // 插入成员关系
-    // NOTE: distance_to_centroid 需要书签 embedding，当前设为 0 以避免额外查询开销
-    const members = cluster.memberIds.map((bookmarkId) => ({
-      cluster_id: clusterData.id,
-      bookmark_id: bookmarkId,
-      distance_to_centroid: 0, // 距离计算需要 embedding 查询，暂用 0
-      is_representative:
-        cluster.representatives.core.includes(bookmarkId) ||
-        cluster.representatives.edge.includes(bookmarkId),
-      representative_type: cluster.representatives.core.includes(bookmarkId)
-        ? "core"
-        : cluster.representatives.edge.includes(bookmarkId)
-          ? "edge"
-          : null,
-    }));
-
-    await this.supabase.from("import_cluster_members").insert(members);
   }
 
   /**

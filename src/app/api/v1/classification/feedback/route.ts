@@ -63,15 +63,14 @@ export const GET = withAuthMiddleware(async (_request, { userId }) => {
 
   // 类型断言: 手动维护类型文件时需要此断言
   type FeedbackRow = { feedback_type: string };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: feedbacks, error: fetchError } = (await (
-    supabase.from("classification_feedback") as any
-  )
-    .select("feedback_type")
-    .eq("user_id", userId)) as {
-    data: FeedbackRow[] | null;
-    error: { message: string } | null;
-  };
+  const { data: feedbacks, error: fetchError } =
+    (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("classification_feedback") as any)
+      .select("feedback_type")
+      .eq("user_id", userId)) as {
+      data: FeedbackRow[] | null;
+      error: { message: string } | null;
+    };
 
   if (fetchError) {
     logger.error(
@@ -173,32 +172,33 @@ export const POST = withAuthMiddleware(
 
     // 类型断言: 手动维护类型文件时需要此断言
     type FeedbackInsertRow = { id: number };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: feedback, error: createError } = (await (
-      supabase.from("classification_feedback") as any
-    )
-      .insert({
-        user_id: userId,
-        feedback_type: feedbackType as
-          | "wrong_folder"
-          | "better_folder"
-          | "folder_not_exist"
-          | "confidence_too_high"
-          | "confidence_too_low"
-          | "helpful"
-          | "other",
-        suggestion_id: suggestionId || null,
-        comment: comment || null,
-        suggested_correct_folder_id: suggestedCorrectFolderId || null,
-        suggested_correct_folder_name: suggestedCorrectFolderName || null,
-        context: feedbackContext as Json,
-        folder_id: suggestedCorrectFolderId || originalFolderId || null,
-      })
-      .select("id")
-      .single()) as {
-      data: FeedbackInsertRow | null;
-      error: { message: string } | null;
-    };
+    const { data: feedback, error: createError } =
+      (await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from("classification_feedback") as any)
+        .insert({
+          user_id: userId,
+          feedback_type: feedbackType as
+            | "wrong_folder"
+            | "better_folder"
+            | "folder_not_exist"
+            | "confidence_too_high"
+            | "confidence_too_low"
+            | "helpful"
+            | "reject"
+            | "confirm"
+            | "other",
+          suggestion_id: suggestionId || null,
+          comment: comment || null,
+          suggested_correct_folder_id: suggestedCorrectFolderId || null,
+          suggested_correct_folder_name: suggestedCorrectFolderName || null,
+          context: feedbackContext as Json,
+          folder_id: suggestedCorrectFolderId || originalFolderId || null,
+        })
+        .select("id")
+        .single()) as {
+        data: FeedbackInsertRow | null;
+        error: { message: string } | null;
+      };
 
     if (createError || !feedback) {
       logger.error(
