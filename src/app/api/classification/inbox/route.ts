@@ -1,5 +1,5 @@
 /**
- * 待整理智能整理 API（合并版）
+ * 待整理智能整理 API（合并版）— v2
  *
  * 合并 inbox + cluster-suggestions + cluster-stats 三个端点
  *
@@ -9,21 +9,21 @@
  * POST /api/classification/inbox - 应用整理建议
  * DELETE /api/classification/inbox - 拒绝整理建议
  *
- * @version 2.0.0 (Phase 1 合并)
+ * @version 3.0.0 (Phase 5: 切换到 classification-v2)
  * @since 2025-12-24
- * @updated 2026-03-07 - 迁移到 withAuthMiddleware
- *
- * @todo 迁移到 classification-v2：
- *   - handleAnalyze: 替换 inboxOrganizerService.analyze() → organizeInbox() from v2
- *     需要适配返回格式（v2 返回 { clusters, unclustered } vs 旧 { inboxCount, suggestions }）
- *   - POST/DELETE: applySuggestion/rejectSuggestion 需要在 v2 中实现对应接口
- *   - handleSuggestions/handleStats: 纯 DB 查询，可保持不变
+ * @updated 2026-03-10 - 迁移到 v2 organizeInbox + 独立服务
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { ClassificationContainer } from "@/lib/classification";
+import { organizeInbox } from "@/lib/classification-v2";
+import { persistOrganizeResult } from "@/lib/classification-v2/services/suggestion-persist";
+import {
+  applySuggestion,
+  rejectSuggestion,
+} from "@/lib/classification-v2/services/suggestion-action";
+import { getClusterProcessingStatus } from "@/lib/classification-v2/services/cluster-status";
 import {
   successResponse,
   handleValidationError,
@@ -32,7 +32,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { PerformanceMonitor } from "@/lib/utils/performance-monitor";
-import type { BookmarkV42Fields } from "@/lib/classification/types";
+import type { BookmarkV42Fields } from "@/lib/classification-v2/types/legacy-compat";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // ============================================================================
@@ -42,14 +42,13 @@ import { withAuthMiddleware } from "@/lib/api/middleware";
 type InboxQueryType = "analyze" | "suggestions" | "stats";
 
 /**
- * V4.2.15: API 超时配置
+ * API 超时配置
  * - 主分析操作不应超过 15 秒（考虑到数据库查询可能较慢）
- * - 超时后返回部分结果或错误
  */
 const API_TIMEOUT_MS = 15000;
 
 /**
- * V4.2.1: HTTP 缓存配置
+ * HTTP 缓存配置
  */
 const CACHE_CONTROL_HEADER = "private, max-age=60, stale-while-revalidate=30";
 
@@ -121,36 +120,30 @@ export const GET = withAuthMiddleware(async (request, { userId }) => {
 
 /**
  * 分析待整理文件夹（默认）
+ * v2: 使用 organizeInbox() + persistOrganizeResult()
  */
 async function handleAnalyze(userId: string) {
   const monitor = new PerformanceMonitor("InboxAnalysis");
 
-  // 创建 Supabase 客户端用于数据库操作
   const supabase = await monitor.measure("CreateClient", () => createClient());
-
   monitor.mark("AuthComplete", { userId });
 
-  // 2. 初始化分类容器并获取服务
-  const container = ClassificationContainer.initialize(supabase);
-  const inboxOrganizerService = container.getInboxOrganizerService();
-  monitor.mark("ContainerInitialized");
-
-  // 3. 分析待整理文件夹（主要耗时操作，添加超时控制）
-  const analysis = await monitor.measure(
-    "InboxAnalyze",
-    () =>
-      withTimeout(
-        inboxOrganizerService.analyze(userId),
-        API_TIMEOUT_MS,
-        "InboxAnalyze",
-      ),
+  // 调用 v2 organizeInbox
+  const organizeResult = await monitor.measure(
+    "OrganizeInbox",
+    () => withTimeout(organizeInbox(userId), API_TIMEOUT_MS, "OrganizeInbox"),
     { userId },
   );
 
-  // V4.2: 获取聚类处理状态
+  // 将聚类结果持久化为建议
+  const analysis = await monitor.measure("PersistResult", () =>
+    persistOrganizeResult(supabase, userId, organizeResult),
+  );
+
+  // 获取聚类处理状态
   const clusterStatus = await monitor.measure("GetClusterStatus", () =>
     withTimeout(
-      inboxOrganizerService.getClusterProcessingStatus(userId),
+      getClusterProcessingStatus(supabase, userId),
       2000,
       "GetClusterStatus",
     ).catch(() => ({
@@ -160,9 +153,8 @@ async function handleAnalyze(userId: string) {
     })),
   );
 
-  // 输出性能报告
+  // 性能日志
   const perfReport = monitor.getReport();
-  // 类型断言: clusterStatus 可能是字符串（pending状态）或对象
   const pendingClusterCount =
     typeof clusterStatus === "object" && clusterStatus !== null
       ? ((clusterStatus as { pendingClusterCount?: number })
@@ -183,10 +175,10 @@ async function handleAnalyze(userId: string) {
         slowOperations: perfReport.slowEntries.map((e) => e.name),
       },
     },
-    "Inbox analysis completed",
+    "Inbox analysis completed (v2)",
   );
 
-  // 4. 返回分析结果
+  // 返回分析结果
   const responseData = {
     success: true,
     type: "analyze",
@@ -209,13 +201,11 @@ async function handleAnalyze(userId: string) {
 
 /**
  * 获取聚类建议（原 /cluster-suggestions）
+ * 纯 DB 查询，保持不变
  */
 async function handleSuggestions(userId: string) {
-  // 1. 创建 Supabase 客户端用于数据库操作
   const supabase = await createClient();
 
-  // 2. 获取待确认的聚类建议
-  // 类型断言: 手动维护类型文件时需要此断言
   type SuggestionRow = {
     id: number;
     suggested_folder_name: string | null;
@@ -258,7 +248,7 @@ async function handleSuggestions(userId: string) {
     return internalError("获取聚类建议失败");
   }
 
-  // 3. 获取书签标题
+  // 获取书签标题
   const getBookmarkIds = (s: SuggestionRow): number[] => {
     if (s.bookmark_ids && s.bookmark_ids.length > 0) {
       return s.bookmark_ids;
@@ -288,7 +278,7 @@ async function handleSuggestions(userId: string) {
     );
   }
 
-  // 4. 格式化建议数据
+  // 格式化建议数据
   const formattedSuggestions = (suggestions || []).map((s) => {
     const bookmarkIds = getBookmarkIds(s);
     const sampleTitles = bookmarkIds
@@ -309,44 +299,8 @@ async function handleSuggestions(userId: string) {
     };
   });
 
-  // 5. 获取聚类处理状态
-  const { count: pendingClusterCount } = await supabase
-    .from("bookmarks")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("pending_cluster", true)
-    .is("deleted_at", null);
-
-  const { data: clusterData } = await supabase
-    .from("bookmarks")
-    .select("cluster_id")
-    .eq("user_id", userId)
-    .not("cluster_id", "is", null)
-    .is("deleted_at", null);
-
-  const clusterDataTyped = (clusterData || []) as Array<{
-    cluster_id: string | null;
-  }>;
-  const uniqueClusterIds = new Set(
-    clusterDataTyped.map((b) => b.cluster_id).filter(Boolean),
-  );
-  const clusterCount = uniqueClusterIds.size;
-
-  // 计算下次 cron 时间（凌晨 4:00）
-  const now = new Date();
-  const nextCronTime = new Date(now);
-  nextCronTime.setHours(4, 0, 0, 0);
-  if (nextCronTime <= now) {
-    nextCronTime.setDate(nextCronTime.getDate() + 1);
-  }
-
-  const clusterStatus = {
-    pendingClusterCount: pendingClusterCount ?? 0,
-    clusterCount,
-    lastProcessedAt: null,
-    nextScheduledAt: nextCronTime,
-    hasPendingSuggestions: formattedSuggestions.length > 0,
-  };
+  // 获取聚类处理状态
+  const clusterStatus = await getClusterProcessingStatus(supabase, userId);
 
   logger.info(
     {
@@ -366,11 +320,10 @@ async function handleSuggestions(userId: string) {
 
 /**
  * 获取聚类统计（原 /cluster-stats）
+ * 纯 DB 查询，保持不变
  */
 async function handleStats(userId: string) {
   const supabase = await createClient();
-
-  // 使用 RPC 获取聚类统计
 
   type ClusterStats = {
     total_pending: number;
@@ -389,7 +342,7 @@ async function handleStats(userId: string) {
 
   if (error) {
     logger.warn({ error }, "cluster-stats RPC error, using fallback");
-    // 如果 RPC 不存在，回退到直接查询
+    // RPC 不存在时回退到直接查询
     const { data: fallbackData, error: fallbackError } = await supabase
       .from("bookmarks")
       .select("id, pending_cluster, pending_since, cluster_id")
@@ -432,7 +385,6 @@ async function handleStats(userId: string) {
     });
   }
 
-  // RPC 返回的是数组，取第一个元素
   const stats = Array.isArray(data) ? data[0] : data;
 
   return NextResponse.json({
@@ -454,13 +406,11 @@ async function handleStats(userId: string) {
 
 /**
  * POST /api/classification/inbox
- * 应用整理建议
+ * 应用整理建议 (v2)
  */
 export const POST = withAuthMiddleware(async (request, { userId }) => {
-  // 创建 Supabase 客户端
   const supabase = await createClient();
 
-  // 2. 解析并验证请求体
   const body = await request.json();
   const validation = applySuggestionSchema.safeParse(body);
 
@@ -470,13 +420,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
 
   const { suggestionId } = validation.data;
 
-  // 3. 初始化分类容器并获取服务
-  const container = ClassificationContainer.initialize(supabase);
-  const inboxOrganizerService = container.getInboxOrganizerService();
-
-  // 4. 应用建议
   try {
-    await inboxOrganizerService.applySuggestion(userId, suggestionId);
+    await applySuggestion(supabase, userId, suggestionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("not found") || message.includes("Unauthorized")) {
@@ -485,15 +430,8 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     throw error;
   }
 
-  logger.info(
-    {
-      userId,
-      suggestionId,
-    },
-    "Suggestion applied",
-  );
+  logger.info({ userId, suggestionId }, "Suggestion applied (v2)");
 
-  // 5. 返回成功
   return successResponse({ success: true });
 });
 
@@ -503,13 +441,11 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
 
 /**
  * DELETE /api/classification/inbox
- * 拒绝整理建议
+ * 拒绝整理建议 (v2)
  */
 export const DELETE = withAuthMiddleware(async (request, { userId }) => {
-  // 创建 Supabase 客户端
   const supabase = await createClient();
 
-  // 2. 解析并验证请求体
   const body = await request.json();
   const validation = rejectSuggestionSchema.safeParse(body);
 
@@ -519,13 +455,8 @@ export const DELETE = withAuthMiddleware(async (request, { userId }) => {
 
   const { suggestionId } = validation.data;
 
-  // 3. 初始化分类容器并获取服务
-  const container = ClassificationContainer.initialize(supabase);
-  const inboxOrganizerService = container.getInboxOrganizerService();
-
-  // 4. 拒绝建议
   try {
-    await inboxOrganizerService.rejectSuggestion(userId, suggestionId);
+    await rejectSuggestion(supabase, userId, suggestionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("not found") || message.includes("Unauthorized")) {
@@ -534,14 +465,7 @@ export const DELETE = withAuthMiddleware(async (request, { userId }) => {
     throw error;
   }
 
-  logger.info(
-    {
-      userId,
-      suggestionId,
-    },
-    "Suggestion rejected",
-  );
+  logger.info({ userId, suggestionId }, "Suggestion rejected (v2)");
 
-  // 5. 返回成功
   return successResponse({ success: true });
 });

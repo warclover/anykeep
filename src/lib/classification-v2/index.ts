@@ -18,6 +18,14 @@ export { organizeInbox } from "./batch/inbox-organize";
 export { handleFeedback } from "./feedback/feedback-handler";
 export { logOperation, undoClassification } from "./operation-log";
 
+// Inbox 服务（Phase 5）
+export { persistOrganizeResult } from "./services/suggestion-persist";
+export {
+  applySuggestion,
+  rejectSuggestion,
+} from "./services/suggestion-action";
+export { getClusterProcessingStatus } from "./services/cluster-status";
+
 // ============================================================================
 // 类型导出
 // ============================================================================

@@ -23,6 +23,7 @@ export type {
   ClusterProcessingStatus,
   OrganizationSuggestion,
   OrganizationAnalysis,
+  SuggestionInput,
 } from "@/lib/classification/types/suggestion";
 
 // ============================================================================
