@@ -17,8 +17,8 @@ import {
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
-// V4.0 导入纠错缓存
-import { getCorrectionCache } from "@/lib/classification/services/advanced";
+// 纠错缓存 — 使用 v2 版本
+import { getCorrectionCache } from "@/lib/classification-v2/infra/correction-cache";
 
 // 反馈类型枚举
 const FEEDBACK_TYPES = [

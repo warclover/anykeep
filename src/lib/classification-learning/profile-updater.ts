@@ -15,7 +15,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { LEARNING_LIMITS, FAST_PATH_THRESHOLDS } from "@/lib/trust-mode/config";
 
 // ============================================================================

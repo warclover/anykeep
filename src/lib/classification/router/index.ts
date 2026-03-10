@@ -33,11 +33,11 @@ export { TitleMatcher, titleMatcher } from "./title-matcher";
 
 export type { TitleMatchResult } from "./title-matcher";
 
-// Cache Manager
+// Cache Manager — 已迁出到 @/lib/cache/fast-path-cache
 export {
   FastPathCacheManager,
   fastPathCacheManager,
   getCacheHealthStatus,
-} from "./cache-manager";
+} from "@/lib/cache/fast-path-cache";
 
-export type { CacheConfig, CacheStats } from "./cache-manager";
+export type { CacheConfig, CacheStats } from "@/lib/cache/fast-path-cache";

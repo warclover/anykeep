@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import { profileUpdater } from "@/lib/classification-learning/profile-updater";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 
 const PENDING_CONFIRMATIONS_TABLE = "pending_confirmations" as const;

@@ -98,7 +98,7 @@ mockGetStats.mockReturnValue({
   size: 100,
 });
 
-jest.mock("@/lib/classification/router/cache-manager", () => ({
+jest.mock("@/lib/cache/fast-path-cache", () => ({
   fastPathCacheManager: {
     invalidateUser: (...args: unknown[]) => mockInvalidateUser(...args),
     warmupUserCache: (...args: unknown[]) => mockWarmupUserCache(...args),

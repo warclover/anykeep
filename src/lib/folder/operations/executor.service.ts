@@ -16,11 +16,11 @@
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { operationLogService } from "@/lib/classification/services/operation-log.service";
+import { operationLogService } from "@/lib/operation-log";
 import { initializeFolderNameProfile } from "@/lib/folder-profile/manager";
 import { logger } from "@/lib/logger";
 import { folderCacheInvalidation } from "@/lib/cache/folder-cache-invalidation";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import type {
   FolderCreateInput,
   FolderMergeInput,

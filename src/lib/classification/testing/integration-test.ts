@@ -15,7 +15,10 @@
 import { contentRouter, type RouteInput } from "../router";
 import { tagMatcher } from "../router/tag-matcher";
 import { titleMatcher } from "../router/title-matcher";
-import { fastPathCacheManager, getCacheHealthStatus } from "../router/cache-manager";
+import {
+  fastPathCacheManager,
+  getCacheHealthStatus,
+} from "@/lib/cache/fast-path-cache";
 import { preferenceLearner } from "../learning/preference-learner";
 import { profileUpdater } from "../learning/profile-updater";
 import { feedbackLoopService } from "../learning/feedback-loop";

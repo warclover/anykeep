@@ -14,7 +14,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { LEARNING_LIMITS } from "@/lib/trust-mode/config";
 import { logger } from "@/lib/logger";
 // Json 类型保留用于未来扩展

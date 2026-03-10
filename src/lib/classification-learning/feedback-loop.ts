@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
 import { preferenceLearner, type LearningStats } from "./preference-learner";
 import { profileUpdater } from "./profile-updater";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 
 // ============================================================================
 // 类型定义

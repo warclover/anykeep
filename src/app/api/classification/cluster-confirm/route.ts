@@ -26,7 +26,7 @@ import {
   safeParseJson,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
-import { operationLogService } from "@/lib/classification/services/operation-log.service";
+import { operationLogService } from "@/lib/operation-log";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**

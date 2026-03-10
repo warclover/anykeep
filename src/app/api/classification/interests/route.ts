@@ -15,7 +15,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { createInterestService } from "@/lib/classification/services/interest-factory";
+import { createInterestService } from "@/lib/interests";
 import {
   PRESET_INTEREST_DOMAINS,
   CUSTOM_INTEREST_LIMITS,

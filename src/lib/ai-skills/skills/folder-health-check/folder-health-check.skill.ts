@@ -13,7 +13,7 @@ import type {
   OrchestrationContext,
 } from "../../orchestration/types";
 import type { OrchestrationStreamChunk } from "../../output/types";
-import { FolderHealthService } from "@/lib/classification/services/folder-health.service";
+import { FolderHealthService } from "@/lib/folder/health";
 import {
   FolderProfileRepository,
   SuggestionRepository,

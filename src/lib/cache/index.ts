@@ -88,3 +88,13 @@ export {
   type CacheInvalidationRule,
   type CacheInvalidationServiceConfig,
 } from "./event-driven-cache-invalidation";
+
+// 快速路径缓存管理器（从 classification/router 迁入）
+export {
+  FastPathCacheManager,
+  fastPathCacheManager,
+  getCacheHealthStatus,
+  warmupActiveUsers,
+} from "./fast-path-cache";
+
+export type { CacheConfig, CacheStats } from "./fast-path-cache";

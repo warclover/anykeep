@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { feedbackLoopService } from "@/lib/classification-learning/feedback-loop";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import type { NextRequest } from "next/server";
 import {
   verifyInternalRequest,

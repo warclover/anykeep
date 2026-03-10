@@ -15,8 +15,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { tagMatcher } from "./tag-matcher";
-import { titleMatcher } from "./title-matcher";
+import { tagMatcher } from "@/lib/classification/router/tag-matcher";
+import { titleMatcher } from "@/lib/classification/router/title-matcher";
 import { sourceProfileService } from "@/lib/source-profile/source-profile.service";
 
 // ============================================================================

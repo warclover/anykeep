@@ -24,7 +24,7 @@ import { successResponse, internalError } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { preferenceLearner } from "@/lib/classification-learning/preference-learner";
 import { profileUpdater } from "@/lib/classification-learning/profile-updater";
-import { fastPathCacheManager } from "@/lib/classification/router/cache-manager";
+import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
 import { embeddingABTestService } from "@/lib/classification/services/server";
 import {
