@@ -13,6 +13,10 @@ const config: Config = {
   setupFiles: ["<rootDir>/jest.setup.globals.ts"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
+    // 归档模块路径别名（与 tsconfig paths 保持一致）
+    "^@/lib/classification/(.*)$":
+      "<rootDir>/src/lib/_archived/classification-v1/$1",
+    "^@/lib/classification$": "<rootDir>/src/lib/_archived/classification-v1",
     "^@/(.*)$": "<rootDir>/src/$1",
     // Mock lucide-react to avoid ESM issues
     // Match both the barrel export and individual icon imports (from modularizeImports)

@@ -1,59 +1,31 @@
 /**
  * ClassifySkill 单元测试
  *
- * @version 1.1.0 - 支持 v5.0 分类系统
+ * @version 2.0.0 - 适配 classification-v2
  * @since 2025-12-25
- * @updated 2026-01-19
+ * @updated 2026-03-10
  */
 
 import { ClassifySkill, classifySkill } from "../classify.skill";
 import type { SkillContext } from "../../../core/types";
 
-// Mock 分类结果
+// Mock classification-v2 的 classify 返回值
 const mockClassifyResult = {
   folderId: 1,
   folderName: "技术文章",
   confidence: 85,
   action: "classify" as const,
   reason: "内容与技术文章高度匹配",
-  matchType: "profile",
-  executionTime: 150,
   candidates: [
-    {
-      folderId: 1,
-      folderName: "技术文章",
-      score: 0.85,
-      matchType: "profile" as const,
-      topTags: ["React", "前端"],
-    },
-    {
-      folderId: 2,
-      folderName: "教程",
-      score: 0.65,
-      matchType: "name" as const,
-      topTags: ["入门", "学习"],
-    },
+    { folderId: 1, folderName: "技术文章", mergedScore: 0.85 },
+    { folderId: 2, folderName: "教程", mergedScore: 0.65 },
   ],
+  timing: { totalMs: 150, earlyExitTier: 1 },
 };
 
-// Mock Supabase client
-jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(() => Promise.resolve({})),
-}));
-
-// Mock classification service
-jest.mock(
-  "@/lib/classification/services/simple-classification.service",
-  () => ({
-    createSimpleClassificationService: jest.fn(() => ({
-      classify: jest.fn(() => Promise.resolve(mockClassifyResult)),
-    })),
-  }),
-);
-
-// Mock classification integration (for version detection)
-jest.mock("@/lib/classification/integration", () => ({
-  getClassificationVersion: jest.fn(() => "v4.1"), // 默认使用 v4.1 进行测试
+// Mock classification-v2
+jest.mock("@/lib/classification-v2", () => ({
+  classify: jest.fn(() => Promise.resolve(mockClassifyResult)),
 }));
 
 // Mock logger
@@ -82,7 +54,7 @@ describe("ClassifySkill", () => {
     });
 
     it("should have correct version", () => {
-      expect(skill.metadata.version).toBe("1.1.0");
+      expect(skill.metadata.version).toBe("2.0.0");
     });
 
     it("should have capabilities", () => {

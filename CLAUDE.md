@@ -96,14 +96,14 @@ graph TD
 
 ## 模块索引
 
-| 模块路径                                                     | 职责                                               | 状态    |
-| ------------------------------------------------------------ | -------------------------------------------------- | ------- |
-| [.spec-workflow](./.spec-workflow/CLAUDE.md)                 | 规范工作流模板系统，提供需求/设计/任务文档模板     | 已配置  |
-| [src/lib/ai-agent](./src/lib/ai-agent/CLAUDE.md)             | AI Agent 核心：Context、Tools、Feature Flags       | 🟢 活跃 |
-| [src/lib/ai-skills](./src/lib/ai-skills/CLAUDE.md)           | AI Skills 系统：编排引擎、Router、Skill 实现       | 🟢 活跃 |
-| [src/lib/workflow](./src/lib/workflow/CLAUDE.md)             | Workflow 系统：自动化流程、触发器、状态管理        | 🟢 活跃 |
-| [src/lib/classification-v2](./src/lib/classification-v2/)    | 分类系统 v2：Scorer + CascadeRanker + 反馈循环     | 🟢 活跃 |
-| [src/lib/classification](./src/lib/classification/CLAUDE.md) | 旧分类系统：非分类功能仍在使用（摘要配置、学习等） | 🟡 遗留 |
+| 模块路径                                                                                | 职责                                               | 状态    |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------- | ------- |
+| [.spec-workflow](./.spec-workflow/CLAUDE.md)                                            | 规范工作流模板系统，提供需求/设计/任务文档模板     | 已配置  |
+| [src/lib/ai-agent](./src/lib/ai-agent/CLAUDE.md)                                        | AI Agent 核心：Context、Tools、Feature Flags       | 🟢 活跃 |
+| [src/lib/ai-skills](./src/lib/ai-skills/CLAUDE.md)                                      | AI Skills 系统：编排引擎、Router、Skill 实现       | 🟢 活跃 |
+| [src/lib/workflow](./src/lib/workflow/CLAUDE.md)                                        | Workflow 系统：自动化流程、触发器、状态管理        | 🟢 活跃 |
+| [src/lib/classification-v2](./src/lib/classification-v2/)                               | 分类系统 v2：Scorer + CascadeRanker + 反馈循环     | 🟢 活跃 |
+| [src/lib/\_archived/classification-v1](./src/lib/_archived/classification-v1/CLAUDE.md) | 旧分类系统（已归档）：通过 20 个桥接模块 re-export | 🔴 归档 |
 
 ---
 
