@@ -89,12 +89,6 @@ export {
   type CacheInvalidationServiceConfig,
 } from "./event-driven-cache-invalidation";
 
-// 快速路径缓存管理器（从 classification/router 迁入）
-export {
-  FastPathCacheManager,
-  fastPathCacheManager,
-  getCacheHealthStatus,
-  warmupActiveUsers,
-} from "./fast-path-cache";
-
-export type { CacheConfig, CacheStats } from "./fast-path-cache";
+// 快速路径缓存管理器（服务端模块，不通过桶导出）
+// 直接从 "@/lib/cache/fast-path-cache" 导入
+// 避免客户端组件通过桶导出拉入 next/headers
