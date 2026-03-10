@@ -156,7 +156,7 @@ describe("LinkService", () => {
         mockUserId,
         expect.objectContaining({
           limit: 10,
-          minStrength: 0.3,
+          minStrength: 0.5,
         }),
       );
     });

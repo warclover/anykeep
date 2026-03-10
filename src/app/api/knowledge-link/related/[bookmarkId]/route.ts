@@ -51,7 +51,7 @@ interface GetRelatedResponse {
  *
  * Query Parameters:
  * - limit: number (default: 10, max: 50)
- * - minStrength: number (default: 0.3, range: 0-1)
+ * - minStrength: number (default: 0.5, range: 0-1)
  * - types: string[] (comma-separated, e.g., "semantic,entity,tag")
  */
 export const GET = withAuthMiddleware<{ bookmarkId: string }>(

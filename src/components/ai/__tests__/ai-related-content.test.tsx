@@ -92,7 +92,7 @@ describe("AIRelatedContent", () => {
     const fetchCall = mockFetch.mock.calls[0][0];
     expect(fetchCall).toContain("/api/bookmarks/123/related");
     expect(fetchCall).toContain("limit=10");
-    expect(fetchCall).toContain("minSimilarity=0.3");
+    expect(fetchCall).toContain("minSimilarity=0.5");
   });
 
   it("should display similarity percentage", async () => {

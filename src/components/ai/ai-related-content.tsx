@@ -70,7 +70,7 @@ async function fetchRelatedBookmarks(
 ): Promise<RelatedBookmark[]> {
   const params = new URLSearchParams({
     limit: maxItems.toString(),
-    minSimilarity: "0.3",
+    minSimilarity: "0.5",
   });
   const response = await fetch(
     `/api/bookmarks/${bookmarkId}/related?${params.toString()}`,

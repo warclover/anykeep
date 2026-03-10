@@ -529,7 +529,7 @@ export function BookmarkDetailClient({
                 bookmarkId={bookmark.id}
                 defaultExpanded={true}
                 limit={5}
-                minStrength={0.3}
+                minStrength={0.5}
               />
 
               {/* V4.2.1: 网页快照（微信文章不显示，使用专用微信快照组件） */}
