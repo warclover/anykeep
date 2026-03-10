@@ -24,6 +24,7 @@ import {
   getBookmarkIdsByPlatforms,
 } from "@/lib/browser-bookmark";
 import { clientLogger } from "@/lib/client-logger";
+import { API_FOLDERS, API_BOOKMARKS } from "@/lib/constants/api-paths";
 import type {
   ParsedBookmarkFile,
   ParsedBookmarkNode,
@@ -298,7 +299,7 @@ export function useImportWizard({ open, onSuccess }: UseImportWizardOptions) {
       let aiInboxFolderId: number | null = null;
       if (options.enableAiClassify) {
         try {
-          const inboxResponse = await fetch("/api/folders/inbox", {
+          const inboxResponse = await fetch(API_FOLDERS.inbox, {
             method: "POST",
           });
           if (inboxResponse.ok) {
@@ -331,7 +332,7 @@ export function useImportWizard({ open, onSuccess }: UseImportWizardOptions) {
 
         // 3. 如果有需要创建的文件夹，调用批量创建 API
         if (folderMapping.foldersToCreate.length > 0) {
-          const createResponse = await fetch("/api/folders/batch-create", {
+          const createResponse = await fetch(API_FOLDERS.batchCreate, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -453,7 +454,7 @@ export function useImportWizard({ open, onSuccess }: UseImportWizardOptions) {
 
         try {
           // 调用批量导入 API
-          const response = await fetch("/api/bookmarks/batch-import", {
+          const response = await fetch(API_BOOKMARKS.batchImport, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ bookmarks: batchData }),

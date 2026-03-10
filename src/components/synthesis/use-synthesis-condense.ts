@@ -11,6 +11,7 @@ import {
   CONDENSE_PRESETS,
   type CondensePreset,
 } from "./synthesis-condense-dialog";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 interface UseSynthesisCondenseOptions {
   content: string;
@@ -47,7 +48,7 @@ export function useSynthesisCondense({
       setCondensedPreview("");
 
       try {
-        const res = await fetch("/api/synthesis/condense", {
+        const res = await fetch(API_SYNTHESIS.condense, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

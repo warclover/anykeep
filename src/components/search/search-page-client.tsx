@@ -44,6 +44,7 @@ import type { Bookmark } from "@/types/supabase";
 import { clientLogger } from "@/lib/client-logger";
 import { createClient } from "@/lib/supabase/client";
 import { ANALYTICS } from "@/lib/constants/app";
+import { API_SEARCH } from "@/lib/constants/api-paths";
 
 interface SearchPageClientProps {
   initialQuery: string;
@@ -115,7 +116,7 @@ export function SearchPageClient({
     async function fetchHistory() {
       try {
         const response = await fetch(
-          "/api/search/history?type=recent&limit=10",
+          `${API_SEARCH.history}?type=recent&limit=10`,
         );
         if (!cancelled && response.ok) {
           const data = await response.json();
@@ -220,7 +221,9 @@ export function SearchPageClient({
           debug: isAI ? "true" : "false",
         });
 
-        const response = await fetch(`/api/search?${params.toString()}`);
+        const response = await fetch(
+          `${API_SEARCH.search}?${params.toString()}`,
+        );
         const responseData = await response.json();
 
         // API 响应格式: { success: boolean, data?: { results: [...], filterExtraction?: {...} }, error?: { message: string } }
@@ -330,7 +333,7 @@ export function SearchPageClient({
   const clearHistory = async () => {
     setSearchHistory([]);
     try {
-      await fetch("/api/search/history", { method: "DELETE" });
+      await fetch(API_SEARCH.history, { method: "DELETE" });
     } catch {
       // ignore — 清空 API 失败不影响本地状态已重置
     }

@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { API_AGENT, API_AI } from "@/lib/constants/api-paths";
 import type { QuickActionType } from "@/lib/ai-actions";
 import type {
   AutoTagResult,
@@ -172,7 +173,7 @@ export function AIBookmarkAssistant({
       }));
 
       try {
-        const res = await fetch("/api/ai/quick-actions", {
+        const res = await fetch(API_AI.quickActions, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -267,7 +268,7 @@ export function AIBookmarkAssistant({
           platform: bookmarkPlatform,
         });
 
-        const res = await fetch("/api/agent/unified", {
+        const res = await fetch(API_AGENT.unified, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

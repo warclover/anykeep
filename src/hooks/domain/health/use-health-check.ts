@@ -15,6 +15,7 @@ import type {
   DuplicateGroup,
   StaleContentItem,
 } from "@/lib/ai-skills/skills/health-check/types";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 // ============================================
 // 常量
@@ -43,7 +44,7 @@ const fetcher = async <T>(url: string): Promise<T> => {
 export function useHealthOverview() {
   const { data, error, isLoading, refetch } = useQuery<HealthOverview>({
     queryKey: healthKeys.overview(),
-    queryFn: () => fetcher<HealthOverview>("/api/content-health"),
+    queryFn: () => fetcher<HealthOverview>(API_MISC.contentHealth),
     staleTime: STALE_TIME,
     refetchOnWindowFocus: false,
   });
@@ -189,14 +190,14 @@ export function useHealthScan() {
 
   const { data, error, isLoading, refetch } = useQuery<ScanStatus>({
     queryKey: healthKeys.scanStatus(),
-    queryFn: () => fetcher<ScanStatus>("/api/health/scan"),
+    queryFn: () => fetcher<ScanStatus>(API_MISC.healthScan),
     staleTime: STALE_TIME,
     refetchOnWindowFocus: false,
   });
 
   const startScan = useCallback(
     async (checkTypes: string[] = ["duplicate", "broken_link"]) => {
-      const res = await fetch("/api/health/scan", {
+      const res = await fetch(API_MISC.healthScan, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -279,7 +280,7 @@ export function useHealthFix() {
       strategy: Record<string, string>,
       dryRun: boolean = false,
     ) => {
-      const res = await fetch("/api/health/fix", {
+      const res = await fetch(API_MISC.healthFix, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -29,6 +29,7 @@ import {
   CUSTOM_TAG_COLOR_STYLES,
   COLOR_PICKER_BUTTON_STYLES,
 } from "@/lib/constants/usage-tags";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 
 interface AddCustomUsageTagDialogProps {
   /** 是否打开 */
@@ -101,7 +102,7 @@ export function AddCustomUsageTagDialog({
     setError("");
 
     try {
-      const response = await fetch("/api/settings/usage-tags", {
+      const response = await fetch(API_SETTINGS.usageTags, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: value.trim(), color }),

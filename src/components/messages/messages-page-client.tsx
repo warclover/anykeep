@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { API_CONFIRMATIONS } from "@/lib/constants/api-paths";
 import {
   CheckCheck,
   RefreshCw,
@@ -40,7 +41,9 @@ export function MessagesPageClient() {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const res = await fetch("/api/confirmations?status=pending&limit=1");
+        const res = await fetch(
+          `${API_CONFIRMATIONS.list}?status=pending&limit=1`,
+        );
         if (res.ok) {
           const data = await res.json();
           setPendingCount(data.pendingCount || 0);

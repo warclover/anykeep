@@ -51,6 +51,7 @@ import { ReaderToolbar } from "./reader-toolbar";
 import { StyleSelector } from "./style-selector";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // =============================================================================
 // 类型定义
@@ -215,7 +216,7 @@ export function WechatArticleViewer({
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/snapshots/${snapshotId}`, {
+      const response = await fetch(API_SNAPSHOTS.detail(String(snapshotId)), {
         method: "DELETE",
       });
 

@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { IntentType } from "@/lib/ai-learning/types";
+import { API_AI } from "@/lib/constants/api-paths";
 import type { CorrectionDetection, LearningFeedbackState } from "./types";
 
 // =============================================================================
@@ -106,7 +107,7 @@ export function useLearningFeedback(
       setState((prev) => ({ ...prev, isProcessing: true, error: undefined }));
 
       try {
-        const response = await fetch("/api/ai/learning/correction", {
+        const response = await fetch(API_AI.learningCorrection, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

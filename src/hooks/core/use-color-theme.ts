@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ColorTheme } from "@/types/user-settings";
+import { API_USER } from "@/lib/constants/api-paths";
 
 const STORAGE_KEY = "anykeep-color-theme";
 const DEFAULT_THEME: ColorTheme = "blue";
@@ -99,7 +100,7 @@ export function useColorTheme(): UseColorThemeReturn {
     applyTheme(theme);
 
     // 异步同步到服务器（不阻塞 UI）
-    fetch("/api/user/settings", {
+    fetch(API_USER.settings, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ appearance: { colorTheme: theme } }),

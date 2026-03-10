@@ -13,6 +13,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { API_AI } from "@/lib/constants/api-paths";
 import type {
   VisionAnalysisStatus,
   BookmarkVisionData,
@@ -63,7 +64,7 @@ export function useVisionAnalysis(): UseVisionAnalysisReturn {
       setError(null);
 
       try {
-        const response = await fetch("/api/ai/vision-analyze", {
+        const response = await fetch(API_AI.visionAnalyze, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -157,7 +158,7 @@ export function useVisionData(bookmarkId: number | null) {
 
     try {
       const response = await fetch(
-        `/api/ai/vision-analyze?bookmarkId=${bookmarkId}`,
+        `${API_AI.visionAnalyze}?bookmarkId=${bookmarkId}`,
       );
       const result = await response.json();
 
@@ -198,7 +199,7 @@ export function useVisionServiceStatus() {
     setIsChecking(true);
     try {
       // 简单检查：尝试发起请求，如果服务不可用会返回 503
-      const response = await fetch("/api/ai/vision-analyze?bookmarkId=0");
+      const response = await fetch(`${API_AI.visionAnalyze}?bookmarkId=0`);
       // 即使返回 400 或 404 也说明服务是可用的
       setIsAvailable(response.status !== 503);
     } catch {

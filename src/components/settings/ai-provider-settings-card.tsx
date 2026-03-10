@@ -38,6 +38,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { clientLogger } from "@/lib/client-logger";
+import { API_AI } from "@/lib/constants/api-paths";
 
 /** Provider 状态类型 */
 type ProviderStatus = "healthy" | "degraded" | "unhealthy";
@@ -318,7 +319,7 @@ export function AIProviderSettingsCard() {
     setError(null);
 
     try {
-      const response = await fetch("/api/ai/providers");
+      const response = await fetch(API_AI.providers);
       const result: ProvidersResponse = await response.json();
 
       if (!result.success || !result.data) {
@@ -342,7 +343,7 @@ export function AIProviderSettingsCard() {
   const handleReset = async (providerName: string) => {
     setResetting(true);
     try {
-      const response = await fetch("/api/ai/providers", {
+      const response = await fetch(API_AI.providers, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reset", providerName }),

@@ -28,6 +28,7 @@ import type {
   PreviewBookmark,
 } from "./types";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 /**
  * 手动书签选择器
@@ -67,7 +68,7 @@ export function ManualSelector({
           params.append("search", searchQuery);
         }
 
-        const response = await fetch(`/api/bookmarks?${params}`);
+        const response = await fetch(`${API_BOOKMARKS.legacyList}?${params}`);
         if (response.ok) {
           const result = await response.json();
           const newBookmarks = result.data || [];

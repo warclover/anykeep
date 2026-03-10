@@ -13,6 +13,7 @@ import {
 } from "@/components/classification/classification-notification";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import type { UseCreateBookmarkFormReturn } from "./use-create-bookmark-form";
+import { API_AI } from "@/lib/constants/api-paths";
 
 export interface BookmarkCreatedData {
   id: number;
@@ -99,7 +100,7 @@ export function useBookmarkSubmit(params: UseBookmarkSubmitParams) {
       toast.success("收藏创建成功！");
 
       if (form.enableVisionAnalysis && data.data?.id) {
-        fetch("/api/ai/vision-analyze", {
+        fetch(API_AI.visionAnalyze, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bookmarkId: data.data.id, maxImages: 3 }),

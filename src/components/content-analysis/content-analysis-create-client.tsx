@@ -12,7 +12,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { API_SYNTHESIS } from "@/lib/constants/api-paths";
+import { API_SYNTHESIS, API_BOOKMARKS } from "@/lib/constants/api-paths";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -211,7 +211,7 @@ export function ContentAnalysisCreateClient() {
           params.append("keyword", searchQuery);
         }
 
-        const response = await fetch(`/api/bookmarks?${params}`);
+        const response = await fetch(`${API_BOOKMARKS.legacyList}?${params}`);
         if (response.ok) {
           const result = await response.json();
           const newBookmarks = result.data?.bookmarks || [];

@@ -42,7 +42,7 @@ import {
 import type { TrustMode } from "@/types/trust-mode";
 import type { PresetInterestId } from "@/lib/interest-profile";
 import { clientLogger } from "@/lib/client-logger";
-import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
+import { API_CLASSIFICATION, API_USER } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -281,7 +281,7 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
     setIsLoading(true);
     try {
       // 标记引导完成
-      await fetch("/api/user/onboarding", {
+      await fetch(API_USER.onboarding, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: true }),

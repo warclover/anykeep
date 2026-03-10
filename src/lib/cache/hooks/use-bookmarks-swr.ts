@@ -20,6 +20,7 @@ import { dataCache } from "../data-cache";
 import { DATA_CACHE_CONFIG } from "../cache-config";
 import { DEFAULT_PAGE_SIZE } from "@/components/home/constants";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 import type { Bookmark } from "@/types/supabase";
 
 // 扩展的书签类型（包含文件夹信息）
@@ -215,10 +216,13 @@ export function useBookmarksSWR(
         apiParams.set("usageTags", usageTags.join(","));
       }
 
-      const res = await fetch(`/api/bookmarks?${apiParams.toString()}`, {
-        credentials: "include",
-        signal,
-      });
+      const res = await fetch(
+        `${API_BOOKMARKS.legacyList}?${apiParams.toString()}`,
+        {
+          credentials: "include",
+          signal,
+        },
+      );
 
       if (!res.ok) {
         throw new Error("加载失败");
@@ -510,9 +514,12 @@ export function useBookmarksSWR(
         apiParams.set("usageTags", usageTags.join(","));
       }
 
-      const res = await fetch(`/api/bookmarks?${apiParams.toString()}`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${API_BOOKMARKS.legacyList}?${apiParams.toString()}`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (!res.ok) {
         throw new Error("加载失败");

@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { API_MD_COLLECTIONS } from "@/lib/constants/api-paths";
 import type { MdCollection, MdCollectionListParams } from "../types";
 
 interface UseMdCollectionsOptions extends MdCollectionListParams {
@@ -98,7 +99,7 @@ export function useMdCollections(
       try {
         const params = buildQueryParams(cursor);
         const response = await fetch(
-          `/api/md-collections?${params.toString()}`,
+          `${API_MD_COLLECTIONS.list}?${params.toString()}`,
         );
         const result = await response.json();
 
@@ -207,7 +208,7 @@ export function useMdCollection(id: number | null) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/md-collections/${id}`);
+      const response = await fetch(API_MD_COLLECTIONS.detail(String(id)));
       const result = await response.json();
 
       if (!result.success) {

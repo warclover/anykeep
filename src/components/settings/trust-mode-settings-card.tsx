@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { TrustMode } from "@/types/trust-mode";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -127,7 +128,7 @@ export function TrustModeSettingsCard({
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/settings/trust-mode");
+      const response = await fetch(API_SETTINGS.trustMode);
       if (!response.ok) throw new Error("Failed to load settings");
 
       const data = await response.json();
@@ -184,7 +185,7 @@ export function TrustModeSettingsCard({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/settings/trust-mode", {
+      const response = await fetch(API_SETTINGS.trustMode, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

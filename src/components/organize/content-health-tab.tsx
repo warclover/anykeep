@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clientLogger } from "@/lib/client-logger";
+import { API_MISC } from "@/lib/constants/api-paths";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -156,7 +157,7 @@ export function ContentHealthTab({ className }: ContentHealthTabProps) {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await fetch("/api/content-health", {
+      await fetch(API_MISC.contentHealth, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 import type { NotificationPreferences } from "@/lib/messages/types";
 
 // 默认偏好值
@@ -52,7 +53,7 @@ export function NotificationSettingsCard() {
   // 加载偏好设置
   const loadPreferences = useCallback(async () => {
     try {
-      const response = await fetch("/api/settings/notifications");
+      const response = await fetch(API_SETTINGS.notifications);
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -85,7 +86,7 @@ export function NotificationSettingsCard() {
   const savePreferences = async () => {
     setSaving(true);
     try {
-      const response = await fetch("/api/settings/notifications", {
+      const response = await fetch(API_SETTINGS.notifications, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(preferences),

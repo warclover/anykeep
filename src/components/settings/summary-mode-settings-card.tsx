@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { SummaryMode } from "@/lib/summary/types/ai-summary";
 import { clientLogger } from "@/lib/client-logger";
+import { API_USER } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -153,7 +154,7 @@ export function SummaryModeSettingsCard({
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/user/summary-mode");
+      const response = await fetch(API_USER.summaryMode);
       if (!response.ok) throw new Error("Failed to load settings");
 
       const data: SummaryModeApiResponse = await response.json();
@@ -182,7 +183,7 @@ export function SummaryModeSettingsCard({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/user/summary-mode", {
+      const response = await fetch(API_USER.summaryMode, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: selectedMode }),

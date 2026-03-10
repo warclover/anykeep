@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { clientLogger } from "@/lib/client-logger";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -158,8 +159,8 @@ export function LLMUsageCard({ className }: LLMUsageCardProps) {
     setIsLoading(true);
     try {
       const [dailyRes, monthlyRes] = await Promise.all([
-        fetch("/api/llm-usage?period=daily"),
-        fetch("/api/llm-usage?period=monthly"),
+        fetch(`${API_MISC.llmUsage}?period=daily`),
+        fetch(`${API_MISC.llmUsage}?period=monthly`),
       ]);
 
       if (dailyRes.ok) {

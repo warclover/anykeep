@@ -23,6 +23,7 @@ import type {
   UserDecision,
 } from "@/lib/batch-classification";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BATCH_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================
 // 页面状态
@@ -153,7 +154,7 @@ export default function SandboxPage() {
 
   // 撤销分类
   const handleUndo = async () => {
-    const response = await fetch(`/api/batch-classification/${batchId}/undo`, {
+    const response = await fetch(API_BATCH_CLASSIFICATION.undo(batchId), {
       method: "POST",
     });
 

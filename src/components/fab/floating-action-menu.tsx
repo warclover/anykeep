@@ -37,6 +37,7 @@ import { useFeedback } from "@/components/feedback/feedback-provider";
 import { useClipboardPaste } from "@/components/quick-add/hooks/useClipboardPaste";
 import { FABItem } from "./fab-item";
 import { FAB_EXCLUDED_PATHS, FAB_LABELS, FAB_STYLES } from "./fab-constants";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 // ============================================
 // Hook: 快捷键监听
@@ -131,7 +132,7 @@ export function FloatingActionMenu() {
 
     try {
       const [response] = await Promise.all([
-        fetch("/api/bookmarks", {
+        fetch(API_BOOKMARKS.legacyList, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: trimmedUrl }),

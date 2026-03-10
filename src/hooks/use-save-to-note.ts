@@ -17,6 +17,7 @@ import type {
 } from "@/components/shared/save-to-note/types";
 import { extractFallbackTitle } from "@/features/md-collections/lib";
 import { NOTES } from "@/lib/constants/notes-messages";
+import { API_AI, API_MD_COLLECTIONS } from "@/lib/constants/api-paths";
 
 // =============================================================================
 // 辅助函数：将 JSON 对象转换为 Markdown
@@ -340,7 +341,7 @@ export function useSaveToNote(
         let title = payload.customTitle;
 
         if (!title) {
-          const titleRes = await fetch("/api/ai/generate-title", {
+          const titleRes = await fetch(API_AI.generateTitle, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: normalizedContent.slice(0, 2000) }),
@@ -367,7 +368,7 @@ export function useSaveToNote(
 
         // 3. 保存到 MD 收藏
         safeSetState("saving");
-        const saveRes = await fetch("/api/md-collections", {
+        const saveRes = await fetch(API_MD_COLLECTIONS.list, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSynthesisDetail } from "@/hooks/synthesis/use-synthesis-detail";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { useSynthesisHighlights } from "@/hooks/synthesis/use-synthesis-highlights";
 import { SynthesisShareDialog } from "./synthesis-share-dialog";
 import { SourceBookmarksPanel } from "./source-bookmarks-panel";
@@ -141,7 +142,7 @@ export function SynthesisDetailPageClient({
   const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     try {
-      const response = await fetch(`/api/synthesis/${reportId}/regenerate`, {
+      const response = await fetch(API_SYNTHESIS.regenerate(reportId), {
         method: "POST",
       });
 
@@ -200,7 +201,7 @@ export function SynthesisDetailPageClient({
     async (newContent: string) => {
       if (!report) return;
       try {
-        const response = await fetch(`/api/synthesis/${report.id}`, {
+        const response = await fetch(API_SYNTHESIS.detail(report.id), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: newContent }),

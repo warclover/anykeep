@@ -33,6 +33,7 @@ import type {
   SmartListColor,
   UpdateSmartListRequest,
 } from "@/types/smart-list";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 图标映射
@@ -120,7 +121,7 @@ export function SmartListView({
   const handleDelete = useCallback(
     async (id: number) => {
       try {
-        const res = await fetch(`/api/bookmarks/${id}`, {
+        const res = await fetch(API_BOOKMARKS.legacyDetail(id), {
           method: "DELETE",
         });
 
@@ -142,7 +143,7 @@ export function SmartListView({
   const handleToggleRead = useCallback(
     async (id: number, isRead: boolean) => {
       try {
-        const res = await fetch(`/api/bookmarks/${id}`, {
+        const res = await fetch(API_BOOKMARKS.legacyDetail(id), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isRead }),

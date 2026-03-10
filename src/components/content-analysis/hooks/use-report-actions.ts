@@ -83,7 +83,7 @@ export function useReportActions({
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/synthesis/${deleteTarget.id}`, {
+      const response = await fetch(API_SYNTHESIS.detail(deleteTarget.id), {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("删除失败");
@@ -105,7 +105,7 @@ export function useReportActions({
   const handleRetry = useCallback(
     async (reportId: string) => {
       try {
-        const response = await fetch(`/api/synthesis/${reportId}/regenerate`, {
+        const response = await fetch(API_SYNTHESIS.regenerate(reportId), {
           method: "POST",
         });
         if (!response.ok) throw new Error("重新生成失败");

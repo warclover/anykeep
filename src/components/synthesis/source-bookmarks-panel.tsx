@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { SynthesisSourceType } from "@/lib/synthesis";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 interface SourceBookmark {
   id: number;
@@ -112,7 +113,7 @@ export function SourceBookmarksPanel({
         params.append("bookmarkIds", sourceBookmarkIds.join(","));
       }
 
-      const response = await fetch(`/api/synthesis/preview?${params}`);
+      const response = await fetch(`${API_SYNTHESIS.preview}?${params}`);
       if (response.ok) {
         const result = await response.json();
         setBookmarks(result.bookmarks || []);

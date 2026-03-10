@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_DISTRIBUTION } from "@/lib/constants/api-paths";
 
 interface NotionStatus {
   connected: boolean;
@@ -85,7 +86,7 @@ export function NotionConnectButton({
   // 检查连接状态
   const checkStatus = useCallback(async () => {
     try {
-      const response = await fetch("/api/distribution/notion/status");
+      const response = await fetch(API_DISTRIBUTION.notionStatus);
       const data = await response.json();
       setStatus(data);
     } catch (error) {
@@ -126,7 +127,7 @@ export function NotionConnectButton({
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      const response = await fetch("/api/distribution/notion/status", {
+      const response = await fetch(API_DISTRIBUTION.notionStatus, {
         method: "DELETE",
       });
 

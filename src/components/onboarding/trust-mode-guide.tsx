@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
 import { clientLogger } from "@/lib/client-logger";
+import { API_USER } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -270,7 +271,7 @@ export function TrustModeGuide({
   const handleConfirm = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/user/trust-mode", {
+      const response = await fetch(API_USER.trustMode, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: selectedMode }),

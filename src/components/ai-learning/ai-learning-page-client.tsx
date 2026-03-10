@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { BrainCog, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_LEARNING } from "@/lib/constants/api-paths";
 import { TEXT } from "./constants";
 import type { InsightsData, AILearningPageClientProps } from "./types";
 import { PageHeader, EmptyState } from "./page-header";
@@ -36,7 +37,7 @@ export function AILearningPageClient({ error }: AILearningPageClientProps) {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch("/api/learning/insights");
+      const res = await fetch(API_LEARNING.insights);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || "加载失败");
       setData(json.data);

@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useSnapshotFeature } from "@/lib/feature-flags";
 import type { SnapshotQuota, SnapshotType } from "@/lib/snapshot";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -106,7 +107,7 @@ export function SnapshotQuotaSection({ className }: SnapshotQuotaSectionProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/snapshots/quota");
+      const response = await fetch(API_SNAPSHOTS.quota);
       const result = await response.json();
 
       if (!response.ok) {

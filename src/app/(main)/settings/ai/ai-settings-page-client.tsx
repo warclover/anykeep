@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { API_AI } from "@/lib/constants/api-paths";
 import { AIProviderSettingsCard } from "@/components/settings/ai-provider-settings-card";
 import { SynthesisRecommendSettingsCard } from "@/components/settings/synthesis-recommend-settings-card";
 import { AiCostStatsCard } from "@/components/settings/ai-cost-stats-card";
@@ -79,7 +80,7 @@ function SkillsMonitorCard() {
   useEffect(() => {
     const fetchSkills = async () => {
       try {
-        const response = await fetch("/api/ai/skills");
+        const response = await fetch(API_AI.skills);
         if (response.ok) {
           const data = await response.json();
           setSkills(data.skills || []);
@@ -224,7 +225,7 @@ function UsageStatsCard({ userId }: { userId: string }) {
     // 从 API 获取使用统计
     const fetchStats = async () => {
       try {
-        const response = await fetch("/api/ai/usage-stats");
+        const response = await fetch(API_AI.usageStats);
         if (response.ok) {
           const data = await response.json();
           setStats(

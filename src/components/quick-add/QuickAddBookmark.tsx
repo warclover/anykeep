@@ -27,6 +27,7 @@ import { QuickAddPreview, QuickAddError } from "./inline/QuickAddPreview";
 
 // Drawer (will be implemented later)
 import { DetailDrawer } from "./drawer/DetailDrawer";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 export interface QuickAddBookmarkProps {
   onBookmarkCreated?: (bookmark: unknown) => void;
@@ -147,7 +148,7 @@ export function QuickAddBookmark({
       };
       if (coverUrl) payload.coverUrl = coverUrl;
 
-      const response = await fetch("/api/bookmarks", {
+      const response = await fetch(API_BOOKMARKS.legacyList, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

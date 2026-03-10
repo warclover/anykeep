@@ -44,6 +44,7 @@ import { folderCacheInvalidation } from "@/lib/cache";
 import { getCategoryEmoji } from "./constants";
 import type { Folder as FolderType } from "@/types/supabase";
 import type { FolderCategory } from "@/types/domain";
+import { API_FOLDERS, API_MISC } from "@/lib/constants/api-paths";
 
 type FolderWithCount = FolderType & {
   bookmark_count?: number;
@@ -225,7 +226,7 @@ export function FolderActionMenu({
 
     const fetchLockStatus = async () => {
       try {
-        const res = await fetch(`/api/folders/${folder.id}/lock`, {
+        const res = await fetch(API_FOLDERS.lock(folder.id), {
           signal: abortController.signal,
         });
         if (res.ok) {
@@ -258,7 +259,7 @@ export function FolderActionMenu({
     setIsLocking(true);
 
     try {
-      const res = await fetchWithAbort(`/api/folders/${folder.id}/lock`, {
+      const res = await fetchWithAbort(API_FOLDERS.lock(folder.id), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -305,7 +306,7 @@ export function FolderActionMenu({
     );
 
     try {
-      const res = await fetch("/api/reclassify", {
+      const res = await fetch(API_MISC.reclassify, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

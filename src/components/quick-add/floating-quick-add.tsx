@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { toast } from "sonner";
+import { API_BOOKMARKS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 常量定义
@@ -115,7 +116,7 @@ export function FloatingQuickAdd() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/bookmarks", {
+      const response = await fetch(API_BOOKMARKS.legacyList, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),

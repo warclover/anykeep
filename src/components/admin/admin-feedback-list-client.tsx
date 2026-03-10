@@ -22,6 +22,7 @@ import { Loader2, Filter, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { toast } from "sonner";
+import { API_ADMIN } from "@/lib/constants/api-paths";
 
 interface AdminFeedbackListClientProps {
   initialFeedbacks: UserFeedback[];
@@ -47,7 +48,9 @@ export function AdminFeedbackListClient({
       if (filters.priority !== "all")
         params.append("priority", filters.priority);
 
-      const response = await fetch(`/api/admin/feedback?${params.toString()}`);
+      const response = await fetch(
+        `${API_ADMIN.feedback}?${params.toString()}`,
+      );
       const result = await response.json();
 
       if (result.success) {

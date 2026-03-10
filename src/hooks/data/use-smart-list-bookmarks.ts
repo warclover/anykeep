@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import type { SmartListClient, SmartListFilters } from "@/types/smart-list";
 import type { Bookmark } from "@/types/supabase";
-import { API_PATHS } from "@/lib/constants/api-paths";
+import { API_PATHS, API_SMART_LISTS } from "@/lib/constants/api-paths";
 import { smartListBookmarkKeys } from "@/hooks/queries/keys";
 
 // ============================================
@@ -168,7 +168,7 @@ function filtersToQueryParams(filters: SmartListFilters): URLSearchParams {
 
 async function fetcher(smartListId: number): Promise<SmartListBookmarksData> {
   // 1. 获取智能列表详情
-  const smartListRes = await fetch(`/api/smart-lists/${smartListId}`);
+  const smartListRes = await fetch(API_SMART_LISTS.detail(String(smartListId)));
   if (!smartListRes.ok) {
     throw new Error("获取智能列表失败");
   }

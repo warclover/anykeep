@@ -32,6 +32,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { API_AGENT } from "@/lib/constants/api-paths";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 import { AIMarkdown } from "./ai-markdown";
 
@@ -177,7 +178,7 @@ export function AIBookmarkChat({
           platform: bookmarkPlatform,
         });
 
-        const res = await fetch("/api/agent/unified", {
+        const res = await fetch(API_AGENT.unified, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

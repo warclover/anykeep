@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { SynthesisSourceType } from "@/lib/synthesis";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 interface PreviewBookmark {
   id: number;
@@ -95,7 +96,7 @@ export function BookmarkPreviewList({
           params.append("bookmarkIds", bookmarkIds.join(","));
         }
 
-        const response = await fetch(`/api/synthesis/preview?${params}`);
+        const response = await fetch(`${API_SYNTHESIS.preview}?${params}`);
 
         if (!response.ok) {
           throw new Error("加载失败");

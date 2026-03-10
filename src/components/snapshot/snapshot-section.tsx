@@ -52,6 +52,7 @@ import type {
   SnapshotType,
 } from "@/lib/snapshot";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -117,7 +118,9 @@ export function SnapshotSection({
 
     const loadExistingSnapshot = async () => {
       try {
-        const response = await fetch(`/api/snapshots?bookmarkId=${bookmarkId}`);
+        const response = await fetch(
+          `${API_SNAPSHOTS.list}?bookmarkId=${bookmarkId}`,
+        );
         const result = await response.json();
 
         if (response.ok && result.data) {
@@ -149,7 +152,7 @@ export function SnapshotSection({
 
     setIsRefreshing(true);
     try {
-      const response = await fetch(`/api/snapshots/${snapshot.id}`);
+      const response = await fetch(API_SNAPSHOTS.detail(String(snapshot.id)));
       const result = await response.json();
 
       if (response.ok && result.data) {
@@ -178,7 +181,7 @@ export function SnapshotSection({
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/snapshots/${snapshot.id}`, {
+      const response = await fetch(API_SNAPSHOTS.detail(String(snapshot.id)), {
         method: "DELETE",
       });
 
@@ -226,7 +229,7 @@ export function SnapshotSection({
 
     setIsManualProcessing(true);
     try {
-      const response = await fetch("/api/snapshots/process", {
+      const response = await fetch(API_SNAPSHOTS.process, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshotId: snapshot.id }),

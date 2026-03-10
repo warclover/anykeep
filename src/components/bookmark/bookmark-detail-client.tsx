@@ -51,7 +51,7 @@ const AISmartSummary = lazy(() =>
   })),
 );
 import { useOptionalUser } from "@/contexts/user-context";
-import { API_PATHS } from "@/lib/constants/api-paths";
+import { API_PATHS, API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
 // Phase 2.3.7: 拆分组件
 import { useDetailMutations } from "./hooks/use-detail-mutations";
 import { DetailActionBar } from "./detail-action-bar";
@@ -233,7 +233,7 @@ export function BookmarkDetailClient({
   const handleSnapshot = useCallback(async () => {
     try {
       setIsSnapshotting(true);
-      const response = await fetch("/api/wechat-article/create", {
+      const response = await fetch(API_WECHAT_ARTICLE.create, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarkId: bookmark.id }),

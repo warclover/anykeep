@@ -14,6 +14,7 @@ import type { AgentStreamChunk } from "@/lib/ai-agent";
 import type { PendingConfirmation } from "@/lib/ai-agent/tools/types";
 import { buildAttachmentContextFull } from "@/lib/ai-agent/context/attachment-context-builder";
 import { clientLogger } from "@/lib/client-logger";
+import { API_AGENT } from "@/lib/constants/api-paths";
 import type { AttachmentItem } from "@/components/ai/attachment/types";
 import type { useAIConversation } from "./use-ai-conversation";
 
@@ -208,7 +209,7 @@ export function useAIChatActions({
           requestBody.contextReferences = contextReferences;
         }
 
-        const response = await fetch("/api/agent/unified", {
+        const response = await fetch(API_AGENT.unified, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),

@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
 import { useHealthOverview, useHealthScan } from "@/hooks/domain/health";
+import { API_MISC } from "@/lib/constants/api-paths";
 import { BrokenLinksTab } from "./broken-links/broken-links-tab";
 import { DuplicatesTab } from "./duplicates/duplicates-tab";
 import { StaleContentTab } from "./stale-content/stale-content-tab";
@@ -335,7 +336,7 @@ export function HealthPageClient() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await fetch("/api/content-health", {
+      await fetch(API_MISC.contentHealth, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

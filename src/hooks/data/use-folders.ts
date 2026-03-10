@@ -13,6 +13,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { folderKeys } from "@/hooks/queries/keys";
 import type { Folder } from "@/types/supabase";
+import { API_FOLDERS } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -59,7 +60,7 @@ const STALE_TIME = 5 * 60 * 1000;
  * 使用 /api/v1/folders 端点（与 use-folders-query.ts 共享同一端点 + 同一 cache key）
  */
 async function foldersFetcher(): Promise<Folder[]> {
-  const response = await fetch("/api/v1/folders");
+  const response = await fetch(API_FOLDERS.v1List);
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));

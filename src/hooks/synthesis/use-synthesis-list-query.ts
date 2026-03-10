@@ -14,6 +14,7 @@ import type { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { synthesisKeys, type SynthesisListFilters } from "@/hooks/queries/keys";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import type {
   SynthesisListResponse,
   SynthesisSourceType,
@@ -64,7 +65,7 @@ async function fetchSynthesisList(
   if (options.page) params.set("page", String(options.page));
   if (options.pageSize) params.set("pageSize", String(options.pageSize));
 
-  const response = await fetch(`/api/synthesis?${params.toString()}`);
+  const response = await fetch(`${API_SYNTHESIS.list}?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch synthesis list");
   }

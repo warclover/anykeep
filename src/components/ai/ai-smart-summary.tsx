@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { API_AGENT } from "@/lib/constants/api-paths";
 import { TTSPlayerButton } from "@/components/tts";
 import type { AgentStreamChunk } from "@/lib/ai-agent";
 
@@ -107,7 +108,7 @@ export function AISmartSummary({
     setError(null);
 
     try {
-      const res = await fetch("/api/agent/unified", {
+      const res = await fetch(API_AGENT.unified, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

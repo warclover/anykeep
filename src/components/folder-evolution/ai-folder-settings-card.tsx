@@ -52,6 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -109,7 +110,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/settings/ai-folder");
+      const response = await fetch(API_SETTINGS.aiFolder);
       if (!response.ok) throw new Error("Failed to load settings");
 
       const data = await response.json();
@@ -161,7 +162,7 @@ export function AIFolderSettingsCard({ className }: AIFolderSettingsCardProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/settings/ai-folder", {
+      const response = await fetch(API_SETTINGS.aiFolder, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),

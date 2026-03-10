@@ -78,6 +78,7 @@ import type {
   RssTargetConfig,
 } from "@/lib/distribution/types";
 import { clientLogger } from "@/lib/client-logger";
+import { API_DISTRIBUTION } from "@/lib/constants/api-paths";
 
 /**
  * 目标类型配置
@@ -195,7 +196,7 @@ export function DistributionPageClient({
   const loadTargets = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/distribution/targets");
+      const response = await fetch(API_DISTRIBUTION.targets);
       if (!response.ok) {
         throw new Error("加载失败");
       }
@@ -220,7 +221,7 @@ export function DistributionPageClient({
     setSyncingTargets((prev) => new Set(prev).add(targetId));
 
     try {
-      const response = await fetch(`/api/distribution/sync`, {
+      const response = await fetch(API_DISTRIBUTION.sync, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetId }),

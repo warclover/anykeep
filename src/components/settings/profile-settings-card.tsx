@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/user-context";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 
 /**
  * 职业/身份选项
@@ -184,7 +185,7 @@ export function ProfileSettingsCard({ className }: ProfileSettingsCardProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/settings/profile", {
+      const response = await fetch(API_SETTINGS.profile, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

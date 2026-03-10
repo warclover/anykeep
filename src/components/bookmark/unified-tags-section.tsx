@@ -36,6 +36,7 @@ import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/data";
 import { useAutoSnapshot } from "@/hooks/domain/bookmark";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BOOKMARKS, API_SETTINGS } from "@/lib/constants/api-paths";
 
 // 图标名称到组件的映射
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -140,7 +141,7 @@ export function UnifiedTagsSection({
     async (newUsageTags: string[]): Promise<boolean> => {
       try {
         const newUserTags = [...newUsageTags, ...regularTags];
-        const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        const response = await fetch(API_BOOKMARKS.legacyDetail(bookmarkId), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userTags: newUserTags }),
@@ -165,7 +166,7 @@ export function UnifiedTagsSection({
       const now = new Date().toISOString();
       updateTag(customTag.id, { lastUsedAt: now });
       try {
-        await fetch("/api/settings/usage-tags", {
+        await fetch(API_SETTINGS.usageTags, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: customTag.id, lastUsedAt: now }),

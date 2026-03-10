@@ -18,6 +18,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { API_TTS } from "@/lib/constants/api-paths";
 import type { TTSContentType, TTSVoiceGender, TTSAPIResponse } from "@/lib/tts";
 
 // ============================================
@@ -191,7 +192,7 @@ export function TTSPlayerProvider({ children }: { children: ReactNode }) {
 
       try {
         // 调用 TTS API
-        const response = await fetch("/api/tts", {
+        const response = await fetch(API_TTS.synthesize, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -12,6 +12,7 @@
 
 import { useState, useCallback } from "react";
 import type { OrganizeSnapshot } from "@/lib/organize/types";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 interface UseOrganizeComparisonReturn {
   /** 整理前快照 */
@@ -67,7 +68,7 @@ function validateSnapshot(data: unknown): OrganizeSnapshot {
  * 获取收藏统计数据
  */
 async function fetchCollectionStats(): Promise<OrganizeSnapshot> {
-  const response = await fetch("/api/collection-stats", {
+  const response = await fetch(API_MISC.collectionStats, {
     credentials: "include", // 确保携带认证 cookies
   });
   if (!response.ok) {

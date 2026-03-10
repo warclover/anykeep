@@ -9,6 +9,7 @@ import type {
   ImportErrorDetail,
   ImportHistoryOptions,
 } from "@/types/supabase";
+import { API_BROWSER_BOOKMARK } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -90,7 +91,7 @@ export function getImportSourceDisplayName(source: ImportSource): string {
 export async function createImportHistory(
   params: CreateImportHistoryParams,
 ): Promise<ImportHistory> {
-  const response = await fetch("/api/browser-bookmark/history", {
+  const response = await fetch(API_BROWSER_BOOKMARK.history, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -134,7 +135,7 @@ export async function getImportHistory(
     searchParams.set("source", params.source);
   }
 
-  const url = `/api/browser-bookmark/history?${searchParams.toString()}`;
+  const url = `${API_BROWSER_BOOKMARK.history}?${searchParams.toString()}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -163,7 +164,7 @@ export async function deleteImportHistory(
     throw new Error("需要提供 id 或 batchId");
   }
 
-  const url = `/api/browser-bookmark/history?${searchParams.toString()}`;
+  const url = `${API_BROWSER_BOOKMARK.history}?${searchParams.toString()}`;
   const response = await fetch(url, { method: "DELETE" });
 
   if (!response.ok) {

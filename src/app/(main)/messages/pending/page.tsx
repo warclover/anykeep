@@ -18,6 +18,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { clientLogger } from "@/lib/client-logger";
+import { API_CONFIRMATIONS } from "@/lib/constants/api-paths";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,7 +63,7 @@ export default function PendingConfirmationsPage() {
   // 获取待确认消息
   const fetchConfirmations = useCallback(async () => {
     try {
-      const response = await fetch("/api/confirmations?status=pending");
+      const response = await fetch(`${API_CONFIRMATIONS.list}?status=pending`);
       if (!response.ok) throw new Error("Failed to fetch confirmations");
 
       const data = await response.json();
@@ -92,7 +93,7 @@ export default function PendingConfirmationsPage() {
     selectedFolderId?: number | null,
   ) => {
     try {
-      const response = await fetch(`/api/confirmations/${id}`, {
+      const response = await fetch(API_CONFIRMATIONS.detail(String(id)), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -119,7 +120,7 @@ export default function PendingConfirmationsPage() {
   // 处理拒绝
   const handleReject = async (id: number) => {
     try {
-      const response = await fetch(`/api/confirmations/${id}`, {
+      const response = await fetch(API_CONFIRMATIONS.detail(String(id)), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject" }),
@@ -176,7 +177,7 @@ export default function PendingConfirmationsPage() {
 
     setBatchProcessing(true);
     try {
-      const response = await fetch("/api/confirmations", {
+      const response = await fetch(API_CONFIRMATIONS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -215,7 +216,7 @@ export default function PendingConfirmationsPage() {
 
     setBatchProcessing(true);
     try {
-      const response = await fetch("/api/confirmations", {
+      const response = await fetch(API_CONFIRMATIONS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -18,7 +18,10 @@ import {
   type ImportBatch,
   type ImportSessionStatus,
 } from "./import-cache";
-import { API_BATCH_CLASSIFICATION } from "@/lib/constants/api-paths";
+import {
+  API_BATCH_CLASSIFICATION,
+  API_BOOKMARKS,
+} from "@/lib/constants/api-paths";
 import type {
   BrowserBookmarkImportOptions,
   ImportProgress,
@@ -513,7 +516,7 @@ export class ImportSessionManager {
    * 执行单个批次的导入
    */
   private async executeBatch(batch: ImportBatch): Promise<BatchResult> {
-    const response = await fetch("/api/bookmarks/batch-import", {
+    const response = await fetch(API_BOOKMARKS.batchImport, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

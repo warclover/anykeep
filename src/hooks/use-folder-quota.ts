@@ -7,9 +7,10 @@
 import { useQuery } from "@tanstack/react-query";
 import type { UnifiedQuotaResult } from "@/lib/folder-quota";
 import { folderQuotaKeys } from "@/hooks/queries/keys";
+import { API_FOLDERS } from "@/lib/constants/api-paths";
 
 async function fetchFolderQuota(): Promise<UnifiedQuotaResult> {
-  const response = await fetch("/api/folders/quota");
+  const response = await fetch(API_FOLDERS.quota);
 
   if (!response.ok) {
     throw new Error("Failed to fetch quota");

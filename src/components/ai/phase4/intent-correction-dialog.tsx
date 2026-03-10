@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { API_AGENT } from "@/lib/constants/api-paths";
 import type { IntentType } from "@/lib/ai-skills/router/types";
 
 // =============================================================================
@@ -146,7 +147,7 @@ export function IntentCorrectionDialog({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/agent/intent-correction", {
+      const response = await fetch(API_AGENT.intentCorrection, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

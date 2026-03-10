@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, Save, User, Smartphone } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { API_ADMIN } from "@/lib/constants/api-paths";
 
 interface FeedbackProfile {
   nickname?: string;
@@ -52,7 +53,7 @@ export default function AdminFeedbackDetailPage({
 
   const loadFeedback = useCallback(async () => {
     try {
-      const response = await fetch(`/api/admin/feedback/${params.id}`);
+      const response = await fetch(API_ADMIN.feedbackDetail(params.id));
       const result = await response.json();
       if (result.success) {
         const data = result.data;
@@ -78,7 +79,7 @@ export default function AdminFeedbackDetailPage({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/admin/feedback/${params.id}`, {
+      const response = await fetch(API_ADMIN.feedbackDetail(params.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

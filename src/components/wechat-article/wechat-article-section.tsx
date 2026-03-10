@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
 import { WechatArticleViewer } from "./wechat-article-viewer";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SNAPSHOTS, API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
 
 // =============================================================================
 // 类型定义
@@ -73,7 +74,9 @@ export function WechatArticleSection({
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/snapshots?bookmarkId=${bookmarkId}`);
+      const response = await fetch(
+        `${API_SNAPSHOTS.list}?bookmarkId=${bookmarkId}`,
+      );
 
       // V4.2.27: 检查响应类型，防止 JSON 解析错误
       const contentType = response.headers.get("content-type");
@@ -137,7 +140,7 @@ export function WechatArticleSection({
       setError(null);
 
       // 调用微信文章创建 API（简化版，不走任务队列）
-      const response = await fetch("/api/wechat-article/create", {
+      const response = await fetch(API_WECHAT_ARTICLE.create, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookmarkId }),

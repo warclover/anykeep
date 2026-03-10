@@ -52,6 +52,7 @@ import {
   MATCHER_STRATEGY_CONFIG,
 } from "@/lib/classification-constants";
 import { clientLogger } from "@/lib/client-logger";
+import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -310,7 +311,7 @@ export function ConfigHistoryTab() {
     }
 
     try {
-      await fetch("/api/classification/weights", {
+      await fetch(API_CLASSIFICATION.weights, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ weights }),

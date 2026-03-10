@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { SnapshotType } from "@/lib/snapshot";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -78,7 +79,7 @@ export function SnapshotButton({
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/snapshots", {
+      const response = await fetch(API_SNAPSHOTS.list, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

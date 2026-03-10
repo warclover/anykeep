@@ -50,6 +50,7 @@ import {
 import { toast } from "sonner";
 import type { WebhookTargetConfig } from "@/lib/distribution/types";
 import { clientLogger } from "@/lib/client-logger";
+import { API_DISTRIBUTION } from "@/lib/constants/api-paths";
 
 /**
  * 表单验证 Schema
@@ -156,7 +157,7 @@ export function WebhookConfigForm({
 
     try {
       // 发送测试请求到我们的 API
-      const response = await fetch("/api/distribution/webhook/test", {
+      const response = await fetch(API_DISTRIBUTION.webhookTest, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

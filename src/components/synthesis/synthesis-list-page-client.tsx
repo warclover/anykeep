@@ -65,6 +65,7 @@ import type {
   SynthesisStatus,
 } from "@/lib/synthesis";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 // 深度模式配置
 const DEPTH_MODE_LABELS: Record<
@@ -306,7 +307,7 @@ export function SynthesisListPageClient() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/synthesis/${deleteTarget.id}`, {
+      const response = await fetch(API_SYNTHESIS.detail(deleteTarget.id), {
         method: "DELETE",
       });
 
@@ -334,7 +335,7 @@ export function SynthesisListPageClient() {
   const handleRetry = useCallback(
     async (reportId: string) => {
       try {
-        const response = await fetch(`/api/synthesis/${reportId}/regenerate`, {
+        const response = await fetch(API_SYNTHESIS.regenerate(reportId), {
           method: "POST",
         });
 

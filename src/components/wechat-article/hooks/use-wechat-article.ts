@@ -10,6 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { wechatArticleKeys } from "@/hooks/queries/keys";
 import type { WechatArticleContent } from "@/lib/wechat-article/wechat-article.types";
+import { API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
 
 /**
  * API 数据获取器
@@ -17,7 +18,7 @@ import type { WechatArticleContent } from "@/lib/wechat-article/wechat-article.t
 const fetchWechatArticle = async (
   snapshotId: number,
 ): Promise<WechatArticleContent> => {
-  const res = await fetch(`/api/wechat-article/${snapshotId}`);
+  const res = await fetch(API_WECHAT_ARTICLE.detail(String(snapshotId)));
 
   if (!res.ok) {
     const error = await res

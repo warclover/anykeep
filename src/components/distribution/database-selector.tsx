@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, Database, AlertCircle } from "lucide-react";
 import { clientLogger } from "@/lib/client-logger";
+import { API_DISTRIBUTION } from "@/lib/constants/api-paths";
 
 interface NotionDatabase {
   id: string;
@@ -49,7 +50,7 @@ export function DatabaseSelector({
     setError(null);
 
     try {
-      const response = await fetch("/api/distribution/notion/databases");
+      const response = await fetch(API_DISTRIBUTION.notionDatabases);
 
       if (!response.ok) {
         const data = await response.json();

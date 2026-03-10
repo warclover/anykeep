@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dataCache } from "@/lib/cache/data-cache";
 import { DATA_CACHE_CONFIG } from "@/lib/cache/cache-config";
+import { API_MD_COLLECTIONS } from "@/lib/constants/api-paths";
 import type { MdCollection, MdCollectionListParams } from "../types";
 
 const DEFAULT_LIMIT = 20;
@@ -214,10 +215,13 @@ export function useMdCollectionsSWR(
       nextCursor: number | null;
     }> => {
       const params = buildQueryParams(cursor);
-      const response = await fetch(`/api/md-collections?${params.toString()}`, {
-        credentials: "include",
-        signal,
-      });
+      const response = await fetch(
+        `${API_MD_COLLECTIONS.list}?${params.toString()}`,
+        {
+          credentials: "include",
+          signal,
+        },
+      );
       const result = await response.json();
 
       if (!result.success) {

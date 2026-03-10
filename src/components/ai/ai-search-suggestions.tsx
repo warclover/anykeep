@@ -16,6 +16,7 @@ import { Sparkles, Clock, TrendingUp, Tag, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { API_SEARCH } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -105,7 +106,7 @@ export function AISearchSuggestions({
 
     const loadHistory = async () => {
       try {
-        const response = await fetch("/api/search/history?type=all&limit=10");
+        const response = await fetch(`${API_SEARCH.history}?type=all&limit=10`);
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
@@ -241,7 +242,9 @@ export function AISearchSuggestions({
       setSearchHistory((prev) => prev.filter((h) => h.id !== item.id));
 
       try {
-        await fetch(`/api/search/history?id=${item.id}`, { method: "DELETE" });
+        await fetch(`${API_SEARCH.history}?id=${item.id}`, {
+          method: "DELETE",
+        });
       } catch {
         // ignore — 乐观更新已生效，API 失败不影响 UI
       }

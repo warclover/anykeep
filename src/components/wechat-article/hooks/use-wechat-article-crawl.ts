@@ -13,6 +13,7 @@ import type {
   RefetchOptions,
   CrawlOptions,
 } from "@/lib/wechat-article/wechat-article.types";
+import { API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
 
 /**
  * Hook 选项
@@ -70,7 +71,7 @@ export function useWechatArticleCrawl(
       setProgress({ stage: "fetching", progress: 0 });
 
       try {
-        const res = await fetch(`/api/wechat-article/${snapshotId}`, {
+        const res = await fetch(API_WECHAT_ARTICLE.detail(String(snapshotId)), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(opts || {}),
@@ -112,11 +113,14 @@ export function useWechatArticleCrawl(
       setIsCrawling(true);
 
       try {
-        const res = await fetch(`/api/wechat-article/${snapshotId}/refetch`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(opts || {}),
-        });
+        const res = await fetch(
+          API_WECHAT_ARTICLE.refetch(String(snapshotId)),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(opts || {}),
+          },
+        );
 
         if (!res.ok) {
           const error = await res

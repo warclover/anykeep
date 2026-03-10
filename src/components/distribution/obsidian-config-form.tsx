@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ObsidianTargetConfig } from "@/lib/distribution/types";
+import { API_DISTRIBUTION } from "@/lib/constants/api-paths";
 
 /**
  * 表单验证 Schema
@@ -236,7 +237,7 @@ export function ObsidianConfigForm({
     setTestResult(null);
 
     try {
-      const response = await fetch("/api/distribution/test-connection", {
+      const response = await fetch(API_DISTRIBUTION.testConnection, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

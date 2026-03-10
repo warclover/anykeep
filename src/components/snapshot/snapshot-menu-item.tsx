@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { SnapshotType } from "@/lib/snapshot";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -83,7 +84,7 @@ export function SnapshotMenuItem({
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/snapshots", {
+        const response = await fetch(API_SNAPSHOTS.list, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { API_TTS } from "@/lib/constants/api-paths";
 import type { TTSContentType, TTSVoiceGender, TTSAPIResponse } from "@/lib/tts";
 
 // ============================================
@@ -199,7 +200,7 @@ export function useTTSPlayer(): UseTTSPlayerReturn {
 
       try {
         // 调用 TTS API
-        const response = await fetch("/api/tts", {
+        const response = await fetch(API_TTS.synthesize, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

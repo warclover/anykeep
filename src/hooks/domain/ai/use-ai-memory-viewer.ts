@@ -9,6 +9,7 @@
  */
 
 import { useCallback } from "react";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -38,7 +39,7 @@ interface UseAIMemoryViewerReturn {
 // ============================================
 
 async function fetchAIMemory(): Promise<AIMemory> {
-  const response = await fetch("/api/ai-memory", {
+  const response = await fetch(API_MISC.aiMemory, {
     method: "GET",
   });
 
@@ -51,7 +52,7 @@ async function fetchAIMemory(): Promise<AIMemory> {
 }
 
 async function deleteAIMemory(): Promise<void> {
-  const response = await fetch("/api/ai-memory", {
+  const response = await fetch(API_MISC.aiMemory, {
     method: "DELETE",
   });
 

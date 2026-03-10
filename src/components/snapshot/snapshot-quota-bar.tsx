@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { SnapshotQuota } from "@/lib/snapshot";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -71,7 +72,7 @@ export function SnapshotQuotaBar({
     setError(null);
 
     try {
-      const response = await fetch("/api/snapshots/quota");
+      const response = await fetch(API_SNAPSHOTS.quota);
       const result = await response.json();
 
       if (!response.ok) {

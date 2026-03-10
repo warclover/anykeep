@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { clientLogger } from "@/lib/client-logger";
 import { useUiText } from "@/lib/i18n";
+import { API_USER } from "@/lib/constants/api-paths";
 
 interface UseAccountActionsParams {
   userEmail: string | undefined;
@@ -24,7 +25,7 @@ export function useAccountActions({ userEmail }: UseAccountActionsParams) {
 
     setExporting(true);
     try {
-      const response = await fetch("/api/user/export", { method: "POST" });
+      const response = await fetch(API_USER.export, { method: "POST" });
 
       if (!response.ok) {
         throw new Error(t.settings.export.failed);
@@ -68,7 +69,7 @@ export function useAccountActions({ userEmail }: UseAccountActionsParams) {
 
     setDeleting(true);
     try {
-      const response = await fetch("/api/user/delete", {
+      const response = await fetch(API_USER.delete, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirmDelete: true, confirmEmail }),

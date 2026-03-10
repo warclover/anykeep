@@ -18,6 +18,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { synthesisKeys } from "@/hooks/queries/keys";
 import type { SynthesisReport } from "@/lib/synthesis";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 
 interface UseSynthesisDetailResult {
   /** 综述数据 */
@@ -36,7 +37,7 @@ interface UseSynthesisDetailResult {
 async function fetchSynthesisDetail(
   reportId: string,
 ): Promise<SynthesisReport> {
-  const response = await fetch(`/api/synthesis/${reportId}`);
+  const response = await fetch(API_SYNTHESIS.detail(reportId));
 
   if (!response.ok) {
     if (response.status === 404) {

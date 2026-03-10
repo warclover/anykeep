@@ -85,6 +85,12 @@ export const API_AI = {
   notes: "/api/ai/notes",
   /** 学习纠正 */
   learningCorrection: "/api/ai/learning/correction",
+  /** AI Skills 列表（注意：路由可能未实现，前端有降级逻辑） */
+  skills: "/api/ai/skills",
+  /** AI 使用统计（注意：路由可能未实现，前端有降级逻辑） */
+  usageStats: "/api/ai/usage-stats",
+  /** AI 生成标题 */
+  generateTitle: "/api/ai/generate-title",
 } as const;
 
 // ============================================
@@ -313,6 +319,8 @@ export const API_CLASSIFICATION = {
   interests: "/api/classification/interests",
   /** 分类设置 */
   settings: "/api/classification/settings",
+  /** 分类权重 */
+  weights: "/api/classification/weights",
   /** 来源画像列表 */
   sourceProfiles: "/api/classification/source-profiles",
   /** 分类阶段 */
@@ -439,6 +447,8 @@ export const API_FOLDERS = {
   fixEmbeddings: "/api/folders/fix-embeddings",
   /** 收件箱 */
   inbox: "/api/folders/inbox",
+  /** 配额 */
+  quota: "/api/folders/quota",
   /** 重排序 */
   reorder: "/api/folders/reorder",
   /** 建议 */
@@ -564,6 +574,8 @@ export const API_MESSAGES = {
 export const API_SEARCH = {
   /** 搜索 */
   search: "/api/search",
+  /** 搜索历史 */
+  history: "/api/search/history",
 } as const;
 
 // ============================================
@@ -657,6 +669,8 @@ export const API_SYNTHESIS = {
   preview: "/api/synthesis/preview",
   /** 问答 */
   qa: "/api/synthesis/qa",
+  /** 浓缩合成 */
+  condense: "/api/synthesis/condense",
   /** 取消生成 */
   cancel: (id: string) => `/api/synthesis/${id}/cancel`,
   /** 导出 */
@@ -740,11 +754,40 @@ export const API_WECHAT_ARTICLE = {
 // 其他 API
 // ============================================
 
+// ============================================
+// 分发/集成
+// ============================================
+
+export const API_DISTRIBUTION = {
+  /** 分发目标列表 */
+  targets: "/api/distribution/targets",
+  /** 同步 */
+  sync: "/api/distribution/sync",
+  /** Notion 连接状态 */
+  notionStatus: "/api/distribution/notion/status",
+  /** Notion 数据库列表 */
+  notionDatabases: "/api/distribution/notion/databases",
+  /** Webhook 测试 */
+  webhookTest: "/api/distribution/webhook/test",
+  /** 测试连接 */
+  testConnection: "/api/distribution/test-connection",
+} as const;
+
 export const API_MISC = {
+  /** AI 记忆 */
+  aiMemory: "/api/ai-memory",
   /** 认证登录 */
   authLogin: "/api/auth/login",
   /** 向量迁移 */
   embeddingMigrate: "/api/embedding/migrate",
+  /** 收藏统计 */
+  collectionStats: "/api/collection-stats",
+  /** 内容健康度 */
+  contentHealth: "/api/content-health",
+  /** 健康扫描 */
+  healthScan: "/api/health/scan",
+  /** 健康修复 */
+  healthFix: "/api/health/fix",
   /** 图片代理 */
   imageProxy: "/api/image-proxy",
   /** 初始化 */
@@ -755,6 +798,8 @@ export const API_MISC = {
   llmUsage: "/api/llm-usage",
   /** 指标 */
   metrics: "/api/metrics",
+  /** RAG 指标 */
+  ragMetrics: "/api/rag/metrics",
   /** 重分类 */
   reclassify: "/api/reclassify",
   /** 重分类检查 */
@@ -780,6 +825,10 @@ export const API_ADMIN = {
   classificationConfig: "/api/admin/classification-config",
   /** 向量 A/B 测试 */
   embeddingAbTest: "/api/admin/embedding-ab-test",
+  /** 反馈列表 */
+  feedback: "/api/admin/feedback",
+  /** 反馈详情 */
+  feedbackDetail: (id: string) => `/api/admin/feedback/${id}`,
 } as const;
 
 // ============================================
@@ -820,6 +869,8 @@ export const API_INTERNAL = {
 export const API_LEARNING = {
   /** 负反馈 */
   negative: "/api/learning/negative",
+  /** 学习洞察 */
+  insights: "/api/learning/insights",
 } as const;
 
 // ============================================
@@ -841,6 +892,7 @@ export const API_PATHS = {
   classificationV2: API_CLASSIFICATION_V2,
   confirmations: API_CONFIRMATIONS,
   conversations: API_CONVERSATIONS,
+  distribution: API_DISTRIBUTION,
   folderCategories: API_FOLDER_CATEGORIES,
   folders: API_FOLDERS,
   folderEvolution: API_FOLDER_EVOLUTION,

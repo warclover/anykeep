@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { API_AI } from "@/lib/constants/api-paths";
 import { MESSAGES } from "@/lib/constants/messages";
 import type {
   QuickActionType,
@@ -222,7 +223,7 @@ export function AIQuickActions({
 
       try {
         // 调用新的 Quick Actions API
-        const res = await fetch("/api/ai/quick-actions", {
+        const res = await fetch(API_AI.quickActions, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

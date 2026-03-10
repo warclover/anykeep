@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { DisplayMessage } from "../types";
 import { clientLogger } from "@/lib/client-logger";
+import { API_CONVERSATIONS } from "@/lib/constants/api-paths";
 import { conversationStorage } from "@/lib/storage/conversation-storage";
 import { FeatureFlags } from "@/lib/ai-agent/config/feature-flags";
 
@@ -51,7 +52,7 @@ export function useAIMessagePersistence(
 
     const timer = setTimeout(async () => {
       try {
-        await fetch(`/api/conversations/${conversationId}/messages`, {
+        await fetch(API_CONVERSATIONS.messages(conversationId), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

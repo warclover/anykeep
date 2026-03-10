@@ -19,6 +19,7 @@ import { AddCustomUsageTagDialog } from "./add-custom-usage-tag-dialog";
 import { useCustomUsageTags } from "@/hooks/data";
 import { UsageTagButton } from "./usage-tag-button";
 import { clientLogger } from "@/lib/client-logger";
+import { API_SETTINGS } from "@/lib/constants/api-paths";
 
 interface UsageTagSelectorProps {
   /** 已选中的用途标签值列表 */
@@ -87,7 +88,7 @@ export function UsageTagSelector({
 
       // 异步同步到服务器
       try {
-        await fetch("/api/settings/usage-tags", {
+        await fetch(API_SETTINGS.usageTags, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

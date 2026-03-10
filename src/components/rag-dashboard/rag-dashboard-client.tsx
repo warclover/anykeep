@@ -19,6 +19,7 @@ import { FeatureFlagsPanel } from "./feature-flags-panel";
 import { AlertsList } from "./alerts-list";
 import { DailyStatsCard } from "./daily-stats-card";
 import { cn } from "@/lib/utils";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 /**
  * RAG 指标数据类型
@@ -89,7 +90,7 @@ export function RAGDashboardClient() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/rag/metrics");
+      const response = await fetch(API_MISC.ragMetrics);
       const result = await response.json();
 
       if (!response.ok) {

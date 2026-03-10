@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BROWSER_BOOKMARK } from "@/lib/constants/api-paths";
 import {
   Collapsible,
   CollapsibleContent,
@@ -109,7 +110,7 @@ export function LinkValidator({
         if (abortControllerRef.current?.signal.aborted) break;
 
         const batch = bookmarks.slice(i, i + BATCH_SIZE);
-        const response = await fetch("/api/browser-bookmark/validate", {
+        const response = await fetch(API_BROWSER_BOOKMARK.validate, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

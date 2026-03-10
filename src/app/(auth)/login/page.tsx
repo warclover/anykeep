@@ -33,6 +33,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUiText } from "@/lib/i18n";
+import { API_MISC } from "@/lib/constants/api-paths";
 import { useOptionalUser } from "@/contexts/user-context";
 
 export default function LoginPage() {
@@ -57,7 +58,7 @@ export default function LoginPage() {
 
     try {
       // 使用带速率限制的 API
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(API_MISC.authLogin, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

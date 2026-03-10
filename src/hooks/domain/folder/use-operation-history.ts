@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { operationHistoryKeys } from "@/hooks/queries/keys";
+import { API_FOLDER_EVOLUTION } from "@/lib/constants/api-paths";
 import type {
   OperationDetail,
   OperationSnapshotAction,
@@ -153,7 +154,7 @@ export function useOperationHistory(
       setIsUndoing(true);
 
       try {
-        const response = await fetch(`/api/folder-evolution/undo/${id}`, {
+        const response = await fetch(API_FOLDER_EVOLUTION.undo(id), {
           method: "POST",
         });
 

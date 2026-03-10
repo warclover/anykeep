@@ -5,6 +5,7 @@ import type { DisplayMessage } from "../types";
 import type { FeedbackDetails } from "../phase4/types";
 import type { IntentType } from "@/lib/ai-skills/router/types";
 import { clientLogger } from "@/lib/client-logger";
+import { API_AI } from "@/lib/constants/api-paths";
 
 type FeedbackMap = Record<string, "like" | "dislike">;
 
@@ -44,7 +45,7 @@ export function useAIFeedbackHandlers(
       if (!message) return;
 
       try {
-        const response = await fetch("/api/ai/feedback", {
+        const response = await fetch(API_AI.feedback, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -88,7 +89,7 @@ export function useAIFeedbackHandlers(
       try {
         const message = messages.find((m) => m.id === messageId);
 
-        const response = await fetch("/api/ai/notes", {
+        const response = await fetch(API_AI.notes, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

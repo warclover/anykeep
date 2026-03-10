@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { clientLogger } from "@/lib/client-logger";
+import { API_USER } from "@/lib/constants/api-paths";
 import type { UserSettings } from "@/types/user-settings";
 
 export function useSettingsSave(initialSettings: UserSettings) {
@@ -30,7 +31,7 @@ export function useSettingsSave(initialSettings: UserSettings) {
     setSaving(true);
     setSaveError(null);
     try {
-      const response = await fetch("/api/user/settings", {
+      const response = await fetch(API_USER.settings, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),

@@ -18,6 +18,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { API_SYNTHESIS } from "@/lib/constants/api-paths";
 import { synthesisKeys } from "@/hooks/queries/keys";
 import type {
   SynthesisHighlight,
@@ -70,7 +71,7 @@ interface UseSynthesisHighlightsReturn {
 async function fetchHighlights(
   reportId: string,
 ): Promise<SynthesisHighlight[]> {
-  const response = await fetch(`/api/synthesis/${reportId}/highlights`);
+  const response = await fetch(API_SYNTHESIS.highlights(reportId));
 
   if (!response.ok) {
     const data = await response.json();
@@ -119,7 +120,7 @@ export function useSynthesisHighlights({
         color: options?.color,
       };
 
-      const response = await fetch(`/api/synthesis/${reportId}/highlights`, {
+      const response = await fetch(API_SYNTHESIS.highlights(reportId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -154,7 +155,7 @@ export function useSynthesisHighlights({
       updates: UpdateHighlightRequest;
     }) => {
       const response = await fetch(
-        `/api/synthesis/${reportId}/highlights/${highlightId}`,
+        API_SYNTHESIS.highlightDetail(reportId, highlightId),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -185,7 +186,7 @@ export function useSynthesisHighlights({
   const deleteMutation = useMutation({
     mutationFn: async (highlightId: string) => {
       const response = await fetch(
-        `/api/synthesis/${reportId}/highlights/${highlightId}`,
+        API_SYNTHESIS.highlightDetail(reportId, highlightId),
         { method: "DELETE" },
       );
 

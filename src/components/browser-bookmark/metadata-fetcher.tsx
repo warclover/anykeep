@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { PageMetadata } from "@/lib/browser-bookmark";
 import { clientLogger } from "@/lib/client-logger";
+import { API_BROWSER_BOOKMARK } from "@/lib/constants/api-paths";
 
 // ============================================
 // 类型定义
@@ -83,7 +84,7 @@ export function MetadataFetcher({
 
         const batchUrls = urls.slice(i, Math.min(i + BATCH_SIZE, urls.length));
 
-        const response = await fetch("/api/browser-bookmark/fetch-metadata", {
+        const response = await fetch(API_BROWSER_BOOKMARK.fetchMetadata, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

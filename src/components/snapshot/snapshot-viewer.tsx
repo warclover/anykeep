@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
 
 // ============================================================================
 // 类型定义
@@ -267,7 +268,7 @@ export function SnapshotViewer({
     setError(null);
 
     try {
-      const response = await fetch(`/api/snapshots/${snapshotId}/content`);
+      const response = await fetch(API_SNAPSHOTS.content(String(snapshotId)));
       const result = await response.json();
 
       if (!response.ok) {

@@ -5,6 +5,7 @@
 
 import { UPLOAD } from "@/lib/constants/messages";
 import { clientLogger } from "@/lib/client-logger";
+import { API_MISC } from "@/lib/constants/api-paths";
 
 export interface UploadResult {
   url: string;
@@ -52,7 +53,7 @@ export async function uploadFile(
       onProgress(0);
     }
 
-    const response = await fetch("/api/upload", {
+    const response = await fetch(API_MISC.upload, {
       method: "POST",
       body: formData,
     });
@@ -98,7 +99,7 @@ export async function uploadFile(
  */
 export async function deleteFile(path: string, bucket: string): Promise<void> {
   try {
-    const response = await fetch("/api/upload", {
+    const response = await fetch(API_MISC.upload, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
