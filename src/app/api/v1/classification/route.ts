@@ -1,29 +1,18 @@
 /**
- * Classification API v1
+ * Classification API v1 — v2 引擎
  *
  * POST /api/v1/classification - 执行智能分类
  *
  * @module api/v1/classification
+ * @version 2.0.0 (Phase 8: 切换到 classification-v2)
+ * @updated 2026-03-10
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import {
-  initEnhancedContainer,
-  SERVICE_TYPES,
-} from "@/lib/classification/container";
-import {
-  createTrustModeClassificationService,
-  type EnhancedClassificationResult,
-} from "@/lib/classification/services/trust-mode-classification.service";
+import { classify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
-import {
-  classificationMetricsService,
-  type MatchType,
-} from "@/lib/classification/services/classification-metrics.service";
 import { withAuthMiddleware } from "@/lib/api/middleware";
-import type { IClassificationService } from "@/lib/classification/services/interfaces";
 
 /**
  * 请求体验证 Schema
@@ -34,16 +23,16 @@ const ClassifySchema = z.object({
   tags: z.array(z.string()).max(20).optional().default([]),
   embedding: z.array(z.number()).optional(),
   url: z.string().url().optional(),
+  /** 书签 ID（可选，用于缓存） */
+  bookmarkId: z.union([z.string(), z.number()]).optional(),
 });
 
 /**
  * POST /api/v1/classification
- * 对书签进行智能分类
+ * 对书签进行智能分类 (v2 引擎)
  */
 export const POST = withAuthMiddleware(
   async (request: NextRequest, { userId }) => {
-    const supabase = await createClient();
-
     // 解析并验证请求体
     const body = await request.json();
     const validation = ClassifySchema.safeParse(body);
@@ -54,7 +43,7 @@ export const POST = withAuthMiddleware(
           success: false,
           error: {
             code: "VALIDATION_ERROR",
-            message: "请求���数验证失败",
+            message: "请求参数验证失败",
             details: validation.error.flatten().fieldErrors,
           },
         },
@@ -62,38 +51,17 @@ export const POST = withAuthMiddleware(
       );
     }
 
-    const { title, summary, tags, embedding, url } = validation.data;
+    const { title, summary, tags, url, bookmarkId } = validation.data;
 
-    // Phase 4: 使用增强容器获取分类服务
-    // 初始化容器
-    const container = initEnhancedContainer({ supabase });
-
-    // 使用泛型获取服务 (使用 ClassicStrategy 作为默认实现，对应 V4.1)
-    const baseClassificationService = container.get<IClassificationService>(
-      SERVICE_TYPES.ClassicStrategy,
-    );
-
-    // 创建托管模式感知的分类服务（包装器模式）
-    const trustModeClassificationService = createTrustModeClassificationService(
-      baseClassificationService,
-    );
-
-    // 执行托管模式感知的分类
-    const result = url
-      ? await trustModeClassificationService.classify(userId, {
-          title,
-          summary: summary || "",
-          tags,
-          embedding,
-          url,
-        })
-      : await baseClassificationService.classify(userId, {
-          title,
-          summary,
-          tags,
-          embedding,
-          url,
-        });
+    // 调用 v2 classify
+    const result = await classify({
+      bookmarkId: String(bookmarkId ?? `temp-${Date.now()}`),
+      title,
+      summary: summary || undefined,
+      tags,
+      url,
+      userId,
+    });
 
     logger.info(
       {
@@ -104,51 +72,13 @@ export const POST = withAuthMiddleware(
           folderName: result.folderName,
           confidence: result.confidence,
           action: result.action,
-          routePath: "routePath" in result ? result.routePath : undefined,
-          trustModeDecision:
-            "trustModeDecision" in result
-              ? result.trustModeDecision
-              : undefined,
         },
+        totalMs: result.timing.totalMs,
       },
-      "[v1] Classification completed",
+      "[v1] Classification completed (v2 engine)",
     );
 
-    // 异步记录分类指标（非阻塞）
-    void classificationMetricsService
-      .recordMetrics({
-        userId,
-        bookmarkUrl: url,
-        action: result.action,
-        folderId: result.folderId,
-        folderName: result.folderName,
-        confidence: result.confidence,
-        tier:
-          result.matchType === "ai_select" || result.matchType === "ai_create"
-            ? 2
-            : 1,
-        cacheHit: false,
-        aiCalled:
-          result.matchType === "ai_select" || result.matchType === "ai_create",
-        matchType: result.matchType as MatchType | undefined,
-        vectorScore: result.candidates?.[0]?.score as number | undefined,
-        executionTimeMs:
-          "processingTimeMs" in result
-            ? (result as EnhancedClassificationResult).processingTimeMs
-            : result.executionTime || 0,
-        decisionReason: result.reason,
-      })
-      .catch((err) => {
-        logger.warn(
-          { error: err instanceof Error ? err.message : String(err) },
-          "Failed to record classification metrics (non-blocking)",
-        );
-      });
-
-    // 返回分类结果
-    const isEnhancedResult = "routePath" in result;
-    const enhancedResult = result as EnhancedClassificationResult;
-
+    // 返回分类结果（保持 v1 响应格式兼容）
     return NextResponse.json({
       success: true,
       data: {
@@ -157,14 +87,15 @@ export const POST = withAuthMiddleware(
         confidence: result.confidence,
         action: result.action,
         reason: result.reason,
-        scores: result.scores,
-        // 托管模式增强字段
-        ...(isEnhancedResult && {
-          routePath: enhancedResult.routePath,
-          trustModeDecision: enhancedResult.trustModeDecision,
-          processingTimeMs: enhancedResult.processingTimeMs,
-          calibration: enhancedResult.calibration,
-        }),
+        scores: result.candidates?.map((c) => ({
+          folderId: c.folderId,
+          folderName: c.folderName,
+          score: c.mergedScore,
+          breakdown: c.scorerBreakdown,
+        })),
+        suggestedFolderName: result.suggestedFolderName,
+        processingTimeMs: result.timing.totalMs,
+        traceId: result.traceId,
       },
     });
   },
