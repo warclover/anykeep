@@ -21,7 +21,7 @@ import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import type {
   ClassificationResult,
   UserDecision,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/batch-classification";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================

@@ -27,8 +27,7 @@ export type {
 } from "@/lib/classification/types/suggestion";
 
 // ============================================================================
-// 批量分类（classification/services/batch-classification）
-// Phase 6 迁出后将更新此路径
+// 批量分类（已迁出到独立模块 batch-classification）
 // ============================================================================
 
 export type {
@@ -40,4 +39,4 @@ export type {
   ClassificationProgress,
   ClassificationPhase,
   StructureMode,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/batch-classification";

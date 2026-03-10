@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { BatchClassificationCoordinator } from "@/lib/classification/services/batch-classification";
+import { BatchClassificationCoordinator } from "@/lib/batch-classification";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 // ============================================

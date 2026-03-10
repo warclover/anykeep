@@ -25,7 +25,7 @@ import {
 import {
   GardenerTriggerService,
   type GardenerSuggestion,
-} from "@/lib/classification/services/batch-classification/triggers/gardener-trigger";
+} from "@/lib/batch-classification/triggers/gardener-trigger";
 
 /**
  * 收件箱智能分拣 Skill
