@@ -10,6 +10,7 @@ import {
   quotaExceededError,
   databaseError,
   badRequestError,
+  safeParseBody,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { BookmarkInsert, Platform } from "@/types/supabase";
@@ -29,14 +30,11 @@ interface BatchImportResult {
  * 批量导入收藏
  */
 export const POST = withAuthMiddleware(async (request, { userId }) => {
-  // 2. 解析请求体
-  let body: { bookmarks: unknown };
-  try {
-    body = await request.json();
-  } catch (error) {
-    logger.error({ error }, "Failed to parse request body");
-    return badRequestError("无效的 JSON 格式");
-  }
+  // 2. 安全解析请求体
+  const { data: body, error: parseError } = await safeParseBody<{
+    bookmarks: unknown;
+  }>(request);
+  if (parseError) return parseError;
 
   const bookmarks = body.bookmarks;
 

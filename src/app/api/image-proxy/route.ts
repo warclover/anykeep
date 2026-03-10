@@ -12,6 +12,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { appEnv } from "@/lib/env";
+import { forbiddenError } from "@/lib/utils/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
 
   // 2. 域名白名单验证
   if (!isAllowedHost(imageUrl)) {
-    return NextResponse.json({ error: "Domain not allowed" }, { status: 403 });
+    return forbiddenError("Domain not allowed");
   }
 
   // 3. 优化 URL

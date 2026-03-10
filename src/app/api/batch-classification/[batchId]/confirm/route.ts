@@ -15,6 +15,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/batch-classification";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { badRequestError } from "@/lib/utils/api-response";
 
 // ============================================
 // 常量
@@ -79,7 +80,7 @@ export const POST = withAuthMiddleware<{ batchId: string }>(
 
     // 1. 验证 batchId
     if (!batchId) {
-      return NextResponse.json({ error: "Missing batchId" }, { status: 400 });
+      return badRequestError("Missing batchId");
     }
 
     // 2. 解析请求体

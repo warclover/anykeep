@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { tagGraphService } from "@/lib/tag-graph";
+import { badRequestError } from "@/lib/utils/api-response";
 
 /**
  * GET /api/tags/[tag]/related
@@ -22,7 +23,7 @@ export const GET = withAuthMiddleware<{ tag: string }>(
     const decodedTag = decodeURIComponent(tag);
 
     if (!decodedTag || decodedTag.length > 100) {
-      return NextResponse.json({ error: "Invalid tag" }, { status: 400 });
+      return badRequestError("Invalid tag");
     }
 
     // 2. 获取 limit 参数

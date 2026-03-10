@@ -180,6 +180,23 @@ export async function safeParseJson<T = unknown>(
 }
 
 /**
+ * 安全解析请求体，JSON 解析失败时返回 400 而非抛出异常
+ */
+export async function safeParseBody<T = unknown>(
+  request: Request,
+): Promise<{ data: T; error: null } | { data: null; error: NextResponse }> {
+  try {
+    const data = (await request.json()) as T;
+    return { data, error: null };
+  } catch {
+    return {
+      data: null,
+      error: badRequestError("请求体不是有效的 JSON 格式"),
+    };
+  }
+}
+
+/**
  * 安全解析整数
  * 如果解析失败，返回 null
  */

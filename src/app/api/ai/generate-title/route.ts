@@ -15,6 +15,12 @@ import { getModelByTask } from "@/lib/ai-providers/get-model-by-task";
 import { logger } from "@/lib/logger";
 import { extractFallbackTitle } from "@/features/md-collections/lib";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
+import {
+  badRequestError,
+  internalError,
+  safeParseBody,
+} from "@/lib/utils/api-response";
 
 // =============================================================================
 // Schema 定义
@@ -50,15 +56,27 @@ const TITLE_GENERATION_PROMPT = `根据以下内容生成一个简洁的中文�
 // =============================================================================
 
 export const POST = withAuthMiddleware(async (request, { userId }) => {
-  // 解析并验证请求体
-  const body = await request.json();
+  // 速率限制：每分钟 20 次
+  const rateLimitResult = checkRateLimit(userId, "/api/ai/generate-title");
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { success: false, error: "请求过于频繁，请稍后再试" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+        },
+      },
+    );
+  }
+
+  // 安全解析并验证请求体
+  const { data: body, error: parseError } = await safeParseBody(request);
+  if (parseError) return parseError;
   const validation = generateTitleSchema.safeParse(body);
 
   if (!validation.success) {
-    return NextResponse.json(
-      { error: "内容无效", details: validation.error.issues },
-      { status: 400 },
-    );
+    return badRequestError("内容无效");
   }
 
   const { content } = validation.data;
@@ -68,7 +86,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
 
   if (!model) {
     logger.error("Failed to get model for title generation");
-    return NextResponse.json({ error: "AI 服务暂时不可用" }, { status: 503 });
+    return internalError("AI 服务暂时不可用");
   }
 
   // 生成标题

@@ -28,6 +28,7 @@ import {
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 // ============================================
 // 请求验证
@@ -56,6 +57,20 @@ const visionAnalyzeSchema = z.object({
  * 对书签中的图片进行视觉分析
  */
 export const POST = withAuthMiddleware(async (request, { userId }) => {
+  // 速率限制：每分钟 10 次
+  const rateLimitResult = checkRateLimit(userId, "/api/ai/vision-analyze");
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { success: false, error: "请求过于频繁，请稍后再试" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+        },
+      },
+    );
+  }
+
   const startTime = Date.now();
 
   // 1. 检查服务是否可用

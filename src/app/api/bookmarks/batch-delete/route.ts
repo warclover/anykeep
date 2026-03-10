@@ -10,6 +10,7 @@ import {
   successResponse,
   handleValidationError,
   databaseError,
+  safeParseBody,
 } from "@/lib/utils/api-response";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { logger } from "@/lib/logger";
@@ -45,8 +46,9 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     );
   }
 
-  // 2. 解析并验证请求体
-  const body = await request.json();
+  // 2. 安全解析并验证请求体
+  const { data: body, error: parseError } = await safeParseBody(request);
+  if (parseError) return parseError;
   const validation = batchDeleteBookmarksSchema.safeParse(body);
 
   if (!validation.success) {

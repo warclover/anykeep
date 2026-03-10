@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import {
   type SynthesisSSEEvent,
   type ConsensusPoint,
@@ -136,6 +137,21 @@ async function handleStreamChunk(
  */
 export const POST = withAuthMiddleware(
   async (request: NextRequest, { userId }) => {
+    // 速率限制：每分钟 5 次
+    const rateLimitResult = checkRateLimit(userId, "/api/synthesis/generate");
+    if (!rateLimitResult.allowed) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: "请求过于频繁，请稍后再试" }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+          },
+        },
+      );
+    }
+
     const encoder = new TextEncoder();
 
     // 创建 SSE 流

@@ -55,6 +55,14 @@ export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   bookmarks: { windowMs: 60_000, maxRequests: 300 },
   // MD 收藏列表/详情：与 bookmarks 分离，避免列表刷新占满额度；每分钟 200 次
   md_collections: { windowMs: 60_000, maxRequests: 200 },
+  // AI 摘要生成：每分钟 10 次（LLM 成本）
+  ai_summary: { windowMs: 60_000, maxRequests: 10 },
+  // AI 主题合成：每分钟 5 次（重型 LLM 操作）
+  ai_synthesis: { windowMs: 60_000, maxRequests: 5 },
+  // AI 标题生成：每分钟 20 次（轻量 LLM 操作）
+  ai_generate_title: { windowMs: 60_000, maxRequests: 20 },
+  // AI 视觉分析：每分钟 10 次（多模态 LLM 成本）
+  ai_vision: { windowMs: 60_000, maxRequests: 10 },
   // 附件内容抓取：每分钟 10 次（防滥用，最多 3 个附件）
   attachment_fetch: { windowMs: 60_000, maxRequests: 10 },
   // 快照操作：每分钟 60 次
@@ -347,7 +355,17 @@ export function getRateLimitConfig(pathname: string): RateLimitConfig {
     return RATE_LIMIT_CONFIGS.batch;
   }
 
-  // AI 相关（成本考虑）
+  // AI 端点：具体端点优先匹配（更严格的独立限制）
+  if (pathname.includes("/summary/generate"))
+    return RATE_LIMIT_CONFIGS.ai_summary;
+  if (pathname.includes("/synthesis/generate"))
+    return RATE_LIMIT_CONFIGS.ai_synthesis;
+  if (pathname.includes("/ai/generate-title"))
+    return RATE_LIMIT_CONFIGS.ai_generate_title;
+  if (pathname.includes("/ai/vision-analyze"))
+    return RATE_LIMIT_CONFIGS.ai_vision;
+
+  // AI 相关通用（成本考虑）
   if (
     pathname.includes("/classification") ||
     pathname.includes("/ai") ||
@@ -467,6 +485,11 @@ function getConfigKey(pathname: string): string {
   if (pathname.includes("/bookmarks") || pathname.includes("/bookmark"))
     return "bookmarks";
   if (pathname.includes("/batch")) return "batch";
+  // AI 端点：具体端点优先匹配
+  if (pathname.includes("/summary/generate")) return "ai_summary";
+  if (pathname.includes("/synthesis/generate")) return "ai_synthesis";
+  if (pathname.includes("/ai/generate-title")) return "ai_generate_title";
+  if (pathname.includes("/ai/vision-analyze")) return "ai_vision";
   if (
     pathname.includes("/classification") ||
     pathname.includes("/ai") ||

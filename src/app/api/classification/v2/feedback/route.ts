@@ -6,7 +6,7 @@
  *
  * 合并原有端点：
  * - /api/classification/feedback
- * - /api/classification/v5/feedback
+ * - /api/classification/v2/feedback（原 v5/feedback）
  *
  * @version 2.0.0
  * @since 2026-01-24 Phase 3

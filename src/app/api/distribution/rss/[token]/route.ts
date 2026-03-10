@@ -14,6 +14,11 @@ import type {
 } from "@/lib/distribution/types";
 import type { BookmarkRow } from "@/types/domain";
 import { logger } from "@/lib/logger";
+import {
+  badRequestError,
+  notFoundError,
+  internalError,
+} from "@/lib/utils/api-response";
 
 /**
  * 分发目标数据库行类型
@@ -62,7 +67,7 @@ export async function GET(
   const { token: feedToken } = await params;
 
   if (!feedToken || feedToken.length < 16) {
-    return NextResponse.json({ error: "无效的 Feed Token" }, { status: 400 });
+    return badRequestError("无效的 Feed Token");
   }
 
   const supabase = await createClient();
@@ -80,7 +85,7 @@ export async function GET(
   }>);
 
   if (targetError || !target) {
-    return NextResponse.json({ error: "Feed 不存在或已禁用" }, { status: 404 });
+    return notFoundError("Feed 不存在或已禁用");
   }
 
   // 解析 URL 参数
@@ -124,7 +129,7 @@ export async function GET(
 
   if (bookmarksError) {
     logger.error({ bookmarksError }, "Failed to fetch bookmarks for RSS:");
-    return NextResponse.json({ error: "获取书签失败" }, { status: 500 });
+    return internalError("获取书签失败");
   }
 
   // 转换为分发适配器格式

@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BatchClassificationCoordinator } from "@/lib/batch-classification";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { badRequestError } from "@/lib/utils/api-response";
 
 // ============================================
 // API Handler
@@ -24,7 +25,7 @@ export const GET = withAuthMiddleware<{ batchId: string }>(
 
     // 1. 验证 batchId
     if (!batchId) {
-      return NextResponse.json({ error: "Missing batchId" }, { status: 400 });
+      return badRequestError("Missing batchId");
     }
 
     // 2. 获取结果

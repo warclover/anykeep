@@ -8,6 +8,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/lib/utils/api-response";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import {
   getSummaryService,
   type SummaryInput,
@@ -45,6 +47,20 @@ const generateSummarySchema = z.object({
  */
 export const POST = withAuthMiddleware(
   async (request: NextRequest, { userId }) => {
+    // 速率限制：每分钟 10 次
+    const rateLimitResult = checkRateLimit(userId, "/api/summary/generate");
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: "请求过于频繁，请稍后再试" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil(rateLimitResult.resetMs / 1000).toString(),
+          },
+        },
+      );
+    }
+
     const startTime = Date.now();
 
     // 创建 Supabase 客户端用于数据库操作

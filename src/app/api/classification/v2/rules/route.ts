@@ -5,7 +5,7 @@
  * POST /api/classification/v2/rules - 创建新规则
  *
  * 合并原有端点：
- * - /api/classification/v5/rules
+ * - /api/classification/v2/rules（原 v5/rules）
  *
  * @version 2.0.0
  * @since 2026-01-24 Phase 3

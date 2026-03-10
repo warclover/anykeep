@@ -5,7 +5,7 @@
  *
  * 合并原有端点：
  * - /api/classification/classify
- * - /api/classification/v5/classify
+ * - /api/classification/v2/classify（原 v5/classify）
  *
  * @version 3.0.0
  * @since 2026-01-24 Phase 3
@@ -17,6 +17,7 @@ import { z } from "zod";
 import { classify } from "@/lib/classification-v2";
 import { logger } from "@/lib/logger";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { safeParseBody } from "@/lib/utils/api-response";
 
 /**
  * 请求体验证 Schema
@@ -45,8 +46,9 @@ const classifySchema = z.object({
 export const POST = withAuthMiddleware(async (request, { userId }) => {
   const startTime = Date.now();
 
-  // 2. 解析并验证请求体
-  const body = await request.json();
+  // 2. 安全解析并验证请求体
+  const { data: body, error: parseError } = await safeParseBody(request);
+  if (parseError) return parseError;
   const validation = classifySchema.safeParse(body);
 
   if (!validation.success) {

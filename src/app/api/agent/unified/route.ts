@@ -50,6 +50,7 @@ import {
   getOverridesSummary,
 } from "@/lib/ai-agent/config/feature-flag-overrides";
 import { withAuthMiddleware } from "@/lib/api/middleware";
+import { safeParseBody } from "@/lib/utils/api-response";
 
 /**
  * 请求体 Schema
@@ -198,8 +199,9 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
     );
   }
 
-  // 3. 解析并验证请求体
-  const body = await request.json();
+  // 3. 安全解析并验证请求体
+  const { data: body, error: parseError } = await safeParseBody(request);
+  if (parseError) return parseError;
   const validation = unifiedChatRequestSchema.safeParse(body);
 
   if (!validation.success) {
