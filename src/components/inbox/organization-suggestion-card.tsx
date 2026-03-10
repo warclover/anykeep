@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClassificationFeedbackDialog } from "@/components/feedback";
-import type { OrganizationSuggestion } from "@/lib/classification";
+import type { OrganizationSuggestion } from "@/lib/classification-v2/types/legacy-compat";
 
 interface OrganizationSuggestionCardProps {
   /** 建议数据 */

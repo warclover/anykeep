@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type {
   ClassificationConflict,
   ConflictType,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/classification-v2/types/legacy-compat";
 
 // ============================================
 // Props

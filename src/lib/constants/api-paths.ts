@@ -32,8 +32,7 @@
  * ## 分类 API 迁移指引
  *
  * - 分类执行与规则：v2 为当前标准（active）
- * - v5 独占端点（entropy/shadow/metrics/rollout/t1-*）：独立功能模块，非旧版本，active
- * - v5 共有端点（classify/batch/feedback/rules）：已 308 重定向到 v2（redirect）
+ * - v5 独占端点已全部归档移除（entropy/shadow/metrics/gardener）
  *
  * @version 1.1.0
  * @since 2025-12-24
@@ -318,21 +317,6 @@ export const API_CLASSIFICATION = {
   sourceProfiles: "/api/classification/source-profiles",
   /** 分类阶段 */
   stage: "/api/classification/stage",
-
-  // =====================================================
-  // v5 独占端点（独立功能模块，active）
-  // =====================================================
-
-  /** 熵分析 */
-  entropyAnalysis: "/api/classification/v5/entropy/analysis",
-  /** 分类指标 */
-  metrics: "/api/classification/v5/metrics",
-  /** 影子收件箱 */
-  shadowInbox: "/api/classification/v5/shadow/inbox",
-  /** 影子确认 */
-  shadowConfirm: "/api/classification/v5/shadow/confirm",
-  /** 影子拒绝 */
-  shadowReject: "/api/classification/v5/shadow/reject",
 
   // =====================================================
   // 已废弃路径（保留用于向后兼容，通过 rewrite 重定向）

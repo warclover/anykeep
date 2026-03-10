@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { OrganizationSuggestionCard } from "./organization-suggestion-card";
 import { ClusterProcessingStatusCard } from "./cluster-processing-status";
-import type { OrganizationAnalysis } from "@/lib/classification";
+import type { OrganizationAnalysis } from "@/lib/classification-v2/types/legacy-compat";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import { useInboxOrganizationAnalysis } from "@/hooks/data/use-inbox-organization-analysis";

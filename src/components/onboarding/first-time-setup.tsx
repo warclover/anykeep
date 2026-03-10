@@ -40,7 +40,7 @@ import {
   Wand2,
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
-import type { PresetInterestId } from "@/lib/classification";
+import type { PresetInterestId } from "@/lib/interest-profile";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 

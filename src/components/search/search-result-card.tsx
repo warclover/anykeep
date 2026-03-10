@@ -14,7 +14,7 @@ import { useState, useRef, useCallback, memo } from "react";
 import { BookmarkCard } from "@/components/bookmark/bookmark-card";
 import { SearchPreviewPanel } from "./search-preview-panel";
 import type { Bookmark } from "@/types/supabase";
-import type { BookmarkV42Fields } from "@/lib/classification/types";
+import type { BookmarkV42Fields } from "@/lib/classification-v2/types/legacy-compat";
 import { cn } from "@/lib/utils";
 
 // ============================================

@@ -21,7 +21,7 @@ import { Loader2 } from "lucide-react";
 import { BookmarkCard } from "./bookmark-card";
 import { FlipBookmarkCard } from "./bookmark-card-flip";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
-import type { BookmarkV42Fields } from "@/lib/classification/types";
+import type { BookmarkV42Fields } from "@/lib/classification-v2/types/legacy-compat";
 import { cn } from "@/lib/utils";
 
 export type BookmarkWithFolder = Bookmark &

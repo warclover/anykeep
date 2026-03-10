@@ -15,7 +15,7 @@ import { inboxOrganizationKeys } from "@/hooks/queries/keys";
 import type {
   OrganizationAnalysis,
   ClusterProcessingStatus,
-} from "@/lib/classification";
+} from "@/lib/classification-v2/types/legacy-compat";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 
 // ============================================

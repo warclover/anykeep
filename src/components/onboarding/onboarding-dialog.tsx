@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { InterestSelector } from "./interest-selector";
 import { toast } from "sonner";
-import type { PresetInterestId } from "@/lib/classification";
+import type { PresetInterestId } from "@/lib/interest-profile";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 

@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { ClusterProcessingStatus } from "@/lib/classification/types/suggestion";
+import type { ClusterProcessingStatus } from "@/lib/classification-v2/types/legacy-compat";
 
 interface ClusterProcessingStatusProps {
   status: ClusterProcessingStatus | null;

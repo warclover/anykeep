@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 import type {
   ClusterResult,
   ConflictType,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/classification-v2/types/legacy-compat";
 
 // ============================================
 // Props

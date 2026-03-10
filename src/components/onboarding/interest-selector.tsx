@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 // 直接从子模块导入，避免触发服务端代码（container → services → integration → supabase/server）
-import type { PresetInterestId } from "@/lib/classification/types";
+import type { PresetInterestId } from "@/lib/interest-profile";
 import {
   PRESET_INTEREST_DOMAINS,
   getSuggestedFolders,

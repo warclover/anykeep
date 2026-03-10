@@ -31,7 +31,7 @@ import type {
   ClusterResult,
   UserDecision,
   ConfirmationMode,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/classification-v2/types/legacy-compat";
 
 // ============================================
 // Props

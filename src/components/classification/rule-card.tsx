@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Pencil, Trash2, Target } from "lucide-react";
-import type { UserClassificationRule } from "@/lib/classification/v5/chat-to-rule/types";
+import type { UserClassificationRule } from "@/lib/classification-v2/services/chat-to-rule.types";
 
 interface RuleCardProps {
   rule: UserClassificationRule;
@@ -53,8 +53,8 @@ export const RuleCard = memo(function RuleCard({
   onDelete,
 }: RuleCardProps) {
   const handleToggleActive = useCallback(() => {
-    onToggleActive(rule.id, !(rule.is_active ?? rule.isActive));
-  }, [rule.id, rule.is_active, rule.isActive, onToggleActive]);
+    onToggleActive(rule.id, !rule.isActive);
+  }, [rule.id, rule.isActive, onToggleActive]);
 
   const handleEdit = useCallback(() => {
     onEdit(rule);
@@ -65,13 +65,13 @@ export const RuleCard = memo(function RuleCard({
   }, [rule.id, onDelete]);
 
   return (
-    <Card className={!(rule.is_active ?? rule.isActive) ? "opacity-60" : ""}>
+    <Card className={!rule.isActive ? "opacity-60" : ""}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4" />
-              {rule.target_folder_name ?? rule.targetFolderName}
+              {rule.targetFolderName}
             </CardTitle>
             <CardDescription className="mt-1">
               {rule.description || "无描述"}
@@ -79,7 +79,7 @@ export const RuleCard = memo(function RuleCard({
           </div>
           <div className="flex items-center gap-2">
             <Switch
-              checked={rule.is_active ?? rule.isActive}
+              checked={rule.isActive}
               onCheckedChange={handleToggleActive}
               aria-label="启用/禁用规则"
             />
@@ -94,11 +94,7 @@ export const RuleCard = memo(function RuleCard({
               {RULE_TYPE_LABELS[rule.type] || rule.type}
             </Badge>
             <Badge variant="outline">
-              {PATTERN_TYPE_LABELS[
-                rule.pattern_type ?? rule.patternType ?? ""
-              ] ||
-                rule.pattern_type ||
-                rule.patternType}
+              {PATTERN_TYPE_LABELS[rule.patternType] || rule.patternType}
             </Badge>
           </div>
 
@@ -109,13 +105,8 @@ export const RuleCard = memo(function RuleCard({
 
           {/* 统计信息 */}
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>匹配次数: {rule.match_count ?? rule.matchCount ?? 0}</span>
-            <span>
-              创建于:{" "}
-              {new Date(
-                rule.created_at ?? rule.createdAt ?? new Date().toISOString(),
-              ).toLocaleDateString()}
-            </span>
+            <span>匹配次数: {rule.matchCount}</span>
+            <span>创建于: {new Date(rule.createdAt).toLocaleDateString()}</span>
           </div>
 
           {/* 操作按钮 */}

@@ -19,8 +19,8 @@ import { logger } from "@/lib/logger";
 import type { Json } from "@/types/supabase";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
-// 导入纠错缓存（V4.0 功能）
-import { getCorrectionCache } from "@/lib/classification/services/advanced";
+// 导入纠错缓存（v2 内化版）
+import { getCorrectionCache } from "@/lib/classification-v2/infra/correction-cache";
 
 /**
  * 反馈类型枚举

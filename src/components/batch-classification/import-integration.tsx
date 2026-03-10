@@ -28,7 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { StructureMode } from "@/lib/classification/services/batch-classification";
+import type { StructureMode } from "@/lib/classification-v2/types/legacy-compat";
 
 // ============================================
 // Props

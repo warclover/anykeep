@@ -15,9 +15,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { ChatToRuleService } from "@/lib/classification/strategies/modern/chat-to-rule";
-import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
-import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { ChatToRuleService } from "@/lib/classification-v2/services/chat-to-rule.service";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
@@ -60,13 +58,7 @@ export const GET = withAuthMiddleware(async (request, { userId }) => {
   const type = searchParams.get("type") as (typeof RULE_TYPES)[number] | null;
 
   // 3. 获取规则列表
-  const serviceLogger = createLogger("RulesAPI");
-  const llmService = new LLMService(serviceLogger);
-  const chatToRuleService = new ChatToRuleService(
-    supabase,
-    serviceLogger,
-    llmService,
-  );
+  const chatToRuleService = new ChatToRuleService(supabase);
   const rules = await chatToRuleService.getRules(activeOnly);
 
   // 4. 按类型过滤（如果指定）
@@ -150,13 +142,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   }
 
   // 4. 创建规则
-  const serviceLogger = createLogger("RulesAPI");
-  const llmService = new LLMService(serviceLogger);
-  const chatToRuleService = new ChatToRuleService(
-    supabase,
-    serviceLogger,
-    llmService,
-  );
+  const chatToRuleService = new ChatToRuleService(supabase);
 
   const ruleId = await chatToRuleService.createRule({
     type,

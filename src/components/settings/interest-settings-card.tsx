@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, Check, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { PresetInterestId } from "@/lib/classification";
+import type { PresetInterestId } from "@/lib/interest-profile";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 

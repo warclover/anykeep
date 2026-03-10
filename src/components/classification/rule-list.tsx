@@ -10,7 +10,7 @@ import { RuleEditDialog, type RuleUpdateData } from "./rule-edit-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus } from "lucide-react";
-import type { UserClassificationRule } from "@/lib/classification/v5/chat-to-rule/types";
+import type { UserClassificationRule } from "@/lib/classification-v2/services/chat-to-rule.types";
 import {
   AlertDialog,
   AlertDialogAction,

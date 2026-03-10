@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutGrid, LayoutList, Sparkles, ChevronDown } from "lucide-react";
-import type { ConfirmationMode } from "@/lib/classification/services/batch-classification";
+import type { ConfirmationMode } from "@/lib/classification-v2/types/legacy-compat";
 
 // ============================================
 // Props

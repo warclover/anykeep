@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type {
   ClassificationProgress,
   ClassificationPhase,
-} from "@/lib/classification/services/batch-classification";
+} from "@/lib/classification-v2/types/legacy-compat";
 import { clientLogger } from "@/lib/client-logger";
 
 // ============================================

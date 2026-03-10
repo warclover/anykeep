@@ -12,9 +12,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { ChatToRuleService } from "@/lib/classification/strategies/modern/chat-to-rule";
-import { LLMService } from "@/lib/classification/infrastructure/shared-services/llm";
-import { createLogger } from "@/lib/classification/infrastructure/shared-services/logger";
+import { ChatToRuleService } from "@/lib/classification-v2/services/chat-to-rule.service";
 import { withAuthMiddleware } from "@/lib/api/middleware";
 
 /**
@@ -109,13 +107,7 @@ export const POST = withAuthMiddleware(async (request, { userId }) => {
   }
 
   // 4. 如果没有指定 ruleId，测试所有启用的规则
-  const serviceLogger = createLogger("RulesTestAPI");
-  const llmService = new LLMService(serviceLogger);
-  const chatToRuleService = new ChatToRuleService(
-    supabase,
-    serviceLogger,
-    llmService,
-  );
+  const chatToRuleService = new ChatToRuleService(supabase);
 
   const rules = await chatToRuleService.getRules(true);
   const matchedRules = rules.filter((rule) =>

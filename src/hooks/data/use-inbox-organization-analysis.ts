@@ -12,7 +12,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { inboxOrganizationKeys } from "@/hooks/queries/keys";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
-import type { OrganizationAnalysis } from "@/lib/classification";
+import type { OrganizationAnalysis } from "@/lib/classification-v2/types/legacy-compat";
 
 const STALE_TIME_MS = 60 * 1000;
 

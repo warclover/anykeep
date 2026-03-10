@@ -5,7 +5,7 @@
  */
 
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
-import type { BookmarkV42Fields } from "@/lib/classification/types";
+import type { BookmarkV42Fields } from "@/lib/classification-v2/types/legacy-compat";
 import type { useUiText } from "@/lib/i18n";
 
 /** 卡片视图变体 */

@@ -22,7 +22,7 @@ import { BookmarkCard } from "./bookmark-card";
 import { FlipBookmarkCard } from "./bookmark-card-flip";
 import { DraggableBookmark } from "@/components/folders/draggable-bookmark";
 import type { Bookmark, CustomUsageTag } from "@/types/supabase";
-import type { BookmarkV42Fields } from "@/lib/classification/types";
+import type { BookmarkV42Fields } from "@/lib/classification-v2/types/legacy-compat";
 import { cn } from "@/lib/utils";
 
 type ViewVariant = "card" | "list" | "compact";

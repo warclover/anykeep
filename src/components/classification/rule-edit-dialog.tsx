@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import type { UserClassificationRule } from "@/lib/classification/v5/chat-to-rule/types";
+import type { UserClassificationRule } from "@/lib/classification-v2/services/chat-to-rule.types";
 import { clientLogger } from "@/lib/client-logger";
 
 interface RuleEditDialogProps {

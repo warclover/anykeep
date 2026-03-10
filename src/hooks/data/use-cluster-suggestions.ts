@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { inboxKeys } from "@/hooks/queries/keys";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 import { authFetcher } from "@/lib/api/fetch-with-auth";
-import type { ClusterProcessingStatus } from "@/lib/classification/types/suggestion";
+import type { ClusterProcessingStatus } from "@/lib/classification-v2/types/legacy-compat";
 
 export interface ClusterSuggestionItem {
   id: number;
