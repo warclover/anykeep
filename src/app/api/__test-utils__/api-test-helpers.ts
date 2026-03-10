@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import type { RequestInit as NextRequestInit } from "next/dist/server/web/spec-extension/request";
 
 // =============================================================================
 // Types
@@ -227,7 +228,7 @@ export function createRequest(
     }
   }
 
-  const init: RequestInit = { method };
+  const init: NextRequestInit = { method };
   if (body) {
     init.body = JSON.stringify(body);
     init.headers = { "Content-Type": "application/json" };
