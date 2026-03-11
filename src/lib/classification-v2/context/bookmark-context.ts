@@ -109,6 +109,9 @@ async function resolveAuthorKey(
   if (!request.bookmarkId) return undefined;
 
   try {
+    const numericId = parseInt(request.bookmarkId, 10);
+    if (isNaN(numericId)) return undefined;
+
     const supabase = await createClient();
 
     type BookmarkAuthorRow = {
@@ -118,7 +121,7 @@ async function resolveAuthorKey(
     const { data } = await supabase
       .from("bookmarks")
       .select("source_name, author")
-      .eq("id", Number(request.bookmarkId))
+      .eq("id", numericId)
       .single();
 
     const row = data as unknown as BookmarkAuthorRow | null;

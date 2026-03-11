@@ -108,6 +108,22 @@ export const DELETE = withAuthMiddleware<{ id: string }>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any;
 
+    // 检查栏目是否存在且是否为默认栏目
+    const { data: category } = await sb
+      .from("folder_categories")
+      .select("id, is_default")
+      .eq("id", categoryId)
+      .eq("user_id", userId)
+      .single();
+
+    if (!category) {
+      return badRequestError("栏目不存在");
+    }
+
+    if (category.is_default) {
+      return badRequestError("默认栏目不可删除");
+    }
+
     await sb
       .from("folders")
       .update({ category_id: null, updated_at: new Date().toISOString() })

@@ -17,8 +17,10 @@ ON CONFLICT (id) DO NOTHING;
 
 -- RLS 策略：用户只能访问自己的缓存文件
 -- 路径格式：{userId}/{bookmarkId}/{filename}
+-- 使用 DROP IF EXISTS + CREATE 保证幂等（迁移版本号重命名后可安全重放）
 
 -- 允许用户读取自己的缓存
+DROP POLICY IF EXISTS "Users can read own TTS cache" ON storage.objects;
 CREATE POLICY "Users can read own TTS cache"
 ON storage.objects FOR SELECT
 TO authenticated
@@ -28,6 +30,7 @@ USING (
 );
 
 -- 允许用户上传到自己的目录
+DROP POLICY IF EXISTS "Users can upload own TTS cache" ON storage.objects;
 CREATE POLICY "Users can upload own TTS cache"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -37,6 +40,7 @@ WITH CHECK (
 );
 
 -- 允许用户更新自己的缓存（upsert）
+DROP POLICY IF EXISTS "Users can update own TTS cache" ON storage.objects;
 CREATE POLICY "Users can update own TTS cache"
 ON storage.objects FOR UPDATE
 TO authenticated
@@ -46,6 +50,7 @@ USING (
 );
 
 -- 允许用户删除自己的缓存
+DROP POLICY IF EXISTS "Users can delete own TTS cache" ON storage.objects;
 CREATE POLICY "Users can delete own TTS cache"
 ON storage.objects FOR DELETE
 TO authenticated

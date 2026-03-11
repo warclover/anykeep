@@ -130,9 +130,13 @@ export async function middleware(request: NextRequest) {
   // 3.0 根路由快速重定向（避免 Server Component redirect 导致 RSC payload 错误）
   if (pathname === "/") {
     // 先检查认证状态，决定跳转到 /home 还是 /login
-    const { user } = await updateSession(request);
+    const { supabaseResponse, user } = await updateSession(request);
     const target = user ? "/home" : "/login";
     const response = NextResponse.redirect(new URL(target, request.url));
+    // 将 Supabase 会话刷新 cookie 复制到重定向响应，防止会话丢失
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie);
+    });
     response.headers.set("x-request-id", requestId);
     return response;
   }

@@ -153,7 +153,11 @@ export class IncrementalProfileService {
         break;
 
       case "update_tags":
-        if (event.toFolderId) {
+        // 标签变更时书签未移动，使用 fromFolderId（当前所在文件夹）
+        // 若调用方错误地填入 toFolderId，作为 fallback 兼容
+        if (event.fromFolderId) {
+          foldersToUpdate.push(event.fromFolderId);
+        } else if (event.toFolderId) {
           foldersToUpdate.push(event.toFolderId);
         }
         break;
@@ -300,7 +304,10 @@ export class IncrementalProfileService {
           break;
 
         case "update_tags":
-          if (event.tags && event.toFolderId === folderId) {
+          if (
+            event.tags &&
+            (event.fromFolderId === folderId || event.toFolderId === folderId)
+          ) {
             tagsToAdd.push(...event.tags);
           }
           break;
@@ -344,7 +351,7 @@ export class IncrementalProfileService {
       type TopAuthorsRow = { top_authors: AuthorEntry[] | null };
       const { data: rawRefreshed } = await this.supabase
         .from("folder_profiles")
-        .select("top_authors" as "id")
+        .select("top_authors" as string)
         .eq("folder_id", folderId)
         .single();
       const refreshed = rawRefreshed as unknown as TopAuthorsRow | null;
@@ -474,12 +481,12 @@ export class IncrementalProfileService {
    * 增量合并作者统计
    *
    * 新增作者：已有则 count+1，否则追加条目。
-   * 重算 ratio 并取 Top 10。
+   * 重算 ratio（分母为有作者信息的书签总数，与 SQL 端 recompute_folder_top_authors 口径一致），取 Top 10。
    */
   private mergeAuthors(
     existing: Array<{ name: string; count: number; ratio: number }>,
     newAuthors: string[],
-    totalBookmarkCount: number,
+    _totalBookmarkCount: number,
   ): Array<{ name: string; count: number; ratio: number }> {
     // 构建 name → count 映射
     const authorMap = new Map<string, number>();
@@ -494,8 +501,14 @@ export class IncrementalProfileService {
       authorMap.set(key, (authorMap.get(key) ?? 0) + 1);
     }
 
+    // 有作者信息的书签总数 = 所有作者 count 之和（与 SQL 端口径一致）
+    const authoredTotal = Array.from(authorMap.values()).reduce(
+      (sum, c) => sum + c,
+      0,
+    );
+    const denominator = Math.max(authoredTotal, 1);
+
     // 排序取 Top 10，重算 ratio
-    const denominator = Math.max(totalBookmarkCount, 1);
     return Array.from(authorMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
@@ -554,9 +567,9 @@ export class IncrementalProfileService {
    */
   async flushAll(): Promise<void> {
     const folderIds = Array.from(this.pendingUpdates.keys());
-    for (const folderId of folderIds) {
-      await this.flushUpdates(folderId);
-    }
+    await Promise.allSettled(
+      folderIds.map((folderId) => this.flushUpdates(folderId)),
+    );
   }
 
   /**
@@ -597,6 +610,7 @@ export class IncrementalProfileService {
     initialBookmark?: {
       tags?: string[];
       embedding?: number[];
+      authorKey?: string;
     },
   ): Promise<void> {
     try {
@@ -624,12 +638,22 @@ export class IncrementalProfileService {
 
       // 创建初始画像
       // V4.2.7: 添加 embedding 版本追踪
-      const { error } = await this.supabase.from("folder_profiles").insert({
+
+      const insertPayload: Record<string, unknown> = {
         user_id: userId,
         folder_id: folderId,
         folder_name: folder?.name || `文件夹 ${folderId}`,
         bookmark_count: initialBookmark ? 1 : 0,
         top_tags: initialBookmark?.tags || [],
+        top_authors: initialBookmark?.authorKey
+          ? [
+              {
+                name: initialBookmark.authorKey.toLowerCase().trim(),
+                count: 1,
+                ratio: 1.0,
+              },
+            ]
+          : [],
         profile_embedding: initialBookmark?.embedding
           ? (JSON.stringify(initialBookmark.embedding) as unknown as string)
           : null,
@@ -641,7 +665,11 @@ export class IncrementalProfileService {
         source: "incremental",
         computed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+      const { error } = await this.supabase
+        .from("folder_profiles")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(insertPayload as any);
 
       if (error) {
         throw new Error(`Failed to initialize profile: ${error.message}`);

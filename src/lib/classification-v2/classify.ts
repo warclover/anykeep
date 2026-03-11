@@ -119,7 +119,7 @@ export async function classify(
       // 低置信度 → 尝试建议新文件夹，否则 inbox
       const result = buildInboxResult(traceId, startTime, "置信度不足");
       result.scorerDetails = rankResult.scorerDetails;
-      result.timing = rankResult.timing;
+      result.timing = { ...rankResult.timing };
       result.candidates = rankResult.entries.map(toCandidate);
 
       // 尝试生成新文件夹名（旁路，失败不阻塞）

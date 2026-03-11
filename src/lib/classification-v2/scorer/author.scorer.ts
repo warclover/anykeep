@@ -29,7 +29,7 @@ export class AuthorScorer implements Scorer {
   readonly defaultWeight = CLASSIFICATION_CONFIG.scorerWeights.author;
 
   /** 无作者信息时跳过 */
-  shouldRun(bookmark: BookmarkContext): boolean {
+  shouldRun(bookmark: BookmarkContext, _userCtx: UserContext): boolean {
     return !!bookmark.normalizedAuthorKey;
   }
 
@@ -70,6 +70,9 @@ export class AuthorScorer implements Scorer {
             ? 0.6
             : 0.35;
 
+      // 最终分数 = baseScore × confidence，防止低占比作者触发 earlyExit
+      const adjustedScore = baseScore * confidence;
+
       const signals: Signal[] = [
         {
           type: "author_match",
@@ -79,7 +82,7 @@ export class AuthorScorer implements Scorer {
       ];
 
       results.set(folder.id, {
-        value: baseScore,
+        value: adjustedScore,
         confidence,
         reason: `来源「${authorEntry.name}」在「${folder.name}」中有 ${authorEntry.count} 篇`,
         signals,
