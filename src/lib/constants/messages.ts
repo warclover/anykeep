@@ -127,6 +127,8 @@ export const FOLDER = {
 
   // 错误
   CIRCULAR_REFERENCE_ERROR: "不能将文件夹移动到自己或其子文件夹下",
+  NAME_DUPLICATE: (name: string) => `已存在同名文件夹「${name}」`,
+  CATEGORY_NAME_DUPLICATE: (name: string) => `已存在同名栏目「${name}」`,
   NOT_FOUND: "文件夹不存在",
   LOAD_ERROR: "加载文件夹失败",
 

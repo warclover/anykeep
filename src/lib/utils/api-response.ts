@@ -38,6 +38,8 @@ export const API_ERROR_CODES = {
   QUOTA_EXCEEDED: "QUOTA_EXCEEDED",
   // 服务器错误 (500)
   INTERNAL_ERROR: "INTERNAL_ERROR",
+  // 资源冲突 (409)
+  CONFLICT: "CONFLICT",
   // 数据库错误 (500)
   DATABASE_ERROR: "DATABASE_ERROR",
 } as const;
@@ -142,6 +144,15 @@ export function quotaExceededError(
   message: string = STORAGE.QUOTA_EXCEEDED,
 ): NextResponse<ApiResponse> {
   return errorResponse(API_ERROR_CODES.QUOTA_EXCEEDED, message, 429);
+}
+
+/**
+ * 处理资源冲突错误（如同名资源已存在）
+ */
+export function conflictError(
+  message = "资源已存在",
+): NextResponse<ApiResponse> {
+  return errorResponse(API_ERROR_CODES.CONFLICT, message, 409);
 }
 
 /**

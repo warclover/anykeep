@@ -13,6 +13,7 @@ import {
   successResponse,
   handleValidationError,
   databaseError,
+  conflictError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { Folder } from "@/types/supabase";
@@ -131,7 +132,27 @@ export const POST = withAuthMiddleware(
 
     const { name, parentId, categoryId, color, icon } = validation.data;
 
-    // 3. 创建文件夹
+    // 3. 检查同名文件夹（同一用户 + 同一父目录下不允许重名）
+    let duplicateQuery = supabase
+      .from("folders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("name", name)
+      .is("deleted_at", null);
+
+    if (parentId) {
+      duplicateQuery = duplicateQuery.eq("parent_id", parentId);
+    } else {
+      duplicateQuery = duplicateQuery.is("parent_id", null);
+    }
+
+    const { count: duplicateCount } = await duplicateQuery;
+
+    if (duplicateCount && duplicateCount > 0) {
+      return conflictError(FOLDER.NAME_DUPLICATE(name));
+    }
+
+    // 4. 创建文件夹
     type CreatedFolderType = {
       id: number;
       user_id: string;

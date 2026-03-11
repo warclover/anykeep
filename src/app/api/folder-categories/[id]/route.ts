@@ -13,7 +13,9 @@ import {
   handleValidationError,
   badRequestError,
   databaseError,
+  conflictError,
 } from "@/lib/utils/api-response";
+import { FOLDER } from "@/lib/constants/messages";
 
 /**
  * PATCH /api/folder-categories/[id]
@@ -41,6 +43,21 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
     };
 
     if (validation.data.name !== undefined) {
+      // 检查同名栏目（排除自身）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count: duplicateCount } = await (supabase as any)
+        .from("folder_categories")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("name", validation.data.name)
+        .neq("id", categoryId);
+
+      if (duplicateCount && duplicateCount > 0) {
+        return conflictError(
+          FOLDER.CATEGORY_NAME_DUPLICATE(validation.data.name),
+        );
+      }
+
       updateData.name = validation.data.name;
     }
     if (validation.data.icon !== undefined) {

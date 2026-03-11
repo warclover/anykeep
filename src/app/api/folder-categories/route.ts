@@ -12,7 +12,9 @@ import {
   successResponse,
   handleValidationError,
   databaseError,
+  conflictError,
 } from "@/lib/utils/api-response";
+import { FOLDER } from "@/lib/constants/messages";
 
 /**
  * GET /api/folder-categories
@@ -57,6 +59,17 @@ export const POST = withAuthMiddleware(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any;
+
+    // 检查同名栏目（同一用户下不允许重名）
+    const { count: duplicateCount } = await sb
+      .from("folder_categories")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("name", name);
+
+    if (duplicateCount && duplicateCount > 0) {
+      return conflictError(FOLDER.CATEGORY_NAME_DUPLICATE(name));
+    }
 
     const { data: maxOrderRow } = await sb
       .from("folder_categories")

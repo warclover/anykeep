@@ -18,6 +18,7 @@ import {
   forbiddenError,
   databaseError,
   badRequestError,
+  conflictError,
 } from "@/lib/utils/api-response";
 import { logger } from "@/lib/logger";
 import type { FolderUpdate, Database } from "@/types/supabase";
@@ -189,6 +190,32 @@ export const PUT = withAuthMiddleware<{ id: string }>(
 
       if (hasCircularReference) {
         return badRequestError(FOLDER.CIRCULAR_REFERENCE_ERROR);
+      }
+    }
+
+    // 4.5 检查同名文件夹（重命名时，同一父目录下不允许重名）
+    if (name !== undefined && name !== existingFolder.name) {
+      const effectiveParentId =
+        parentId !== undefined ? parentId : existingFolder.parent_id;
+
+      let duplicateQuery = supabase
+        .from("folders")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("name", name)
+        .neq("id", folderId)
+        .is("deleted_at", null);
+
+      if (effectiveParentId) {
+        duplicateQuery = duplicateQuery.eq("parent_id", effectiveParentId);
+      } else {
+        duplicateQuery = duplicateQuery.is("parent_id", null);
+      }
+
+      const { count: duplicateCount } = await duplicateQuery;
+
+      if (duplicateCount && duplicateCount > 0) {
+        return conflictError(FOLDER.NAME_DUPLICATE(name));
       }
     }
 
