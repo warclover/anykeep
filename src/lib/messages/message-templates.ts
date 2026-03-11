@@ -412,7 +412,7 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
   folder_operation_undone: {
     title: (data) => `↩️ 已撤销：${data.actionLabel}`,
     content: (data) => (data.detail as string) || "操作已成功撤销",
-    actionUrl: () => "/settings/ai-history",
+    actionUrl: () => "/settings/ai",
     actionLabel: "查看历史",
     defaultPriority: 4,
   },

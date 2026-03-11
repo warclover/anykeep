@@ -95,7 +95,7 @@ export function AIOperationHistoryCard({
             {/* 查看更多链接 */}
             {operations.length > 0 && (
               <div className="mt-4 pt-4 border-t">
-                <Link href="/settings/ai-history">
+                <Link href="/settings/ai">
                   <Button variant="outline" className="w-full">
                     <span>查看全部操作历史</span>
                     <ExternalLink className="size-4 ml-2" />
