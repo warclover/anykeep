@@ -102,7 +102,6 @@ test.describe("逐页巡览 - 子页面与设置子路由", () => {
 
   const SUB_PAGES = [
     { path: "/settings/ai", name: "设置 - AI" },
-    { path: "/settings/ai-reports", name: "设置 - AI 报告" },
     { path: "/settings/feedback", name: "设置 - 反馈" },
     { path: "/settings/rag-dashboard", name: "设置 - RAG" },
     { path: "/messages/pending", name: "消息 - 待处理" },

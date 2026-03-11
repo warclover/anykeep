@@ -30,7 +30,6 @@ const PROTECTED_PAGES = [
   { path: "/data", name: "数据管理" },
   { path: "/settings", name: "设置页" },
   { path: "/settings/ai", name: "AI 设置" },
-  { path: "/settings/ai-reports", name: "AI 报告" },
   { path: "/settings/feedback", name: "反馈列表" },
   { path: "/settings/ledger", name: "账本" },
   { path: "/settings/rag-dashboard", name: "RAG 仪表盘" },

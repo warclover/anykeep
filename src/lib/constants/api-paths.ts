@@ -477,26 +477,10 @@ export const API_FOLDERS = {
 // ============================================
 
 export const API_FOLDER_EVOLUTION = {
-  /** 确认合并 */
-  confirmMerge: "/api/folder-evolution/confirm-merge",
-  /** 确认拆分 */
-  confirmSplit: "/api/folder-evolution/confirm-split",
   /** 演化历史 */
   history: "/api/folder-evolution/history",
-  /** 合并（获取建议 GET / 执行合并 POST） */
-  merge: "/api/folder-evolution/merge",
-  /** 合并建议 */
-  mergeSuggestions: "/api/folder-evolution/merge-suggestions",
-  /** 重命名 */
-  rename: "/api/folder-evolution/rename",
-  /** 报告 */
-  reports: "/api/folder-evolution/reports",
   /** 快照详情 */
   snapshot: (id: string) => `/api/folder-evolution/snapshot/${id}`,
-  /** 拆分（获取建议 GET / 执行拆分 POST） */
-  split: "/api/folder-evolution/split",
-  /** 拆分建议 */
-  splitSuggestions: "/api/folder-evolution/split-suggestions",
   /** 撤销 */
   undo: (id: string) => `/api/folder-evolution/undo/${id}`,
 } as const;

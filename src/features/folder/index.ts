@@ -41,9 +41,6 @@ export { useFolderProfile } from "@/hooks/data/use-folder-profile";
 
 // 文件夹操作建议
 export { useLibrarianAnalysis } from "@/hooks/domain/folder/use-librarian-analysis";
-export { useMergeSuggestions } from "@/hooks/domain/folder/use-merge-suggestions";
-export { useSplitSuggestions } from "@/hooks/domain/folder/use-split-suggestions";
-export { useRenameSuggestions } from "@/hooks/domain/folder/use-rename-suggestions";
 export { useOperationHistory } from "@/hooks/domain/folder/use-operation-history";
 
 // ============================================================================

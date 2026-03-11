@@ -9,7 +9,6 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import type { SnapshotJobPayload } from "@/lib/snapshot";
 import type { Json } from "@/types/supabase";
-import { reportService } from "@/lib/folder-evolution";
 import {
   initSupabaseAdmin,
   getSupabaseAdmin,
@@ -222,8 +221,10 @@ async function processJob(job: {
 
   switch (job.job_type) {
     case "generate_monthly_report": {
-      const month = (payload.month as string) || undefined;
-      await reportService.generateMonthlyReport(job.job_user_id, month);
+      // 月度报告已精简移除，跳过
+      logger.info(
+        "generate_monthly_report removed in folder-evolution simplification",
+      );
       break;
     }
 

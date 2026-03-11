@@ -424,7 +424,7 @@ export const MESSAGE_TEMPLATES: Record<MessageType, MessageTemplate> = {
       const createdFolders = data.createdFolders as number;
       return `本月整理了 ${classifiedCount} 条收藏${createdFolders ? `，创建了 ${createdFolders} 个新文件夹` : ""}`;
     },
-    actionUrl: () => "/settings/ai-reports",
+    actionUrl: () => "/settings",
     actionLabel: "查看报告",
     defaultPriority: 5,
   },
