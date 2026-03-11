@@ -106,9 +106,8 @@ export function useFolderBookmarkActions({
         false,
       );
       clearFoldersCache();
-      router.refresh();
     },
-    [bookmarks, mutateBookmarks, router, adjustFolderCount],
+    [bookmarks, mutateBookmarks, adjustFolderCount],
   );
 
   const handleBatchDeleteSuccess = useCallback(
@@ -119,9 +118,8 @@ export function useFolderBookmarkActions({
         false,
       );
       clearFoldersCache();
-      router.refresh();
     },
-    [bookmarks, mutateBookmarks, router, adjustFolderCount],
+    [bookmarks, mutateBookmarks, adjustFolderCount],
   );
 
   return {

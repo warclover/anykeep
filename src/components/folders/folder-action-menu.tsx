@@ -6,7 +6,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   MoreVertical,
   Edit2,
@@ -108,7 +107,6 @@ export function FolderActionMenu({
   onExportFolder,
   initialLockStatus,
 }: FolderActionMenuProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const { user } = useUser();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -161,7 +159,6 @@ export function FolderActionMenu({
       }
       onFolderCategoryChanged?.(folder.id, categoryId);
       onActionComplete?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -199,7 +196,6 @@ export function FolderActionMenu({
         folderCacheInvalidation.onAnyChange(user.id);
       }
       onActionComplete?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -280,7 +276,6 @@ export function FolderActionMenu({
         folderCacheInvalidation.onAnyChange(user.id);
       }
       onActionComplete?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -354,7 +349,6 @@ export function FolderActionMenu({
       }
 
       onActionComplete?.();
-      router.refresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "一键分类失败";
       toast.error("分类失败", {

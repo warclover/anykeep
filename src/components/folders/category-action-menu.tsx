@@ -6,7 +6,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   MoreVertical,
   Edit2,
@@ -98,7 +97,6 @@ export function CategoryActionMenu({
   onColorChanged,
   onMoved,
 }: CategoryActionMenuProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -142,7 +140,6 @@ export function CategoryActionMenu({
       toast.success("栏目已重命名");
       onRenamed?.(category.id, newName.trim());
       setShowRenameDialog(false);
-      router.refresh();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       toast.error(error instanceof Error ? error.message : "重命名失败");
@@ -172,7 +169,6 @@ export function CategoryActionMenu({
       setNewColor(color);
       onColorChanged?.(category.id, color);
       setShowColorDialog(false);
-      router.refresh();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       toast.error(error instanceof Error ? error.message : "修改颜色失败");
@@ -206,7 +202,6 @@ export function CategoryActionMenu({
       toast.success("栏目图标已更新");
       onIconChanged?.(category.id, selectedIcon);
       setShowIconDialog(false);
-      router.refresh();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       toast.error(error instanceof Error ? error.message : "修改图标失败");
@@ -254,8 +249,9 @@ export function CategoryActionMenu({
       ]);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
-      toast.error("移动失败");
-      router.refresh();
+      toast.error("移动失败，请刷新页面");
+      // 移动失败时乐观状态已脏，需要刷新恢复
+      window.location.reload();
     }
   };
 
@@ -277,7 +273,6 @@ export function CategoryActionMenu({
       toast.success("栏目已删除");
       onDeleted?.(category.id);
       setShowDeleteDialog(false);
-      router.refresh();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       toast.error(error instanceof Error ? error.message : "删除失败");
@@ -293,7 +288,7 @@ export function CategoryActionMenu({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-foreground transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-3.5" />

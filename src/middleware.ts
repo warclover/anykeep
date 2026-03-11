@@ -127,6 +127,16 @@ export async function middleware(request: NextRequest) {
   // 3. 页面路由处理
   // =====================================================
 
+  // 3.0 根路由快速重定向（避免 Server Component redirect 导致 RSC payload 错误）
+  if (pathname === "/") {
+    // 先检查认证状态，决定跳转到 /home 还是 /login
+    const { user } = await updateSession(request);
+    const target = user ? "/home" : "/login";
+    const response = NextResponse.redirect(new URL(target, request.url));
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
   // 3.1 运行 Supabase Auth
   const { supabaseResponse, user, authMethod, authDuration, jwtDebug } =
     await updateSession(request);

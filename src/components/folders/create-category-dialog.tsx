@@ -5,7 +5,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -58,7 +57,6 @@ export function CreateCategoryDialog({
   onOpenChange,
   onSuccess,
 }: CreateCategoryDialogProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -111,7 +109,6 @@ export function CreateCategoryDialog({
       setIcon("");
       setErrors({});
       onOpenChange(false);
-      router.refresh();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       toast.error(error instanceof Error ? error.message : "创建栏目失败");

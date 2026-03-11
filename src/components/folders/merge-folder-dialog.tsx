@@ -6,7 +6,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -56,7 +55,6 @@ export function MergeFolderDialog({
   onSuccess,
   onMerged,
 }: MergeFolderDialogProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const { user } = useUser();
   const [targetFolderId, setTargetFolderId] = useState<string>("");
@@ -108,7 +106,6 @@ export function MergeFolderDialog({
       // 先触发乐观更新
       onMerged?.(folder.id, parseInt(targetFolderId), result.bookmarksMoved);
       onSuccess?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;

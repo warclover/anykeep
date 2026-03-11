@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { setFoldersCache, clearFoldersCache } from "@/lib/folder/cache";
 import { useUser } from "@/contexts/user-context";
 import type {
@@ -28,7 +27,6 @@ export function useFolderOptimisticUpdates({
   setSelection,
   refreshBookmarks,
 }: UseFolderOptimisticUpdatesParams) {
-  const router = useRouter();
   const { user } = useUser();
 
   const [localFolders, setLocalFolders] = useState(initialFolders);
@@ -148,10 +146,8 @@ export function useFolderOptimisticUpdates({
           getDefaultSelection(remaining, localCategoriesRef.current),
         );
       }
-
-      router.refresh();
     },
-    [router, selection, setSelection],
+    [selection, setSelection],
   );
 
   const handleFolderRenamed = useCallback(

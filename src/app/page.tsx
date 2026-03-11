@@ -1,22 +1,13 @@
 /**
- * 根页面 - 重定向到首页或登录页
+ * 根页面 - Middleware 兜底
+ *
+ * 主要重定向逻辑已移至 middleware.ts（pathname === "/"），
+ * 此页面仅作为 fallback 防御，正常流程不会到达。
  */
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 
-// 标记为动态路由，因为需要访问 cookies 和进行认证检查
-export const dynamic = "force-dynamic";
-
-export default async function RootPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect("/home");
-  } else {
-    redirect("/login");
-  }
+export default function RootPage() {
+  // Middleware 应已处理重定向，此处为兜底
+  redirect("/home");
 }

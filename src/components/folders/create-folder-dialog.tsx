@@ -6,7 +6,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -63,7 +62,6 @@ export function CreateFolderDialog({
   defaultCategoryId,
   onSuccess,
 }: CreateFolderDialogProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,9 +145,6 @@ export function CreateFolderDialog({
 
       // 关闭对话框
       onOpenChange(false);
-
-      // 最后刷新页面数据
-      router.refresh();
     } catch (error) {
       // 如果是取消错误，不显示错误提示
       if (error instanceof Error && error.name === "AbortError") {

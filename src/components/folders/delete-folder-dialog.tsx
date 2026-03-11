@@ -6,7 +6,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -54,7 +53,6 @@ export function DeleteFolderDialog({
   targetFolders,
   onSuccess,
 }: DeleteFolderDialogProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const { user } = useUser();
   const [deleteOption, setDeleteOption] = useState<DeleteOption>("move");
@@ -183,7 +181,6 @@ export function DeleteFolderDialog({
       onOpenChange(false);
       resetState();
       onSuccess?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         logger.debug(

@@ -5,7 +5,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAbortableFetch } from "@/hooks/core";
@@ -39,7 +38,6 @@ export function RenameFolderDialog({
   onSuccess,
   onRenamed,
 }: RenameFolderDialogProps) {
-  const router = useRouter();
   const { fetchWithAbort } = useAbortableFetch();
   const { user } = useUser();
   const [name, setName] = useState(folder.name);
@@ -100,7 +98,6 @@ export function RenameFolderDialog({
       onOpenChange(false);
       onRenamed?.(trimmedName); // 先触发乐观更新
       onSuccess?.();
-      router.refresh();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
