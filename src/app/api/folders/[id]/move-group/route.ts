@@ -67,6 +67,7 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
       .from("folders")
       .select("id, user_id, is_system")
       .eq("id", folderId)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .single()) as unknown as {
       data: ExistingFolderType | null;
@@ -75,6 +76,10 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
 
     if (checkError) {
       if (checkError.code === "PGRST116") {
+        logger.warn(
+          { folderId, userId, operation: "move_folder_group" },
+          "Folder not found for move-group",
+        );
         return badRequestError("文件夹不存在");
       }
       return databaseError("查询失败", checkError);
@@ -82,10 +87,6 @@ export const PATCH = withAuthMiddleware<{ id: string }>(
 
     if (!existingFolder) {
       return badRequestError("文件夹不存在");
-    }
-
-    if (existingFolder.user_id !== userId) {
-      return badRequestError("无权操作此文件夹");
     }
 
     if (existingFolder.is_system) {
