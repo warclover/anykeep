@@ -1,6 +1,6 @@
 /**
  * 此文件由 scripts/gen-supabase-types.js 自动生成
- * 生成时间: 2026-02-07T10:48:08.755Z
+ * 生成时间: 2026-03-11T08:52:33.323Z
  *
  * ⚠️ 请勿手动修改此文件！
  * 如需扩展类型，请在 src/types/supabase.ts 中添加
@@ -2610,24 +2610,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      edge_function_rate_limits: {
-        Row: {
-          called_at: string;
-          function_name: string;
-          id: string;
-        };
-        Insert: {
-          called_at?: string;
-          function_name: string;
-          id?: string;
-        };
-        Update: {
-          called_at?: string;
-          function_name?: string;
-          id?: string;
-        };
-        Relationships: [];
-      };
       embedding_ab_test_metrics: {
         Row: {
           ab_test_bucket: number | null;
@@ -2770,6 +2752,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      folder_categories: {
+        Row: {
+          color: string | null;
+          created_at: string | null;
+          icon: string | null;
+          id: number;
+          is_default: boolean | null;
+          name: string;
+          sort_order: number | null;
+          updated_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          color?: string | null;
+          created_at?: string | null;
+          icon?: string | null;
+          id?: number;
+          is_default?: boolean | null;
+          name: string;
+          sort_order?: number | null;
+          updated_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          color?: string | null;
+          created_at?: string | null;
+          icon?: string | null;
+          id?: number;
+          is_default?: boolean | null;
+          name?: string;
+          sort_order?: number | null;
+          updated_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       folder_exclusions: {
         Row: {
           created_at: string;
@@ -2866,6 +2884,7 @@ export type Database = {
           source: string | null;
           suggested_name: string | null;
           suggested_name_reason: string | null;
+          top_authors: Json | null;
           top_tags: string[] | null;
           updated_at: string | null;
           user_id: string;
@@ -2903,6 +2922,7 @@ export type Database = {
           source?: string | null;
           suggested_name?: string | null;
           suggested_name_reason?: string | null;
+          top_authors?: Json | null;
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id: string;
@@ -2940,6 +2960,7 @@ export type Database = {
           source?: string | null;
           suggested_name?: string | null;
           suggested_name_reason?: string | null;
+          top_authors?: Json | null;
           top_tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string;
@@ -3011,6 +3032,7 @@ export type Database = {
       folders: {
         Row: {
           ai_generation_source: string | null;
+          category_id: number | null;
           color: string | null;
           created_at: string | null;
           crystal_birth_time: string | null;
@@ -3033,6 +3055,7 @@ export type Database = {
         };
         Insert: {
           ai_generation_source?: string | null;
+          category_id?: number | null;
           color?: string | null;
           created_at?: string | null;
           crystal_birth_time?: string | null;
@@ -3055,6 +3078,7 @@ export type Database = {
         };
         Update: {
           ai_generation_source?: string | null;
+          category_id?: number | null;
           color?: string | null;
           created_at?: string | null;
           crystal_birth_time?: string | null;
@@ -3076,6 +3100,13 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "folders_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "folder_categories";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "folders_parent_id_fkey";
             columns: ["parent_id"];
@@ -7878,17 +7909,67 @@ export type Database = {
         Args: { p_bookmark_ids: number[]; p_tags: string[] };
         Returns: Json;
       };
+      batch_add_tags_atomic: {
+        Args: { p_bookmark_ids: number[]; p_tags: string[]; p_user_id: string };
+        Returns: {
+          added_count: number;
+          error_code: string;
+          error_message: string;
+          success: boolean;
+        }[];
+      };
       batch_create_flashcards: {
         Args: { p_bookmark_id: number; p_flashcards: Json; p_user_id: string };
         Returns: Json;
+      };
+      batch_create_folders_atomic: {
+        Args: { p_folders: Json; p_quota_limit?: number; p_user_id: string };
+        Returns: {
+          created_folders: Json;
+          error_code: string;
+          error_message: string;
+          failed_count: number;
+          success: boolean;
+        }[];
+      };
+      batch_move_bookmarks_atomic: {
+        Args: {
+          p_bookmark_ids: number[];
+          p_target_folder_id?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          error_code: string;
+          error_message: string;
+          success: boolean;
+          updated_count: number;
+        }[];
       };
       batch_remove_tags: {
         Args: { p_bookmark_ids: number[]; p_tags: string[] };
         Returns: Json;
       };
+      batch_remove_tags_atomic: {
+        Args: { p_bookmark_ids: number[]; p_tags: string[]; p_user_id: string };
+        Returns: {
+          error_code: string;
+          error_message: string;
+          removed_count: number;
+          success: boolean;
+        }[];
+      };
       batch_reorder_folders: {
         Args: { p_updates: Json; p_user_id: string };
         Returns: Json;
+      };
+      batch_soft_delete_bookmarks_atomic: {
+        Args: { p_bookmark_ids: number[]; p_user_id: string };
+        Returns: {
+          deleted_count: number;
+          error_code: string;
+          error_message: string;
+          success: boolean;
+        }[];
       };
       batch_update_folder_profiles: {
         Args: { p_updates: Json; p_user_id?: string };
@@ -7976,7 +8057,7 @@ export type Database = {
         Args: {
           p_job_types?: Database["public"]["Enums"]["job_type"][];
           p_limit?: number;
-          p_lock_duration?: unknown;
+          p_lock_duration?: string;
           p_worker_id: string;
         };
         Returns: {
@@ -8010,7 +8091,7 @@ export type Database = {
         | {
             Args: {
               p_job_types?: Database["public"]["Enums"]["job_type"][];
-              p_lock_duration?: unknown;
+              p_lock_duration?: string;
               p_worker_id: string;
             };
             Returns: {
@@ -8043,7 +8124,7 @@ export type Database = {
         | {
             Args: {
               p_job_types?: string[];
-              p_lock_duration?: unknown;
+              p_lock_duration?: string;
               p_worker_id: string;
             };
             Returns: {
@@ -8055,7 +8136,6 @@ export type Database = {
             }[];
           };
       cleanup_completed_progress: { Args: never; Returns: number };
-      cleanup_edge_function_rate_limits: { Args: never; Returns: number };
       cleanup_expired_ai_snapshots: { Args: never; Returns: number };
       cleanup_expired_chaos_pool: { Args: never; Returns: number };
       cleanup_expired_check_logs: { Args: never; Returns: number };
@@ -8088,21 +8168,11 @@ export type Database = {
       cleanup_old_patrol_reports: { Args: never; Returns: undefined };
       cleanup_old_token_usage_logs: { Args: never; Returns: number };
       cleanup_old_trash: { Args: { days_to_keep?: number }; Returns: number };
-      cleanup_orphaned_step_results: { Args: never; Returns: number };
       cleanup_rate_limit_records: { Args: never; Returns: undefined };
       cleanup_resolved_health_issues: {
         Args: { p_user_id: string };
         Returns: number;
       };
-      cleanup_workflow_execution_history: {
-        Args: never;
-        Returns: {
-          deleted_completed: number;
-          deleted_failed: number;
-          retained_count: number;
-        }[];
-      };
-      cleanup_workflow_history_all: { Args: never; Returns: Json };
       clear_bookmark_pending_cluster: {
         Args: { p_bookmark_id: number; p_user_id: string };
         Returns: boolean;
@@ -8123,20 +8193,10 @@ export type Database = {
             Returns: undefined;
           };
       compute_folder_heat: { Args: { p_folder_id: number }; Returns: number };
-      compute_folder_profile:
-        | {
-            Args: { p_folder_id: number };
-            Returns: {
-              error: true;
-            } & "Could not choose the best candidate function between: public.compute_folder_profile(p_folder_id => int8), public.compute_folder_profile(p_folder_id => int4). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
-          }
-        | { Args: { p_folder_id: number; p_user_id: string }; Returns: Json }
-        | {
-            Args: { p_folder_id: number };
-            Returns: {
-              error: true;
-            } & "Could not choose the best candidate function between: public.compute_folder_profile(p_folder_id => int8), public.compute_folder_profile(p_folder_id => int4). Try renaming the parameters or the function itself in the database so function overloading can be resolved";
-          };
+      compute_folder_profile: {
+        Args: { p_folder_id: number };
+        Returns: undefined;
+      };
       compute_user_folder_profiles: {
         Args: { p_user_id: string };
         Returns: number;
@@ -8154,6 +8214,22 @@ export type Database = {
           p_user_id: string;
         };
         Returns: string;
+      };
+      create_folder_atomic: {
+        Args: {
+          p_color?: string;
+          p_icon?: string;
+          p_name: string;
+          p_parent_id?: number;
+          p_quota_limit?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          error_code: string;
+          error_message: string;
+          folder_id: number;
+          success: boolean;
+        }[];
       };
       create_incremental_update_task: {
         Args: {
@@ -8427,6 +8503,24 @@ export type Database = {
           strength: number;
         }[];
       };
+      get_bookmarks_by_tag_with_folder: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_tag_name: string;
+          p_user_id: string;
+        };
+        Returns: {
+          ai_summary: string;
+          bookmark_id: number;
+          created_at: string;
+          folder_id: number;
+          folder_name: string;
+          platform: string;
+          title: string;
+          url: string;
+        }[];
+      };
       get_bookmarks_for_review: {
         Args: {
           p_include_overdue?: boolean;
@@ -8466,6 +8560,14 @@ export type Database = {
           child_chunks: number;
           parent_chunks: number;
           total_chunks: number;
+        }[];
+      };
+      get_cluster_size_distribution: {
+        Args: never;
+        Returns: {
+          cluster_count: number;
+          label: string;
+          size_range: string;
         }[];
       };
       get_collection_stats: {
@@ -8533,6 +8635,14 @@ export type Database = {
       };
       get_folder_path: {
         Args: { p_folder_id: number };
+        Returns: {
+          depth: number;
+          id: number;
+          name: string;
+        }[];
+      };
+      get_folder_path_by_bookmark: {
+        Args: { p_bookmark_id: number };
         Returns: {
           depth: number;
           id: number;
@@ -8682,13 +8792,21 @@ export type Database = {
           reason: string;
         }[];
       };
-      get_notification_counts: {
-        Args: { p_user_id: string };
-        Returns: {
-          count: number;
-          priority: string;
-        }[];
-      };
+      get_notification_counts:
+        | {
+            Args: never;
+            Returns: {
+              count: number;
+              priority: string;
+            }[];
+          }
+        | {
+            Args: { p_user_id: string };
+            Returns: {
+              count: number;
+              priority: string;
+            }[];
+          };
       get_notifications_grouped: {
         Args: {
           p_limit?: number;
@@ -9010,7 +9128,7 @@ export type Database = {
           id: string;
           operation_type: string;
           summary: string;
-          time_remaining: unknown;
+          time_remaining: string;
         }[];
       };
       get_unified_quota_stats: {
@@ -9032,7 +9150,7 @@ export type Database = {
         Returns: {
           conversation_id: string;
           created_at: string;
-          expires_in: unknown;
+          expires_in: string;
           last_intent: string;
           message_count: number;
           updated_at: string;
@@ -9048,6 +9166,16 @@ export type Database = {
           total_skill_executions: number;
           total_tokens_used: number;
         }[];
+      };
+      get_user_analytics: {
+        Args: {
+          p_merge_browser_platforms?: boolean;
+          p_top_folders_count?: number;
+          p_top_tags_count?: number;
+          p_trend_days?: number;
+          p_user_id: string;
+        };
+        Returns: Json;
       };
       get_user_audit_history: {
         Args: {
@@ -9296,10 +9424,10 @@ export type Database = {
           skipped_count: number;
         }[];
       };
-      mark_all_notifications_read: {
-        Args: { p_user_id: string };
-        Returns: number;
-      };
+      is_browser_platform: { Args: { p_platform: string }; Returns: boolean };
+      mark_all_notifications_read:
+        | { Args: never; Returns: number }
+        | { Args: { p_user_id: string }; Returns: number };
       mark_bookmark_pending_cluster: {
         Args: { p_bookmark_id: number; p_user_id: string };
         Returns: boolean;
@@ -9324,10 +9452,9 @@ export type Database = {
         Args: { p_flashcard_id: number; p_user_id: string };
         Returns: Json;
       };
-      mark_notifications_read: {
-        Args: { p_ids: string[]; p_user_id: string };
-        Returns: number;
-      };
+      mark_notifications_read:
+        | { Args: { p_ids: string[] }; Returns: number }
+        | { Args: { p_ids: string[]; p_user_id: string }; Returns: number };
       mark_operation_undone: {
         Args: { p_operation_id: string; p_user_id: string };
         Returns: boolean;
@@ -9384,6 +9511,10 @@ export type Database = {
           p_update_type: string;
           p_user_id: string;
         };
+        Returns: undefined;
+      };
+      recompute_folder_top_authors: {
+        Args: { p_folder_id: number };
         Returns: undefined;
       };
       record_blueprint_usage: {
@@ -10016,6 +10147,7 @@ export type Database = {
         high_value: number | null;
         broken: number | null;
         recent: number | null;
+        processing: number | null;
       };
     };
   };

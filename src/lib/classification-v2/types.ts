@@ -24,6 +24,10 @@ export interface ClassifyRequest {
   summary?: string;
   tags?: string[];
   userId: string;
+  /** 来源名称（公众号名、UP主频道名等） */
+  sourceName?: string;
+  /** 内容作者 */
+  author?: string;
 }
 
 /**
@@ -194,7 +198,8 @@ export type SignalType =
   | "vector_sim"
   | "history"
   | "llm_semantic"
-  | "name_similarity";
+  | "name_similarity"
+  | "author_match";
 
 // ============================================================================
 // Ranker 类型
@@ -268,6 +273,10 @@ export interface BookmarkContext {
   normalizedTitle: string;
   /** 标准化标签（小写 + trim） */
   normalizedTags: string[];
+  /** 作者/来源标识（优先 sourceName，fallback author） */
+  authorKey?: string;
+  /** 标准化的作者/来源标识（小写 + trim） */
+  normalizedAuthorKey?: string;
 }
 
 /**
@@ -290,6 +299,8 @@ export interface FolderContext {
   keywords: string[];
   /** 书签数量 */
   bookmarkCount: number;
+  /** 高频作者/来源列表 */
+  topAuthors: Array<{ name: string; count: number; ratio: number }>;
   /** 名称向量（可选） */
   nameEmbedding?: number[];
   /** 画像向量（可选） */

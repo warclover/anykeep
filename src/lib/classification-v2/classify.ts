@@ -35,11 +35,13 @@ import { AiTagScorer } from "./scorer/ai-tag.scorer";
 import { VectorScorer } from "./scorer/vector.scorer";
 import { HistoryScorer } from "./scorer/history.scorer";
 import { LlmScorer } from "./scorer/llm.scorer";
+import { AuthorScorer } from "./scorer/author.scorer";
 
 /** 默认 Scorer 注册表 */
 const DEFAULT_SCORERS: Scorer[] = [
   new RuleScorer(),
   new AiTagScorer(),
+  new AuthorScorer(),
   new VectorScorer(),
   new HistoryScorer(),
   new LlmScorer(),

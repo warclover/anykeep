@@ -11,6 +11,7 @@
 import type { ClassifyRequest, BookmarkContext } from "../types";
 import { CLASSIFICATION_CONFIG } from "../config";
 import { generateEmbedding, buildEmbeddingText } from "@/lib/embedding";
+import { createClient } from "@/lib/supabase/server";
 
 const { titleMaxLen, summaryMaxLen, maxTags } = CLASSIFICATION_CONFIG.llm;
 
@@ -32,6 +33,10 @@ export async function buildBookmarkContext(
   const embeddingText = buildEmbeddingText(title, summary, tags);
   const embedding = await generateEmbedding(embeddingText);
 
+  // 解析作者/来源标识
+  const authorKey = await resolveAuthorKey(request);
+  const normalizedAuthorKey = authorKey?.toLowerCase().trim() || undefined;
+
   return {
     bookmarkId: request.bookmarkId,
     title,
@@ -41,6 +46,8 @@ export async function buildBookmarkContext(
     embedding,
     normalizedTitle,
     normalizedTags,
+    authorKey,
+    normalizedAuthorKey,
   };
 }
 
@@ -83,4 +90,41 @@ function normalizeTags(tags: string[], max: number): string[] {
   }
 
   return result;
+}
+
+/**
+ * 解析作者/来源标识
+ *
+ * 优先使用 request 中的 sourceName/author，
+ * 若未提供则根据 bookmarkId 回查数据库。
+ */
+async function resolveAuthorKey(
+  request: ClassifyRequest,
+): Promise<string | undefined> {
+  // 优先使用请求中携带的信息
+  const fromRequest = request.sourceName?.trim() || request.author?.trim();
+  if (fromRequest) return fromRequest;
+
+  // 回查数据库获取
+  if (!request.bookmarkId) return undefined;
+
+  try {
+    const supabase = await createClient();
+
+    type BookmarkAuthorRow = {
+      source_name: string | null;
+      author: string | null;
+    };
+    const { data } = await supabase
+      .from("bookmarks")
+      .select("source_name, author")
+      .eq("id", Number(request.bookmarkId))
+      .single();
+
+    const row = data as unknown as BookmarkAuthorRow | null;
+    return row?.source_name?.trim() || row?.author?.trim() || undefined;
+  } catch {
+    // 查询失败不影响分类流程
+    return undefined;
+  }
 }

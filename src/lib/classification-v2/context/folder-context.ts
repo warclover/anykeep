@@ -32,14 +32,23 @@ export async function buildFolderContexts(
 
   const folderIds = folders.map((f) => f.id);
 
-  // 2. 批量获取文件夹画像
-  const { data: profiles } = await supabase
+  // 2. 批量获取文件夹画像（使用 type assertion 绕过 Supabase 生成类型限制：top_authors 为新增列）
+  type FolderProfileRow = {
+    folder_id: number;
+    top_tags: string[] | null;
+    sample_titles: string[] | null;
+    bookmark_count: number | null;
+    profile_embedding: number[] | null;
+    top_authors: Array<{ name: string; count: number; ratio: number }> | null;
+  };
+  const { data: rawProfiles } = await supabase
     .from("folder_profiles")
     .select(
-      "folder_id, top_tags, sample_titles, bookmark_count, profile_embedding",
+      "folder_id, top_tags, sample_titles, bookmark_count, profile_embedding, top_authors",
     )
     .eq("user_id", userId)
     .in("folder_id", folderIds);
+  const profiles = (rawProfiles ?? []) as unknown as FolderProfileRow[];
 
   // 3. 批量获取文件夹名称向量（使用 type assertion 绕过 Supabase 生成类型限制）
   type NameEmbeddingRow = { folder_id: number; embedding: number[] };
@@ -51,7 +60,7 @@ export async function buildFolderContexts(
     []) as unknown as NameEmbeddingRow[];
 
   // 构建索引 Map
-  const profileMap = new Map((profiles ?? []).map((p) => [p.folder_id, p]));
+  const profileMap = new Map(profiles.map((p) => [p.folder_id, p]));
   const nameEmbeddingMap = new Map(
     nameEmbeddings.map((e) => [e.folder_id, e.embedding]),
   );
@@ -59,8 +68,8 @@ export async function buildFolderContexts(
   // 4. 组装 FolderContext
   return folders.map((folder): FolderContext => {
     const profile = profileMap.get(folder.id);
-    const topTags = (profile?.top_tags as string[]) ?? [];
-    const sampleTitles = (profile?.sample_titles as string[]) ?? [];
+    const topTags = profile?.top_tags ?? [];
+    const sampleTitles = profile?.sample_titles ?? [];
 
     return {
       id: folder.id,
@@ -72,8 +81,9 @@ export async function buildFolderContexts(
       sampleTitles: sampleTitles.slice(0, 5),
       keywords: extractKeywords(folder.name),
       bookmarkCount: profile?.bookmark_count ?? 0,
+      topAuthors: profile?.top_authors ?? [],
       nameEmbedding: nameEmbeddingMap.get(folder.id),
-      profileEmbedding: profile?.profile_embedding as number[] | undefined,
+      profileEmbedding: profile?.profile_embedding ?? undefined,
     };
   });
 }

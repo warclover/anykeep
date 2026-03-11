@@ -14,3 +14,4 @@ export { AiTagScorer } from "./ai-tag.scorer";
 export { VectorScorer } from "./vector.scorer";
 export { HistoryScorer } from "./history.scorer";
 export { LlmScorer } from "./llm.scorer";
+export { AuthorScorer } from "./author.scorer";

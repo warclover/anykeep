@@ -81,8 +81,6 @@ export interface FolderWithStats {
  * 用于类型断言
  */
 export interface FolderWithStatsDbRow extends FolderRow {
-  /** 栏目 ID（数据库迁移后新增，生成类型尚未包含） */
-  category_id?: number | null;
   bookmark_count?: number;
   today_count?: number;
 }

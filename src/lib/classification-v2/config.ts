@@ -33,10 +33,11 @@ export const CLASSIFICATION_CONFIG = {
   // --- Scorer 默认权重 ---
   scorerWeights: {
     rule: 0.15,
-    aiTag: 0.15,
-    vector: 0.35,
-    history: 0.15,
-    llm: 0.2,
+    aiTag: 0.13,
+    author: 0.1,
+    vector: 0.32,
+    history: 0.13,
+    llm: 0.17,
   } as Record<string, number>,
 
   // --- 向量搜索 ---
@@ -81,6 +82,16 @@ export const CLASSIFICATION_CONFIG = {
     lookbackCount: 50,
     /** 最小匹配次数才产生有效分数 */
     minMatchCount: 2,
+  },
+
+  // --- 作者/来源匹配 ---
+  author: {
+    /** 最小匹配篇数（低于此值不产生分数） */
+    minCount: 2,
+    /** 高占比阈值（>= 此值 → 高置信度 0.85） */
+    highRatioThreshold: 0.3,
+    /** 中占比阈值（>= 此值 → 中置信度 0.60） */
+    mediumRatioThreshold: 0.1,
   },
 
   // --- LLM 调用 ---

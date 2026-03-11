@@ -39,6 +39,8 @@ export interface BookmarkChangeEvent {
   toFolderId?: number | null;
   tags?: string[];
   embedding?: number[];
+  /** 作者/来源标识（source_name 优先，fallback author） */
+  authorKey?: string;
 }
 
 /**
@@ -249,6 +251,8 @@ export class IncrementalProfileService {
     let bookmarkCountDelta = 0;
     const tagsToAdd: string[] = [];
     const embeddingsToAdd: number[][] = [];
+    const authorsToAdd: string[] = [];
+    let needsAuthorFullRecompute = false;
 
     for (const event of events) {
       switch (event.type) {
@@ -260,6 +264,9 @@ export class IncrementalProfileService {
             }
             if (event.embedding) {
               embeddingsToAdd.push(event.embedding);
+            }
+            if (event.authorKey) {
+              authorsToAdd.push(event.authorKey);
             }
           }
           break;
@@ -273,15 +280,22 @@ export class IncrementalProfileService {
             if (event.embedding) {
               embeddingsToAdd.push(event.embedding);
             }
+            if (event.authorKey) {
+              authorsToAdd.push(event.authorKey);
+            }
           }
           if (event.fromFolderId === folderId) {
             bookmarkCountDelta -= 1;
+            // 删减操作需要全量重算 author 统计
+            needsAuthorFullRecompute = true;
           }
           break;
 
         case "delete":
           if (event.fromFolderId === folderId) {
             bookmarkCountDelta -= 1;
+            // 删减操作需要全量重算 author 统计
+            needsAuthorFullRecompute = true;
           }
           break;
 
@@ -307,29 +321,63 @@ export class IncrementalProfileService {
       );
     }
 
-    // 5. 更新画像
+    // 5. 计算新书签数量（top_authors 增量更新需要此值）
     const newBookmarkCount = Math.max(
       0,
       (currentProfile.bookmark_count as number) + bookmarkCountDelta,
     );
 
+    // 6. 增量更新 top_authors（使用 type assertion：top_authors 为新增列，尚未同步到生成类型）
+    type AuthorEntry = { name: string; count: number; ratio: number };
+    const currentAuthors = (
+      currentProfile as unknown as { top_authors: AuthorEntry[] | null }
+    ).top_authors;
+    let newTopAuthors: AuthorEntry[] | null = currentAuthors;
+
+    if (needsAuthorFullRecompute) {
+      // 删减操作 → 通过 RPC 全量重算 author 统计（新增 RPC，尚未同步到生成类型）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (this.supabase.rpc as any)("recompute_folder_top_authors", {
+        p_folder_id: folderId,
+      });
+      // RPC 已直接更新 DB，读回最新值
+      type TopAuthorsRow = { top_authors: AuthorEntry[] | null };
+      const { data: rawRefreshed } = await this.supabase
+        .from("folder_profiles")
+        .select("top_authors" as "id")
+        .eq("folder_id", folderId)
+        .single();
+      const refreshed = rawRefreshed as unknown as TopAuthorsRow | null;
+      newTopAuthors = refreshed?.top_authors ?? null;
+    } else if (authorsToAdd.length > 0) {
+      newTopAuthors = this.mergeAuthors(
+        newTopAuthors ?? [],
+        authorsToAdd,
+        newBookmarkCount,
+      );
+    }
+
+    // 7. 更新画像
+
     // V4.2.7: 添加 embedding 版本追踪
+    const updatePayload: Record<string, unknown> = {
+      bookmark_count: newBookmarkCount,
+      top_tags: newTopTags,
+      top_authors: newTopAuthors ?? [],
+      profile_embedding: newEmbedding
+        ? (JSON.stringify(newEmbedding) as unknown as string)
+        : null,
+      // V4.2.7: 更新 embedding 版本（如果 embedding 有变化）
+      ...(embeddingsToAdd.length > 0 && newEmbedding
+        ? { profile_embedding_version: getCurrentEmbeddingVersion() }
+        : {}),
+      last_bookmark_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
     const { error: updateError } = await this.supabase
       .from("folder_profiles")
-      .update({
-        bookmark_count: newBookmarkCount,
-        top_tags: newTopTags,
-        profile_embedding: newEmbedding
-          ? (JSON.stringify(newEmbedding) as unknown as string)
-          : null,
-        // V4.2.7: 更新 embedding 版本（如果 embedding 有变化）
-        profile_embedding_version:
-          embeddingsToAdd.length > 0 && newEmbedding
-            ? getCurrentEmbeddingVersion()
-            : undefined,
-        last_bookmark_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(updatePayload as any)
       .eq("folder_id", folderId);
 
     if (updateError) {
@@ -420,6 +468,42 @@ export class IncrementalProfileService {
     }
 
     return result;
+  }
+
+  /**
+   * 增量合并作者统计
+   *
+   * 新增作者：已有则 count+1，否则追加条目。
+   * 重算 ratio 并取 Top 10。
+   */
+  private mergeAuthors(
+    existing: Array<{ name: string; count: number; ratio: number }>,
+    newAuthors: string[],
+    totalBookmarkCount: number,
+  ): Array<{ name: string; count: number; ratio: number }> {
+    // 构建 name → count 映射
+    const authorMap = new Map<string, number>();
+    for (const entry of existing) {
+      authorMap.set(entry.name.toLowerCase().trim(), entry.count);
+    }
+
+    // 累加新作者
+    for (const author of newAuthors) {
+      const key = author.toLowerCase().trim();
+      if (!key) continue;
+      authorMap.set(key, (authorMap.get(key) ?? 0) + 1);
+    }
+
+    // 排序取 Top 10，重算 ratio
+    const denominator = Math.max(totalBookmarkCount, 1);
+    return Array.from(authorMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({
+        name,
+        count,
+        ratio: Math.round((count / denominator) * 10000) / 10000,
+      }));
   }
 
   /**
