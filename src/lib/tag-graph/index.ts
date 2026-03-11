@@ -1,5 +1,14 @@
 /**
- * 标签图谱服务桥接模块
- * @deprecated 过渡模块，后续将内联化
+ * 标签图谱服务模块
+ *
+ * 管理标签之间的关系（同义词、相关、父子），
+ * 支持从分类行为中学习标签关系、同义词扩展等。
  */
-export { tagGraphService } from "@/lib/classification/services/tag-graph.service";
+export { tagGraphService } from "./tag-graph.service";
+export type {
+  TagRelationshipType,
+  TagRelationshipSource,
+  TagRelationship,
+  RelatedTag,
+  TagGraphData,
+} from "./tag-graph.service";

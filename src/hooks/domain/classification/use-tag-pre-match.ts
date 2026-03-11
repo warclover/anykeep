@@ -19,7 +19,7 @@ import {
   type PreMatchResult,
   FolderCacheSyncService,
   type SyncResult,
-} from "@/lib/classification-client";
+} from "@/lib/classification-v2/client";
 import { clientLogger } from "@/lib/client-logger";
 
 /**

@@ -821,10 +821,6 @@ export const API_MISC = {
 // ============================================
 
 export const API_ADMIN = {
-  /** 分类配置 */
-  classificationConfig: "/api/admin/classification-config",
-  /** 向量 A/B 测试 */
-  embeddingAbTest: "/api/admin/embedding-ab-test",
   /** 反馈列表 */
   feedback: "/api/admin/feedback",
   /** 反馈详情 */

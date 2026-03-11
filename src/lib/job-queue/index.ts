@@ -1,8 +1,18 @@
 /**
- * 任务队列服务桥接模块
- * @deprecated 过渡模块，后续将内联化
+ * 任务队列服务模块
  */
 export {
   JobQueueService,
   jobQueueService,
-} from "@/lib/classification/services/job-queue.service";
+  enqueueJob,
+  type ClaimedJob,
+  type JobStats,
+  type JobQueryOptions,
+} from "./job-queue.service";
+
+export type {
+  JobQueueItem,
+  JobQueueCreateParams,
+  JobQueueType,
+  JobStatus,
+} from "./types";

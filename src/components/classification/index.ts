@@ -20,9 +20,6 @@ export type {
 // Pending Confirmations Section
 export { PendingConfirmationsSection } from "./pending-confirmations-section";
 
-// Performance Monitor
-export { PerformanceMonitor } from "./performance-monitor";
-
 // Folder Quick Select
 export { FolderQuickSelect } from "./folder-quick-select";
 

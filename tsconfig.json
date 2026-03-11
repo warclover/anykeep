@@ -19,8 +19,6 @@
       }
     ],
     "paths": {
-      "@/lib/classification/*": ["./src/lib/_archived/classification-v1/*"],
-      "@/lib/classification": ["./src/lib/_archived/classification-v1"],
       "@/*": ["./src/*"]
     }
   },
@@ -43,8 +41,6 @@
     "backups",
     "已完成",
     "docs/templates",
-    "src/lib/_archived/classification-v1/_deprecated_v3/**",
-    "src/lib/_archived/classification-v1/strategies/classic/**",
     "src/lib/fluid-agent/__tests__/**",
     "**/*.test.ts",
     "**/*.test.tsx"

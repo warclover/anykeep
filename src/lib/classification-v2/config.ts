@@ -201,3 +201,117 @@ export const CLASSIFICATION_STATUS = {
 
 export type ClassificationStatus =
   (typeof CLASSIFICATION_STATUS)[keyof typeof CLASSIFICATION_STATUS];
+
+// ============================================================================
+// V1 兼容常量（供 UI 展示使用）
+// ============================================================================
+
+/**
+ * Classification weight configuration (V1 格式)
+ *
+ * 用于配置历史页面展示。
+ * V2 系统内部使用 CLASSIFICATION_CONFIG.scorerWeights。
+ */
+export const CLASSIFICATION_WEIGHTS = {
+  /** Vector matching weight (40%) */
+  VECTOR: 0.4,
+  /** History matching weight (30%) */
+  HISTORY: 0.3,
+  /** AI recommendation weight (30%) */
+  AI: 0.3,
+} as const;
+
+/**
+ * Classification thresholds (V1 格式)
+ *
+ * 用于配置历史页面展示。
+ * V2 系统内部使用 CLASSIFICATION_CONFIG.action。
+ */
+export const CLASSIFICATION_THRESHOLDS = {
+  /** Low confidence threshold - below this goes to inbox */
+  LOW_CONFIDENCE: 60,
+  /** Medium confidence threshold - save as suggestion for user review */
+  MEDIUM_CONFIDENCE: 60,
+  /** High confidence threshold - above this is auto-classified */
+  HIGH_CONFIDENCE: 80,
+  /** Vector similarity threshold for folder matching */
+  VECTOR_SIMILARITY: 0.5,
+  /** History matching count */
+  HISTORY_MATCH_COUNT: 10,
+} as const;
+
+/**
+ * V4.2.5: Matcher strategy constants
+ * 集中管理各匹配器的配置参数
+ */
+export const MATCHER_STRATEGY_CONFIG = {
+  /** k-NN 直接匹配器 */
+  KNN_DIRECT: {
+    /** 相似度阈值 (0-1)，高于此值直接采用 */
+    SIMILARITY_THRESHOLD: 0.9,
+    /** 最大返回结果数 */
+    MAX_RESULTS: 5,
+    /** 候选书签数量限制 */
+    CANDIDATE_LIMIT: 20,
+  },
+  /** 通用分类匹配器 */
+  UNIVERSAL: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 50,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.2,
+    /** 分数累加衰减系数 */
+    SCORE_DECAY: 0.3,
+    /** 模糊匹配分数衰减 */
+    FUZZY_SCORE_DECAY: 0.9,
+  },
+  /** 标签匹配器 */
+  TAG: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 50,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.3,
+    /** 最大比较书签数 */
+    MAX_BOOKMARKS_TO_COMPARE: 50,
+    /** 书签数量奖励上限 */
+    BOOKMARK_BONUS_CAP: 0.2,
+    /** 每个书签奖励系数 */
+    BOOKMARK_BONUS_RATE: 0.05,
+  },
+  /** 指纹匹配器 */
+  FINGERPRINT: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 40,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.25,
+    /** 缓存时间 (毫秒) */
+    CACHE_TIME_MS: 5 * 60 * 1000,
+    /** 最大缓存用户数 */
+    MAX_CACHE_USERS: 100,
+    /** 查询书签限制 */
+    QUERY_LIMIT: 100,
+    /** 部分匹配权重衰减 */
+    PARTIAL_MATCH_DECAY: 0.7,
+    /** 匹配率权重 */
+    MATCH_RATIO_WEIGHT: 0.6,
+    /** 权重率权重 */
+    WEIGHT_RATIO_WEIGHT: 0.4,
+  },
+  /** 查询扩展匹配器 */
+  QUERY_EXPANSION: {
+    /** 最小匹配分数 (0-100) */
+    MIN_MATCH_SCORE: 40,
+    /** 匹配器权重 (0-1) */
+    WEIGHT: 0.25,
+    /** 最大扩展关键词数 */
+    MAX_EXPANDED_KEYWORDS: 10,
+    /** 向量召回权重 */
+    VECTOR_WEIGHT: 0.4,
+    /** 关键词召回权重 */
+    KEYWORD_WEIGHT: 0.35,
+    /** 标签召回权重 */
+    TAG_WEIGHT: 0.25,
+    /** 相似度阈值 */
+    SIMILARITY_THRESHOLD: 0.5,
+  },
+} as const;

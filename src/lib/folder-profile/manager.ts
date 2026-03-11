@@ -54,7 +54,7 @@ export async function preserveOldNameAsAlias(
 
     // 2. 使用 FolderAliasManager 添加别名（内置去重逻辑）
     const { FolderAliasManager } = await import(
-      "@/lib/classification/strategies/modern/folder-alias-manager"
+      "@/lib/folder-profile/folder-alias-manager"
     );
     const aliasManager = new FolderAliasManager(supabase);
 

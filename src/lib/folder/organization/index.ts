@@ -22,23 +22,20 @@ export * from "./types";
 // Services
 // ============================================================================
 
-// 注意：以下服务从 classification 模块迁移，当前通过 re-export 方式引用
-// 后续迭代将逐步将实现迁移到本模块
-
-// 智能分拣服务（从 classification 模块）
+// 智能分拣服务（从 classification-v1 迁移至本模块）
 export {
   SmartSortingService,
   smartSortingService,
-} from "@/lib/classification/services/smart-sorting.service";
+} from "./services/smart-sorting.service";
 
-// 增量画像更新服务（从 classification 模块）
+// 增量画像更新服务（从 classification-v1 迁移至本模块）
 export {
   IncrementalProfileService,
   createIncrementalProfileService,
   type BookmarkChangeEvent,
   type ProfileUpdateResult,
   type IncrementalProfileConfig,
-} from "@/lib/classification/services/advanced";
+} from "./services/incremental-profile.service";
 
 // ============================================================================
 // Algorithms

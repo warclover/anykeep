@@ -26,11 +26,7 @@ import { preferenceLearner } from "@/lib/classification-learning/preference-lear
 import { profileUpdater } from "@/lib/classification-learning/profile-updater";
 import { fastPathCacheManager } from "@/lib/cache/fast-path-cache";
 import { trustModeService } from "@/lib/trust-mode/trust-mode.service";
-import { embeddingABTestService } from "@/lib/embedding-ab-test";
-import {
-  getEmbeddingConfig,
-  getEmbeddingConfigInfo,
-} from "@/lib/embedding/embedding-config";
+import { getEmbeddingConfigInfo } from "@/lib/embedding/embedding-config";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { withAuthMiddleware } from "@/lib/api/middleware";
@@ -700,123 +696,16 @@ async function handleHistory(userId: string, searchParams: URLSearchParams) {
 }
 
 /**
- * A/B 测试（原 /ab-test）
+ * A/B 测试（已移除 embedding-ab-test 服务，仅返回配置信息）
  */
-async function handleABTest(userId: string, searchParams: URLSearchParams) {
-  const isComparison = searchParams.get("comparison") === "true";
-  const days = parseInt(searchParams.get("days") || "7", 10);
-  const operationType = searchParams.get("operation") as
-    | "classification"
-    | "search"
-    | "similarity"
-    | null;
-
+async function handleABTest(_userId: string, _searchParams: URLSearchParams) {
   const configInfo = getEmbeddingConfigInfo();
-  const config = getEmbeddingConfig();
 
-  if (isComparison) {
-    const controlModel = config.activeModel;
-    const treatmentModel = config.abTestNewModel;
-
-    const report = await embeddingABTestService.getComparisonReport(
-      controlModel,
-      treatmentModel,
-      operationType || "classification",
-      days,
-    );
-
-    if (!report) {
-      return successResponse({
-        type: "abtest",
-        config: configInfo,
-        comparison: null,
-        message: "暂无足够数据生成对比报告",
-      });
-    }
-
-    logger.info(
-      {
-        userId,
-        controlModel,
-        treatmentModel,
-        days,
-        recommendation: report.comparison.recommendation,
-      },
-      "A/B test comparison report generated",
-    );
-
-    return successResponse({
-      type: "abtest",
-      config: configInfo,
-      comparison: report,
-    });
-  } else {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const summaries = await embeddingABTestService.getSummary({
-      operationType: operationType || undefined,
-      startDate,
-    });
-
-    const byModel: Record<
-      string,
-      {
-        totalCount: number;
-        avgExecutionTimeMs: number;
-        feedbackCount: number;
-        acceptanceRate: number | null;
-      }
-    > = {};
-
-    summaries.forEach((s) => {
-      if (!byModel[s.modelId]) {
-        byModel[s.modelId] = {
-          totalCount: 0,
-          avgExecutionTimeMs: 0,
-          feedbackCount: 0,
-          acceptanceRate: null,
-        };
-      }
-      const model = byModel[s.modelId];
-      const prevTotal = model.totalCount;
-      model.totalCount += s.totalCount;
-      model.avgExecutionTimeMs =
-        (model.avgExecutionTimeMs * prevTotal +
-          s.avgExecutionTimeMs * s.totalCount) /
-        model.totalCount;
-      model.feedbackCount += s.feedbackCount;
-    });
-
-    Object.keys(byModel).forEach((modelId) => {
-      const feedbackData = summaries
-        .filter((s) => s.modelId === modelId && s.acceptanceRate !== null)
-        .reduce(
-          (acc, s) => {
-            acc.total += s.feedbackCount;
-            acc.accepted += (s.acceptanceRate || 0) * s.feedbackCount;
-            return acc;
-          },
-          { total: 0, accepted: 0 },
-        );
-
-      if (feedbackData.total > 0) {
-        byModel[modelId].acceptanceRate =
-          feedbackData.accepted / feedbackData.total;
-      }
-    });
-
-    return successResponse({
-      type: "abtest",
-      config: configInfo,
-      summary: {
-        period: `${days} days`,
-        startDate: startDate.toISOString(),
-        byModel,
-        dailyData: summaries,
-      },
-    });
-  }
+  return successResponse({
+    type: "abtest",
+    config: configInfo,
+    message: "A/B 测试服务已移除",
+  });
 }
 
 // ============================================================================

@@ -1,19 +1,24 @@
 /**
- * 兴趣服务 — 桥接导出
+ * 兴趣服务 — 独立模块
  *
- * 实际实现位于 classification/services/interest*.ts，
- * Phase 8 迁移时将物理移入此目录。
- *
- * 预设兴趣域常量已独立于 @/lib/user-interest/interest-domains。
- * 兴趣画像类型已独立于 @/lib/interest-profile。
+ * 包含：
+ * - InterestService / createInterestService — 兴趣管理（本模块）
+ * - InterestProfileService — 兴趣画像（@/lib/interest-profile）
+ * - 预设兴趣域常量（@/lib/user-interest/interest-domains）
+ * - CUSTOM_INTEREST_LIMITS — 自定义兴趣限制（本模块）
  *
  * @module interests
- * @version 1.0.0
- * @since 2026-03-10
+ * @version 2.0.0 — 脱离 classification-v1 归档依赖
+ * @since 2026-03-11
  */
 
-export { createInterestService } from "@/lib/classification/services/interest-factory";
-export { InterestService } from "@/lib/classification/services/interest.service";
+// 兴趣服务 — 本模块实现
+export { createInterestService } from "./interest-factory";
+export { InterestService } from "./interest.service";
+export type { IInterestService } from "./interest.service";
+
+// 兴趣相关常量 — 本模块
+export { CUSTOM_INTEREST_LIMITS, INITIAL_FOLDER_LIMITS } from "./constants";
 
 // 兴趣画像服务 — 从已独立的模块导出
 export { InterestProfileService } from "@/lib/interest-profile";
@@ -26,6 +31,3 @@ export {
   getSuggestedFolders,
   getKeywordsForInterests,
 } from "@/lib/user-interest/interest-domains";
-
-// 兴趣相关常量 — 从旧分类模块桥接
-export { CUSTOM_INTEREST_LIMITS } from "@/lib/classification/constants/limits";

@@ -26,7 +26,7 @@ import { FOLDER, AUTH } from "@/lib/constants/messages";
 import {
   initializeFolderNameProfile,
   preserveOldNameAsAlias,
-} from "@/lib/classification-integration";
+} from "@/lib/folder-profile/manager";
 
 // 事务函数返回类型
 interface DeleteFolderCascadeResult {

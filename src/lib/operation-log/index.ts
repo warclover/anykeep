@@ -1,14 +1,11 @@
 /**
- * 操作日志服务 — 桥接导出
- *
- * 实际实现位于 classification/services/operation-log/，
- * Phase 8 迁移时将物理移入此目录。
+ * 操作日志服务 — 独立模块
  *
  * 职责：文件夹层级操作（创建/分拆/合并/重命名）的快照、撤销和通知。
  * 与 classification-v2/operation-log.ts（单条书签分类撤销）互补，不重复。
  *
  * @module operation-log
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2026-03-10
  */
 
@@ -16,7 +13,7 @@
 export {
   OperationLogService,
   operationLogService,
-} from "@/lib/classification/services/operation-log/operation-log.service";
+} from "./operation-log.service";
 
 // 类型
 export type {
@@ -26,7 +23,7 @@ export type {
   FolderInfo,
   BookmarkInfo,
   BookmarkMoveInfo,
-} from "@/lib/classification/services/operation-log/types";
+} from "./types";
 
 // 持久化
 export {
@@ -35,13 +32,10 @@ export {
   getSnapshotById,
   getUndoableCount,
   cleanupExpiredSnapshots,
-} from "@/lib/classification/services/operation-log/persistence";
+} from "./persistence";
 
 // 撤销
-export {
-  undoOperation,
-  getActionLabel,
-} from "@/lib/classification/services/operation-log/undo";
+export { undoOperation, getActionLabel } from "./undo";
 
 // 通知集成
 export {
@@ -54,4 +48,4 @@ export {
   splitFolderWithNotification,
   mergeFoldersWithNotification,
   sendEvolutionReport,
-} from "@/lib/classification/services/operation-log/notification";
+} from "./notification";

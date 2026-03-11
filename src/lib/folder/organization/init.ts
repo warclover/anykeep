@@ -14,7 +14,7 @@ import {
   initProfileEventHandler,
   stopProfileEventHandler,
   getProfileEventHandler,
-} from "@/lib/classification/services/profile-event-handler.service";
+} from "./services/profile-event-handler.service";
 import {
   initHeatTracker,
   stopHeatTracker,

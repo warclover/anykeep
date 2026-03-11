@@ -1,13 +1,21 @@
 /**
- * 文件夹画像 Repository — 桥接导出
+ * 文件夹画像 Repository — 独立模块
  *
- * 实际实现位于 classification/repositories/folder-profile.repository.ts，
- * Phase 8 迁移时将物理移入此目录。
+ * 包含 FolderProfileRepository 和 SuggestionRepository 的完整实现，
+ * 不再依赖 classification-v1 归档模块。
  *
  * @module folder/profile
- * @version 1.0.0
- * @since 2026-03-10
+ * @version 2.0.0
+ * @since 2026-03-11
  */
 
-export { FolderProfileRepository } from "@/lib/classification/repositories/folder-profile.repository";
-export { SuggestionRepository } from "@/lib/classification/repositories/suggestion.repository";
+export { FolderProfileRepository } from "./folder-profile.repository";
+export { SuggestionRepository } from "./suggestion.repository";
+export type {
+  FolderProfile,
+  SimilarFolder,
+  OrganizationSuggestion,
+  SuggestionInput,
+  SuggestionStatus,
+  SuggestionType,
+} from "./types";

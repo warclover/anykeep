@@ -68,4 +68,16 @@ export type {
 
 export { CLASSIFICATION_CONFIG } from "./config";
 export { CLASSIFICATION_STATUS } from "./config";
+export {
+  CLASSIFICATION_WEIGHTS,
+  CLASSIFICATION_THRESHOLDS,
+  MATCHER_STRATEGY_CONFIG,
+} from "./config";
 export type { ClassificationStatus } from "./config";
+
+// ============================================================================
+// 常量导出（通用分类体系）
+// ============================================================================
+
+export { UNIVERSAL_CATEGORIES, CATEGORY_GROUP_NAMES } from "./constants";
+export type { CategoryGroup, UniversalCategory } from "./constants";

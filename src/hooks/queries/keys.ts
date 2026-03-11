@@ -373,13 +373,6 @@ export const settingsKeys = {
 };
 
 /**
- * Folder Quota Query Keys (文件夹配额)
- */
-export const folderQuotaKeys = {
-  all: ["folder-quota"] as const,
-};
-
-/**
  * Folder Heat Query Keys (文件夹热度)
  */
 export const folderHeatKeys = {

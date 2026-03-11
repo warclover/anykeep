@@ -39,7 +39,7 @@ import {
   MATCHER_STRATEGY_CONFIG,
   type CategoryGroup,
   type UniversalCategory,
-} from "@/lib/classification-constants";
+} from "@/lib/classification-v2";
 
 // ============================================
 // 类型定义

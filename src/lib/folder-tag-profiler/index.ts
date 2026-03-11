@@ -1,2 +1,1 @@
-/** @deprecated 过渡桥接 */
-export { FolderTagProfilerService } from "@/lib/classification/strategies/modern/folder-tag-profiler.service";
+export { FolderTagProfilerService } from "./folder-tag-profiler.service";
