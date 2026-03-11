@@ -8,6 +8,9 @@
  * - 监听批量操作事件
  * - 协调 NegativeSampleService 和 PreferenceLearner
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 被 trigger-move-learning.ts 直接调用，是学习管道的核心协调层。
+ *
  * @version 1.1.0 - Added bookmark metadata fetching
  * @since 2025-12-11
  */

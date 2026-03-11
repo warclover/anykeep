@@ -1,6 +1,21 @@
 /**
  * 批量分类模块入口
  *
+ * ⚠️ 活跃模块 — 请勿整体删除或简化为逐条 classify() 调用
+ *
+ * 模块内部依赖关系（均为 coordinator 内部调用，不可单独删除）：
+ *   coordinator.ts → algorithms/（sampled-dbscan + iterative-dbscan + domain-weighting + temporal-bias）
+ *                  → pre-grouping/（keyword-grouping + url-path-grouping）
+ *                  → phases/mapping.phase.ts
+ *                  → naming/representative-naming.ts
+ *                  → conflict/vacuum-detector.ts
+ *                  → config/domain-whitelist.ts
+ *                  → utils/similarity.ts
+ *   triggers/gardener-trigger.ts → inbox-triage skill（独立消费者）
+ *
+ * 外部消费者：5 条 API 路由、8 个 UI 组件、1 个 AI Skill、
+ *             legacy-compat 类型、缓存系统
+ *
  * @module classification/batch-classification
  * @version 1.0.0
  * @since 2026-02-01

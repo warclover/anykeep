@@ -3,6 +3,13 @@
  *
  * 核心入口，协调三个阶段的执行：沉淀期 -> 结晶期 -> 精炼期
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：5 条 API 路由（start/progress/results/confirm/undo）、
+ *         8 个 UI 组件（classification-preview/cluster-card 等）、
+ *         inbox-triage skill
+ * 注意：coordinator 不能简化为循环调用 classify()，DBSCAN 聚类是批量分类
+ *       的核心差异化能力（先聚类再映射 vs 逐条分类），重写会改变行为语义。
+ *
  * @module classification/batch-classification/coordinator
  * @version 1.1.0
  * @since 2026-02-01

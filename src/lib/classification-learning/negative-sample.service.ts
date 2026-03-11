@@ -8,6 +8,12 @@
  * - 批量学习排除模式
  * - 负样本查询与匹配
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：learning-event-handler.ts（内部）、learning/negative 路由、
+ *         learning/insights 路由
+ * 间接消费者：3 条书签移动 API 通过 triggerMoveLearning → learningEventHandler
+ *             调用本服务的 learnFromMove/learnFromRejection
+ *
  * @version 1.0.0
  * @since 2025-12-11
  */

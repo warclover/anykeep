@@ -4,6 +4,11 @@
  * 性能优化版本，比全量 DBSCAN 快 600 倍
  * 采样 10% 做全量聚类，剩余 90% 只计算与簇质心距离
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 由 coordinator.ts 在书签 ≥100 时调用，是批量分类的核心聚类引擎。
+ * 同模块下的 iterative-dbscan.ts（<100 书签兜底）、domain-weighting.ts、
+ * temporal-bias.ts 均为 coordinator 内部依赖，不可单独删除。
+ *
  * @module classification/batch-classification/algorithms/sampled-dbscan
  * @version 1.0.0
  * @since 2026-02-01

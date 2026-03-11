@@ -8,6 +8,9 @@
  * - 合并相似来源
  * - 清理无效画像
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：cron/profile-updates、analytics 路由（v1 + v2）
+ *
  * @version 1.0.0
  * @since 2025-12-11
  */

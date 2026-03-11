@@ -4,6 +4,9 @@
  * 在书签移动操作完成后触发 AI 学习。
  * 供所有 batch-move API 路由共享调用。
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：bookmarks/[id] PUT、bookmarks/batch-move POST、v1/bookmarks/batch/move POST
+ *
  * @version 1.0.0
  * @since 2026-02-27
  */

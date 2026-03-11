@@ -8,6 +8,9 @@
  * - 调整分类参数
  * - 生成优化建议
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：cron/classification-optimize、learning/insights 路由
+ *
  * @version 1.0.0
  * @since 2025-12-11
  */

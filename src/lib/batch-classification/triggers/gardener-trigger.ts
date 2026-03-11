@@ -3,6 +3,9 @@
  *
  * 与 inbox_triage skill 集成，支持从园丁建议触发批量分类
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：src/lib/ai-skills/skills/inbox-triage/inbox-triage.skill.ts
+ *
  * @module classification/batch-classification/triggers/gardener-trigger
  * @version 1.0.0
  * @since 2026-02-01

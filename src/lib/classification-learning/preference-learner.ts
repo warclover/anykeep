@@ -8,6 +8,9 @@
  * - 时间段偏好学习
  * - 来源-分类关联学习
  *
+ * ⚠️ 活跃模块 — 请勿删除
+ * 消费者：learning-event-handler.ts（内部）、confirmation.service.ts
+ *
  * @version 1.0.0
  * @since 2025-12-11
  */
