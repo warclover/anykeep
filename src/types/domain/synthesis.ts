@@ -94,8 +94,6 @@ export interface ReportSuggestion {
 
 /**
  * UI 组件使用的简化建议类型
- *
- * 用于 report-suggestions-list 等组件的显示
  */
 export interface UISuggestion {
   /** 建议类型（可选，兼容历史数据） */

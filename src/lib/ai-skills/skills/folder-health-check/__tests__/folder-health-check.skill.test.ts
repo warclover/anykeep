@@ -27,14 +27,14 @@ jest.mock("@/lib/supabase/server", () => ({
 // Mock FolderHealthService
 const mockCheckHealth = jest.fn();
 
-jest.mock("@/lib/classification/services/folder-health.service", () => ({
+jest.mock("@/lib/folder/health/folder-health.service", () => ({
   FolderHealthService: jest.fn().mockImplementation(() => ({
     checkHealth: mockCheckHealth,
   })),
 }));
 
 // Mock repositories
-jest.mock("@/lib/classification/repositories", () => ({
+jest.mock("@/lib/folder/profile", () => ({
   FolderProfileRepository: jest.fn(),
   SuggestionRepository: jest.fn(),
 }));

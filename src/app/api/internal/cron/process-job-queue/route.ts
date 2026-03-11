@@ -220,14 +220,6 @@ async function processJob(job: {
   const payload = job.job_payload as Record<string, unknown>;
 
   switch (job.job_type) {
-    case "generate_monthly_report": {
-      // 月度报告已精简移除，跳过
-      logger.info(
-        "generate_monthly_report removed in folder-evolution simplification",
-      );
-      break;
-    }
-
     case "update_folder_profiles": {
       // This is handled by the dedicated cron job
       logger.info("update_folder_profiles handled by dedicated cron");
@@ -237,17 +229,6 @@ async function processJob(job: {
     case "process_inbox_cache": {
       // This is handled by smart-sorting cron
       logger.info("process_inbox_cache handled by smart-sorting cron");
-      break;
-    }
-
-    case "check_rename_candidates":
-    case "check_split_candidates":
-    case "check_merge_candidates": {
-      // These will be implemented in future phases
-      logger.info(
-        { jobType: job.job_type },
-        "Job type scheduled for future implementation",
-      );
       break;
     }
 

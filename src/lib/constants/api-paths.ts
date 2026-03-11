@@ -821,8 +821,6 @@ export const API_INTERNAL = {
     classificationOptimize: "/api/internal/cron/classification-optimize",
     /** 清理快照 */
     cleanupSnapshots: "/api/internal/cron/cleanup-snapshots",
-    /** 生成月度报告 */
-    generateMonthlyReports: "/api/internal/cron/generate-monthly-reports",
     /** 多向量迁移 */
     multiVectorMigration: "/api/internal/cron/multi-vector-migration",
     /** 处理作业队列 */

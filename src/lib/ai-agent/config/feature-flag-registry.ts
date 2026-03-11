@@ -1238,7 +1238,7 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     ],
   },
   // ===========================================================================
-  // 智能分类系统（已归档到 _archived/classification-v1）
+  // 智能分类系统（已迁移到 classification-v2）
   // ===========================================================================
   {
     name: "ENABLE_AI_TAG_MATCHER",
@@ -1250,18 +1250,8 @@ export const FEATURE_FLAG_REGISTRY: FeatureFlagDefinition[] = [
     addedVersion: "2.11.0",
     integrationPoints: [
       {
-        file: "_archived/classification-v1/classification-pipeline/l0-rule-matcher.ts",
-        location: "constructor() - 初始化 AiTagMatcher",
-        type: "check",
-      },
-      {
-        file: "_archived/classification-v1/classification-pipeline/l0-rule-matcher.ts",
-        location: "match() - Phase 0 AI 标签匹配",
-        type: "execute",
-      },
-      {
-        file: "_archived/classification-v1/classification-pipeline/ai-tag-matcher.ts",
-        location: "match() - 执行三种匹配策略",
+        file: "classification-v2/matchers/tag-matcher.ts",
+        location: "match() - AI 标签匹配策略",
         type: "execute",
       },
     ],

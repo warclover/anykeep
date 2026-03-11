@@ -9,7 +9,6 @@
  * - use-persona: 用户画像 Hook（Phase 4 新增）
  *
  * 历史遗留（与 AI 分类相关，建议未来迁移到 domain/folder/）：
- * - use-evolution-reports: 月度 AI 进化报告（文件夹分类统计）
  * - use-inbox-organization: 待整理文件夹智能整理（聚类分析）
  *
  * @module hooks/domain/ai

@@ -20,7 +20,7 @@ import { resetProviderFactory } from "../providers";
 import type { SummaryInput } from "../summary.types";
 
 // Mock dependencies
-jest.mock("@/lib/classification/services/job-queue.service", () => ({
+jest.mock("@/lib/job-queue/job-queue.service", () => ({
   JobQueueService: jest.fn().mockImplementation(() => ({
     enqueue: jest.fn(),
   })),
