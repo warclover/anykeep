@@ -12,7 +12,7 @@
 "use client";
 
 import { lazy, Suspense, useCallback, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useHomeViewMode } from "@/components/home/hooks/use-home-view-mode";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { useHomeV2Store } from "@/stores/home-v2-store";
@@ -39,6 +39,8 @@ export interface HomeV2OrchestratorProps {
   initialError?: string;
   /** 用户设置 */
   userSettings?: { notifications?: { showWelcomeMessage?: boolean } };
+  /** 用途标签筛选 */
+  usageTags?: string[];
 }
 
 // ============================================================================
@@ -49,6 +51,7 @@ export function HomeV2Orchestrator({
   initialBookmarks,
   initialError,
   userSettings,
+  usageTags,
 }: HomeV2OrchestratorProps) {
   const searchParams = useSearchParams();
 
@@ -61,6 +64,13 @@ export function HomeV2Orchestrator({
     }),
     [searchParams],
   );
+
+  // usageTags: 优先使用 SSR 传入的值，fallback 到 URL 参数
+  const resolvedUsageTags = useMemo(() => {
+    if (usageTags && usageTags.length > 0) return usageTags;
+    const urlUsageTags = searchParams?.get("usageTags") ?? "";
+    return urlUsageTags ? urlUsageTags.split(",").filter(Boolean) : [];
+  }, [usageTags, searchParams]);
 
   // 派生状态
   const isBrowserPlatform = urlParams.platform === "browser";
@@ -86,6 +96,11 @@ export function HomeV2Orchestrator({
     useHomeV2Store.getState().openDialog("browserImport");
   }, []);
 
+  const router = useRouter();
+  const handleRetry = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
   const showWelcomeMessage =
     userSettings?.notifications?.showWelcomeMessage ?? false;
 
@@ -95,6 +110,7 @@ export function HomeV2Orchestrator({
       platform={urlParams.platform}
       sort={urlParams.sort}
       folder={urlParams.folder}
+      usageTags={resolvedUsageTags}
       viewMode={viewMode}
     >
       <div className="flex flex-col h-full min-h-0">
@@ -120,6 +136,7 @@ export function HomeV2Orchestrator({
           isBrowserPlatform={isBrowserPlatform}
           isTrashFolder={isTrashFolder}
           onOpenImportDialog={handleOpenBrowserImport}
+          onRetry={handleRetry}
         />
 
         {/* 对话框层（懒加载） */}

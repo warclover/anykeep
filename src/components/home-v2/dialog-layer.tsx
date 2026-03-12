@@ -11,7 +11,7 @@
 
 "use client";
 
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useHomeV2Store } from "@/stores/home-v2-store";
@@ -77,10 +77,43 @@ export function HomeV2DialogLayer() {
     acceptRecommend,
     dismissRecommend,
     closeBubble,
+    refresh: refreshSynthesisRecommend,
   } = useSynthesisRecommend({
     autoFetch: false,
     autoShowBubble: true,
   });
+
+  // 延迟触发综述推荐刷新（与旧首页 deferredAIReady 对齐）
+  useEffect(() => {
+    let idleCallbackId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (typeof window !== "undefined") {
+      if ("requestIdleCallback" in window) {
+        idleCallbackId = (
+          window as Window & {
+            requestIdleCallback: (
+              cb: () => void,
+              opts?: { timeout: number },
+            ) => number;
+          }
+        ).requestIdleCallback(() => refreshSynthesisRecommend(), {
+          timeout: 3000,
+        });
+      } else {
+        timeoutId = setTimeout(() => refreshSynthesisRecommend(), 1500);
+      }
+    }
+
+    return () => {
+      if (idleCallbackId !== undefined && "cancelIdleCallback" in window) {
+        (
+          window as Window & { cancelIdleCallback: (id: number) => void }
+        ).cancelIdleCallback(idleCallbackId);
+      }
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+  }, [refreshSynthesisRecommend]);
 
   // ========== 对话框开关（适配旧组件 setter props） ==========
   const setShowImportDialog = useCallback(

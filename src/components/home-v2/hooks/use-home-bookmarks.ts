@@ -19,6 +19,7 @@ import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_BY_VIEW,
 } from "@/components/home/constants";
+import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
 import type { BookmarkWithFolder } from "@/components/home/types";
 
 // ============================================================================
@@ -102,7 +103,7 @@ async function fetchBookmarkPage(
   offset: number,
 ): Promise<BookmarkPage> {
   const url = buildApiUrl(platform, sort, folder, usageTags, limit, offset);
-  const response = await fetch(url);
+  const response = await fetchWithAuth(url);
 
   if (!response.ok) {
     throw new Error("获取书签列表失败");

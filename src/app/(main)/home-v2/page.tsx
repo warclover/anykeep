@@ -170,6 +170,7 @@ interface HomeV2PageProps {
     sort?: string;
     folder?: string;
     smartList?: string;
+    usageTags?: string;
   }>;
 }
 
@@ -181,11 +182,13 @@ async function HomeV2WithData({
   sort,
   folder,
   smartListId,
+  usageTags,
 }: {
   platform: string;
   sort: string;
   folder: string;
   smartListId: number | null;
+  usageTags: string[];
 }) {
   // 智能列表模式：暂时复用旧组件（后续迁移）
   if (smartListId) {
@@ -214,6 +217,7 @@ async function HomeV2WithData({
       }
       initialError={bookmarksResult.error}
       userSettings={userSettings}
+      usageTags={usageTags}
     />
   );
 }
@@ -224,6 +228,9 @@ export default async function HomeV2Page({ searchParams }: HomeV2PageProps) {
   const sort = params.sort || "created_desc";
   const folder = params.folder || "";
   const smartListId = params.smartList ? parseInt(params.smartList, 10) : null;
+  const usageTags = params.usageTags
+    ? params.usageTags.split(",").filter(Boolean)
+    : [];
 
   return (
     <ErrorBoundary>
@@ -233,6 +240,7 @@ export default async function HomeV2Page({ searchParams }: HomeV2PageProps) {
           sort={sort}
           folder={folder}
           smartListId={smartListId && !isNaN(smartListId) ? smartListId : null}
+          usageTags={usageTags}
         />
       </Suspense>
     </ErrorBoundary>

@@ -18,14 +18,16 @@ import {
   useCallback,
   useRef,
   useState,
-  useEffect,
+  useLayoutEffect,
   memo,
 } from "react";
 import { ErrorMessage } from "@/components/ui/error-message";
+import { Button } from "@/components/ui/button";
 import { LazyErrorBoundary } from "@/components/ui/lazy-error-boundary";
 import { VirtualListSkeleton } from "@/components/home/virtual-list-skeleton";
 import { BrowserBookmarkEmptyState } from "@/components/bookmark/browser-bookmark-empty-state";
 import { EmptyState } from "@/components/bookmark/empty-state";
+import { Loader2 } from "lucide-react";
 import { useHomeV2Data } from "./providers/home-v2-data-provider";
 import { useHomeV2Store } from "@/stores/home-v2-store";
 import { HomeV2BannerSection } from "./banner-section";
@@ -83,6 +85,34 @@ export interface HomeV2ContentContainerProps {
 }
 
 // ============================================================================
+// 内部组件
+// ============================================================================
+
+/** 加载更多按钮（无限滚动的 fallback 交互） */
+function LoadMoreButton({
+  isLoading,
+  onClick,
+}: {
+  isLoading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex justify-center mt-8">
+      <Button variant="outline" onClick={onClick} disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="size-4 mr-2 animate-spin" />
+            加载中...
+          </>
+        ) : (
+          "加载更多"
+        )}
+      </Button>
+    </div>
+  );
+}
+
+// ============================================================================
 // 组件实现
 // ============================================================================
 
@@ -108,16 +138,34 @@ export const HomeV2ContentContainer = memo(function HomeV2ContentContainer({
   } = useHomeV2Mutations();
 
   // 滚动容器引用（传给虚拟列表组件作为 customScrollParent）
-  // 不使用 ResizeObserver（解决 A21），通过 useEffect 在挂载后获取引用
+  // 使用 ResizeObserver 确保容器有有效高度后再设置 scrollContainer
+  // 避免 Virtuoso 在容器高度为 0 时初始化导致 "Zero-sized element" 警告
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(
     null,
   );
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      setScrollContainer(scrollContainerRef.current);
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // 如果容器已经有高度，直接设置
+    if (container.offsetHeight > 0) {
+      setScrollContainer(container);
+      return;
     }
+
+    // 否则等待容器有高度
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.contentRect.height > 0) {
+        setScrollContainer(container);
+        resizeObserver.disconnect();
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
   }, []);
 
   // 从 Zustand 读取选择状态（字段级订阅）
@@ -162,6 +210,12 @@ export const HomeV2ContentContainer = memo(function HomeV2ContentContainer({
       );
     }
 
+    // 依赖虚拟滚动的视图需等待滚动容器就绪，避免 Virtuoso 以 0 高度初始化
+    // useLayoutEffect 同步执行，React 18 会在同一帧批量合并两次渲染，用户不会看到骨架屏闪烁
+    if (!scrollContainer) {
+      return <VirtualListSkeleton variant="grid" count={8} />;
+    }
+
     // 垃圾箱视图
     if (isTrashFolder) {
       return (
@@ -185,10 +239,40 @@ export const HomeV2ContentContainer = memo(function HomeV2ContentContainer({
     // 普通视图
     if (viewMode === "card") {
       return (
-        <Suspense fallback={<VirtualListSkeleton variant="grid" />}>
-          <VirtualBookmarkGrid
+        <>
+          <Suspense fallback={<VirtualListSkeleton variant="grid" />}>
+            <VirtualBookmarkGrid
+              bookmarks={bookmarks}
+              enableFlipCard={enableFlipCard}
+              hasMore={hasMore}
+              isLoadingMore={isFetchingNextPage}
+              onLoadMore={handleLoadMore}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggleRead={handleToggleRead}
+              isSelectionMode={isSelectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              layoutMode={layoutMode}
+              customScrollParent={scrollContainer}
+            />
+          </Suspense>
+          {hasMore && (
+            <LoadMoreButton
+              isLoading={isFetchingNextPage}
+              onClick={handleLoadMore}
+            />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Suspense fallback={<VirtualListSkeleton variant="list" />}>
+          <VirtualBookmarkList
             bookmarks={bookmarks}
-            enableFlipCard={enableFlipCard}
+            viewMode={viewMode}
             hasMore={hasMore}
             isLoadingMore={isFetchingNextPage}
             onLoadMore={handleLoadMore}
@@ -198,30 +282,16 @@ export const HomeV2ContentContainer = memo(function HomeV2ContentContainer({
             isSelectionMode={isSelectionMode}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
-            layoutMode={layoutMode}
             customScrollParent={scrollContainer}
           />
         </Suspense>
-      );
-    }
-
-    return (
-      <Suspense fallback={<VirtualListSkeleton variant="list" />}>
-        <VirtualBookmarkList
-          bookmarks={bookmarks}
-          viewMode={viewMode}
-          hasMore={hasMore}
-          isLoadingMore={isFetchingNextPage}
-          onLoadMore={handleLoadMore}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onToggleRead={handleToggleRead}
-          isSelectionMode={isSelectionMode}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          customScrollParent={scrollContainer}
-        />
-      </Suspense>
+        {hasMore && (
+          <LoadMoreButton
+            isLoading={isFetchingNextPage}
+            onClick={handleLoadMore}
+          />
+        )}
+      </>
     );
   };
 
