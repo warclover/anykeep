@@ -184,6 +184,11 @@ export function useMdCollectionsSWR(
   const abortControllerRef = useRef<AbortController | null>(null);
   // 是否使用了 initialData
   const hasInitialDataRef = useRef(initialData.length > 0);
+  // 稳定化回调引用，避免内联函数导致 fetchData 依赖变化引发无限循环
+  const onBackgroundErrorRef = useRef(onBackgroundError);
+  useEffect(() => {
+    onBackgroundErrorRef.current = onBackgroundError;
+  });
 
   /**
    * 构建查询参数
@@ -317,7 +322,7 @@ export function useMdCollectionsSWR(
         setIsValidating(false);
         // 通知后台刷新失败（静默失败但允许上层处理）
         const error = err instanceof Error ? err : new Error("后台刷新失败");
-        onBackgroundError?.(error);
+        onBackgroundErrorRef.current?.(error);
       }
       return;
     }
@@ -344,7 +349,7 @@ export function useMdCollectionsSWR(
       setIsLoading(false);
       setIsValidating(false);
     }
-  }, [cacheKey, enabled, fetchFromAPI, syncToCache, onBackgroundError]);
+  }, [cacheKey, enabled, fetchFromAPI, syncToCache]);
 
   /**
    * 参数变化时重新获取数据

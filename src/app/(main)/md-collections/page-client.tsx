@@ -304,9 +304,9 @@ export function MdCollectionPageClient({
         </div>
       </div>
     ),
-    // 故意不包含 setViewMode/refresh，避免引用每轮变化导致 toolbarElement 常新 → setToolbar 重渲染循环
+    // 故意不包含 setViewMode/refresh/handleFileUpload，避免引用每轮变化导致 toolbarElement 常新 → setToolbar 重渲染循环
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewMode, isLoading, isValidating, isUploading, handleFileUpload],
+    [viewMode, isLoading, isValidating, isUploading],
   );
 
   const setPageToolbarFn = pageToolbar?.setToolbar;

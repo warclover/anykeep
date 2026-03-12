@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { mdCollectionKeys } from "@/hooks/queries/keys";
 import { fetchWithAuth } from "@/lib/api/fetch-with-auth";
@@ -60,8 +61,20 @@ export function useCreateMdCollection() {
     },
   });
 
+  const create = useCallback(
+    async (data: MdCollectionCreateRequest): Promise<MdCollection | null> => {
+      try {
+        return await mutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutation.mutateAsync],
+  );
+
   return {
-    create: mutation.mutateAsync,
+    create,
     isLoading: mutation.isPending,
     error: mutation.error?.message ?? null,
   };
@@ -99,8 +112,8 @@ export function useUpdateMdCollection() {
     },
   });
 
-  return {
-    update: async (
+  const update = useCallback(
+    async (
       id: number,
       data: MdCollectionUpdateRequest,
     ): Promise<MdCollection | null> => {
@@ -110,6 +123,12 @@ export function useUpdateMdCollection() {
         return null;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutation.mutateAsync],
+  );
+
+  return {
+    update,
     isLoading: mutation.isPending,
     error: mutation.error?.message ?? null,
   };
@@ -141,8 +160,8 @@ export function useDeleteMdCollection() {
     },
   });
 
-  return {
-    remove: async (id: number): Promise<boolean> => {
+  const remove = useCallback(
+    async (id: number): Promise<boolean> => {
       try {
         await mutation.mutateAsync(id);
         return true;
@@ -150,6 +169,12 @@ export function useDeleteMdCollection() {
         return false;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutation.mutateAsync],
+  );
+
+  return {
+    remove,
     isLoading: mutation.isPending,
     error: mutation.error?.message ?? null,
   };
@@ -205,8 +230,8 @@ export function useUploadMdFile() {
     },
   });
 
-  return {
-    upload: async (
+  const upload = useCallback(
+    async (
       file: File,
       options?: {
         contentType?: string;
@@ -220,6 +245,12 @@ export function useUploadMdFile() {
         return null;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutation.mutateAsync],
+  );
+
+  return {
+    upload,
     isLoading: mutation.isPending,
     error: mutation.error?.message ?? null,
     progress: mutation.isSuccess ? 100 : 0,
