@@ -21,7 +21,7 @@
 import { useCallback, useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { PanelLeftClose, PanelLeft, Trash2, ChevronDown } from "lucide-react";
+import { PanelLeftClose, PanelLeft, ChevronDown } from "lucide-react";
 import { useUnreadCount } from "@/hooks/data";
 import { MessageBadge } from "@/components/messages";
 import { cn } from "@/lib/utils";
@@ -584,18 +584,6 @@ export const AppSidebar = memo(function AppSidebar() {
 
           {/* 底部固定区域 */}
           <div className="border-t dark:border-gray-800">
-            {/* 垃圾箱 */}
-            <div className={cn("px-2 py-2", !isVisuallyExpanded && "px-2")}>
-              {renderNavItem(
-                {
-                  name: "nav.trash",
-                  href: "/home?folder=trash",
-                  icon: Trash2,
-                },
-                groupCandyColors.system,
-              )}
-            </div>
-
             {/* 版本信息 */}
             <div
               className={cn(
