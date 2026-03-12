@@ -124,10 +124,10 @@ export const PlatformFilter = memo(function PlatformFilter() {
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
 
-  // 判断是否在首页
+  // 判断是否在首页（/home 或 /home-v2）
   const isHomePage = isClientNavEnabled
     ? activePage === "home"
-    : pathname === "/home";
+    : pathname === "/home" || pathname === "/home-v2";
 
   // Fallback: 监听来自其他组件的翻转状态变化事件（仅无 Context 时需要）
   useEffect(() => {
@@ -204,7 +204,7 @@ export const PlatformFilter = memo(function PlatformFilter() {
     } else {
       params.delete("platform");
     }
-    router.replace(`/home?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   // 非首页不显示

@@ -127,6 +127,7 @@ export const PAGE_ROUTES: Record<PageId, string> = {
  */
 const ROUTE_TO_PAGE: Record<string, PageId> = {
   "/home": "home",
+  "/home-v2": "home",
   "/search": "search",
   "/folders": "folders",
   "/messages": "messages",

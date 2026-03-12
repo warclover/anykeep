@@ -98,8 +98,8 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
   // 检测是否为浏览器书签平台
   const isBrowserPlatform = currentPlatform === "browser";
 
-  // 仅在首页显示
-  const isHomePage = pathname === "/home";
+  // 仅在首页显示（/home 或 /home-v2）
+  const isHomePage = pathname === "/home" || pathname === "/home-v2";
 
   // 如果不在首页，不渲染工具栏
   if (!isHomePage) {
@@ -144,7 +144,7 @@ export const HeaderToolbar = memo(function HeaderToolbar() {
   const handleSortChange = (sortValue: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("sort", sortValue);
-    router.push(`/home?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (
