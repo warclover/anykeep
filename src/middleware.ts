@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
 // 需要认证保护的路由
 const protectedRoutes = [
   "/home",
-  "/home-v2",
+  // "/home-v2", // 暂时禁用
   "/bookmark",
   "/search",
   "/folders",

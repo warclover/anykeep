@@ -26,7 +26,6 @@ import {
   Upload,
   Share2,
   BrainCog,
-  LayoutDashboard,
 } from "lucide-react";
 import type { PageId } from "@/contexts/navigation-context";
 
@@ -76,12 +75,13 @@ const myContentGroup: NavGroupConfig = {
   title: "navGroup.myContent",
   defaultCollapsed: false,
   items: [
-    {
-      name: "nav.homeV2",
-      href: "/home-v2",
-      icon: LayoutDashboard,
-      description: "mobileMenu.newHome",
-    },
+    // home-v2 暂时禁用 — 引入编译问题，待修复后恢复
+    // {
+    //   name: "nav.homeV2",
+    //   href: "/home-v2",
+    //   icon: LayoutDashboard,
+    //   description: "mobileMenu.newHome",
+    // },
     {
       name: "nav.myBookmarks",
       href: "/home",
