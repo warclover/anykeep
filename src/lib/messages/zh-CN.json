@@ -53,6 +53,7 @@
     "usageFilter": "用途筛选",
     "trash": "回收站",
     "myBookmarks": "我的收藏",
+    "homeV2": "新首页",
     "mySearch": "我的搜索",
     "myFolders": "我的分类",
     "myTags": "我的标签",
@@ -78,6 +79,7 @@
   "mobileMenu": {
     "openMenu": "打开菜单",
     "viewAllBookmarks": "查看所有收藏",
+    "newHome": "全新首页体验",
     "aiSmartSearch": "AI 智能搜索",
     "manageFolders": "管理文件夹",
     "tagManagement": "标签管理",
