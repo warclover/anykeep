@@ -33,6 +33,9 @@ import { MainContentWrapper } from "@/components/layout/main-content-wrapper";
 import { MainLayoutErrorBoundary } from "@/components/layout/main-layout-error-boundary";
 import { MainContentSkeleton } from "@/components/layout/main-content-skeleton";
 import { PageToolbarProvider } from "@/contexts/page-toolbar-context";
+// V5.5: AIPanelProvider 提升到布局层级，使 AppHeader 和 LayoutAIPanel 可访问面板状态
+// （此前仅在旧首页 HomePageProviderV2 内部，布局层级组件无法访问）
+import { AIPanelProvider } from "@/contexts/home-page/ai-panel-context";
 // PageToolbarSlot 已移入 AppHeader 内部渲染（页面工具栏替换第二行）
 // V5.3: P2-3.3 响应式布局组件（条件渲染优化）
 import {
@@ -58,42 +61,44 @@ export default function MainLayout({
   // 页面切换通过 NavigationContext 客户端管理（见 navigation-context.tsx）
 
   return (
-    <PageToolbarProvider>
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden flex flex-col">
-        {/* 顶部导航 */}
-        <AppHeader />
+    <AIPanelProvider>
+      <PageToolbarProvider>
+        <div className="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden flex flex-col">
+          {/* 顶部导航 */}
+          <AppHeader />
 
-        {/* 页面工具栏已移入 AppHeader 内部（替换第二行平台筛选） */}
+          {/* 页面工具栏已移入 AppHeader 内部（替换第二行平台筛选） */}
 
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* V5.3: 侧边栏（条件渲染 - 仅桌面端） */}
-          <DesktopSidebar />
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* V5.3: 侧边栏（条件渲染 - 仅桌面端） */}
+            <DesktopSidebar />
 
-          {/* 主内容区 - 使用 Suspense + ErrorBoundary 隔离 */}
-          <MainLayoutErrorBoundary>
-            <Suspense fallback={<MainContentSkeleton />}>
-              <MainContentWrapper>
-                <MainContent>{children}</MainContent>
-              </MainContentWrapper>
+            {/* 主内容区 - 使用 Suspense + ErrorBoundary 隔离 */}
+            <MainLayoutErrorBoundary>
+              <Suspense fallback={<MainContentSkeleton />}>
+                <MainContentWrapper>
+                  <MainContent>{children}</MainContent>
+                </MainContentWrapper>
+              </Suspense>
+            </MainLayoutErrorBoundary>
+
+            {/* V4.3: AI 助手面板（挤压式布局，与主内容区同级） */}
+            <Suspense fallback={null}>
+              <LayoutAIPanel />
             </Suspense>
-          </MainLayoutErrorBoundary>
+          </div>
 
-          {/* V4.3: AI 助手面板（挤压式布局，与主内容区同级） */}
+          {/* V5.3: 底部导航栏（条件渲染 - 仅移动端） */}
+          <MobileNav />
+
+          {/* 悬浮操作菜单（快速收藏 + 反馈建议） */}
           <Suspense fallback={null}>
-            <LayoutAIPanel />
+            <FloatingActionMenu />
           </Suspense>
+          {/* P2: 后台预取 usage-tags，减轻首屏等待 */}
+          <PrefetchUsageTags />
         </div>
-
-        {/* V5.3: 底部导航栏（条件渲染 - 仅移动端） */}
-        <MobileNav />
-
-        {/* 悬浮操作菜单（快速收藏 + 反馈建议） */}
-        <Suspense fallback={null}>
-          <FloatingActionMenu />
-        </Suspense>
-        {/* P2: 后台预取 usage-tags，减轻首屏等待 */}
-        <PrefetchUsageTags />
-      </div>
-    </PageToolbarProvider>
+      </PageToolbarProvider>
+    </AIPanelProvider>
   );
 }
