@@ -86,6 +86,43 @@ export const FOLDER_LIST_FIELDS = `
  * 智能列表查询字段
  * 用于: GET /api/smart-lists, GET /api/init (smartLists 部分)
  */
+/**
+ * 首页 (home-v2) 专用查询字段
+ * 基于 BOOKMARK_LIST_FIELDS 进一步精简，排除首页不需要的字段：
+ * - pending_cluster（仅分类流程用）
+ * - ai_content_type_confidence（仅详情页用）
+ * - word_count / image_count（首页不展示）
+ * - read_at / starred_at（首页仅需 is_read / is_starred 布尔值）
+ * - snapshot_status（首页仅需 has_snapshot 布尔值）
+ */
+export const BOOKMARK_HOMEPAGE_SELECT = `
+  id,
+  title,
+  url,
+  platform,
+  cover_url,
+  description,
+  source_name,
+  rating,
+  is_invalid,
+  is_in_trash,
+  is_read,
+  is_starred,
+  is_locked,
+  folder_id,
+  user_tags,
+  ai_summary,
+  ai_tags,
+  ai_content_type,
+  status,
+  author,
+  publish_time,
+  has_snapshot,
+  created_at,
+  updated_at,
+  folders!bookmarks_folder_id_fkey(name)
+`.replace(/\s+/g, "");
+
 export const SMART_LIST_FIELDS = `
   id,
   user_id,
