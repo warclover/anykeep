@@ -7,4 +7,4 @@ export {
   InterestSelectorDialogContent,
 } from "./interest-selector";
 export { CustomInterestDialog } from "./custom-interest-dialog";
-export { OnboardingDialog } from "./onboarding-dialog";
+export { FirstTimeSetup } from "./first-time-setup";

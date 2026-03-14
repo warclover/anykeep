@@ -523,6 +523,8 @@
     "importBrowser": "导入浏览器书签",
     "createManual": "手动添加收藏",
     "quickAdd": "粘贴链接快速添加",
-    "tip": "你也可以在手机上通过系统分享菜单直接收藏"
+    "tip": "你也可以在手机上通过系统分享菜单直接收藏",
+    "filteredTitle": "没有找到匹配的收藏",
+    "filteredDescription": "试试调整筛选条件或清除筛选"
   }
 }

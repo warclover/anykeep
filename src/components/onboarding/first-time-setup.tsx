@@ -8,13 +8,15 @@
  * 1. 欢迎页面
  * 2. 托管模式选择
  * 3. 兴趣领域选择
- * 4. 完成确认
+ * 4. 导入已有书签
+ * 5. 完成确认
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @since 2025-12-11
+ * @updated 2026-03-14 - 增加导入书签步骤，激活组件
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -38,11 +40,21 @@ import {
   BookMarked,
   Folder,
   Wand2,
+  Upload,
+  Link2,
+  SkipForward,
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
 import type { PresetInterestId } from "@/lib/interest-profile";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION, API_USER } from "@/lib/constants/api-paths";
+
+// 懒加载浏览器书签导入对话框（首屏不需要）
+const BrowserBookmarkImportDialog = lazy(() =>
+  import("@/components/browser-bookmark/import-dialog").then((mod) => ({
+    default: mod.BrowserBookmarkImportDialog,
+  })),
+);
 
 // ============================================================================
 // 类型定义
@@ -55,7 +67,7 @@ interface FirstTimeSetupProps {
   onComplete: () => void;
 }
 
-type SetupStep = "welcome" | "trust-mode" | "interests" | "complete";
+type SetupStep = "welcome" | "trust-mode" | "interests" | "import" | "complete";
 
 interface StepConfig {
   id: SetupStep;
@@ -84,6 +96,11 @@ const STEPS: StepConfig[] = [
     description: "帮助 AI 更好地理解您的偏好",
   },
   {
+    id: "import",
+    title: "导入已有书签",
+    description: "把已有收藏导入 AnyKeep，让 AI 立刻上手",
+  },
+  {
     id: "complete",
     title: "设置完成",
     description: "开始您的智能收藏之旅",
@@ -110,7 +127,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       </motion.div>
 
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">👋 欢迎来到 AnyKeep！</h2>
+        <h2 className="text-2xl font-bold">欢迎来到 AnyKeep</h2>
         <p className="text-muted-foreground max-w-md mx-auto">
           您的智能收藏助手。只需几步简单设置，AI 就能帮您自动整理所有收藏内容。
         </p>
@@ -140,16 +157,88 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 }
 
 /**
+ * 导入书签步骤
+ */
+function ImportStep({
+  onImportBrowser,
+  onSkip,
+  onBack,
+}: {
+  onImportBrowser: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="space-y-6 py-4">
+      <div className="text-center space-y-2">
+        <p className="text-muted-foreground max-w-md mx-auto">
+          导入已有书签，AI 将自动为它们分类整理
+        </p>
+      </div>
+
+      <div className="grid gap-3 max-w-md mx-auto">
+        {/* 浏览器书签导入 */}
+        <button
+          onClick={onImportBrowser}
+          className="flex items-center gap-4 p-4 rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+        >
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Upload className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <div className="font-medium">导入浏览器书签</div>
+            <div className="text-sm text-muted-foreground">
+              支持 Chrome、Edge、Firefox、Safari 导出的书签文件
+            </div>
+          </div>
+        </button>
+
+        {/* 粘贴链接 - 提示性说明 */}
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <Link2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <div className="font-medium">随时粘贴链接收藏</div>
+            <div className="text-sm text-muted-foreground">
+              进入首页后，在顶部搜索栏粘贴任意链接即可快速收藏
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 底部操作 */}
+      <div className="flex justify-between items-center pt-2">
+        <Button variant="ghost" onClick={onBack}>
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          返回
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={onSkip}
+          className="text-muted-foreground"
+        >
+          <SkipForward className="mr-1 h-4 w-4" />
+          稍后再说
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * 完成页面
  */
 function CompleteStep({
   trustMode,
   interestCount,
+  importedCount,
   onFinish,
   isLoading,
 }: {
   trustMode: TrustMode;
   interestCount: number;
+  importedCount: number;
   onFinish: () => void;
   isLoading: boolean;
 }) {
@@ -171,8 +260,8 @@ function CompleteStep({
       </motion.div>
 
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">🎉 设置完成！</h2>
-        <p className="text-muted-foreground">一切就绪，开始收藏吧</p>
+        <h2 className="text-2xl font-bold">一切就绪！</h2>
+        <p className="text-muted-foreground">AI 已准备好为您整理收藏</p>
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4 max-w-sm mx-auto space-y-2">
@@ -186,6 +275,14 @@ function CompleteStep({
             {interestCount > 0 ? `已选择 ${interestCount} 个` : "稍后设置"}
           </span>
         </div>
+        {importedCount > 0 && (
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">已导入书签</span>
+            <span className="text-sm font-medium text-green-600 dark:text-green-400">
+              {importedCount} 条
+            </span>
+          </div>
+        )}
       </div>
 
       <Button onClick={onFinish} size="lg" disabled={isLoading}>
@@ -215,6 +312,8 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
   const [selectedInterests, setSelectedInterests] = useState<
     PresetInterestId[]
   >([]);
+  const [importedCount, setImportedCount] = useState(0);
+  const [showBrowserImport, setShowBrowserImport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // 计算进度
@@ -248,7 +347,6 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
 
   // 兴趣选择确认
   const handleInterestsConfirm = useCallback(async () => {
-    // 保存兴趣选择
     if (selectedInterests.length > 0) {
       try {
         await fetch(API_CLASSIFICATION.interests, {
@@ -264,7 +362,6 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
           { error },
           "[FirstTimeSetup] Failed to save interests",
         );
-        // 继续流程，不阻塞
       }
     }
     handleNext();
@@ -276,11 +373,20 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
     handleNext();
   }, [handleNext]);
 
+  // 导入步骤：打开浏览器书签导入
+  const handleOpenBrowserImport = useCallback(() => {
+    setShowBrowserImport(true);
+  }, []);
+
+  // 跳过导入
+  const handleSkipImport = useCallback(() => {
+    handleNext();
+  }, [handleNext]);
+
   // 完成设置
   const handleFinish = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 标记引导完成
       await fetch(API_USER.onboarding, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,7 +400,6 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
         { error },
         "[FirstTimeSetup] Failed to complete onboarding",
       );
-      // 即使失败也继续
       onComplete();
     } finally {
       setIsLoading(false);
@@ -351,11 +456,21 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
           </div>
         );
 
+      case "import":
+        return (
+          <ImportStep
+            onImportBrowser={handleOpenBrowserImport}
+            onSkip={handleSkipImport}
+            onBack={handleBack}
+          />
+        );
+
       case "complete":
         return (
           <CompleteStep
             trustMode={trustMode}
             interestCount={selectedInterests.length}
+            importedCount={importedCount}
             onFinish={handleFinish}
             isLoading={isLoading}
           />
@@ -366,61 +481,80 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
     }
   };
 
-  // 获取当前步骤配置
   const currentStepConfig = STEPS.find((s) => s.id === currentStep);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={() => {
-        /* noop - prevent close */
-      }}
-    >
-      <DialogContent
-        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={() => {
+          /* noop - prevent close */
+        }}
       >
-        {/* 进度条 */}
-        <div className="absolute top-0 left-0 right-0 h-1">
-          <Progress value={progress} className="h-1 rounded-none" />
-        </div>
+        <DialogContent
+          className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          {/* 进度条 */}
+          <div className="absolute top-0 left-0 right-0 h-1">
+            <Progress value={progress} className="h-1 rounded-none" />
+          </div>
 
-        {/* 步骤指示器 */}
-        <div className="flex justify-center gap-2 pt-2 pb-4">
-          {STEPS.map((step, index) => (
-            <div
-              key={step.id}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index <= stepIndex ? "bg-primary" : "bg-muted"
-              }`}
-            />
-          ))}
-        </div>
+          {/* 步骤指示器 */}
+          <div className="flex justify-center gap-2 pt-2 pb-4">
+            {STEPS.map((step, index) => (
+              <div
+                key={step.id}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index <= stepIndex ? "bg-primary" : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
 
-        <DialogHeader className="text-center pb-2">
-          <DialogTitle>{currentStepConfig?.title}</DialogTitle>
-          <DialogDescription>
-            {currentStepConfig?.description}
-          </DialogDescription>
-        </DialogHeader>
+          <DialogHeader className="text-center pb-2">
+            <DialogTitle>{currentStepConfig?.title}</DialogTitle>
+            <DialogDescription>
+              {currentStepConfig?.description}
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* 步骤内容 */}
-        <div className="relative min-h-[300px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderStep()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* 步骤内容 */}
+          <div className="relative min-h-[300px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderStep()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 浏览器书签导入对话框（独立于主对话框） */}
+      {showBrowserImport && (
+        <Suspense fallback={null}>
+          <BrowserBookmarkImportDialog
+            open={showBrowserImport}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setShowBrowserImport(false);
+                handleNext();
+              }
+            }}
+            onSuccess={() => {
+              setImportedCount((prev) => prev + 1);
+            }}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 

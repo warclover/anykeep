@@ -9,12 +9,14 @@ import { useState, useEffect } from "react";
 import { X, Download, Smartphone, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useInstallPrompt, usePlatform } from "@/hooks/domain/platform";
+import { ShareGuideDialog } from "./share-guide-dialog";
 
 export function InstallPrompt() {
   const { canInstall, isInstalled, promptInstall } = useInstallPrompt();
   const { isNative } = usePlatform();
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [showShareGuide, setShowShareGuide] = useState(false);
 
   // 检查是否应该显示提示
   useEffect(() => {
@@ -49,12 +51,19 @@ export function InstallPrompt() {
     const success = await promptInstall();
     if (success) {
       setShowPrompt(false);
+      // 安装成功后显示分享教程
+      setShowShareGuide(true);
     }
   };
 
-  // 不显示的情况
+  // 不显示安装横幅的情况（但分享教程可能需要独立显示）
   if (!showPrompt || dismissed || isInstalled || isNative) {
-    return null;
+    return (
+      <ShareGuideDialog
+        trigger={showShareGuide}
+        onClose={() => setShowShareGuide(false)}
+      />
+    );
   }
 
   // iOS Safari 特殊处理（不支持自动安装提示）
@@ -159,6 +168,10 @@ export function InstallPrompt() {
           )}
         </div>
       </div>
+      <ShareGuideDialog
+        trigger={showShareGuide}
+        onClose={() => setShowShareGuide(false)}
+      />
     </div>
   );
 }

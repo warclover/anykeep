@@ -20,10 +20,15 @@ import {
 } from "./hooks/useQuickAddState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { normalizeUrl } from "./hooks/useClipboardPaste";
+import {
+  useOnboarding,
+  QUICK_ADD_ONBOARDING,
+} from "./onboarding/useOnboarding";
 
 // Inline components
 import { QuickAddInput } from "./inline/QuickAddInput";
 import { QuickAddPreview, QuickAddError } from "./inline/QuickAddPreview";
+import { OnboardingOverlay } from "./onboarding/OnboardingOverlay";
 
 // Drawer (will be implemented later)
 import { DetailDrawer } from "./drawer/DetailDrawer";
@@ -45,6 +50,9 @@ export function QuickAddBookmark({
   const [lastProcessedUrl, setLastProcessedUrl] = useState<string | null>(null);
   // V4.2.21: Track submit error to prevent auto-retry infinite loop
   const [hasSubmitError, setHasSubmitError] = useState(false);
+
+  // QuickAdd onboarding (spotlight tutorial for first-time users)
+  const onboarding = useOnboarding(QUICK_ADD_ONBOARDING);
 
   // State management
   const { state, actions } = useQuickAddState();
@@ -297,6 +305,7 @@ export function QuickAddBookmark({
       </div>
 
       {/* Detail Drawer */}
+      {/* Detail Drawer */}
       <DetailDrawer
         isOpen={drawerState === "open" || drawerState === "opening"}
         onClose={actions.closeDrawer}
@@ -310,6 +319,18 @@ export function QuickAddBookmark({
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
       />
+
+      {/* QuickAdd Onboarding Spotlight */}
+      {onboarding.isActive && onboarding.step && (
+        <OnboardingOverlay
+          step={onboarding.step}
+          currentStep={onboarding.currentStep}
+          totalSteps={onboarding.totalSteps}
+          onNext={onboarding.next}
+          onPrev={onboarding.prev}
+          onSkip={onboarding.skip}
+        />
+      )}
     </>
   );
 }

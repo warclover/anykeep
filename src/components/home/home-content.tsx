@@ -423,7 +423,7 @@ export const HomeContent = memo(function HomeContent({
       if (isBrowserPlatform) {
         return <BrowserBookmarkEmptyState onImport={onOpenImportDialog} />;
       }
-      return <EmptyState />;
+      return <EmptyState onImport={onOpenImportDialog} />;
     }
 
     // 有数据

@@ -1,17 +1,22 @@
 /**
  * 空状态组件
  *
- * 当用户没有收藏时显示，提供 CTA 引导用户开始操作。
+ * 支持两种场景：
+ * - default: 新用户/无收藏 — 显示完整 CTA 引导
+ * - filtered: 筛选无结果 — 显示简化提示
+ *
  * 所有文本通过 i18n 获取，支持多语言。
  */
 
 "use client";
 
-import { Upload, Plus, Link2, Smartphone } from "lucide-react";
+import { Upload, Plus, Link2, Smartphone, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUiText } from "@/lib/i18n";
 
 interface EmptyStateProps {
+  /** 显示场景：default=无收藏, filtered=筛选无结果 */
+  variant?: "default" | "filtered";
   /** 点击"导入浏览器书签"回调 */
   onImport?: () => void;
   /** 点击"手动添加收藏"回调 */
@@ -21,11 +26,29 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
+  variant = "default",
   onImport,
   onCreateManual,
   onQuickAdd,
 }: EmptyStateProps) {
   const t = useUiText();
+
+  // 筛选无结果场景
+  if (variant === "filtered") {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-16 h-16 mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+          <SearchX className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-medium text-muted-foreground mb-1">
+          {t.emptyState?.filteredTitle ?? "没有找到匹配的收藏"}
+        </h3>
+        <p className="text-sm text-muted-foreground/70">
+          {t.emptyState?.filteredDescription ?? "试试调整筛选条件或清除筛选"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">

@@ -95,7 +95,7 @@ export function HomeBookmarkList({
     if (isBrowserPlatform) {
       return <BrowserBookmarkEmptyState onImport={onOpenBrowserImport} />;
     }
-    return <EmptyState />;
+    return <EmptyState onImport={onOpenBrowserImport} />;
   }
 
   return (

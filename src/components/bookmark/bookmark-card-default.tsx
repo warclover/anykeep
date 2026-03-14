@@ -62,7 +62,7 @@ export const BookmarkCardDefault = memo(function BookmarkCardDefault({
     >
       <Card
         className={cn(
-          "h-full card-hover-effect cursor-pointer flex flex-col group relative pt-0 pb-0",
+          "h-full card-hover-effect cursor-pointer flex flex-col group relative pt-0 pb-0 bookmark-card",
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}

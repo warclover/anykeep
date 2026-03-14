@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { VirtualBookmarkList } from "@/components/bookmark/virtual-bookmark-list";
 import { BatchToolbar } from "@/components/batch/batch-toolbar";
+import { BatchSelectionHint } from "@/components/batch/batch-selection-hint";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
 import { BatchTagDialog } from "@/components/batch/batch-tag-dialog";
 import { useSelectionMode } from "@/hooks/core/use-selection-mode";
@@ -412,6 +413,7 @@ export function FolderBookmarkArea({
       {/* 标题栏 / 批量工具栏（toolbarPosition="none" 时仅保留批量栏，普通栏由页面在外部渲染） */}
       {isSelectionMode ? (
         <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
+          <BatchSelectionHint />
           <BatchToolbar
             selectedCount={selectedIds.size}
             totalCount={filteredBookmarks.length}

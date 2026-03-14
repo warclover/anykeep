@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BatchToolbar } from "./batch-toolbar";
+import { BatchSelectionHint } from "./batch-selection-hint";
 import { BatchBookmarkList } from "./batch-bookmark-list";
 import { BatchTagDialog } from "./batch-tag-dialog";
 import { BatchMoveDialog } from "@/components/bookmark/batch-move-dialog";
@@ -308,6 +309,9 @@ export function BatchPageClient({ embedded = false }: BatchPageClientProps) {
           </Select>
         </div>
       </div>
+
+      {/* Shift+Click 范围选择提示（仅首次显示） */}
+      <BatchSelectionHint />
 
       {/* 批量工具栏 */}
       {selectedIds.size > 0 && (

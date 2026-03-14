@@ -19,6 +19,7 @@ import {
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BatchSelectionHint } from "@/components/batch/batch-selection-hint";
 
 // ============================================================================
 // Props 类型
@@ -75,114 +76,117 @@ export const HomeBatchToolbar = memo(function HomeBatchToolbar({
   }
 
   return (
-    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
-      {/* 左侧：选择信息 + 全选操作 */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-          已选择 {selectedCount} 条
-        </span>
+    <>
+      <BatchSelectionHint />
+      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+        {/* 左侧：选择信息 + 全选操作 */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+            已选择 {selectedCount} 条
+          </span>
 
-        {/* 全选按钮 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onSelectAll}
-          disabled={selectedCount === totalCount}
-          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          全选
-        </Button>
-
-        {/* 取消全选按钮 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDeselectAll}
-          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          取消全选
-        </Button>
-      </div>
-
-      {/* 右侧：批量操作按钮 */}
-      <div className="flex items-center gap-2">
-        {/* 删除按钮 */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onBatchDelete}
-          disabled={isBatchDeleting}
-          className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:border-red-800 dark:hover:bg-red-900/20"
-        >
-          {isBatchDeleting ? (
-            <>
-              <Loader2 className="size-4 mr-1.5 animate-spin" />
-              删除中...
-            </>
-          ) : (
-            <>
-              <Trash2 className="size-4 mr-1.5" />
-              删除
-            </>
-          )}
-        </Button>
-
-        {/* 移动到文件夹按钮 */}
-        <Button variant="outline" size="sm" onClick={onOpenMoveDialog}>
-          <FolderInput className="size-4 mr-1.5" />
-          移动到文件夹
-        </Button>
-
-        {/* 标签操作按钮 */}
-        {onOpenTagDialog && (
+          {/* 全选按钮 */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={onOpenTagDialog}
-            className="text-purple-600 hover:text-purple-700 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/20"
+            onClick={onSelectAll}
+            disabled={selectedCount === totalCount}
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            <Tag className="size-4 mr-1.5" />
-            标签
+            全选
           </Button>
-        )}
 
-        {/* 导出按钮 */}
-        {onOpenExportDialog && (
+          {/* 取消全选按钮 */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={onOpenExportDialog}
-            className="text-teal-600 hover:text-teal-700 border-teal-200 hover:bg-teal-50 dark:text-teal-400 dark:hover:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-900/20"
+            onClick={onDeselectAll}
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            <Download className="size-4 mr-1.5" />
-            导出
+            取消全选
           </Button>
-        )}
+        </div>
 
-        {/* 创建快照按钮（功能开关控制） */}
-        {isSnapshotEnabled && onBatchCreateSnapshot && (
+        {/* 右侧：批量操作按钮 */}
+        <div className="flex items-center gap-2">
+          {/* 删除按钮 */}
           <Button
             variant="outline"
             size="sm"
-            onClick={onBatchCreateSnapshot}
-            disabled={isBatchCreatingSnapshot}
-            className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/20"
+            onClick={onBatchDelete}
+            disabled={isBatchDeleting}
+            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:border-red-800 dark:hover:bg-red-900/20"
           >
-            {isBatchCreatingSnapshot ? (
+            {isBatchDeleting ? (
               <>
                 <Loader2 className="size-4 mr-1.5 animate-spin" />
-                创建中...
+                删除中...
               </>
             ) : (
               <>
-                <Camera className="size-4 mr-1.5" />
-                创建快照
+                <Trash2 className="size-4 mr-1.5" />
+                删除
               </>
             )}
           </Button>
-        )}
+
+          {/* 移动到文件夹按钮 */}
+          <Button variant="outline" size="sm" onClick={onOpenMoveDialog}>
+            <FolderInput className="size-4 mr-1.5" />
+            移动到文件夹
+          </Button>
+
+          {/* 标签操作按钮 */}
+          {onOpenTagDialog && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenTagDialog}
+              className="text-purple-600 hover:text-purple-700 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/20"
+            >
+              <Tag className="size-4 mr-1.5" />
+              标签
+            </Button>
+          )}
+
+          {/* 导出按钮 */}
+          {onOpenExportDialog && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenExportDialog}
+              className="text-teal-600 hover:text-teal-700 border-teal-200 hover:bg-teal-50 dark:text-teal-400 dark:hover:text-teal-300 dark:border-teal-800 dark:hover:bg-teal-900/20"
+            >
+              <Download className="size-4 mr-1.5" />
+              导出
+            </Button>
+          )}
+
+          {/* 创建快照按钮（功能开关控制） */}
+          {isSnapshotEnabled && onBatchCreateSnapshot && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBatchCreateSnapshot}
+              disabled={isBatchCreatingSnapshot}
+              className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/20"
+            >
+              {isBatchCreatingSnapshot ? (
+                <>
+                  <Loader2 className="size-4 mr-1.5 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                <>
+                  <Camera className="size-4 mr-1.5" />
+                  创建快照
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 });
 

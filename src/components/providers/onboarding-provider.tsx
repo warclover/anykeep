@@ -18,7 +18,7 @@ import {
   type ReactNode,
 } from "react";
 import { useUser } from "@/contexts/user-context";
-import { OnboardingDialog } from "@/components/onboarding/onboarding-dialog";
+import { FirstTimeSetup } from "@/components/onboarding/first-time-setup";
 import type { Json } from "@/types/supabase";
 
 interface OnboardingContextValue {
@@ -130,10 +130,8 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     >
       {children}
 
-      {/* 引导对话框 */}
-      {user && (
-        <OnboardingDialog open={showDialog} onComplete={handleComplete} />
-      )}
+      {/* 完整新手引导流程（替代旧版 OnboardingDialog） */}
+      {user && <FirstTimeSetup open={showDialog} onComplete={handleComplete} />}
     </OnboardingContext.Provider>
   );
 }

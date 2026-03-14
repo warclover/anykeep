@@ -19,6 +19,12 @@ import { useFolderSelection } from "./hooks/use-folder-selection";
 import { useFolderOptimisticUpdates } from "./hooks/use-folder-optimistic-updates";
 import { useFolderToolbar } from "./hooks/use-folder-toolbar";
 import { useFolderBookmarkActions } from "./hooks/use-folder-bookmark-actions";
+import { useFeatureOnboarding } from "@/hooks/onboarding";
+import { OnboardingOverlay } from "@/components/ui/onboarding-overlay";
+import {
+  DRAG_DROP_STEPS,
+  DRAG_DROP_STORAGE_KEY,
+} from "@/hooks/onboarding/steps/drag-drop-steps";
 import type {
   FolderWithStats,
   FolderCategory,
@@ -54,6 +60,12 @@ export function FoldersPageClient({
     useState<number | undefined>();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+
+  // 拖放引导（仅在有文件夹和书签时激活）
+  const dragDropOnboarding = useFeatureOnboarding(
+    DRAG_DROP_STEPS,
+    DRAG_DROP_STORAGE_KEY,
+  );
 
   const {
     selection,
@@ -256,6 +268,21 @@ export function FoldersPageClient({
           title="AI 文件夹助手"
         />
       </div>
+
+      {/* 拖放引导 spotlight（有文件夹+有书签时显示） */}
+      {dragDropOnboarding.isActive &&
+        dragDropOnboarding.step &&
+        optimistic.localFolders.length >= 2 &&
+        bookmarks.length > 0 && (
+          <OnboardingOverlay
+            step={dragDropOnboarding.step}
+            currentStep={dragDropOnboarding.currentStep}
+            totalSteps={dragDropOnboarding.totalSteps}
+            onNext={dragDropOnboarding.next}
+            onPrev={dragDropOnboarding.prev}
+            onSkip={dragDropOnboarding.skip}
+          />
+        )}
     </FolderDropProvider>
   );
 }

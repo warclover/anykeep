@@ -1,25 +1,20 @@
 /**
- * Onboarding Hook
+ * Onboarding Hook（re-export 兼容层）
  *
- * Manages the first-time user onboarding tutorial state.
- * Stores completion status in localStorage.
+ * 实际实现已迁移到 @/hooks/onboarding/use-feature-onboarding。
+ * 保留此文件以兼容现有 import。
  */
 
-import { useState, useEffect, useCallback } from "react";
+export type {
+  OnboardingStep,
+  UseOnboardingReturn,
+} from "@/hooks/onboarding/types";
 
-// Storage key for onboarding completion
-const ONBOARDING_KEY = "anykeep_onboarding_quick_add_v1";
+export { useFeatureOnboarding as useOnboarding } from "@/hooks/onboarding/use-feature-onboarding";
 
-export interface OnboardingStep {
-  id: string;
-  target: string | null; // CSS selector, null for centered display
-  title: string;
-  description: string;
-  position: "top" | "bottom" | "left" | "right" | "center";
-  action?: () => void; // Optional action for this step
-}
+// Re-export QuickAdd 专用步骤定义
+import type { OnboardingStep } from "@/hooks/onboarding/types";
 
-// Quick Add onboarding steps
 export const QUICK_ADD_ONBOARDING: OnboardingStep[] = [
   {
     id: "quick-add-intro",
@@ -45,82 +40,3 @@ export const QUICK_ADD_ONBOARDING: OnboardingStep[] = [
     position: "center",
   },
 ];
-
-export interface UseOnboardingReturn {
-  isActive: boolean;
-  currentStep: number;
-  totalSteps: number;
-  step: OnboardingStep | null;
-  next: () => void;
-  prev: () => void;
-  skip: () => void;
-  complete: () => void;
-  reset: () => void;
-}
-
-export function useOnboarding(
-  steps: OnboardingStep[] = QUICK_ADD_ONBOARDING,
-): UseOnboardingReturn {
-  const [isActive, setIsActive] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-
-  // Check completion status on mount
-  useEffect(() => {
-    // Only run on client
-    if (typeof window === "undefined") return;
-
-    const completed = localStorage.getItem(ONBOARDING_KEY);
-    if (!completed) {
-      // Delay showing onboarding to let page render first
-      const timer = setTimeout(() => {
-        setIsActive(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  // Complete onboarding
-  const complete = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
-    setIsActive(false);
-    setCurrentStep(0);
-  }, []);
-
-  // Skip onboarding
-  const skip = useCallback(() => {
-    complete();
-  }, [complete]);
-
-  // Go to next step
-  const next = useCallback(() => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      complete();
-    }
-  }, [currentStep, steps.length, complete]);
-
-  // Go to previous step
-  const prev = useCallback(() => {
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  }, []);
-
-  // Reset onboarding (for testing)
-  const reset = useCallback(() => {
-    localStorage.removeItem(ONBOARDING_KEY);
-    setCurrentStep(0);
-    setIsActive(true);
-  }, []);
-
-  return {
-    isActive,
-    currentStep,
-    totalSteps: steps.length,
-    step: isActive ? steps[currentStep] : null,
-    next,
-    prev,
-    skip,
-    complete,
-    reset,
-  };
-}

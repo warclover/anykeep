@@ -520,6 +520,8 @@
     "importBrowser": "Import Browser Bookmarks",
     "createManual": "Add Bookmark Manually",
     "quickAdd": "Paste Link to Quick Add",
-    "tip": "You can also save content directly from your phone's share menu"
+    "tip": "You can also save content directly from your phone's share menu",
+    "filteredTitle": "No matching bookmarks found",
+    "filteredDescription": "Try adjusting your filters or clearing the search"
   }
 }

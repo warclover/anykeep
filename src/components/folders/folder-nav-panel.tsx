@@ -178,7 +178,7 @@ export function FolderNavPanel({
   return (
     <div
       className={cn(
-        "flex flex-col h-full bg-gray-50/50 dark:bg-gray-900/50",
+        "flex flex-col h-full bg-gray-50/50 dark:bg-gray-900/50 folder-nav-panel",
         className,
       )}
     >
