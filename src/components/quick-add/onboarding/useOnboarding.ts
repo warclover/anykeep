@@ -10,11 +10,21 @@ export type {
   UseOnboardingReturn,
 } from "@/hooks/onboarding/types";
 
-export { useFeatureOnboarding as useOnboarding } from "@/hooks/onboarding/use-feature-onboarding";
-
-// Re-export QuickAdd 专用步骤定义
+// L-4: storageKey 现在是必填参数，兼容层显式传入默认值
+import { useFeatureOnboarding } from "@/hooks/onboarding/use-feature-onboarding";
 import type { OnboardingStep } from "@/hooks/onboarding/types";
 
+const QUICK_ADD_STORAGE_KEY = "anykeep_onboarding_quick_add_v1";
+
+/** QuickAdd 专用 onboarding hook（向后兼容） */
+export function useOnboarding(
+  steps: OnboardingStep[],
+  storageKey: string = QUICK_ADD_STORAGE_KEY,
+) {
+  return useFeatureOnboarding(steps, storageKey);
+}
+
+// Re-export QuickAdd 专用步骤定义
 export const QUICK_ADD_ONBOARDING: OnboardingStep[] = [
   {
     id: "quick-add-intro",

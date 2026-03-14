@@ -181,6 +181,7 @@ export function FolderNavPanel({
         "flex flex-col h-full bg-gray-50/50 dark:bg-gray-900/50 folder-nav-panel",
         className,
       )}
+      data-onboarding-target="folder-nav-panel"
     >
       {/* 头部（hideHeader 时由工具栏行渲染） */}
       {!hideHeader && (

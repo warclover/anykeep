@@ -47,6 +47,16 @@ export function ShareGuideDialog({ trigger, onClose }: ShareGuideDialogProps) {
     onClose?.();
   }, [onClose]);
 
+  // M-2: Escape 键关闭弹窗
+  useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [visible, handleClose]);
+
   if (!visible) return null;
 
   const steps = [
@@ -74,7 +84,12 @@ export function ShareGuideDialog({ trigger, onClose }: ShareGuideDialogProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="分享教程"
+    >
       <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-sm mx-4 overflow-hidden animate-in zoom-in-95 duration-300">
         {/* 关闭按钮 */}
         <button

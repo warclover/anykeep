@@ -93,19 +93,21 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     // 检查 profile.settings 中的 onboarding_completed_at
     const completed = checkOnboardingCompleted(profile?.settings);
 
-    // 使用 setTimeout 避免 effect 中同步 setState 警告
-    const timer = setTimeout(() => {
+    // H-6: 将所有 timer 分开声明，确保 cleanup 能清理全部
+    const stateTimer = setTimeout(() => {
       setHasCompletedOnboarding(completed);
-
-      // 如果未完成引导，显示对话框（延迟一下，确保页面已渲染）
-      if (!completed) {
-        setTimeout(() => setShowDialog(true), 500);
-      }
-
       setIsChecking(false);
     }, 0);
 
-    return () => clearTimeout(timer);
+    let dialogTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!completed) {
+      dialogTimer = setTimeout(() => setShowDialog(true), 500);
+    }
+
+    return () => {
+      clearTimeout(stateTimer);
+      if (dialogTimer) clearTimeout(dialogTimer);
+    };
   }, [user, profile, isProfileLoading, isInitialized]);
 
   // 完成引导

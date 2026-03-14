@@ -66,6 +66,7 @@ export const BookmarkCardDefault = memo(function BookmarkCardDefault({
           isDeleting && "opacity-50 pointer-events-none",
           isSelected && "ring-2 ring-blue-500 dark:ring-blue-400",
         )}
+        data-onboarding-target="bookmark-card"
       >
         {/* 封面图 - 2.35:1 宽幅比例，更好适配微信等平台封面 */}
         <div className="relative aspect-[2.35/1] overflow-hidden rounded-t-xl">

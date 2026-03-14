@@ -6,36 +6,44 @@
  *
  * @example
  * ```tsx
- * const onboarding = useFeatureOnboarding(DRAG_DROP_STEPS, "anykeep_onboarding_drag_drop_v1");
+ * const onboarding = useFeatureOnboarding(DRAG_DROP_STEPS, DRAG_DROP_STORAGE_KEY);
  * ```
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { OnboardingStep, UseOnboardingReturn } from "./types";
-
-/** 默认 storage key（向后兼容 QuickAdd） */
-const DEFAULT_STORAGE_KEY = "anykeep_onboarding_quick_add_v1";
 
 export function useFeatureOnboarding(
   steps: OnboardingStep[],
-  storageKey: string = DEFAULT_STORAGE_KEY,
+  storageKey: string,
 ): UseOnboardingReturn {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  // 保存 steps 引用，供 action 调用使用（在 effect 中更新，避免 render 中赋值 ref）
+  const stepsRef = useRef(steps);
+  useEffect(() => {
+    stepsRef.current = steps;
+  });
+
+  // M-4: 空数组防御
+  const hasSteps = steps.length > 0;
 
   // 挂载时检查完成状态
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!hasSteps) return;
 
     const completed = localStorage.getItem(storageKey);
     if (!completed) {
       // 延迟显示，让页面先完成渲染
       const timer = setTimeout(() => {
         setIsActive(true);
+        // H-4: 激活第一步时调用 action
+        stepsRef.current[0]?.action?.();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [storageKey]);
+  }, [storageKey, hasSteps]);
 
   const complete = useCallback(() => {
     localStorage.setItem(storageKey, "true");
@@ -48,28 +56,35 @@ export function useFeatureOnboarding(
   }, [complete]);
 
   const next = useCallback(() => {
+    if (!hasSteps) return;
     if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+      const nextIdx = currentStep + 1;
+      setCurrentStep(nextIdx);
+      // H-4: 进入下一步时调用 action
+      stepsRef.current[nextIdx]?.action?.();
     } else {
       complete();
     }
-  }, [currentStep, steps.length, complete]);
+  }, [currentStep, steps.length, complete, hasSteps]);
 
   const prev = useCallback(() => {
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  }, []);
+    const prevIdx = Math.max(0, currentStep - 1);
+    setCurrentStep(prevIdx);
+    stepsRef.current[prevIdx]?.action?.();
+  }, [currentStep]);
 
   const reset = useCallback(() => {
     localStorage.removeItem(storageKey);
     setCurrentStep(0);
     setIsActive(true);
+    stepsRef.current[0]?.action?.();
   }, [storageKey]);
 
   return {
-    isActive,
+    isActive: isActive && hasSteps,
     currentStep,
     totalSteps: steps.length,
-    step: isActive ? steps[currentStep] : null,
+    step: isActive && hasSteps ? steps[currentStep] : null,
     next,
     prev,
     skip,

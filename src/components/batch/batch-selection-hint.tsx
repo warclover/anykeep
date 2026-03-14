@@ -7,19 +7,22 @@
  * 关闭后通过 localStorage 记录，不再显示。
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Info, X } from "lucide-react";
 
 const HINT_STORAGE_KEY = "anykeep_hint_batch_shift_v1";
 
-/** 检查提示是否应该显示（仅客户端） */
-function shouldShowHint(): boolean {
-  if (typeof window === "undefined") return false;
-  return !localStorage.getItem(HINT_STORAGE_KEY);
-}
-
 export function BatchSelectionHint() {
-  const [visible, setVisible] = useState(shouldShowHint);
+  // H-1: 始终以 false 初始化，在 useEffect 中检查 localStorage
+  // 避免 SSR/客户端 hydration mismatch
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem(HINT_STORAGE_KEY)) {
+      // setTimeout 避免 react-hooks/set-state-in-effect 规则
+      setTimeout(() => setVisible(true), 0);
+    }
+  }, []);
 
   const handleDismiss = () => {
     setVisible(false);

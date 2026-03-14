@@ -16,7 +16,7 @@
  * @updated 2026-03-14 - 增加导入书签步骤，激活组件
  */
 
-import { useState, useCallback, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -315,6 +315,8 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
   const [importedCount, setImportedCount] = useState(0);
   const [showBrowserImport, setShowBrowserImport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // 防止导入对话框关闭时双重推进步骤（C-2）
+  const importAdvancedRef = useRef(false);
 
   // 计算进度
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep);
@@ -375,6 +377,7 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
 
   // 导入步骤：打开浏览器书签导入
   const handleOpenBrowserImport = useCallback(() => {
+    importAdvancedRef.current = false;
     setShowBrowserImport(true);
   }, []);
 
@@ -543,12 +546,14 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
           <BrowserBookmarkImportDialog
             open={showBrowserImport}
             onOpenChange={(isOpen) => {
-              if (!isOpen) {
+              if (!isOpen && !importAdvancedRef.current) {
+                importAdvancedRef.current = true;
                 setShowBrowserImport(false);
                 handleNext();
               }
             }}
             onSuccess={() => {
+              // H-5: 当前 onSuccess 无参，标记导入已发生
               setImportedCount((prev) => prev + 1);
             }}
           />

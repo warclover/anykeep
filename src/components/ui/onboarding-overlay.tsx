@@ -8,7 +8,7 @@
  * 供拖放引导、QuickAdd 引导等多个流程复用。
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useId } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -44,7 +44,19 @@ export function OnboardingOverlay({
     left: number;
   } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  // C-3: 使用 useId 生成唯一 mask ID，避免多实例冲突
+  const maskId = useId();
+
   const hasTarget = Boolean(step.target);
+
+  // M-2: Escape 键关闭引导
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onSkip();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onSkip]);
 
   // Find and track target element position
   useEffect(() => {
@@ -53,7 +65,20 @@ export function OnboardingOverlay({
     }
 
     const updatePosition = () => {
-      const element = step.target ? document.querySelector(step.target) : null;
+      // M-3: 优先使用 data-onboarding-target 属性，降级到 CSS class selector
+      let element: Element | null = null;
+      if (step.target) {
+        // 尝试 data-onboarding-target 属性
+        const dataTarget = step.target.replace(/^\./, "");
+        element = document.querySelector(
+          `[data-onboarding-target="${dataTarget}"]`,
+        );
+        // 降级到 CSS class selector
+        if (!element) {
+          element = document.querySelector(step.target);
+        }
+      }
+
       if (element) {
         const rect = element.getBoundingClientRect();
         const padding = 8;
@@ -98,15 +123,23 @@ export function OnboardingOverlay({
               break;
           }
 
-          // Keep tooltip within viewport
+          // Keep tooltip within viewport (H-3: 水平 + 垂直边界保护)
           tooltipLeft = Math.max(
             16,
             Math.min(tooltipLeft, window.innerWidth - tooltipRect.width - 16),
+          );
+          tooltipTop = Math.max(
+            16,
+            Math.min(
+              tooltipTop,
+              window.innerHeight + window.scrollY - tooltipRect.height - 16,
+            ),
           );
 
           setTooltipPosition({ top: tooltipTop, left: tooltipLeft });
         }
       } else {
+        // M-3: 目标元素未找到时，保持 null（渲染降级居中 tooltip）
         setTargetPosition(null);
         setTooltipPosition(null);
       }
@@ -126,16 +159,25 @@ export function OnboardingOverlay({
 
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
-  const isCentered = step.position === "center";
+  // M-3: 居中条件 — step.position 为 center 或目标元素未找到（降级）
+  const isCentered =
+    step.position === "center" || (hasTarget && !targetPosition);
 
   return (
-    <div className="fixed inset-0 z-[1000]">
+    // M-2: 添加 role="dialog" + aria-modal + aria-label
+    <div
+      className="fixed inset-0 z-[1000]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="功能引导"
+    >
       {/* Dark overlay with spotlight */}
       <div className="absolute inset-0">
         {targetPosition ? (
           <svg className="absolute inset-0 w-full h-full">
             <defs>
-              <mask id="spotlight-mask">
+              {/* C-3: 使用 useId 生成的唯一 mask ID */}
+              <mask id={maskId}>
                 <rect width="100%" height="100%" fill="white" />
                 <rect
                   x={targetPosition.left}
@@ -151,7 +193,7 @@ export function OnboardingOverlay({
               width="100%"
               height="100%"
               fill="rgba(0, 0, 0, 0.5)"
-              mask="url(#spotlight-mask)"
+              mask={`url(#${maskId})`}
             />
           </svg>
         ) : (
@@ -159,10 +201,10 @@ export function OnboardingOverlay({
         )}
       </div>
 
-      {/* Spotlight highlight ring */}
+      {/* Spotlight highlight ring — L-3: motion-safe:animate-pulse */}
       {targetPosition && (
         <div
-          className="absolute border-2 border-purple-400 rounded-xl pointer-events-none animate-pulse"
+          className="absolute border-2 border-purple-400 rounded-xl pointer-events-none motion-safe:animate-pulse"
           style={{
             top: targetPosition.top,
             left: targetPosition.left,
