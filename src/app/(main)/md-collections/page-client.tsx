@@ -173,6 +173,51 @@ export function MdCollectionPageClient({
   }, []);
 
   /**
+   * 另存为 TXT 文件（去除 Markdown 语法，保留纯文字）
+   */
+  const handleDownloadAsTxt = useCallback((collection: MdCollection) => {
+    const raw = collection.raw_content ?? "";
+    const plain = raw
+      // 代码块 → 保留内容
+      .replace(/```[\s\S]*?```/g, (m) =>
+        m.replace(/```\w*\n?/g, "").replace(/```/g, ""),
+      )
+      // 图片 ![alt](url) → alt
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // 链接 [text](url) → text
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // 标题 # → 去除标记
+      .replace(/^#{1,6}\s+/gm, "")
+      // 粗体/斜体
+      .replace(/(\*{1,3}|_{1,3})(.+?)\1/g, "$2")
+      // 删除线
+      .replace(/~~(.+?)~~/g, "$1")
+      // 行内代码
+      .replace(/`([^`]+)`/g, "$1")
+      // 引用 >
+      .replace(/^>\s?/gm, "")
+      // 无序列表标记
+      .replace(/^[\t ]*[-*+]\s+/gm, "")
+      // 有序列表标记
+      .replace(/^[\t ]*\d+\.\s+/gm, "")
+      // 分隔线
+      .replace(/^[-*_]{3,}\s*$/gm, "")
+      // HTML 标签
+      .replace(/<[^>]+>/g, "")
+      // 连续空行合并为单个
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    const blob = new Blob([plain], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${collection.title.replace(/[/\\?%*:|"<>]/g, "_")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  /**
    * 打开删除确认对话框
    */
   const handleDeleteRequest = useCallback((id: number, title: string) => {
@@ -494,6 +539,7 @@ export function MdCollectionPageClient({
                   onClick={handleClick}
                   onDelete={(id) => handleDeleteRequest(id, collection.title)}
                   onDownload={handleDownload}
+                  onDownloadAsTxt={handleDownloadAsTxt}
                   isDeleting={isDeleting}
                 />
               ))}
@@ -508,6 +554,7 @@ export function MdCollectionPageClient({
                   onClick={handleClick}
                   onDelete={(id) => handleDeleteRequest(id, collection.title)}
                   onDownload={handleDownload}
+                  onDownloadAsTxt={handleDownloadAsTxt}
                   isDeleting={isDeleting}
                 />
               ))}

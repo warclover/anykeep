@@ -35,6 +35,7 @@ export interface MdListItemProps {
   onClick: (id: number) => void;
   onDelete: (id: number) => void;
   onDownload?: (collection: MdCollection) => void;
+  onDownloadAsTxt?: (collection: MdCollection) => void;
   isDeleting: boolean;
 }
 
@@ -43,6 +44,7 @@ export const MdListItem = memo(function MdListItem({
   onClick,
   onDelete,
   onDownload,
+  onDownloadAsTxt,
   isDeleting,
 }: MdListItemProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -70,6 +72,14 @@ export const MdListItem = memo(function MdListItem({
       onDownload?.(collection);
     },
     [onDownload, collection],
+  );
+
+  const handleDownloadAsTxtClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDownloadAsTxt?.(collection);
+    },
+    [onDownloadAsTxt, collection],
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -156,6 +166,14 @@ export const MdListItem = memo(function MdListItem({
               onClick={handleDownloadClick}
             >
               下载
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+              onClick={handleDownloadAsTxtClick}
+            >
+              存为TXT
             </Button>
             <Button
               variant="ghost"

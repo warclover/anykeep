@@ -13,6 +13,7 @@ import {
   MoreVertical,
   Trash2,
   Download,
+  FileDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface MdCardItemProps {
   onDelete?: (id: number) => void;
   /** 下载回调 */
   onDownload?: (collection: MdCollection) => void;
+  /** 另存为 TXT 回调 */
+  onDownloadAsTxt?: (collection: MdCollection) => void;
   /** 是否正在删除 */
   isDeleting?: boolean;
   /** 自定义类名 */
@@ -48,6 +51,7 @@ export const MdCardItem = memo(function MdCardItem({
   onClick,
   onDelete,
   onDownload,
+  onDownloadAsTxt,
   isDeleting = false,
   className,
 }: MdCardItemProps) {
@@ -73,6 +77,14 @@ export const MdCardItem = memo(function MdCardItem({
       onDownload?.(collection);
     },
     [onDownload, collection],
+  );
+
+  const handleDownloadAsTxt = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDownloadAsTxt?.(collection);
+    },
+    [onDownloadAsTxt, collection],
   );
 
   // 截取摘要
@@ -120,6 +132,10 @@ export const MdCardItem = memo(function MdCardItem({
             <DropdownMenuItem onClick={handleDownload}>
               <Download className="w-4 h-4 mr-2" />
               下载
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadAsTxt}>
+              <FileDown className="w-4 h-4 mr-2" />
+              另存为 TXT
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-red-600 dark:text-red-400"
