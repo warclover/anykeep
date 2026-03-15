@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type {
   ThemeId,
   ReaderTheme,
@@ -73,42 +73,29 @@ export function useReaderTheme(
 ): UseReaderThemeReturn {
   const { followSystem = true, defaultTheme = DEFAULT_THEME_ID } = options;
 
-  // 是否已挂载（客户端）
+  // 是否已挂载（客户端）— 使用 ref 避免额外渲染
+  const mountedRef = useRef(false);
   const [isMounted, setIsMounted] = useState(false);
 
   // 初始化主题状态
-  // 服务端渲染时使用默认主题，客户端挂载后读取存储
-  const [themeId, setThemeIdState] = useState<ThemeId>(() => {
-    if (typeof window === "undefined") {
-      return defaultTheme;
-    }
+  // SSR 和客户端首次渲染（hydration）都使用默认主题，确保输出一致
+  // 客户端挂载后（useEffect）再从 localStorage 读取用户偏好
+  const [themeId, setThemeIdState] = useState<ThemeId>(defaultTheme);
 
-    // 优先使用已保存的主题
-    const saved = getSavedTheme();
-    if (saved) {
-      return saved;
-    }
-
-    // 跟随系统主题
-    if (followSystem) {
-      return getSystemThemePreference();
-    }
-
-    return defaultTheme;
-  });
-
-  // 挂载后更新状态
+  // 挂载后从 localStorage 读取用户偏好并切换主题
   useEffect(() => {
-    requestAnimationFrame(() => {
-      setIsMounted(true);
+    if (mountedRef.current) return;
+    mountedRef.current = true;
 
-      // 客户端挂载后，确保从 localStorage 读取最新值
+    // 使用 queueMicrotask 延迟 setState，满足 react-hooks/set-state-in-effect 规则
+    queueMicrotask(() => {
       const saved = getSavedTheme();
       if (saved) {
         setThemeIdState(saved);
       } else if (followSystem) {
         setThemeIdState(getSystemThemePreference());
       }
+      setIsMounted(true);
     });
   }, [followSystem]);
 

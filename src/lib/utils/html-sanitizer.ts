@@ -226,6 +226,43 @@ export function sanitizeHtmlWithoutImages(html: string): string {
 }
 
 /**
+ * 清理 HTML 内容并移除图片标签和内联样式
+ *
+ * 用于阅读模式：移除图片（防盗链）+ 剥离内联 style（让 .reading-prose CSS 类接管排版）
+ *
+ * @param html - 原始 HTML 内容
+ * @returns 清理后的 HTML（不含图片和内联样式）
+ */
+export function sanitizeHtmlForReading(html: string): string {
+  if (!html) return "";
+
+  const purify = getDOMPurify();
+
+  // SSR 环境下直接返回原始 HTML（后端已清理过）
+  if (!purify) {
+    return html;
+  }
+
+  const tagsWithoutImg = ALLOWED_TAGS.filter(
+    (tag) => !["img", "picture", "source"].includes(tag),
+  );
+
+  // 移除 style 属性，让 CSS 类完全控制排版
+  const attrsWithoutStyle = ALLOWED_ATTRS.filter((attr) => attr !== "style");
+
+  const result = purify.sanitize(html, {
+    ALLOWED_TAGS: tagsWithoutImg,
+    ALLOWED_ATTR: attrsWithoutStyle,
+    ALLOW_DATA_ATTR: true,
+    KEEP_CONTENT: true,
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  });
+
+  return typeof result === "string" ? result : String(result);
+}
+
+/**
  * 检查 HTML 是否包含潜在的 XSS 风险
  *
  * 用于调试和监控

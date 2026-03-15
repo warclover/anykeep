@@ -22,7 +22,11 @@ import {
   useReaderTheme,
   type UseReaderThemeOptions,
 } from "../../hooks/reader/use-reader-theme";
-import { themeToCssVariables } from "../../lib/reader/theme-config";
+import {
+  READER_THEMES,
+  DEFAULT_THEME_ID,
+  themeToCssVariables,
+} from "../../lib/reader/theme-config";
 import { cn } from "@/lib/utils";
 
 /**
@@ -108,20 +112,25 @@ export function ReaderThemeProvider({
     return themeToCssVariables(theme);
   }, [theme]);
 
-  // Build style object with CSS variables
+  // Build style object with CSS variables only
+  // 不直接设置 color/backgroundColor，通过 CSS 变量在 .reader-theme-container 类中引用
+  // 这样后代元素的 CSS 类（如 .reading-prose）不会被内联 style 覆盖
   const containerStyle = useMemo<CSSProperties>(() => {
     const style: Record<string, string> = {};
     for (const [key, value] of Object.entries(cssVariables)) {
       style[key] = value;
     }
-    // Apply background and foreground colors directly
-    style.backgroundColor = theme.colors.background;
-    style.color = theme.colors.foreground;
     return style as CSSProperties;
-  }, [cssVariables, theme.colors]);
+  }, [cssVariables]);
 
-  // SSR: render with default styles to avoid hydration mismatch
-  // Client: apply actual theme after mount
+  // SSR 默认主题的 CSS 变量（与 useState(defaultTheme) 保持一致，消除 hydration mismatch）
+  const defaultCssVariables = useMemo(
+    () => themeToCssVariables(READER_THEMES[DEFAULT_THEME_ID]),
+    [],
+  );
+
+  // SSR: render with CSS variables for default theme to avoid hydration mismatch
+  // Client: apply actual theme CSS variables after mount
   if (!isMounted) {
     return (
       <ReaderThemeContext.Provider value={contextValue}>
@@ -130,11 +139,8 @@ export function ReaderThemeProvider({
             "reader-theme-container transition-colors duration-200 h-full flex flex-col",
             className,
           )}
-          data-theme="light"
-          style={{
-            backgroundColor: "#ffffff",
-            color: "#1a1a1a",
-          }}
+          data-theme={DEFAULT_THEME_ID}
+          style={defaultCssVariables as unknown as CSSProperties}
         >
           {children}
         </div>

@@ -281,9 +281,9 @@ export function BookmarkDetailClient({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
       {/* 内容区域 */}
-      <div className="flex-1 overflow-auto px-1 md:px-2 pt-1 pb-4">
+      <div className="flex-1 overflow-auto px-4 md:px-8 pt-4 pb-8">
         <div className="max-w-5xl mx-auto">
           {/* 主要信息卡片 */}
           <Card>
@@ -294,7 +294,7 @@ export function BookmarkDetailClient({
                 <div>
                   {/* 上排：标题 + 平台/类型徽章 */}
                   <div className="flex items-start justify-between gap-3">
-                    <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                    <h1 className="text-xl md:text-2xl font-semibold text-slate-800 dark:text-slate-100 leading-snug tracking-tight">
                       {bookmark.title ?? ""}
                     </h1>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -333,7 +333,7 @@ export function BookmarkDetailClient({
                   {/* 下排：元数据 + 评级/锁定/删除标记 */}
                   <div className="flex items-center justify-between gap-2 mt-1.5">
                     {/* 左侧：文件夹 · 来源 · 作者 · 时间 */}
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400 dark:text-slate-500">
                       {/* 收藏属性标签 */}
                       <span className="inline-flex items-center justify-center w-[4.5rem] px-0 py-0.5 rounded bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700 text-cyan-600 dark:text-cyan-300 font-medium text-xs flex-shrink-0 box-border">
                         收藏属性
@@ -347,7 +347,7 @@ export function BookmarkDetailClient({
                               {folderPath[folderPath.length - 1].name}
                             </span>
                           </span>
-                          <span className="text-gray-300 dark:text-gray-600">
+                          <span className="text-slate-300 dark:text-slate-600">
                             ·
                           </span>
                         </>
@@ -360,7 +360,7 @@ export function BookmarkDetailClient({
                             size="sm"
                             showTooltip={true}
                           />
-                          <span className="text-gray-300 dark:text-gray-600">
+                          <span className="text-slate-300 dark:text-slate-600">
                             ·
                           </span>
                         </>
@@ -370,7 +370,7 @@ export function BookmarkDetailClient({
                         bookmark.author !== bookmark.source_name && (
                           <>
                             <span>{bookmark.author}</span>
-                            <span className="text-gray-300 dark:text-gray-600">
+                            <span className="text-slate-300 dark:text-slate-600">
                               ·
                             </span>
                           </>
@@ -381,13 +381,13 @@ export function BookmarkDetailClient({
                           <span>
                             发表 {formatFriendlyDate(bookmark.publish_time)}
                           </span>
-                          <span className="text-gray-300 dark:text-gray-600">
+                          <span className="text-slate-300 dark:text-slate-600">
                             ·
                           </span>
                         </>
                       )}
                       {/* 收藏时间 */}
-                      <span className="text-gray-400">
+                      <span className="text-slate-400 dark:text-slate-500">
                         收藏{" "}
                         {formatFriendlyDate(bookmark.created_at || new Date())}
                       </span>
@@ -447,7 +447,7 @@ export function BookmarkDetailClient({
 
             <Separator className="my-0" />
 
-            <CardContent className="pt-1 space-y-3">
+            <CardContent className="pt-2 space-y-5">
               {/* AI 智能摘要（支持编辑和重新生成） V5.7: 懒加载 */}
               {userId ? (
                 <>

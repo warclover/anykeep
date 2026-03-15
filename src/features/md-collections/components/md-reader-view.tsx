@@ -684,12 +684,8 @@ function InternalReader({
 
       {/* 内容区域 - flex-1 填充剩余空间 */}
       <div
-        className="flex-1 flex min-h-0 overflow-hidden"
-        style={{
-          ...themeStyles,
-          backgroundColor: "var(--reader-bg)",
-          color: "var(--reader-fg)",
-        }}
+        className="flex-1 flex min-h-0 overflow-hidden reader-content-area"
+        style={themeStyles}
       >
         {/* 左侧目录 - 固定宽度，独立滚动 */}
         {hasTOC && showTOC && (

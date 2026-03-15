@@ -62,11 +62,9 @@ const MAX_FONT_SIZE = 24;
 const FONT_SIZE_STEP = 2;
 
 // 主题对应的样式
+// default 主题不设置 color/backgroundColor，让 .reading-prose CSS 类生效
 const THEME_STYLES: Record<ReaderTheme, React.CSSProperties> = {
-  default: {
-    backgroundColor: "inherit",
-    color: "inherit",
-  },
+  default: {},
   sepia: {
     backgroundColor: "#f4ecd8",
     color: "#5b4636",
@@ -173,12 +171,24 @@ export function useReaderSettings(): UseReaderSettingsReturn {
   }, [saveSettings]);
 
   // 生成内容样式
+  // 仅在用户主动调整了设置时输出内联样式，避免覆盖 .reading-prose CSS 类的默认值
   const getContentStyle = useCallback((): React.CSSProperties => {
-    return {
-      fontSize: `${settings.fontSize}px`,
-      lineHeight: settings.lineHeight,
-      ...THEME_STYLES[settings.theme],
-    };
+    const style: React.CSSProperties = {};
+
+    // 仅当字号偏离默认值时输出，否则让 .reading-prose 的 font-size 生效
+    if (settings.fontSize !== DEFAULT_SETTINGS.fontSize) {
+      style.fontSize = `${settings.fontSize}px`;
+    }
+
+    // 仅当行高偏离默认值时输出
+    if (settings.lineHeight !== DEFAULT_SETTINGS.lineHeight) {
+      style.lineHeight = settings.lineHeight;
+    }
+
+    // 主题样式（default 主题为空对象，不覆盖 CSS 类）
+    Object.assign(style, THEME_STYLES[settings.theme]);
+
+    return style;
   }, [settings]);
 
   return {

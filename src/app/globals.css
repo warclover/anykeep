@@ -632,3 +632,278 @@
     animation: none !important;
   }
 }
+
+/* ============================================
+ * 阅读排版系统 - .reading-prose
+ * 详情页正文区专用，优化中文长文阅读体验
+ * ============================================ */
+
+.reading-prose {
+  /* 阅读字体：衬线优先，适合长文沉浸阅读 */
+  font-family:
+    "LXGW WenKai",
+    "Source Han Serif SC",
+    "Noto Serif CJK SC",
+    "Songti SC",
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  /* 基准字号 16px */
+  font-size: 1rem;
+
+  /* 中文最佳阅读行高 */
+  line-height: 1.8;
+
+  /* 最佳阅读宽度：65-75 中文字 */
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
+
+  /* 阅读色：柔和深色，非纯黑 */
+  color: #475569; /* slate-600 */
+
+  /* 文字渲染优化 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 段落间距 */
+.reading-prose p {
+  margin-block: 1.25em;
+}
+
+/* 标题：无衬线字体，与正文拉开层次 */
+.reading-prose h1,
+.reading-prose h2,
+.reading-prose h3,
+.reading-prose h4 {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue',
+    'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+  color: #1e293b; /* slate-800 */
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.reading-prose h1 {
+  font-size: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+
+.reading-prose h2 {
+  font-size: 1.3em;
+  margin-top: 1.75em;
+  margin-bottom: 0.65em;
+}
+
+.reading-prose h3 {
+  font-size: 1.15em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.reading-prose h4 {
+  font-size: 1.05em;
+  margin-top: 1.25em;
+  margin-bottom: 0.4em;
+}
+
+/* 列表呼吸感 */
+.reading-prose ul,
+.reading-prose ol {
+  padding-left: 1.5em;
+  margin-block: 1em;
+}
+
+.reading-prose li {
+  margin-block: 0.4em;
+}
+
+/* 引用块 */
+.reading-prose blockquote {
+  border-left: 3px solid #94a3b8; /* slate-400 */
+  padding: 0.75em 1em;
+  margin-block: 1.5em;
+  margin-inline: 0;
+  background: #f8fafc; /* slate-50 */
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: #64748b; /* slate-500 */
+  font-style: italic;
+}
+
+/* 图片居中 + 圆角 */
+.reading-prose img {
+  display: block;
+  margin-inline: auto;
+  border-radius: 0.5rem;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 链接：品牌蓝柔和版 */
+.reading-prose a {
+  color: hsl(217 70% 50%);
+  text-decoration: underline;
+  text-decoration-color: hsl(217 70% 50% / 0.3);
+  text-underline-offset: 3px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.reading-prose a:hover {
+  color: hsl(217 80% 45%);
+  text-decoration-color: hsl(217 80% 45% / 0.6);
+}
+
+/* 粗体：使用标题色增强 */
+.reading-prose strong {
+  color: #1e293b; /* slate-800 */
+  font-weight: 600;
+}
+
+/* 行内代码 */
+.reading-prose code {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  padding: 0.15em 0.4em;
+  background: #f1f5f9; /* slate-100 */
+  border-radius: 0.25rem;
+  color: #334155; /* slate-700 */
+}
+
+/* 代码块 */
+.reading-prose pre {
+  margin-block: 1.5em;
+  padding: 1rem;
+  background: #f8fafc; /* slate-50 */
+  border: 1px solid #e2e8f0; /* slate-200 */
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.reading-prose pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+/* 表格 */
+.reading-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 1.5em;
+  font-size: 0.9em;
+}
+
+.reading-prose th {
+  background: #f1f5f9;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75em 1em;
+  border-bottom: 2px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.reading-prose td {
+  padding: 0.65em 1em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.reading-prose tr:hover td {
+  background: #f8fafc;
+}
+
+/* 水平线 */
+.reading-prose hr {
+  border: none;
+  height: 1px;
+  background: #e2e8f0;
+  margin-block: 2em;
+}
+
+/* === 暗色模式 === */
+.dark .reading-prose {
+  color: #cbd5e1; /* slate-300 */
+}
+
+.dark .reading-prose h1,
+.dark .reading-prose h2,
+.dark .reading-prose h3,
+.dark .reading-prose h4 {
+  color: #f1f5f9; /* slate-100，柔和亮白 */
+}
+
+.dark .reading-prose strong {
+  color: #f1f5f9;
+}
+
+.dark .reading-prose blockquote {
+  border-color: #475569; /* slate-600 */
+  background: hsl(217 30% 15%);
+  color: #94a3b8; /* slate-400 */
+}
+
+.dark .reading-prose a {
+  color: hsl(217 80% 65%);
+  text-decoration-color: hsl(217 80% 65% / 0.3);
+}
+
+.dark .reading-prose a:hover {
+  color: hsl(217 85% 72%);
+  text-decoration-color: hsl(217 85% 72% / 0.5);
+}
+
+.dark .reading-prose code {
+  background: hsl(217 30% 18%);
+  color: #e2e8f0;
+}
+
+.dark .reading-prose pre {
+  background: hsl(217 30% 14%);
+  border-color: hsl(217 20% 25%);
+}
+
+.dark .reading-prose th {
+  background: hsl(217 30% 18%);
+  border-color: hsl(217 20% 25%);
+  color: #f1f5f9;
+}
+
+.dark .reading-prose td {
+  border-color: hsl(217 20% 22%);
+}
+
+.dark .reading-prose tr:hover td {
+  background: hsl(217 25% 16%);
+}
+
+.dark .reading-prose hr {
+  background: hsl(217 20% 25%);
+}
+
+/* ============================================
+ * MD 阅读器主题容器
+ * 通过 CSS 变量驱动颜色，避免内联 style 覆盖子元素
+ * ============================================ */
+
+.reader-theme-container {
+  background-color: var(--reader-bg, #ffffff);
+  color: var(--reader-fg, #1a1a1a);
+}
+
+.reader-content-area {
+  background-color: var(--reader-bg, #ffffff);
+  color: var(--reader-fg, #1a1a1a);
+}
+
+/* MD 阅读器排版 - 通过 CSS 变量驱动，替代内联 style */
+.prose.prose-gray {
+  font-family: var(--reader-font-reading-cn, inherit);
+  line-height: var(--reader-line-height, 1.8);
+  max-width: var(--reader-max-width, 70ch);
+  font-size: var(--reader-font-size, 1rem);
+}

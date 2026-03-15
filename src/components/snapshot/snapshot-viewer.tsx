@@ -80,7 +80,8 @@ export interface SnapshotViewerProps {
 // ============================================================================
 
 // 使用共享的 HTML 清理工具（DOMPurify），防止 XSS 注入
-import { sanitizeHtmlWithoutImages } from "@/lib/utils/html-sanitizer";
+// 阅读模式专用：移除图片（防盗链）+ 剥离内联 style（让 .reading-prose CSS 类接管排版）
+import { sanitizeHtmlForReading } from "@/lib/utils/html-sanitizer";
 
 // ============================================================================
 // 辅助组件
@@ -98,7 +99,7 @@ function MetadataItem({
   if (!value) return null;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
       <Icon className="size-3.5" />
       <span>{label}:</span>
       <span className="text-foreground">{value}</span>
@@ -259,7 +260,7 @@ export function SnapshotViewer({
   // 处理后的 HTML 内容（移除图片标签以避免防盗链问题）
   const sanitizedContent = useMemo(() => {
     if (!content?.readableContent) return "";
-    return sanitizeHtmlWithoutImages(content.readableContent);
+    return sanitizeHtmlForReading(content.readableContent);
   }, [content?.readableContent]);
 
   // 加载快照内容
@@ -485,13 +486,11 @@ export function SnapshotViewer({
           maxHeight={maxHeight}
         />
       ) : (
-        <ScrollArea style={{ maxHeight }} className="pr-4">
-          <article
-            className="prose prose-sm dark:prose-invert max-w-none break-words"
-            style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
-            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-          />
-        </ScrollArea>
+        <article
+          className="reading-prose break-words"
+          style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
       )}
     </div>
   );

@@ -25,11 +25,7 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { cn } from "@/lib/utils";
 import { Copy, Check, Link as LinkIcon, ZoomIn } from "lucide-react";
-import {
-  TYPOGRAPHY_BASE,
-  FONT_STACKS,
-  typographyToCssVariables,
-} from "../lib/reader/typography";
+import { typographyToCssVariables } from "../lib/reader/typography";
 import { restoreRange, fuzzyMatchAnchor } from "../lib/reader/highlight-utils";
 import { getHighlightStyle } from "../lib/reader/highlight-config";
 import type {
@@ -464,6 +460,8 @@ export const MdRenderer = memo(function MdRenderer({
   }, [theme]);
 
   // 排版样式配置
+  // 仅输出 CSS 变量，不直接设置 lineHeight/maxWidth/fontFamily
+  // 直接设置会覆盖 CSS 类（如 prose、reading-prose），导致优先级问题
   const typographyStyles = useMemo<CSSProperties>(() => {
     if (!enableTypography) return {};
 
@@ -475,12 +473,7 @@ export const MdRenderer = memo(function MdRenderer({
       styles[key] = value;
     }
 
-    return {
-      ...styles,
-      lineHeight: TYPOGRAPHY_BASE.lineHeight,
-      maxWidth: TYPOGRAPHY_BASE.maxWidth,
-      fontFamily: FONT_STACKS.readingCn,
-    } as CSSProperties;
+    return styles as CSSProperties;
   }, [enableTypography, fontSize]);
 
   // Markdown 组件配置

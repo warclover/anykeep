@@ -140,9 +140,10 @@ export function WechatArticleViewer({
     useStylePreferences();
 
   // XSS 防护：清理 HTML 内容，并将微信图片域名改为本站代理，避免直连 mmbiz.qpic.cn 导致 ERR_NETWORK_CHANGED / 防盗链
+  // preserveStyles=false：剥离内联 style 属性，让 .reading-prose CSS 类接管排版
   const sanitizedHtml = useMemo(() => {
     if (!article?.html) return "";
-    let html = sanitizeHtml(article.html, true);
+    let html = sanitizeHtml(article.html, false);
     // 将 (src|data-src)="...mmbiz.qpic.cn/mmbiz.qlogo.cn..." 统一改为本站 /api/image-proxy
     const wechatImgUrlRe =
       /(src|data-src)="(https?:\/\/[^"]*mmbiz\.(?:qpic|qlogo)\.cn[^"]*)"/gi;
@@ -469,7 +470,7 @@ export function WechatArticleViewer({
               {/* 文章视图 */}
               {viewMode === "article" && (
                 <article
-                  className="prose prose-sm dark:prose-invert max-w-none py-4 break-words"
+                  className="reading-prose py-4 break-words"
                   style={{
                     ...getContentStyle(),
                     overflowWrap: "break-word",
@@ -482,7 +483,7 @@ export function WechatArticleViewer({
               {/* Markdown 视图 */}
               {viewMode === "markdown" && article.markdown && (
                 <div
-                  className="prose prose-sm dark:prose-invert max-w-none py-4 whitespace-pre-wrap"
+                  className="reading-prose py-4 whitespace-pre-wrap"
                   style={getContentStyle()}
                 >
                   {article.markdown}
@@ -500,7 +501,7 @@ export function WechatArticleViewer({
             {/* 文章视图 - 无高度限制 */}
             {viewMode === "article" && (
               <article
-                className="prose prose-sm dark:prose-invert max-w-none py-4 break-words"
+                className="reading-prose py-4 break-words"
                 style={{
                   ...getContentStyle(),
                   overflowWrap: "break-word",
@@ -513,7 +514,7 @@ export function WechatArticleViewer({
             {/* Markdown 视图 */}
             {viewMode === "markdown" && article.markdown && (
               <div
-                className="prose prose-sm dark:prose-invert max-w-none py-4 whitespace-pre-wrap"
+                className="reading-prose py-4 whitespace-pre-wrap"
                 style={getContentStyle()}
               >
                 {article.markdown}
