@@ -885,6 +885,54 @@
   background: hsl(217 20% 25%);
 }
 
+/* === MD 阅读器主题适配 ===
+ * 使 .reading-prose 在 .reader-theme-container 内响应主题 CSS 变量，
+ * 覆盖上方硬编码的 light/dark 色值，以支持 sepia/paper 等扩展主题 */
+.reader-theme-container .reading-prose {
+  color: var(--reader-fg, #475569);
+}
+.reader-theme-container .reading-prose h1,
+.reader-theme-container .reading-prose h2,
+.reader-theme-container .reading-prose h3,
+.reader-theme-container .reading-prose h4,
+.reader-theme-container .reading-prose strong {
+  color: var(--reader-fg, #1e293b);
+}
+.reader-theme-container .reading-prose a {
+  color: var(--reader-accent, hsl(217 70% 50%));
+}
+.reader-theme-container .reading-prose a:hover {
+  opacity: 0.85;
+}
+.reader-theme-container .reading-prose blockquote {
+  border-color: var(--reader-border, #94a3b8);
+  background: var(--reader-muted, #f8fafc);
+  color: var(--reader-fg, #64748b);
+  opacity: 0.85;
+}
+.reader-theme-container .reading-prose code {
+  background: var(--reader-muted, #f1f5f9);
+  color: var(--reader-fg, #334155);
+}
+.reader-theme-container .reading-prose pre {
+  background: var(--reader-muted, #f8fafc);
+  border-color: var(--reader-border, #e2e8f0);
+}
+.reader-theme-container .reading-prose th {
+  background: var(--reader-muted, #f1f5f9);
+  border-color: var(--reader-border, #e2e8f0);
+  color: var(--reader-fg, #1e293b);
+}
+.reader-theme-container .reading-prose td {
+  border-color: var(--reader-border, #e2e8f0);
+}
+.reader-theme-container .reading-prose tr:hover td {
+  background: var(--reader-muted, #f8fafc);
+}
+.reader-theme-container .reading-prose hr {
+  background: var(--reader-border, #e2e8f0);
+}
+
 /* ============================================
  * MD 阅读器主题容器
  * 通过 CSS 变量驱动颜色，避免内联 style 覆盖子元素

@@ -535,12 +535,12 @@ function InternalReader({
   );
 
   // ============================================
-  // 字体大小
+  // 字体大小（rem 值，覆盖 .reading-prose 的 font-size）
   // ============================================
-  const fontSizeClass = {
-    small: "text-sm",
-    medium: "text-base",
-    large: "text-lg",
+  const fontSizeMap = {
+    small: "0.875rem",
+    medium: "1rem",
+    large: "1.125rem",
   };
 
   // ============================================
@@ -857,11 +857,12 @@ function InternalReader({
             />
 
             {/* Markdown 内容 */}
-            <div className={fontSizeClass[fontSize]}>
+            <div>
               <MdRenderer
                 content={collection.raw_content}
                 showLineNumbers={true}
                 theme={theme.id === "dark" ? "dark" : "light"}
+                fontSize={fontSizeMap[fontSize]}
                 onImageClick={(_image, index) => openLightbox(index)}
                 onImagesCollected={setLightboxImages}
                 highlights={highlights}

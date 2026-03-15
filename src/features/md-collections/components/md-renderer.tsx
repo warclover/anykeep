@@ -8,15 +8,7 @@
 
 "use client";
 
-import {
-  memo,
-  useMemo,
-  useState,
-  useCallback,
-  useEffect,
-  useRef,
-  type CSSProperties,
-} from "react";
+import { memo, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,19 +17,14 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { cn } from "@/lib/utils";
 import { Copy, Check, Link as LinkIcon, ZoomIn } from "lucide-react";
-import { typographyToCssVariables } from "../lib/reader/typography";
 import { restoreRange, fuzzyMatchAnchor } from "../lib/reader/highlight-utils";
 import { getHighlightStyle } from "../lib/reader/highlight-config";
 import type {
-  FontSizePreset,
   ImageInfo,
   TextHighlight,
   HighlightColor,
   HighlightToolbarPosition,
 } from "../types/reader";
-
-// 普鲁士蓝主题色
-const PRUSSIAN_BLUE = "#00324D";
 
 // 动态导入 prism-light 构建（按需注册 16 种常用语言，减少 300-500 kB）
 const SyntaxHighlighter = dynamic(
@@ -77,10 +64,8 @@ interface MdRendererProps {
   showLineNumbers?: boolean;
   /** 代码块最大高度 */
   maxCodeHeight?: number;
-  /** 字体大小预设 */
-  fontSize?: FontSizePreset;
-  /** 是否应用阅读排版优化 */
-  enableTypography?: boolean;
+  /** 字体大小（CSS 值，如 '0.875rem'） */
+  fontSize?: string;
   /** 图片点击回调（用于打开 Lightbox） */
   onImageClick?: (image: ImageInfo, index: number) => void;
   /** 图片列表收集完成回调 */
@@ -188,11 +173,7 @@ function CodeBlock({
  * 内联代码组件
  */
 function InlineCode({ children }: { children: React.ReactNode }) {
-  return (
-    <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-sm font-mono text-emerald-600 dark:text-emerald-400">
-      {children}
-    </code>
-  );
+  return <code className="font-mono">{children}</code>;
 }
 
 /**
@@ -204,8 +185,7 @@ export const MdRenderer = memo(function MdRenderer({
   theme = "auto",
   showLineNumbers = true,
   maxCodeHeight = 500,
-  fontSize = "medium",
-  enableTypography = true,
+  fontSize,
   onImageClick,
   onImagesCollected,
   highlights = [],
@@ -459,23 +439,6 @@ export const MdRenderer = memo(function MdRenderer({
     return theme;
   }, [theme]);
 
-  // 排版样式配置
-  // 仅输出 CSS 变量，不直接设置 lineHeight/maxWidth/fontFamily
-  // 直接设置会覆盖 CSS 类（如 prose、reading-prose），导致优先级问题
-  const typographyStyles = useMemo<CSSProperties>(() => {
-    if (!enableTypography) return {};
-
-    const cssVars = typographyToCssVariables(fontSize);
-    const styles: Record<string, string> = {};
-
-    // 转换 CSS 变量为 React style 对象
-    for (const [key, value] of Object.entries(cssVars)) {
-      styles[key] = value;
-    }
-
-    return styles as CSSProperties;
-  }, [enableTypography, fontSize]);
-
   // Markdown 组件配置
   const components = useMemo(
     () => ({
@@ -509,123 +472,74 @@ export const MdRenderer = memo(function MdRenderer({
         return <InlineCode {...props}>{children}</InlineCode>;
       },
 
-      // 标题锚点 - 使用普鲁士蓝主题色
+      // 标题锚点 — 样式由 .reading-prose CSS 控制
       h1: ({ children, id }: { children: React.ReactNode; id?: string }) => (
-        <h1
-          id={id}
-          className="group flex items-center gap-2 text-3xl font-bold mt-8 mb-4 dark:text-gray-100"
-          style={{ color: PRUSSIAN_BLUE }}
-        >
+        <h1 id={id} className="group flex items-center gap-2">
           {children}
           {id && <HeadingAnchor id={id} />}
         </h1>
       ),
       h2: ({ children, id }: { children: React.ReactNode; id?: string }) => (
-        <h2
-          id={id}
-          className="group flex items-center gap-2 text-2xl font-bold mt-6 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2 dark:text-gray-100"
-          style={{ color: PRUSSIAN_BLUE }}
-        >
+        <h2 id={id} className="group flex items-center gap-2">
           {children}
           {id && <HeadingAnchor id={id} />}
         </h2>
       ),
       h3: ({ children, id }: { children: React.ReactNode; id?: string }) => (
-        <h3
-          id={id}
-          className="group flex items-center gap-2 text-xl font-semibold mt-5 mb-2 dark:text-gray-100"
-          style={{ color: PRUSSIAN_BLUE }}
-        >
+        <h3 id={id} className="group flex items-center gap-2">
           {children}
           {id && <HeadingAnchor id={id} />}
         </h3>
       ),
       h4: ({ children, id }: { children: React.ReactNode; id?: string }) => (
-        <h4
-          id={id}
-          className="group flex items-center gap-2 text-lg font-semibold mt-4 mb-2 dark:text-gray-200"
-          style={{ color: PRUSSIAN_BLUE }}
-        >
+        <h4 id={id} className="group flex items-center gap-2">
           {children}
           {id && <HeadingAnchor id={id} />}
         </h4>
       ),
 
-      // 段落
-      p: ({ children }: { children: React.ReactNode }) => (
-        <p className="my-4 leading-7 text-gray-700 dark:text-gray-300">
-          {children}
-        </p>
-      ),
+      // 段落 — 样式由 .reading-prose CSS 控制
+      p: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
 
-      // 链接
+      // 链接 — 样式由 .reading-prose CSS 控制
       a: ({ href, children }: { href?: string; children: React.ReactNode }) => (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-emerald-600 dark:text-emerald-400 hover:underline"
-        >
+        <a href={href} target="_blank" rel="noopener noreferrer">
           {children}
         </a>
       ),
 
-      // 列表
+      // 列表 — 样式由 .reading-prose CSS 控制
       ul: ({ children }: { children: React.ReactNode }) => (
-        <ul className="my-4 pl-6 space-y-2 list-disc text-gray-700 dark:text-gray-300">
-          {children}
-        </ul>
+        <ul className="list-disc">{children}</ul>
       ),
       ol: ({ children }: { children: React.ReactNode }) => (
-        <ol className="my-4 pl-6 space-y-2 list-decimal text-gray-700 dark:text-gray-300">
-          {children}
-        </ol>
+        <ol className="list-decimal">{children}</ol>
       ),
-      li: ({ children }: { children: React.ReactNode }) => (
-        <li className="leading-7">{children}</li>
-      ),
+      li: ({ children }: { children: React.ReactNode }) => <li>{children}</li>,
 
-      // 引用块
+      // 引用块 — 样式由 .reading-prose CSS 控制
       blockquote: ({ children }: { children: React.ReactNode }) => (
-        <blockquote className="my-4 pl-4 border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 py-2 italic text-gray-600 dark:text-gray-400">
-          {children}
-        </blockquote>
+        <blockquote>{children}</blockquote>
       ),
 
       // 分隔线
-      hr: () => <hr className="my-8 border-gray-200 dark:border-gray-700" />,
+      hr: () => <hr />,
 
-      // 表格
+      // 表格 — 样式由 .reading-prose CSS 控制
       table: ({ children }: { children: React.ReactNode }) => (
         <div className="my-4 overflow-x-auto">
-          <table className="min-w-full border border-gray-200 dark:border-gray-700">
-            {children}
-          </table>
+          <table className="min-w-full">{children}</table>
         </div>
       ),
       thead: ({ children }: { children: React.ReactNode }) => (
-        <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>
+        <thead>{children}</thead>
       ),
       tbody: ({ children }: { children: React.ReactNode }) => (
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {children}
-        </tbody>
+        <tbody>{children}</tbody>
       ),
-      tr: ({ children }: { children: React.ReactNode }) => (
-        <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-          {children}
-        </tr>
-      ),
-      th: ({ children }: { children: React.ReactNode }) => (
-        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700">
-          {children}
-        </th>
-      ),
-      td: ({ children }: { children: React.ReactNode }) => (
-        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-          {children}
-        </td>
-      ),
+      tr: ({ children }: { children: React.ReactNode }) => <tr>{children}</tr>,
+      th: ({ children }: { children: React.ReactNode }) => <th>{children}</th>,
+      td: ({ children }: { children: React.ReactNode }) => <td>{children}</td>,
 
       // 图片
       // 注意：此处使用原生 img 而非 next/image，原因：
@@ -718,20 +632,11 @@ export const MdRenderer = memo(function MdRenderer({
     <article
       ref={contentRef as React.RefObject<HTMLElement>}
       className={cn(
-        "prose prose-gray dark:prose-invert max-w-none",
+        "reading-prose max-w-none",
         "prose-headings:scroll-mt-20", // 锚点滚动偏移
-        enableTypography && [
-          // 阅读排版优化
-          "prose-p:my-[1.5em]", // 段落间距
-          "prose-p:leading-[1.8]", // 行高
-          "prose-li:leading-[1.8]", // 列表行高
-          "prose-headings:mt-[2em]", // 标题上间距
-          "prose-headings:mb-[1em]", // 标题下间距
-          "mx-auto", // 居中
-        ],
         className,
       )}
-      style={enableTypography ? typographyStyles : undefined}
+      style={fontSize ? { fontSize } : undefined}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -768,12 +673,7 @@ function HeadingAnchor({ id }: { id: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400"
-      style={{ color: copied ? undefined : undefined }}
-      onMouseEnter={(e) =>
-        !copied && (e.currentTarget.style.color = PRUSSIAN_BLUE)
-      }
-      onMouseLeave={(e) => !copied && (e.currentTarget.style.color = "")}
+      className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
       title="复制链接"
     >
       {copied ? (
