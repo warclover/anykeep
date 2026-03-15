@@ -900,6 +900,16 @@
   color: var(--reader-fg, #1a1a1a);
 }
 
+/* 阅读器详情页：覆盖主布局背景色，消除首屏白→色闪烁
+ * data-reader-page 由 layout.tsx 阻塞脚本在路由匹配 /md-collections/:id 时设置
+ * .main-layout-shell 是主布局容器的语义类名（layout.tsx:66） */
+:root[data-reader-page] {
+  background-color: var(--reader-bg, #ffffff);
+}
+:root[data-reader-page] .main-layout-shell {
+  background-color: var(--reader-bg, #ffffff) !important;
+}
+
 /* MD 阅读器排版 - 通过 CSS 变量驱动，替代内联 style */
 .prose.prose-gray {
   font-family: var(--reader-font-reading-cn, inherit);

@@ -63,7 +63,7 @@ export default function MainLayout({
   return (
     <AIPanelProvider>
       <PageToolbarProvider>
-        <div className="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden flex flex-col">
+        <div className="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden flex flex-col main-layout-shell">
           {/* 顶部导航 */}
           <AppHeader />
 

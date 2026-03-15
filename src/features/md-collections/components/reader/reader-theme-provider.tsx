@@ -22,11 +22,7 @@ import {
   useReaderTheme,
   type UseReaderThemeOptions,
 } from "../../hooks/reader/use-reader-theme";
-import {
-  READER_THEMES,
-  DEFAULT_THEME_ID,
-  themeToCssVariables,
-} from "../../lib/reader/theme-config";
+import { themeToCssVariables } from "../../lib/reader/theme-config";
 import { cn } from "@/lib/utils";
 
 /**
@@ -123,40 +119,19 @@ export function ReaderThemeProvider({
     return style as CSSProperties;
   }, [cssVariables]);
 
-  // SSR 默认主题的 CSS 变量（与 useState(defaultTheme) 保持一致，消除 hydration mismatch）
-  const defaultCssVariables = useMemo(
-    () => themeToCssVariables(READER_THEMES[DEFAULT_THEME_ID]),
-    [],
-  );
-
-  // SSR: render with CSS variables for default theme to avoid hydration mismatch
-  // Client: apply actual theme CSS variables after mount
-  if (!isMounted) {
-    return (
-      <ReaderThemeContext.Provider value={contextValue}>
-        <div
-          className={cn(
-            "reader-theme-container transition-colors duration-200 h-full flex flex-col",
-            className,
-          )}
-          data-theme={DEFAULT_THEME_ID}
-          style={defaultCssVariables as unknown as CSSProperties}
-        >
-          {children}
-        </div>
-      </ReaderThemeContext.Provider>
-    );
-  }
-
+  // SSR 与首次渲染：不设置 inline style，CSS 变量由 <html> 上的阻塞脚本提供
+  // 挂载后：通过 containerStyle 覆盖（支持用户在页面内切换主题）
+  // transition-colors 仅在挂载后启用，避免首次加载时的颜色过渡闪烁
   return (
     <ReaderThemeContext.Provider value={contextValue}>
       <div
         className={cn(
-          "reader-theme-container transition-colors duration-200 h-full flex flex-col",
+          "reader-theme-container h-full flex flex-col",
+          isMounted && "transition-colors duration-200",
           className,
         )}
         data-theme={theme.id}
-        style={containerStyle}
+        style={isMounted ? containerStyle : undefined}
       >
         {children}
       </div>
