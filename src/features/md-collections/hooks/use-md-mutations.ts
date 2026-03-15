@@ -217,10 +217,6 @@ export function useUploadMdFile() {
       const response = await fetchWithAuth(API_PATHS.mdCollections.upload, {
         method: "POST",
         body: formData,
-        // fetchWithAuth 会在有 body 时自动设置 Content-Type，
-        // 但 FormData 需要浏览器自动设置 boundary，
-        // 所以传入空 headers 覆盖
-        headers: {},
       });
 
       return parseResponse<MdCollection>(response, "上传失败");

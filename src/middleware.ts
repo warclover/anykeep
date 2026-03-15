@@ -92,13 +92,25 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
+    // multipart/form-data POST: 跳过中间件，避免 NextResponse.next() 破坏 body stream
+    // 认证由路由层 withAuthMiddleware + Bearer token（fetchWithAuth 注入）处理
+    const apiContentType = request.headers.get("content-type") || "";
+    if (
+      request.method !== "GET" &&
+      apiContentType.includes("multipart/form-data")
+    ) {
+      const response = NextResponse.next();
+      response.headers.set("x-request-id", requestId);
+      return response;
+    }
+
     // API 路由 Auth 处理 + 用户信息注入（性能优化）
     const { supabaseResponse, user } = await updateSession(request);
 
     // 添加 Request ID
     supabaseResponse.headers.set("x-request-id", requestId);
 
-    // V5.4: API 路由也注入用户 header，让 withAuth 走快速路径（~1ms vs 230ms）
+    // V5.4: API 路由注入用户 header，让 withAuth 走快速路径（~1ms vs 230ms）
     if (user) {
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", user.id);

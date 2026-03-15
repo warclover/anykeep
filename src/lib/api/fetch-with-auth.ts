@@ -76,7 +76,12 @@ export async function fetchWithAuth(
   const headers = new Headers(options.headers);
 
   // 设置 Content-Type（如果未设置且有 body）
-  if (options.body && !headers.has("Content-Type")) {
+  // FormData 需要浏览器自动设置 boundary，不能手动指定 Content-Type
+  if (
+    options.body &&
+    !headers.has("Content-Type") &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
