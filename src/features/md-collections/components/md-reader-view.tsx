@@ -787,7 +787,7 @@ function InternalReader({
 
               <h1
                 className="text-3xl md:text-4xl font-bold mb-4 leading-tight"
-                style={{ color: "var(--reader-accent)" }}
+                style={{ color: "var(--reader-fg)" }}
               >
                 {collection.title}
               </h1>
