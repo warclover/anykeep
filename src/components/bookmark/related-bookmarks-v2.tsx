@@ -125,28 +125,39 @@ const fetchRelatedBookmarks = async (
     params.set("types", types.join(","));
   }
 
-  const response = await fetch(
-    `/api/knowledge-link/related/${bookmarkId}?${params.toString()}`,
-    { credentials: "include" },
-  );
-  const data: ApiResponse = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "获取相关书签失败");
-  }
-
-  // 知识关联为空时回退到旧版向量相关接口（find_related_bookmarks），保证有 embedding 的书签能看到「相关内容」
-  const related = data.data?.related ?? [];
-  if (related.length === 0) {
-    const legacyRes = await fetch(
+  // 并行发起知识关联和向量相似度两个请求，消除串行等待（~470ms）
+  // 优先使用知识关联结果，为空时回退到向量相似度
+  const [knowledgeResult, legacyResult] = await Promise.allSettled([
+    fetch(`/api/knowledge-link/related/${bookmarkId}?${params.toString()}`, {
+      credentials: "include",
+    }).then(async (res) => {
+      const data: ApiResponse = await res.json();
+      if (!res.ok) throw new Error(data.error || "获取相关书签失败");
+      return data;
+    }),
+    fetch(
       `/api/bookmarks/${bookmarkId}/related?limit=${limit}&minSimilarity=${minStrength}`,
       { credentials: "include" },
-    );
-    const legacyJson = await legacyRes.json();
-    const legacyList =
-      legacyJson?.data?.related ??
-      legacyJson?.related ??
-      ([] as LegacyRelatedItem[]);
+    ).then(async (res) => {
+      if (!res.ok) return [] as LegacyRelatedItem[];
+      const json = await res.json();
+      return (json?.data?.related ??
+        json?.related ??
+        []) as LegacyRelatedItem[];
+    }),
+  ]);
+
+  // 优先使用知识关联结果
+  if (knowledgeResult.status === "fulfilled") {
+    const related = knowledgeResult.value.data?.related ?? [];
+    if (related.length > 0) {
+      return knowledgeResult.value;
+    }
+  }
+
+  // 知识关联为空或失败时，回退到向量相似度结果
+  if (legacyResult.status === "fulfilled") {
+    const legacyList = legacyResult.value;
     if (Array.isArray(legacyList) && legacyList.length > 0) {
       const mapped: RelatedBookmark[] = legacyList.map(
         (item: LegacyRelatedItem) => ({
@@ -171,7 +182,15 @@ const fetchRelatedBookmarks = async (
     }
   }
 
-  return data;
+  // 两个请求都失败时，抛出知识关联的错误
+  if (knowledgeResult.status === "rejected") {
+    throw knowledgeResult.reason;
+  }
+
+  // 两个请求都无数据，返回知识关联的空结果
+  return knowledgeResult.status === "fulfilled"
+    ? knowledgeResult.value
+    : { success: true, data: { related: [], totalCount: 0 } };
 };
 
 // ============================================================================

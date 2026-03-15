@@ -16,7 +16,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
+import {
+  FileText,
+  Download,
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { WechatArticleViewer } from "./wechat-article-viewer";
 import { clientLogger } from "@/lib/client-logger";
 import { API_SNAPSHOTS, API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
@@ -56,7 +63,7 @@ interface SnapshotInfo {
 export function WechatArticleSection({
   bookmarkId,
   bookmarkUrl,
-  defaultExpanded: _defaultExpanded = false,
+  defaultExpanded = false,
   className,
   initialSnapshot = null,
 }: WechatArticleSectionProps) {
@@ -67,6 +74,8 @@ export function WechatArticleSection({
   const [isLoading, setIsLoading] = useState(initialSnapshot === null);
   const [error, setError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  // 折叠/展开状态：仅展开时才加载 WechatArticleViewer（避免 3-4s 的文章内容请求）
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   // 获取 snapshot 信息
   const fetchSnapshot = useCallback(async () => {
@@ -318,19 +327,42 @@ export function WechatArticleSection({
     );
   }
 
-  // 快照完成，渲染微信文章阅读器
+  // 快照完成，渲染可折叠的微信文章阅读器
   return (
-    <WechatArticleViewer
-      snapshotId={snapshot.id}
-      bookmarkId={bookmarkId}
-      originalUrl={bookmarkUrl}
-      autoFetch={false}
-      className={className}
-      onDeleted={() => {
-        // 删除成功后重置状态，显示重新获取按钮
-        setSnapshot(null);
-      }}
-    />
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center justify-between w-full group"
+        >
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="size-4" />
+            微信文章内容
+          </CardTitle>
+          <ChevronRight
+            className={cn(
+              "size-4 text-gray-400 transition-transform duration-200",
+              isExpanded && "rotate-90",
+            )}
+          />
+        </button>
+      </CardHeader>
+      {isExpanded && (
+        <CardContent className="pt-0">
+          <WechatArticleViewer
+            snapshotId={snapshot.id}
+            bookmarkId={bookmarkId}
+            originalUrl={bookmarkUrl}
+            autoFetch={false}
+            onDeleted={() => {
+              // 删除成功后重置状态，显示重新获取按钮
+              setSnapshot(null);
+            }}
+          />
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
