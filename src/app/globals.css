@@ -887,9 +887,11 @@
 
 /* === MD 阅读器主题适配 ===
  * 使 .reading-prose 在 .reader-theme-container 内响应主题 CSS 变量，
- * 覆盖上方硬编码的 light/dark 色值，以支持 sepia/paper 等扩展主题 */
+ * 覆盖上方硬编码的 light/dark 色值，以支持 sepia/paper 等扩展主题
+ *
+ * 层次设计：标题用 --reader-fg 全浓度，正文降低至 75% 拉开视觉层次 */
 .reader-theme-container .reading-prose {
-  color: var(--reader-fg, #475569);
+  color: color-mix(in srgb, var(--reader-fg, #475569) 75%, transparent);
 }
 .reader-theme-container .reading-prose h1,
 .reader-theme-container .reading-prose h2,
@@ -907,8 +909,7 @@
 .reader-theme-container .reading-prose blockquote {
   border-color: var(--reader-border, #94a3b8);
   background: var(--reader-muted, #f8fafc);
-  color: var(--reader-fg, #64748b);
-  opacity: 0.85;
+  color: color-mix(in srgb, var(--reader-fg, #64748b) 65%, transparent);
 }
 .reader-theme-container .reading-prose code {
   background: var(--reader-muted, #f1f5f9);
