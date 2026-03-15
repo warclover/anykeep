@@ -34,6 +34,7 @@ export interface MdListItemProps {
   collection: MdCollection;
   onClick: (id: number) => void;
   onDelete: (id: number) => void;
+  onDownload?: (collection: MdCollection) => void;
   isDeleting: boolean;
 }
 
@@ -41,6 +42,7 @@ export const MdListItem = memo(function MdListItem({
   collection,
   onClick,
   onDelete,
+  onDownload,
   isDeleting,
 }: MdListItemProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -61,6 +63,14 @@ export const MdListItem = memo(function MdListItem({
     e.stopPropagation();
     setShowDeleteConfirm(true);
   }, []);
+
+  const handleDownloadClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDownload?.(collection);
+    },
+    [onDownload, collection],
+  );
 
   const handleConfirmDelete = useCallback(() => {
     onDelete(collection.id);
@@ -138,7 +148,15 @@ export const MdListItem = memo(function MdListItem({
           </div>
 
           {/* 操作按钮 */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+              onClick={handleDownloadClick}
+            >
+              下载
+            </Button>
             <Button
               variant="ghost"
               size="sm"

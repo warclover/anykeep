@@ -6,7 +6,14 @@
 "use client";
 
 import { memo, useCallback } from "react";
-import { FileText, Clock, Tag, MoreVertical, Trash2 } from "lucide-react";
+import {
+  FileText,
+  Clock,
+  Tag,
+  MoreVertical,
+  Trash2,
+  Download,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +32,8 @@ interface MdCardItemProps {
   onClick?: (id: number) => void;
   /** 删除回调 */
   onDelete?: (id: number) => void;
+  /** 下载回调 */
+  onDownload?: (collection: MdCollection) => void;
   /** 是否正在删除 */
   isDeleting?: boolean;
   /** 自定义类名 */
@@ -38,6 +47,7 @@ export const MdCardItem = memo(function MdCardItem({
   collection,
   onClick,
   onDelete,
+  onDownload,
   isDeleting = false,
   className,
 }: MdCardItemProps) {
@@ -55,6 +65,14 @@ export const MdCardItem = memo(function MdCardItem({
       onDelete?.(collection.id);
     },
     [onDelete, collection.id],
+  );
+
+  const handleDownload = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDownload?.(collection);
+    },
+    [onDownload, collection],
   );
 
   // 截取摘要
@@ -92,13 +110,17 @@ export const MdCardItem = memo(function MdCardItem({
             <Button
               variant="ghost"
               size="icon"
-              className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="w-7 h-7 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleDownload}>
+              <Download className="w-4 h-4 mr-2" />
+              下载
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="text-red-600 dark:text-red-400"
               onClick={handleDelete}
