@@ -36,11 +36,11 @@ export const READER_THEMES: Record<ThemeId, ReaderTheme> = {
     id: "sepia",
     name: "护眼",
     colors: {
-      background: "#f5f0e6",
-      foreground: "#5c4b37",
-      accent: "#b45309",
-      muted: "#ebe5d9",
-      border: "#d9d0c0",
+      background: "#f0f7f4",
+      foreground: "#2d4a3e",
+      accent: "#0d9488",
+      muted: "#e0efea",
+      border: "#c6ddd4",
     },
   },
   paper: {

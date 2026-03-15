@@ -66,9 +66,10 @@ export const FONT_SIZE_STORAGE_KEY = "md-reader-font-size";
 export const FONT_STACKS = {
   /** 中文阅读字体 */
   readingCn:
-    '"LXGW WenKai", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif',
+    '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
   /** 英文阅读字体 */
-  readingEn: 'Georgia, "Times New Roman", serif',
+  readingEn:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
   /** 代码字体 */
   code: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
 } as const;

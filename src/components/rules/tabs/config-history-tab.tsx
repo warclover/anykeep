@@ -50,7 +50,7 @@ import {
   CLASSIFICATION_WEIGHTS,
   CLASSIFICATION_THRESHOLDS,
   MATCHER_STRATEGY_CONFIG,
-} from "@/lib/classification-v2";
+} from "@/lib/classification-v2/config";
 import { clientLogger } from "@/lib/client-logger";
 import { API_CLASSIFICATION } from "@/lib/constants/api-paths";
 

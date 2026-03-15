@@ -33,13 +33,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MATCHER_STRATEGY_CONFIG } from "@/lib/classification-v2/config";
 import {
   UNIVERSAL_CATEGORIES,
   CATEGORY_GROUP_NAMES,
-  MATCHER_STRATEGY_CONFIG,
   type CategoryGroup,
   type UniversalCategory,
-} from "@/lib/classification-v2";
+} from "@/lib/classification-v2/constants";
 
 // ============================================
 // 类型定义

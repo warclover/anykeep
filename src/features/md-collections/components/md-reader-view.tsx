@@ -786,7 +786,7 @@ function InternalReader({
               </span>
 
               <h1
-                className="text-3xl md:text-4xl font-bold mb-4 leading-tight"
+                className="text-xl md:text-2xl font-bold mb-4 leading-tight"
                 style={{ color: "var(--reader-fg)" }}
               >
                 {collection.title}

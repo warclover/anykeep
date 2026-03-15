@@ -37,7 +37,7 @@ const READER_THEME_INIT_SCRIPT = `
   var themes = {
     light:  { bg:'#ffffff', fg:'#1a1a1a', accent:'#2563eb', muted:'#f5f5f5', border:'#e5e5e5' },
     dark:   { bg:'#1a1a1a', fg:'#e5e5e5', accent:'#60a5fa', muted:'#2d2d2d', border:'#404040' },
-    sepia:  { bg:'#f5f0e6', fg:'#5c4b37', accent:'#b45309', muted:'#ebe5d9', border:'#d9d0c0' },
+    sepia:  { bg:'#f0f7f4', fg:'#2d4a3e', accent:'#0d9488', muted:'#e0efea', border:'#c6ddd4' },
     paper:  { bg:'#faf8f5', fg:'#3d3d3d', accent:'#6366f1', muted:'#f0ede8', border:'#e0ddd5' }
   };
   try {

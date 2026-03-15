@@ -639,15 +639,15 @@
  * ============================================ */
 
 .reading-prose {
-  /* 阅读字体：衬线优先，适合长文沉浸阅读 */
+  /* 阅读字体：雅黑无衬线，清晰易读 */
   font-family:
-    "LXGW WenKai",
-    "Source Han Serif SC",
-    "Noto Serif CJK SC",
-    "Songti SC",
-    Georgia,
-    "Times New Roman",
-    serif;
+    "Microsoft YaHei",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Noto Sans CJK SC",
+    "Source Han Sans SC",
+    -apple-system,
+    sans-serif;
 
   /* 基准字号 16px */
   font-size: 1rem;
