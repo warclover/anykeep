@@ -162,6 +162,10 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     iconColor: "text-indigo-600 dark:text-indigo-400",
     items: [
       { id: "ai-history", label: "settings.groups.support.items.aiHistory" },
+      {
+        id: "onboarding",
+        label: "settings.groups.support.items.onboarding",
+      },
       { id: "feedback", label: "settings.groups.support.items.feedback" },
     ],
   },

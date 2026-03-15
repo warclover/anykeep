@@ -111,7 +111,8 @@ export function EmptyState({
       <div className="mt-8 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
         <Smartphone className="size-3.5" />
         <span>
-          {t.emptyState?.tip ?? "你也可以在手机上通过系统分享菜单直接收藏"}
+          {t.emptyState?.tip ??
+            "支持微信公众号、小红书、B站等平台，通过分享菜单一键收藏"}
         </span>
       </div>
     </div>

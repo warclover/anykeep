@@ -43,6 +43,7 @@ import {
   Upload,
   Link2,
   SkipForward,
+  Share2,
 } from "lucide-react";
 import type { TrustMode } from "@/types/trust-mode";
 import type { PresetInterestId } from "@/lib/interest-profile";
@@ -65,6 +66,10 @@ interface FirstTimeSetupProps {
   open: boolean;
   /** 完成回调 */
   onComplete: () => void;
+  /** 是否允许关闭（ESC/点击外部），手动触发时应为 true */
+  closable?: boolean;
+  /** 关闭回调（不等同于完成，不会标记 onboarding_completed_at） */
+  onClose?: () => void;
 }
 
 type SetupStep = "welcome" | "trust-mode" | "interests" | "import" | "complete";
@@ -129,22 +134,32 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">欢迎来到 AnyKeep</h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          您的智能收藏助手。只需几步简单设置，AI 就能帮您自动整理所有收藏内容。
+          您的智能收藏助手。统一管理微信公众号、小红书、B站等平台收藏，AI
+          自动整理，再也不丢失。
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-4 max-w-md mx-auto pt-4">
         <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
           <BookMarked className="h-8 w-8 text-blue-500 mb-2" />
-          <span className="text-sm font-medium">一键收藏</span>
+          <span className="text-sm font-medium">跨平台收藏</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">
+            公众号 / 小红书 / B站
+          </span>
         </div>
         <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
           <Wand2 className="h-8 w-8 text-purple-500 mb-2" />
           <span className="text-sm font-medium">AI 整理</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">
+            自动摘要 / 标签
+          </span>
         </div>
         <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
           <Folder className="h-8 w-8 text-green-500 mb-2" />
           <span className="text-sm font-medium">智能分类</span>
+          <span className="text-[10px] text-muted-foreground mt-0.5">
+            语义搜索 / 归档
+          </span>
         </div>
       </div>
 
@@ -202,6 +217,19 @@ function ImportStep({
             <div className="font-medium">随时粘贴链接收藏</div>
             <div className="text-sm text-muted-foreground">
               进入首页后，在顶部搜索栏粘贴任意链接即可快速收藏
+            </div>
+          </div>
+        </div>
+
+        {/* 平台分享收藏 - 提示性说明 */}
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <Share2 className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <div className="font-medium">微信公众号 / 小红书 / B站</div>
+            <div className="text-sm text-muted-foreground">
+              在 App 中点击「分享」选择 AnyKeep，文章自动收藏并 AI 整理
             </div>
           </div>
         </div>
@@ -306,7 +334,12 @@ function CompleteStep({
 // 主组件
 // ============================================================================
 
-export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
+export function FirstTimeSetup({
+  open,
+  onComplete,
+  closable = false,
+  onClose,
+}: FirstTimeSetupProps) {
   const [currentStep, setCurrentStep] = useState<SetupStep>("welcome");
   const [trustMode, setTrustMode] = useState<TrustMode>("full_auto");
   const [selectedInterests, setSelectedInterests] = useState<
@@ -490,14 +523,20 @@ export function FirstTimeSetup({ open, onComplete }: FirstTimeSetupProps) {
     <>
       <Dialog
         open={open}
-        onOpenChange={() => {
-          /* noop - prevent close */
+        onOpenChange={(isOpen) => {
+          if (!isOpen && closable) {
+            onClose?.();
+          }
         }}
       >
         <DialogContent
           className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => {
+            if (!closable) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (!closable) e.preventDefault();
+          }}
         >
           {/* 进度条 */}
           <div className="absolute top-0 left-0 right-0 h-1">

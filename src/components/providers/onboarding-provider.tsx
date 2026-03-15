@@ -58,6 +58,8 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true); // 默认 true 避免闪烁
   const [isChecking, setIsChecking] = useState(true);
+  // 区分自动触发（首次登录）和手动触发（设置页）
+  const [isManualTrigger, setIsManualTrigger] = useState(false);
 
   // 用于跟踪是否已经检查过（避免重复检查）
   const hasCheckedRef = useRef(false);
@@ -115,10 +117,18 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     setShowDialog(false);
     setHasCompletedOnboarding(true);
     setIsChecking(false);
+    setIsManualTrigger(false);
+  }, []);
+
+  // 手动触发时关闭（不标记完成）
+  const handleClose = useCallback(() => {
+    setShowDialog(false);
+    setIsManualTrigger(false);
   }, []);
 
   // 手动触发引导（用于设置页重新配置）
   const triggerOnboarding = useCallback(() => {
+    setIsManualTrigger(true);
     setShowDialog(true);
   }, []);
 
@@ -133,7 +143,14 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
       {children}
 
       {/* 完整新手引导流程（替代旧版 OnboardingDialog） */}
-      {user && <FirstTimeSetup open={showDialog} onComplete={handleComplete} />}
+      {user && (
+        <FirstTimeSetup
+          open={showDialog}
+          onComplete={handleComplete}
+          closable={isManualTrigger}
+          onClose={handleClose}
+        />
+      )}
     </OnboardingContext.Provider>
   );
 }

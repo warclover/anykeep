@@ -30,7 +30,8 @@ export const QUICK_ADD_ONBOARDING: OnboardingStep[] = [
     id: "quick-add-intro",
     target: ".quick-add-bookmark",
     title: "✨ 一键收藏",
-    description: "复制任意网页链接，点击这里自动粘贴识别并预览内容",
+    description:
+      "复制微信公众号、小红书、B站等平台的链接，点击这里自动粘贴识别并预览内容",
     position: "bottom",
   },
   {
@@ -46,7 +47,7 @@ export const QUICK_ADD_ONBOARDING: OnboardingStep[] = [
     target: null,
     title: "🎉 准备就绪！",
     description:
-      "现在就试试粘贴一个链接吧\n\n💡 小技巧：\n• Tab 键打开详情面板\n• Esc 键取消操作\n• Enter 键快速收藏",
+      "现在就试试粘贴一个链接吧\n\n💡 小技巧：\n• Tab 键打开详情面板\n• Esc 键取消操作\n• 手机端可通过分享菜单直接收藏",
     position: "center",
   },
 ];

@@ -376,7 +376,10 @@
     "support": {
       "title": "Help & Feedback",
       "description": "View submitted feedback and track progress",
-      "myFeedback": "My Feedback Records"
+      "myFeedback": "My Feedback Records",
+      "onboardingTitle": "Getting Started Guide",
+      "onboardingDescription": "Replay the onboarding guide to learn how features work",
+      "replayOnboarding": "Replay Guide"
     },
     "groups": {
       "account": {
@@ -443,6 +446,7 @@
         "description": "View AI operation records and feedback",
         "items": {
           "aiHistory": "AI Operation History",
+          "onboarding": "Getting Started",
           "feedback": "Help & Feedback"
         }
       }
@@ -520,7 +524,7 @@
     "importBrowser": "Import Browser Bookmarks",
     "createManual": "Add Bookmark Manually",
     "quickAdd": "Paste Link to Quick Add",
-    "tip": "You can also save content directly from your phone's share menu",
+    "tip": "Supports WeChat, Xiaohongshu, Bilibili & more — save via share menu",
     "filteredTitle": "No matching bookmarks found",
     "filteredDescription": "Try adjusting your filters or clearing the search"
   }
