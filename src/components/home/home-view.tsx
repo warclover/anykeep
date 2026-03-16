@@ -32,6 +32,7 @@ import { useHomeMutations } from "./hooks/use-home-mutations";
 import { useHomeBatch } from "./hooks/use-home-batch";
 import { useDialogs, useSelectionMode, useAbortableFetch } from "@/hooks/core";
 import { useClassificationPolling } from "@/hooks/ui";
+import { useShareParams } from "@/hooks/domain/pwa";
 import { useSynthesisRecommend } from "@/hooks/synthesis/use-synthesis-recommend";
 import { uiEventBus, UIEvents } from "@/lib/shared/event-bus";
 import { clientLogger } from "@/lib/client-logger";
@@ -260,6 +261,28 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
   // ========== 分类轮询 ==========
   const { trackBookmark } = useClassificationPolling();
 
+  // ========== 系统分享参数消费 ==========
+  const { shareParams, consume: consumeShareParams } = useShareParams();
+
+  // 自动打开创建对话框（分享触发）
+  useEffect(() => {
+    if (shareParams?.url && !showCreateDialog) {
+      openCreateDialog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在 shareParams 变化时触发
+  }, [shareParams]);
+
+  // 关闭创建对话框时清理分享参数
+  const handleCreateDialogChange = useCallback(
+    (open: boolean) => {
+      setShowCreateDialog(open);
+      if (!open && shareParams) {
+        consumeShareParams();
+      }
+    },
+    [setShowCreateDialog, shareParams, consumeShareParams],
+  );
+
   // ========== Context 事件响应 ==========
 
   // 响应对话框请求
@@ -356,8 +379,10 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       if (!bookmark.folder_id) {
         trackBookmark(bookmark.id);
       }
+      // 清理分享参数（如有）
+      consumeShareParams();
     },
-    [trackBookmark],
+    [trackBookmark, consumeShareParams],
   );
 
   // 创建综述
@@ -550,11 +575,13 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       setShowBrowserImportDialog,
       setShowExportDialog,
       setShowMoveDialog,
-      setShowCreateDialog,
+      setShowCreateDialog: handleCreateDialogChange,
       bookmarks,
       selectedIds,
       onBookmarkCreated: handleBookmarkCreated,
       onMoveSuccess: handleMoveSuccess,
+      initialUrl: shareParams?.url,
+      initialTitle: shareParams?.title,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 函数引用稳定，无需添加依赖
     [
@@ -567,6 +594,8 @@ export function HomeView({ initialError, userSettings }: HomeViewProps) {
       selectedIds,
       handleBookmarkCreated,
       handleMoveSuccess,
+      handleCreateDialogChange,
+      shareParams,
     ],
   );
 

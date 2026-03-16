@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { useDebouncedAbortableFetch } from "@/hooks/core";
 import { useClipboardPaste } from "@/components/quick-add/hooks/useClipboardPaste";
@@ -26,6 +26,10 @@ interface CreateBookmarkDrawerProps {
   onOpenChange: (open: boolean) => void;
   folders?: Array<{ id: number; name: string }>;
   onSuccess?: (bookmark: BookmarkCreatedData) => void;
+  /** 外部预填 URL（系统分享传入） */
+  initialUrl?: string;
+  /** 外部预填标题（系统分享传入） */
+  initialTitle?: string;
 }
 
 const TEXT = {
@@ -40,9 +44,27 @@ export function CreateBookmarkDrawer({
   onOpenChange,
   folders = [],
   onSuccess,
+  initialUrl,
+  initialTitle,
 }: CreateBookmarkDrawerProps) {
   const form = useCreateBookmarkForm();
   const { debouncedFetch, abortAll } = useDebouncedAbortableFetch(500);
+  // 防止 initialUrl 重复注入（dialog 关闭再打开时不再注入旧值）
+  const initialAppliedRef = useRef(false);
+
+  // 外部预填：系统分享传入 URL/Title 时自动填入表单
+  useEffect(() => {
+    if (open && initialUrl && !initialAppliedRef.current) {
+      initialAppliedRef.current = true;
+      form.setUrl(initialUrl);
+      if (initialTitle) {
+        form.setTitle(initialTitle);
+      }
+    }
+    if (!open) {
+      initialAppliedRef.current = false;
+    }
+  }, [open, initialUrl, initialTitle, form]);
 
   const metadata = useMetadataFetch({
     url: form.url,
@@ -69,6 +91,7 @@ export function CreateBookmarkDrawer({
     readClipboard,
     extractUrlFromText,
     setUrl: form.setUrl,
+    skipAutoRead: !!initialUrl,
   });
 
   const { resetForm } = form;

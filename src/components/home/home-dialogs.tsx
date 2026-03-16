@@ -77,6 +77,10 @@ export interface HomeDialogsProps {
     ai_tags?: string[] | null;
   }) => void;
   onMoveSuccess: () => void;
+
+  // 外部预填（系统分享）
+  initialUrl?: string;
+  initialTitle?: string;
 }
 
 // ============================================================================
@@ -98,6 +102,8 @@ export const HomeDialogs = memo(function HomeDialogs({
   selectedIds,
   onBookmarkCreated,
   onMoveSuccess,
+  initialUrl,
+  initialTitle,
 }: HomeDialogsProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -164,6 +170,8 @@ export const HomeDialogs = memo(function HomeDialogs({
             open={showCreateDialog}
             onOpenChange={setShowCreateDialog}
             onSuccess={onBookmarkCreated}
+            initialUrl={initialUrl}
+            initialTitle={initialTitle}
           />
         )}
       </Suspense>

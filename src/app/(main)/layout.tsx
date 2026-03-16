@@ -50,6 +50,7 @@ import {
 import { LayoutAIPanel } from "@/components/layout/layout-ai-panel";
 import { FloatingActionMenu } from "@/components/fab";
 import { PrefetchUsageTags } from "@/components/layout/prefetch-usage-tags";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 export default function MainLayout({
   children,
@@ -97,6 +98,10 @@ export default function MainLayout({
           </Suspense>
           {/* P2: 后台预取 usage-tags，减轻首屏等待 */}
           <PrefetchUsageTags />
+          {/* PWA 安装引导（移动端访问 3 次后展示） */}
+          <Suspense fallback={null}>
+            <InstallPrompt />
+          </Suspense>
         </div>
       </PageToolbarProvider>
     </AIPanelProvider>
