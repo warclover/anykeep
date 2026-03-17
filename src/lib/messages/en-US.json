@@ -53,6 +53,7 @@
     "usageFilter": "Filter by Usage",
     "trash": "Trash",
     "myBookmarks": "My Bookmarks",
+    "homeV3": "Home V3",
     "mySearch": "My Search",
     "myFolders": "My Folders",
     "myTags": "My Tags",
@@ -78,6 +79,7 @@
   "mobileMenu": {
     "openMenu": "Open Menu",
     "viewAllBookmarks": "View all bookmarks",
+    "homeV3": "Simplified home experience",
     "aiSmartSearch": "AI smart search",
     "manageFolders": "Manage folders",
     "tagManagement": "Tag management",

@@ -26,6 +26,7 @@ import {
   Upload,
   Share2,
   BrainCog,
+  LayoutDashboard,
 } from "lucide-react";
 import type { PageId } from "@/contexts/navigation-context";
 
@@ -82,6 +83,12 @@ const myContentGroup: NavGroupConfig = {
     //   icon: LayoutDashboard,
     //   description: "mobileMenu.newHome",
     // },
+    {
+      name: "nav.homeV3",
+      href: "/home-v3",
+      icon: LayoutDashboard,
+      description: "mobileMenu.homeV3",
+    },
     {
       name: "nav.myBookmarks",
       href: "/home",
