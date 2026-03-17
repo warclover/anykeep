@@ -30,6 +30,7 @@ import {
   shouldUseV2Classification,
 } from "@/lib/classification-v2/integration";
 import { logger } from "@/lib/logger";
+import { isWechatArticleUrl } from "@/lib/wechat-article/auto-crawl";
 import type { BookmarkUpdate, Platform } from "@/types/supabase";
 import { bookmarkAITasks } from "@/lib/utils/async-task-retry";
 
@@ -466,22 +467,26 @@ export async function generateBookmarkAIContent(
           );
 
           // 自动保存内容快照（fire-and-forget，不阻塞 AI 流程）
-          // 唯一索引保证微信文章等已有快照的书签不会重复创建
-          saveContentSnapshot(
-            bookmarkId,
-            url,
-            userId,
-            fetchResult,
-            title,
-          ).catch((err) => {
-            logger.warn(
-              {
-                bookmarkId,
-                error: err instanceof Error ? err.message : String(err),
-              },
-              "AI Content (async): Auto-save snapshot failed (non-blocking)",
-            );
-          });
+          // 跳过微信公众号文章：微信有专用抓取流程（/api/wechat-article/create），
+          // 会获取完整 HTML + 样式 + 图片。auto-save 仅存 Jina markdown，
+          // 会抢占唯一索引导致微信完整快照无法创建
+          if (!isWechatArticleUrl(url)) {
+            saveContentSnapshot(
+              bookmarkId,
+              url,
+              userId,
+              fetchResult,
+              title,
+            ).catch((err) => {
+              logger.warn(
+                {
+                  bookmarkId,
+                  error: err instanceof Error ? err.message : String(err),
+                },
+                "AI Content (async): Auto-save snapshot failed (non-blocking)",
+              );
+            });
+          }
         } else {
           logger.warn(
             {

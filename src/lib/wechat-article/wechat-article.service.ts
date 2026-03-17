@@ -113,15 +113,41 @@ export class WechatArticleService {
       }
 
       // 3. 准备内容源
-      // 优先使用 original_html（含 <style> 标签），回退到 readable_content
-      let sourceHtml = snapshotData.readable_content || "";
+      // 优先使用 original_html（含 <style> 标签），回退到回源抓取
+      let sourceHtml = "";
 
       if (snapshotData.original_html) {
         // 使用原始 HTML，并内联 CSS 样式
         sourceHtml = processStylesInline(snapshotData.original_html);
-        // Note: Using original_html with CSS inlining
       } else {
-        // Note: Fallback to readable_content (no original_html available)
+        // original_html 缺失（basic/auto-save 快照仅有 Jina markdown），回源抓取
+        const pageUrl =
+          snapshotData.bookmarks?.url || snapshotData.original_url;
+        if (pageUrl) {
+          logger.info(
+            { snapshotId, url: pageUrl },
+            "WechatArticleService: original_html missing, fetching page",
+          );
+          const fetched = await this.fetchPageHtml(pageUrl);
+          if (fetched) {
+            // 内联 CSS 样式，与 original_html 正常流程一致
+            sourceHtml = processStylesInline(fetched.html);
+            // 回填 original_html，后续调用无需再次抓取
+            await supabase
+              .from("bookmark_snapshots")
+              .update({
+                original_html: fetched.html,
+                final_url:
+                  fetched.finalUrl !== pageUrl ? fetched.finalUrl : undefined,
+              })
+              .eq("id", snapshotId);
+          }
+        }
+
+        // 最终兜底：使用 readable_content（可能是 markdown，效果有限）
+        if (!sourceHtml) {
+          sourceHtml = snapshotData.readable_content || "";
+        }
       }
 
       // 4. 处理正文内容（传入 styleLevel）
@@ -542,6 +568,76 @@ export class WechatArticleService {
       failedImages: Number(stats.failed_images) || 0,
       storageUsed: Number(stats.storage_used) || 0,
     };
+  }
+
+  // ===========================================================================
+  // 私有方法
+  // ===========================================================================
+
+  /**
+   * 抓取页面原始 HTML
+   *
+   * 用于 crawlFullContent 回源场景：basic/auto-save 快照缺少 original_html 时，
+   * 直接获取原始页面，提取 <style> + <body> 作为后续处理源。
+   */
+  private async fetchPageHtml(
+    url: string,
+  ): Promise<{ html: string; finalUrl: string } | null> {
+    const FETCH_TIMEOUT = 30000;
+    const MAX_CONTENT_LENGTH = 5 * 1024 * 1024;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+          "Cache-Control": "no-cache",
+        },
+        signal: controller.signal,
+        redirect: "follow",
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        logger.warn(
+          { url, status: response.status },
+          "WechatArticleService: fetchPageHtml HTTP error",
+        );
+        return null;
+      }
+
+      const rawHtml = await response.text();
+      if (rawHtml.length > MAX_CONTENT_LENGTH) {
+        logger.warn(
+          { url, size: rawHtml.length },
+          "WechatArticleService: fetchPageHtml content too large",
+        );
+        return null;
+      }
+
+      // 提取 <style> + <body>，与 /api/wechat-article/create 的 extractBodyHtml 逻辑一致
+      const styleMatches =
+        rawHtml.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || [];
+      const styles = styleMatches.join("\n");
+      const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const body = bodyMatch ? bodyMatch[1] : rawHtml;
+      const html = styles ? `${styles}\n${body}` : body;
+
+      return { html, finalUrl: response.url };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      logger.error(
+        { url, error },
+        "WechatArticleService: fetchPageHtml failed",
+      );
+      return null;
+    }
   }
 }
 

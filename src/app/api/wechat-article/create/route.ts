@@ -83,16 +83,22 @@ export const POST = withAuthMiddleware(
       id: number;
       status: string;
       readable_content: string | null;
+      original_html: string | null;
     };
     const { data: existingSnapshot } = (await supabase
       .from("bookmark_snapshots")
-      .select("id, status, readable_content")
+      .select("id, status, readable_content, original_html")
       .eq("bookmark_id", bookmarkId)
       .eq("user_id", userId)
       .maybeSingle()) as { data: SnapshotExistingRow | null };
 
-    // 如果已有已完成的快照，直接返回
-    if (existingSnapshot && existingSnapshot.status === "completed") {
+    // 如果已有已完成且包含完整微信内容的快照，直接返回
+    // basic/auto-save 快照仅有 Jina markdown（无 original_html），需要走完整抓取流程
+    if (
+      existingSnapshot &&
+      existingSnapshot.status === "completed" &&
+      existingSnapshot.original_html
+    ) {
       return successResponse({
         snapshotId: existingSnapshot.id,
         status: existingSnapshot.status,
