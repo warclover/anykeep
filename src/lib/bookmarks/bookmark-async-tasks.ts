@@ -16,7 +16,9 @@ import { generateAIContent } from "@/lib/ai-generator";
 import {
   smartFetchContent,
   prepareContentForAI,
+  type ContentFetchResult,
 } from "@/lib/utils/smart-content-fetcher";
+import { extractTextFromMarkdown } from "@/lib/utils/jina-reader";
 import { isJinaReaderEnabled } from "@/lib/summary/config/ai-summary-config";
 import {
   generateEmbedding,
@@ -462,6 +464,24 @@ export async function generateBookmarkAIContent(
             },
             "AI Content (async): Content fetched successfully",
           );
+
+          // 自动保存内容快照（fire-and-forget，不阻塞 AI 流程）
+          // 唯一索引保证微信文章等已有快照的书签不会重复创建
+          saveContentSnapshot(
+            bookmarkId,
+            url,
+            userId,
+            fetchResult,
+            title,
+          ).catch((err) => {
+            logger.warn(
+              {
+                bookmarkId,
+                error: err instanceof Error ? err.message : String(err),
+              },
+              "AI Content (async): Auto-save snapshot failed (non-blocking)",
+            );
+          });
         } else {
           logger.warn(
             {
@@ -606,6 +626,119 @@ export async function generateBookmarkAIContent(
         action: "async_ai_failed",
       },
       "AI Content (async): Generation failed",
+    );
+  }
+}
+
+// ============================================================================
+// saveContentSnapshot
+// ============================================================================
+
+/** 内容快照最小有效长度（字符） */
+const MIN_SNAPSHOT_CONTENT_LENGTH = 200;
+/** 摘要片段最大长度 */
+const MAX_EXCERPT_LENGTH = 300;
+
+/**
+ * 自动保存内容快照（收藏时触发）
+ *
+ * 复用 smartFetchContent 已获取的内容，直接写入 bookmark_snapshots 表。
+ * DB 触发器会自动同步 bookmarks.has_snapshot / snapshot_status。
+ * 唯一索引 idx_snapshots_bookmark_unique 保证不会重复创建（微信文章等已有快照时自动跳过）。
+ *
+ * @param bookmarkId - 书签 ID
+ * @param url - 原始 URL
+ * @param userId - 用户 ID
+ * @param fetchResult - smartFetchContent 的返回结果
+ * @param title - 书签标题（可选，用于快照 readable_title）
+ */
+export async function saveContentSnapshot(
+  bookmarkId: number,
+  url: string,
+  userId: string,
+  fetchResult: ContentFetchResult,
+  title?: string,
+): Promise<void> {
+  try {
+    // 内容过短，不值得保存快照
+    if (fetchResult.content.length < MIN_SNAPSHOT_CONTENT_LENGTH) {
+      logger.info(
+        {
+          bookmarkId,
+          contentLength: fetchResult.content.length,
+          action: "snapshot_skip_short",
+        },
+        "Content Snapshot: Content too short, skipping",
+      );
+      return;
+    }
+
+    // 提取纯文本（markdown 需要转换）
+    const textContent =
+      fetchResult.format === "markdown"
+        ? extractTextFromMarkdown(fetchResult.content)
+        : fetchResult.content;
+
+    // 生成摘要片段
+    const excerpt = textContent.substring(0, MAX_EXCERPT_LENGTH).trim();
+
+    // 使用 service client 绕过 RLS（异步任务中用户会话可能已失效）
+    const { createServiceClient } = await import("@/lib/supabase/server");
+    const supabase = await createServiceClient();
+
+    // 直接插入快照记录（status = completed，无需 job queue）
+    // 唯一索引 idx_snapshots_bookmark_unique 会在已有活跃快照时阻止插入
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("bookmark_snapshots")
+      .insert({
+        bookmark_id: bookmarkId,
+        user_id: userId,
+        snapshot_type: "basic",
+        status: "completed",
+        original_url: url,
+        readable_title: title || null,
+        readable_content:
+          fetchResult.format === "markdown" ? fetchResult.content : null,
+        readable_text_content: textContent,
+        readable_excerpt: excerpt,
+        readable_word_count: fetchResult.wordCount || textContent.length,
+        captured_at: new Date().toISOString(),
+        trigger_source: "auto-save",
+        file_size: new TextEncoder().encode(textContent).byteLength,
+      });
+
+    if (error) {
+      // 唯一索引冲突 = 快照已存在（微信流程等已创建），正常跳过
+      if (error.code === "23505") {
+        logger.info(
+          { bookmarkId, action: "snapshot_already_exists" },
+          "Content Snapshot: Snapshot already exists, skipping",
+        );
+        return;
+      }
+      throw error;
+    }
+
+    logger.info(
+      {
+        bookmarkId,
+        contentLength: textContent.length,
+        format: fetchResult.format,
+        source: fetchResult.source,
+        action: "snapshot_saved",
+      },
+      "Content Snapshot: Auto-saved successfully",
+    );
+  } catch (error) {
+    // 快照保存失败不影响主流程
+    logger.error(
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        action: "snapshot_save_failed",
+      },
+      "Content Snapshot: Save failed (non-blocking)",
     );
   }
 }
