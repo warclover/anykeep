@@ -9,7 +9,7 @@
  * @since 2026-03-09
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import { CLASSIFICATION_CONFIG } from "../config";
 
@@ -59,7 +59,8 @@ export async function searchSimilarFolderProfiles(
   const threshold =
     options?.threshold ?? CLASSIFICATION_CONFIG.vector.similarityThreshold;
 
-  const supabase = await createClient();
+  // 使用 service client 绕过 RLS（分类在异步上下文中执行，用户会话可能已失效）
+  const supabase = await createServiceClient();
 
   try {
     const { data, error } = await supabase.rpc("match_folder_profiles_v5", {

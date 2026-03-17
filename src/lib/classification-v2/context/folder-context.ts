@@ -8,7 +8,7 @@
  * @since 2026-03-09
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import type { FolderContext } from "../types";
 import { CHINESE_STOP_WORDS } from "../constants";
 
@@ -18,13 +18,15 @@ import { CHINESE_STOP_WORDS } from "../constants";
 export async function buildFolderContexts(
   userId: string,
 ): Promise<FolderContext[]> {
-  const supabase = await createClient();
+  // 使用 service client 绕过 RLS（分类在异步上下文中执行，用户会话可能已失效）
+  const supabase = await createServiceClient();
 
   // 1. 获取文件夹列表（folders 表使用 deleted_at 软删除，非 is_deleted 布尔列）
   const { data: folders, error: foldersError } = await supabase
     .from("folders")
     .select("id, name")
     .eq("user_id", userId)
+    .eq("is_system", false)
     .is("deleted_at", null)
     .order("name");
 

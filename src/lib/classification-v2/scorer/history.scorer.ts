@@ -10,7 +10,7 @@
  * @since 2026-03-09
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
   Scorer,
@@ -137,7 +137,8 @@ async function fetchRecentClassified(
   limit: number,
 ): Promise<HistoryRecord[]> {
   try {
-    const supabase = await createClient();
+    // 使用 service client 绕过 RLS（分类在异步上下文中执行，用户会话可能已失效）
+    const supabase = await createServiceClient();
 
     type BookmarkRow = {
       folder_id: number;

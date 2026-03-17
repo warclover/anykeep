@@ -81,7 +81,7 @@ describe("VectorScorer", () => {
     it("name/tier/weight 正确", () => {
       expect(scorer.name).toBe("vector");
       expect(scorer.tier).toBe("fast");
-      expect(scorer.defaultWeight).toBe(0.35);
+      expect(scorer.defaultWeight).toBe(0.32);
     });
   });
 

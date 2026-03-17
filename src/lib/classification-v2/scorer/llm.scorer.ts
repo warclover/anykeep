@@ -72,6 +72,21 @@ export class LlmScorer implements Scorer {
           { bookmarkId: bookmark.bookmarkId },
           "LlmScorer: Failed to parse LLM response",
         );
+        // 解析失败也写入 signal，便于排查
+        if (candidates.length > 0) {
+          results.set(candidates[0].id, {
+            value: 0,
+            confidence: 0,
+            reason: "LLM 响应解析失败",
+            signals: [
+              {
+                type: "llm_error",
+                detail: `parse_failed: ${response.content.slice(0, 80)}`,
+                strength: 0,
+              },
+            ],
+          });
+        }
         return results;
       }
 
@@ -104,13 +119,27 @@ export class LlmScorer implements Scorer {
 
       return results;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          bookmarkId: bookmark.bookmarkId,
-        },
+        { error: errorMsg, bookmarkId: bookmark.bookmarkId },
         "LlmScorer: execution failed",
       );
+
+      // 将错误信息写入 signal，使下游可观测 LLM 失败原因
+      if (candidates.length > 0) {
+        results.set(candidates[0].id, {
+          value: 0,
+          confidence: 0,
+          reason: `LLM 调用失败: ${errorMsg.slice(0, 80)}`,
+          signals: [
+            {
+              type: "llm_error",
+              detail: errorMsg.slice(0, 120),
+              strength: 0,
+            },
+          ],
+        });
+      }
       return results;
     }
   }

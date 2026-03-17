@@ -32,7 +32,7 @@ jest.mock("@/lib/embedding", () => ({
 
 // Mock supabase
 jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn().mockResolvedValue({
+  createServiceClient: jest.fn().mockResolvedValue({
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({

@@ -7,7 +7,7 @@
  * @since 2026-03-09
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import type { UserContext, UserRule, UserStage } from "../types";
 import { CLASSIFICATION_CONFIG } from "../config";
 import { loadUserWeights as loadFromWeightStore } from "../feedback/weight-store";
@@ -16,7 +16,8 @@ import { loadUserWeights as loadFromWeightStore } from "../feedback/weight-store
  * 构建用户上下文
  */
 export async function buildUserContext(userId: string): Promise<UserContext> {
-  const supabase = await createClient();
+  // 使用 service client 绕过 RLS（分类在异步上下文中执行，用户会话可能已失效）
+  const supabase = await createServiceClient();
 
   // 并行加载：规则、权重、书签数、文件夹数
   const [rules, weights, bookmarkCount, folderCount] = await Promise.all([
@@ -41,7 +42,7 @@ export async function buildUserContext(userId: string): Promise<UserContext> {
  * 加载用户自定义分类规则
  */
 async function loadUserRules(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
   userId: string,
 ): Promise<UserRule[]> {
   // 使用 type assertion 绕过 Supabase 生成类型不完整的问题
@@ -111,7 +112,7 @@ async function loadUserWeights(
  * 加载用户书签总数
  */
 async function loadBookmarkCount(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
   userId: string,
 ): Promise<number> {
   const { count } = await supabase
@@ -127,7 +128,7 @@ async function loadBookmarkCount(
  * 加载用户文件夹数
  */
 async function loadFolderCount(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
   userId: string,
 ): Promise<number> {
   const { count } = await supabase

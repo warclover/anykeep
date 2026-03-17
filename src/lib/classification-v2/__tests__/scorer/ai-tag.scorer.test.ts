@@ -82,9 +82,59 @@ describe("AiTagScorer", () => {
     });
   });
 
+  describe("策略 0: 标题包含文件夹名", () => {
+    it("标题包含文件夹名 → 0.92（优先于精确标签匹配）", async () => {
+      const bookmark = makeBookmark({
+        title: '流程工业的"OpenClaw"：协同生成与审查',
+        normalizedTitle: '流程工业的"openclaw"：协同生成与审查',
+        normalizedTags: ["流程工业"],
+      });
+      const folders = [makeFolder(1, "openclaw")];
+
+      const results = await scorer.score(bookmark, folders, makeUserCtx());
+
+      expect(results.has(1)).toBe(true);
+      const score = results.get(1)!;
+      expect(score.value).toBe(0.92);
+      expect(score.signals[0].type).toBe("title_folder_name");
+    });
+
+    it("文件夹名仅单字（长度<2）→ 不触发标题匹配", async () => {
+      const bookmark = makeBookmark({
+        title: "AI 在工业中的应用",
+        normalizedTitle: "ai 在工业中的应用",
+        normalizedTags: [],
+        tags: [],
+      });
+      const folders = [makeFolder(1, "A", { normalizedName: "a" })];
+
+      const results = await scorer.score(bookmark, folders, makeUserCtx());
+      expect(results.size).toBe(0);
+    });
+
+    it("标题不包含文件夹名 → 降级到后续策略", async () => {
+      const bookmark = makeBookmark({
+        title: "React Hooks 完全指南",
+        normalizedTitle: "react hooks 完全指南",
+        normalizedTags: ["react"],
+      });
+      const folders = [makeFolder(1, "React")];
+
+      const results = await scorer.score(bookmark, folders, makeUserCtx());
+
+      // 标题不含 "react"（包含 "react hooks"），但标签精确匹配
+      // 注意：normalizedTitle "react hooks 完全指南" includes "react" → 标题匹配会命中
+      expect(results.has(1)).toBe(true);
+      expect(results.get(1)!.value).toBe(0.92); // 标题匹配优先
+    });
+  });
+
   describe("策略 1: 精确匹配", () => {
     it("标签与文件夹名精确匹配 → 最高分 0.98", async () => {
+      // 标题不包含文件夹名，确保测试纯标签路径
       const bookmark = makeBookmark({
+        title: "前端框架性能对比",
+        normalizedTitle: "前端框架性能对比",
         normalizedTags: ["react"],
       });
       const folders = [makeFolder(1, "React")];
@@ -234,8 +284,10 @@ describe("AiTagScorer", () => {
   });
 
   describe("策略优先级", () => {
-    it("精确匹配优先于其他策略", async () => {
+    it("标题匹配优先于精确标签匹配", async () => {
       const bookmark = makeBookmark({
+        title: "React 状态管理最佳实践",
+        normalizedTitle: "react 状态管理最佳实践",
         normalizedTags: ["react"],
       });
       const folders = [
@@ -247,14 +299,36 @@ describe("AiTagScorer", () => {
       ];
 
       const results = await scorer.score(bookmark, folders, makeUserCtx());
-      // 应该命中精确匹配（0.98），而非别名或核心标签
+      // 标题 "react 状态管理..." includes "react" → 标题匹配 0.92 优先
+      expect(results.get(1)!.value).toBe(0.92);
+      expect(results.get(1)!.signals[0].type).toBe("title_folder_name");
+    });
+
+    it("标题不匹配时回退到精确标签匹配", async () => {
+      const bookmark = makeBookmark({
+        title: "Vue.js 新特性一览",
+        normalizedTitle: "vue.js 新特性一览",
+        normalizedTags: ["react"],
+      });
+      const folders = [
+        makeFolder(1, "React", {
+          normalizedName: "react",
+        }),
+      ];
+
+      const results = await scorer.score(bookmark, folders, makeUserCtx());
+      // 标题 "vue.js..." 不包含 "react"，回退到精确标签匹配 0.98
       expect(results.get(1)!.value).toBe(0.98);
+      expect(results.get(1)!.signals[0].type).toBe("tag_exact");
     });
   });
 
   describe("多文件夹竞争", () => {
     it("多个文件夹同时匹配 → 各自独立评分", async () => {
+      // 标题不包含任何文件夹名，确保走标签精确匹配路径
       const bookmark = makeBookmark({
+        title: "前端技术栈选型分析",
+        normalizedTitle: "前端技术栈选型分析",
         normalizedTags: ["react", "typescript"],
       });
       const folders = [
@@ -277,7 +351,10 @@ describe("AiTagScorer", () => {
     });
 
     it("文件夹无标签/别名/核心标签 → 仅靠文件夹名匹配", async () => {
+      // 标题不含文件夹名，测试纯标签精确匹配
       const bookmark = makeBookmark({
+        title: "编程语言学习笔记",
+        normalizedTitle: "编程语言学习笔记",
         normalizedTags: ["python"],
       });
       const folders = [makeFolder(1, "Python")];

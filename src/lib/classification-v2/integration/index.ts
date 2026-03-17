@@ -243,8 +243,9 @@ async function applyClassificationResult(
   action: string;
   suggestionId?: number;
 }> {
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
+  // 使用 service client 绕过 RLS（分类在异步上下文中执行，用户会话可能已失效）
+  const { createServiceClient } = await import("@/lib/supabase/server");
+  const supabase = await createServiceClient();
 
   // --- classify / suggest to existing folder ---
   if (

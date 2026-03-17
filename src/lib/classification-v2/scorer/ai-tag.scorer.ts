@@ -54,6 +54,11 @@ export class AiTagScorer implements Scorer {
   }
 }
 
+/** 标题包含文件夹名时的置信度 */
+const TITLE_FOLDER_NAME_CONFIDENCE = 0.92;
+/** 文件夹名最小长度（避免单字误匹配） */
+const FOLDER_NAME_MIN_LENGTH = 2;
+
 /**
  * 尝试匹配书签标签与单个文件夹，返回最佳匹配
  */
@@ -61,6 +66,10 @@ function matchFolder(
   bookmark: BookmarkContext,
   folder: FolderContext,
 ): Score | null {
+  // 策略 0: 标题包含文件夹名（最强信号之一，独立于向量搜索）
+  const titleMatch = tryTitleFolderNameMatch(bookmark, folder);
+  if (titleMatch) return titleMatch;
+
   // 策略 1: 精确匹配
   const exactMatch = tryExactMatch(bookmark, folder);
   if (exactMatch) return exactMatch;
@@ -210,6 +219,28 @@ function tryRelatedTagMatch(
     detail: `${matchCount} related tags`,
     strength: TAG_CONF.relatedTagMatch,
   });
+}
+
+// ---- 策略 0: 标题包含文件夹名 ----
+function tryTitleFolderNameMatch(
+  bookmark: BookmarkContext,
+  folder: FolderContext,
+): Score | null {
+  // 文件夹名过短（如单字）时不匹配，避免误判
+  if (folder.normalizedName.length < FOLDER_NAME_MIN_LENGTH) return null;
+
+  if (bookmark.normalizedTitle.includes(folder.normalizedName)) {
+    return buildScore(
+      TITLE_FOLDER_NAME_CONFIDENCE,
+      `标题包含文件夹名「${folder.name}」`,
+      {
+        type: "title_folder_name",
+        detail: `"${bookmark.title}" ⊃ "${folder.name}"`,
+        strength: TITLE_FOLDER_NAME_CONFIDENCE,
+      },
+    );
+  }
+  return null;
 }
 
 // ---- 辅助 ----

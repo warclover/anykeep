@@ -11,7 +11,7 @@
 import type { ClassifyRequest, BookmarkContext } from "../types";
 import { CLASSIFICATION_CONFIG } from "../config";
 import { generateEmbedding, buildEmbeddingText } from "@/lib/embedding";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 const { titleMaxLen, summaryMaxLen, maxTags } = CLASSIFICATION_CONFIG.llm;
 
@@ -112,7 +112,7 @@ async function resolveAuthorKey(
     const numericId = parseInt(request.bookmarkId, 10);
     if (isNaN(numericId)) return undefined;
 
-    const supabase = await createClient();
+    const supabase = await createServiceClient();
 
     type BookmarkAuthorRow = {
       source_name: string | null;
