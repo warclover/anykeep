@@ -41,7 +41,10 @@ import { separateUserTagsExtended } from "@/lib/constants/usage-tags";
 import { SnapshotSectionLazy } from "@/components/snapshot";
 // V4.2.2: 微信文章功能（懒加载 + Feature Flag）
 import { lazy, Suspense } from "react";
-import { useWechatArticleFeature } from "@/lib/feature-flags";
+import {
+  useWechatArticleFeature,
+  useDetailInsightsFeature,
+} from "@/lib/feature-flags";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
 // V5.7: AISmartSummary 改为懒加载，减少首屏模块数（~500-1000 模块）
@@ -60,6 +63,7 @@ import { DetailNotesEditor } from "./detail-notes-editor";
 // V5.7: 对话框集合 + AI 内容区提取为独立组件，减少主组件模块数
 import { DetailDialogs } from "./detail-dialogs";
 import { DetailAIContent } from "./detail-ai-content";
+import { DetailInsightsLazy } from "./detail-insights";
 
 // V5.7: 微信文章区块（仅条件渲染时加载）
 const WechatArticleSectionLazy = lazy(() =>
@@ -223,6 +227,7 @@ export function BookmarkDetailClient({
 
   // V4.2.2: 判断是否为微信公众号文章并且功能开关已启用
   const isWechatArticleEnabled = useWechatArticleFeature();
+  const isDetailInsightsEnabled = useDetailInsightsFeature();
   const isWechatPlatform = bookmark.platform === "WECHAT_OFFICIAL_ACCOUNT";
   const showWechatArticle = isWechatArticleEnabled && isWechatPlatform;
 
@@ -522,6 +527,18 @@ export function BookmarkDetailClient({
                   />
                   <Separator />
                 </>
+              )}
+
+              {/* 内容分析洞察（懒加载 + 视口触发） */}
+              {userId && isDetailInsightsEnabled && (
+                <DetailInsightsLazy
+                  bookmarkId={bookmark.id}
+                  folderId={bookmark.folder_id ?? null}
+                  folderName={bookmark.folders?.name ?? null}
+                  userTags={localUserTags}
+                  aiTags={bookmark.ai_tags}
+                  classificationResult={bookmark.classification_result}
+                />
               )}
 
               {/* Phase 2: 知识关联推荐 (V4.2.24: 视口懒加载优化) */}

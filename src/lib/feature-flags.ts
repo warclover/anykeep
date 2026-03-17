@@ -23,7 +23,9 @@ export type FeatureFlag =
   // V4.2.2: 微信文章功能
   | "wechat_article" // 微信公众号文章完整内容抓取
   // V4.3.0: 知识工坊 v2
-  | "blueprint_v2"; // 增强蓝图系统 v2
+  | "blueprint_v2" // 增强蓝图系统 v2
+  // 详情页内容分析洞察
+  | "detail_insights"; // 详情页上下文触发的分析卡片
 
 // 功能开关默认值（生产环境）
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
@@ -41,6 +43,8 @@ const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   wechat_article: false, // 默认关闭，通过环境变量启用
   // V4.3.0: 知识工坊 v2
   blueprint_v2: true, // 默认启用增强蓝图系统
+  // 详情页内容分析洞察
+  detail_insights: true, // 默认启用详情页分析卡片
 };
 
 // ============================================================================
@@ -65,6 +69,8 @@ const ENV_VAR_MAP: Record<FeatureFlag, string | undefined> = {
   wechat_article: process.env.NEXT_PUBLIC_FEATURE_WECHAT_ARTICLE,
   // V4.3.0: 知识工坊 v2
   blueprint_v2: process.env.NEXT_PUBLIC_FEATURE_BLUEPRINT_V2,
+  // 详情页内容分析洞察
+  detail_insights: process.env.NEXT_PUBLIC_FEATURE_DETAIL_INSIGHTS,
 };
 
 // ============================================================================
@@ -193,4 +199,15 @@ export function useWechatArticleFeature(): boolean {
  */
 export function useBlueprintV2Feature(): boolean {
   return useFeatureFlag("blueprint_v2");
+}
+
+// ============================================================================
+// 详情页内容分析洞察 Feature Flags
+// ============================================================================
+
+/**
+ * 详情页上下文触发的分析卡片是否启用
+ */
+export function useDetailInsightsFeature(): boolean {
+  return useFeatureFlag("detail_insights");
 }

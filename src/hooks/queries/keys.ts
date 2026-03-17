@@ -380,6 +380,19 @@ export const folderHeatKeys = {
 };
 
 /**
+ * Detail Insights Query Keys (详情页洞察卡片)
+ */
+export const detailInsightsKeys = {
+  all: ["detailInsights"] as const,
+  classificationReason: (bookmarkId: number) =>
+    [...detailInsightsKeys.all, "classificationReason", bookmarkId] as const,
+  synthesisEligibility: (bookmarkId: number) =>
+    [...detailInsightsKeys.all, "synthesisEligibility", bookmarkId] as const,
+  topicPosition: (bookmarkId: number) =>
+    [...detailInsightsKeys.all, "topicPosition", bookmarkId] as const,
+};
+
+/**
  * Notification Query Keys (通知)
  */
 export const notificationKeys = {
