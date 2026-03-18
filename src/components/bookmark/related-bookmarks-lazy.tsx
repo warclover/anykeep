@@ -1,17 +1,24 @@
 /**
  * RelatedBookmarksV2 懒加载组件
  *
- * 使用 React.lazy + IntersectionObserver 实现：
- * 1. 代码分割 - 减少主包大小
- * 2. 视口懒加载 - 只有滚动到可见区域才开始加载和请求数据
+ * - 代码分割（React.lazy）：减小主包
+ * - 默认进入详情页即挂载并请求数据，避免「须滚动才加载」的误判
+ * - 可选 deferUntilVisible：仅在区块进入视口后再加载（省首屏请求）
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @since 2025-12-19
  */
 
 "use client";
 
-import { lazy, Suspense, useState, useEffect, useRef } from "react";
+import {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  type RefObject,
+} from "react";
 import { Brain } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SilentErrorBoundary } from "@/components/ui/lazy-error-boundary";
@@ -22,7 +29,7 @@ import type { LinkType } from "@/lib/knowledge-link";
 // Constants
 // ============================================================================
 
-/** 提前加载的视口边距，优化感知性能 */
+/** 视口懒加载模式下的提前量 */
 const PREFETCH_ROOT_MARGIN = "100px";
 
 // ============================================================================
@@ -36,6 +43,11 @@ interface RelatedBookmarksV2LazyProps {
   limit?: number;
   minStrength?: number;
   types?: LinkType[];
+  /**
+   * 为 true 时仅在区块进入视口后加载 JS 与数据（旧行为）。
+   * 默认 false：打开详情页即拉取知识关联，无需滚动。
+   */
+  deferUntilVisible?: boolean;
 }
 
 // ============================================================================
@@ -85,24 +97,24 @@ function RelatedBookmarksFallback() {
 // ============================================================================
 
 /**
- * 检测元素是否进入视口的 Hook
- *
- * @param ref - 目标元素的 ref
- * @returns 是否已进入视口（一旦为 true 则保持）
+ * 检测元素是否进入视口（仅 deferUntilVisible 时使用）
  */
-function useInViewport(ref: React.RefObject<HTMLElement | null>): boolean {
+function useInViewport(
+  ref: RefObject<HTMLElement | null>,
+  enabled: boolean,
+): boolean {
   const [isInViewport, setIsInViewport] = useState(false);
 
   useEffect(() => {
+    if (!enabled || isInViewport) return;
     const element = ref.current;
-    // 无元素或已在视口中，跳过
-    if (!element || isInViewport) return;
+    if (!element) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsInViewport(true);
-          observer.disconnect(); // 只触发一次
+          observer.disconnect();
         }
       },
       {
@@ -112,9 +124,8 @@ function useInViewport(ref: React.RefObject<HTMLElement | null>): boolean {
     );
 
     observer.observe(element);
-
     return () => observer.disconnect();
-  }, [ref, isInViewport]); // ref 是稳定引用，不会导致重复执行
+  }, [enabled, ref, isInViewport]);
 
   return isInViewport;
 }
@@ -146,26 +157,38 @@ function RelatedBookmarksPlaceholder() {
 // Main Component
 // ============================================================================
 
+function RelatedBookmarksInner(
+  rest: Omit<RelatedBookmarksV2LazyProps, "deferUntilVisible">,
+) {
+  return (
+    <SilentErrorBoundary>
+      <Suspense fallback={<RelatedBookmarksFallback />}>
+        <LazyRelatedBookmarksV2 {...rest} />
+      </Suspense>
+    </SilentErrorBoundary>
+  );
+}
+
 /**
- * 相关推荐懒加载组件
- *
- * 特性：
- * - 视口触发：只有滚动到可见区域才开始加载
- * - 代码分割：RelatedBookmarksV2 的 JS 代码按需加载
- * - 骨架屏过渡：加载时显示骨架屏，避免布局跳动
+ * 相关推荐：默认随详情页打开即加载；可选视口延迟加载。
  */
 export function RelatedBookmarksV2Lazy(props: RelatedBookmarksV2LazyProps) {
+  const { deferUntilVisible = false, ...rest } = props;
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInViewport = useInViewport(containerRef);
+  const isInViewport = useInViewport(containerRef, deferUntilVisible);
+
+  if (!deferUntilVisible) {
+    return (
+      <div ref={containerRef}>
+        <RelatedBookmarksInner {...rest} />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef}>
       {isInViewport ? (
-        <SilentErrorBoundary>
-          <Suspense fallback={<RelatedBookmarksFallback />}>
-            <LazyRelatedBookmarksV2 {...props} />
-          </Suspense>
-        </SilentErrorBoundary>
+        <RelatedBookmarksInner {...rest} />
       ) : (
         <RelatedBookmarksPlaceholder />
       )}
