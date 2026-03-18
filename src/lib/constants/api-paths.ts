@@ -649,6 +649,9 @@ export const API_SYNTHESIS = {
   detail: (id: string) => `/api/synthesis/${id}`,
   /** 生成合成 */
   generate: "/api/synthesis/generate",
+  /** 按书签集合匹配已有对比综述（详情页快速对比恢复） */
+  matchSelection: (bookmarkIds: number[]) =>
+    `/api/synthesis/match-selection?bookmarkIds=${bookmarkIds.join(",")}`,
   /** 预览 */
   preview: "/api/synthesis/preview",
   /** 问答 */

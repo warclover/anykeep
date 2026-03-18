@@ -44,6 +44,12 @@ export const DETAIL_INSIGHTS_TEXT = {
     generating: "正在生成对比报告...",
     compareComplete: "对比完成",
     compareError: "对比生成失败",
+    savedHint: "已保存",
+    regenerateButton: "重新生成",
+    loadingSaved: "加载已保存对比…",
+    viewFullReport: "在综述中打开",
+    backToSaved: "查看已保存对比",
+    retryButton: "重试",
   },
 
   // ============================

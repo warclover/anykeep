@@ -390,6 +390,9 @@ export const detailInsightsKeys = {
     [...detailInsightsKeys.all, "synthesisEligibility", bookmarkId] as const,
   topicPosition: (bookmarkId: number) =>
     [...detailInsightsKeys.all, "topicPosition", bookmarkId] as const,
+  /** 快速对比：按三篇收藏 id 排序后的指纹匹配已保存报告 */
+  quickCompareMatch: (canonicalKey: string) =>
+    [...detailInsightsKeys.all, "quickCompareMatch", canonicalKey] as const,
 };
 
 /**
