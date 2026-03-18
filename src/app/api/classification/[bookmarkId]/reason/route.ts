@@ -26,6 +26,8 @@ interface ClassificationResult {
   folderName?: string;
   confidence?: number;
   matchSource?: string;
+  /** classification-v2 写入的分类方法标识 */
+  method?: string;
   reason?: string;
   alternatives?: Array<{
     folderId: number;
@@ -151,6 +153,24 @@ const MATCH_SOURCE_INFO: Record<
   },
 };
 
+/**
+ * 从 classification_result.method 推断匹配来源类型。
+ * classification-v2 写入 method 但不写 matchSource，此函数弥补该缺失。
+ */
+function inferMatchSourceFromMethod(method: string | undefined): string | null {
+  if (!method) return null;
+  const METHOD_TO_SOURCE: Record<string, string> = {
+    "full-auto": "embedding",
+    "auto-classify": "embedding",
+    suggestion: "embedding",
+    "suggestion-new": "embedding",
+    "auto-create": "embedding",
+    "limit-reached": "embedding",
+    "inbox-fallback": "unknown",
+  };
+  return METHOD_TO_SOURCE[method] ?? null;
+}
+
 // ============================================================================
 // GET - 获取分类决策理由
 // ============================================================================
@@ -241,9 +261,10 @@ export const GET = withAuthMiddleware<{ bookmarkId: string }>(
       classificationStatus = "uncategorized";
     }
 
-    // 确定匹配来源
+    // 确定匹配来源：优先 matchSource > method 推断 > cluster_confidence > unknown
     const matchSourceType =
       classificationResult.matchSource ||
+      inferMatchSourceFromMethod(classificationResult.method) ||
       (bookmark.cluster_confidence ? "cluster" : "unknown");
     const matchSourceInfo =
       MATCH_SOURCE_INFO[matchSourceType] || MATCH_SOURCE_INFO.unknown;

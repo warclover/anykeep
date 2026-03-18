@@ -22,20 +22,6 @@ import { logger } from "@/lib/logger";
 import type { SynthesisSourceType } from "@/lib/synthesis";
 import type { BookmarkRow as BaseBookmarkRow } from "@/types/domain";
 
-/**
- * RPC 函数返回的书签行类型
- */
-type RpcBookmarkRow = {
-  bookmark_id: number;
-  title: string;
-  url: string;
-  platform: string | null;
-  ai_summary: string | null;
-  created_at: string;
-  folder_id: number | null;
-  folder_name: string | null;
-};
-
 interface PreviewBookmark {
   id: number;
   title: string;
@@ -130,87 +116,11 @@ export const GET = withAuthMiddleware(
     if (sourceType === "folder" && sourceId) {
       query = query.eq("folder_id", parseInt(sourceId, 10));
     } else if (sourceType === "tag" && sourceId) {
-      // 使用 RPC 函数优化标签查询，避免 N+1 问题
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: rpcData, error: rpcError } = (await (supabase as any).rpc(
-        "get_bookmarks_by_tag_with_folder",
-        {
-          p_user_id: userId,
-          p_tag_name: sourceId,
-          p_offset: (page - 1) * pageSize,
-          p_limit: pageSize + 1, // 多取一条用于判断 hasMore
-        },
-      )) as {
-        data: RpcBookmarkRow[] | null;
-        error: { message: string } | null;
-      };
-
-      if (rpcError) {
-        logger.error({ error: rpcError }, "Failed to fetch bookmarks by tag");
-        return NextResponse.json(
-          { error: "Failed to fetch bookmarks" },
-          { status: 500 },
-        );
-      }
-
-      const taggedBookmarks = rpcData || [];
-      const hasMore = taggedBookmarks.length > pageSize;
-      const paginatedBookmarks = hasMore
-        ? taggedBookmarks.slice(0, pageSize)
-        : taggedBookmarks;
-
-      // 获取总数（单独查询）
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { count } = await (supabase as any)
-        .from("bookmark_tags")
-        .select("bookmark_id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("tag_name", sourceId);
-
-      // 转换数据格式
-      const bookmarks: PreviewBookmark[] = paginatedBookmarks.map((row) => ({
-        id: row.bookmark_id,
-        title: row.title,
-        url: row.url,
-        platform: row.platform,
-        ai_summary: row.ai_summary,
-        created_at: row.created_at || new Date().toISOString(),
-        folder_id: row.folder_id,
-        folder_name: row.folder_name,
-      }));
-
-      // 计算内容统计
-      const withSummary = bookmarks.filter(
-        (b) => b.ai_summary && b.ai_summary.length > 0,
+      // 标签存储在 bookmarks 表的 user_tags / ai_tags 数组字段中（GIN 索引），
+      // 使用 or + cs (contains) 过滤，匹配任一数组包含该标签的书签
+      query = query.or(
+        `user_tags.cs.{"${sourceId}"},ai_tags.cs.{"${sourceId}"}`,
       );
-      const totalSummaryLength = withSummary.reduce(
-        (sum, b) => sum + (b.ai_summary?.length || 0),
-        0,
-      );
-      const platforms: Record<string, number> = {};
-      bookmarks.forEach((b) => {
-        const platform = b.platform || "unknown";
-        platforms[platform] = (platforms[platform] || 0) + 1;
-      });
-
-      return NextResponse.json({
-        bookmarks,
-        pagination: {
-          page,
-          pageSize,
-          total: count || 0,
-          hasMore,
-        },
-        contentStats: {
-          totalCount: count || 0,
-          withSummary: withSummary.length,
-          avgSummaryLength:
-            withSummary.length > 0
-              ? Math.round(totalSummaryLength / withSummary.length)
-              : 0,
-          platforms,
-        },
-      });
     } else if (sourceType === "selection" && bookmarkIdsParam) {
       const bookmarkIds = bookmarkIdsParam
         .split(",")
