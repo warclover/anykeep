@@ -52,6 +52,7 @@ import { StyleSelector } from "./style-selector";
 import { toast } from "sonner";
 import { clientLogger } from "@/lib/client-logger";
 import { API_SNAPSHOTS } from "@/lib/constants/api-paths";
+import { WECHAT_ARTICLE_UI_TEXT } from "./wechat-article-ui-text";
 
 // =============================================================================
 // 类型定义
@@ -243,8 +244,34 @@ export function WechatArticleViewer({
   if (isLoading) {
     return (
       <Card className={cn("w-full", className)}>
-        <CardContent className="p-6">
-          <div className="space-y-4">
+        <CardHeader className="pb-2">
+          <div
+            className="flex items-center justify-between gap-3 w-full"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            aria-label={WECHAT_ARTICLE_UI_TEXT.loadingArticle}
+          >
+            <h3 className="text-base font-semibold flex items-center gap-2 shrink-0">
+              <FileText className="size-4 text-muted-foreground" />
+              {WECHAT_ARTICLE_UI_TEXT.sectionTitle}
+            </h3>
+            <div
+              className="relative flex-1 min-w-[6rem] max-w-[200px] sm:max-w-[280px] h-2 rounded-full bg-muted overflow-hidden border border-border/50"
+              aria-hidden
+            >
+              <div className="wechat-article-hprogress-thumb absolute left-0 top-0 bottom-0 rounded-full bg-primary/80 shadow-sm" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0 px-6 pb-6 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {WECHAT_ARTICLE_UI_TEXT.loadingArticle}
+          </p>
+          <p className="text-xs text-muted-foreground/80">
+            {WECHAT_ARTICLE_UI_TEXT.loadingHint}
+          </p>
+          <div className="space-y-4 pt-1">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-5/6" />

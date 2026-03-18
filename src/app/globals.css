@@ -966,3 +966,19 @@
   max-width: var(--reader-max-width, 70ch);
   font-size: var(--reader-font-size, 1rem);
 }
+
+/* 微信文章阅读器：标题栏右侧横向进度指示 */
+@keyframes wechat-article-hprogress-move {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(380%);
+  }
+}
+.wechat-article-hprogress-thumb {
+  width: 38%;
+  height: 100%;
+  min-height: 0.375rem;
+  animation: wechat-article-hprogress-move 1.35s ease-in-out infinite;
+}

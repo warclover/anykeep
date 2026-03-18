@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { WechatArticleViewer } from "./wechat-article-viewer";
 import { clientLogger } from "@/lib/client-logger";
 import { API_SNAPSHOTS, API_WECHAT_ARTICLE } from "@/lib/constants/api-paths";
+import { WECHAT_ARTICLE_UI_TEXT } from "./wechat-article-ui-text";
 
 // =============================================================================
 // 类型定义
@@ -214,7 +215,7 @@ export function WechatArticleSection({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="size-4" />
-            微信文章内容
+            {WECHAT_ARTICLE_UI_TEXT.sectionTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -267,7 +268,7 @@ export function WechatArticleSection({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="size-4" />
-            微信文章内容
+            {WECHAT_ARTICLE_UI_TEXT.sectionTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -289,7 +290,7 @@ export function WechatArticleSection({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="size-4" />
-            微信文章内容
+            {WECHAT_ARTICLE_UI_TEXT.sectionTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -338,7 +339,7 @@ export function WechatArticleSection({
         >
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="size-4" />
-            微信文章内容
+            {WECHAT_ARTICLE_UI_TEXT.sectionTitle}
           </CardTitle>
           <ChevronRight
             className={cn(
