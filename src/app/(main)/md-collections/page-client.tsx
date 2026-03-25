@@ -122,6 +122,7 @@ export function MdCollectionPageClient({
 
   // 上传操作
   const { upload: uploadFile, isLoading: isUploading } = useUploadMdFile();
+  const [isBatchUploading, setIsBatchUploading] = useState(false);
 
   // 视图偏好
   const { viewMode, setViewMode } = useMdViewPreference("list");
@@ -275,35 +276,63 @@ export function MdCollectionPageClient({
    */
   const handleFileUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(e.target.files ?? []);
+      if (files.length === 0) return;
 
-      // 验证文件类型
-      const ext = file.name.toLowerCase().split(".").pop();
-      if (!["md", "txt", "markdown"].includes(ext || "")) {
-        toast.error("仅支持 .md 或 .txt 文件");
-        return;
+      setIsBatchUploading(true);
+
+      let successCount = 0;
+      let invalidCount = 0;
+      let failedCount = 0;
+
+      try {
+        for (const file of files) {
+          // 验证文件类型
+          const ext = file.name.toLowerCase().split(".").pop();
+          if (!["md", "txt", "markdown"].includes(ext || "")) {
+            invalidCount++;
+            continue;
+          }
+
+          // 验证文件大小
+          if (file.size > MD_COLLECTION_LIMITS.maxFileSize) {
+            invalidCount++;
+            continue;
+          }
+
+          const result = await uploadFile(file);
+          if (result) {
+            addLocal(result);
+            successCount++;
+          } else {
+            failedCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          toast.success(
+            files.length === 1 ? "上传成功" : `已上传 ${successCount} 个文件`,
+          );
+        }
+
+        const skippedCount = invalidCount + failedCount;
+        if (skippedCount > 0) {
+          toast.warning(
+            successCount > 0
+              ? `已跳过 ${skippedCount} 个文件`
+              : `上传失败，${skippedCount} 个文件未成功导入`,
+          );
+        }
+      } finally {
+        // 清空 input，允许重复选择同一批文件
+        e.target.value = "";
+        setIsBatchUploading(false);
       }
-
-      // 验证文件大小
-      if (file.size > MD_COLLECTION_LIMITS.maxFileSize) {
-        toast.error("文件大小不能超过 1MB");
-        return;
-      }
-
-      const result = await uploadFile(file);
-      if (result) {
-        addLocal(result);
-        toast.success("上传成功");
-      } else {
-        toast.error("上传失败");
-      }
-
-      // 清空 input
-      e.target.value = "";
     },
     [uploadFile, addLocal],
   );
+
+  const isUploadBusy = isUploading || isBatchUploading;
 
   // 注入 AppHeader 第二行工具栏（仅依赖稳定/标量值，避免 setViewMode/refresh 等引用变化导致 useMemo 每轮新引用 → useEffect 循环）
   const toolbarElement = useMemo(
@@ -337,18 +366,19 @@ export function MdCollectionPageClient({
             variant="outline"
             size="sm"
             asChild
-            disabled={isUploading}
+            disabled={isUploadBusy}
             className="h-7 px-2 text-xs"
           >
             <label className="cursor-pointer">
               <Upload className="w-3 h-3 mr-1.5" />
-              上传文件
+              {isUploadBusy ? "上传中..." : "上传文件"}
               <input
                 type="file"
                 className="hidden"
                 accept=".md,.txt,.markdown"
+                multiple
                 onChange={handleFileUpload}
-                disabled={isUploading}
+                disabled={isUploadBusy}
               />
             </label>
           </Button>
@@ -365,7 +395,7 @@ export function MdCollectionPageClient({
     ),
     // 故意不包含 setViewMode/refresh/handleFileUpload，避免引用每轮变化导致 toolbarElement 常新 → setToolbar 重渲染循环
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewMode, isLoading, isValidating, isUploading],
+    [viewMode, isLoading, isValidating, isUploadBusy],
   );
 
   const setPageToolbarFn = pageToolbar?.setToolbar;
@@ -503,15 +533,17 @@ export function MdCollectionPageClient({
             支持直接粘贴 Markdown 内容或上传 .md 文件
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild disabled={isUploadBusy}>
               <label className="cursor-pointer">
                 <Upload className="w-4 h-4 mr-2" />
-                上传文件
+                {isUploadBusy ? "上传中..." : "上传文件"}
                 <input
                   type="file"
                   className="hidden"
                   accept=".md,.txt,.markdown"
+                  multiple
                   onChange={handleFileUpload}
+                  disabled={isUploadBusy}
                 />
               </label>
             </Button>
